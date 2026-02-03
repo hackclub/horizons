@@ -27,6 +27,20 @@
     let usingKeyboard = $state(true); // Track if user is using keyboard navigation
     let showSlideOut = $state(false);
     let disableAnimations = $state(false);
+    let animationsReady = $state(false);
+
+    // Sync disableAnimations with localStorage
+    onMount(() => {
+        const stored = localStorage.getItem('disableAnimations');
+        if (stored !== null) {
+            disableAnimations = stored === 'true';
+        }
+        animationsReady = true;
+    });
+
+    $effect(() => {
+        localStorage.setItem('disableAnimations', String(disableAnimations));
+    });
     let signupEmail = $state('');
 
     function activateJoinNow() {
@@ -232,7 +246,9 @@
     });
 </script>
 
-{#if !disableAnimations}
+{#if !animationsReady}
+    <div class="fixed inset-0 bg-black z-[9999]"></div>
+{:else if !disableAnimations}
     <CircleIn />
     {#if showSlideOut}
         <CircleOut />
