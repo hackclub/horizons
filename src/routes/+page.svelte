@@ -27,6 +27,7 @@
     let usingKeyboard = $state(true); // Track if user is using keyboard navigation
     let showSlideOut = $state(false);
     let disableAnimations = $state(false);
+    let signupEmail = $state('');
 
     function activateJoinNow() {
         showSlideOut = true;
@@ -220,10 +221,7 @@
                     selectedCard = Math.min(2, selectedCard + 1);
                     selectedElement = -1;
                 } else if (ev.key === 'Enter') {
-                    if (selectedCard === 0) {
-                        ev.preventDefault();
-                        activateJoinNow();
-                    } else if (elements.length > 0) {
+                    if (elements.length > 0) {
                         ev.preventDefault();
                         selectedElement = 0;
                         focusSelectedElement();
@@ -256,7 +254,19 @@
 
             {#if !stripesOutro}
                 <div class="flex flex-col items-center justify-center px-16 mt-8" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}>
-                    <BobaButton text="> PRESS  ENTER" fallbackWidth={260} {pressed} className="pointer-events-none select-none" wave {disableAnimations} />
+                    <BobaButton text="> CLICK  OR  PRESS  ENTER" fallbackWidth={360} {pressed} className="select-none cursor-pointer" wave {disableAnimations} onclick={() => {
+                        if (!stripesOutro) {
+                            usingKeyboard = false;
+                            pressed = true;
+                            setTimeout(() => {
+                                stripesOutro = true;
+                                setTimeout(() => {
+                                    showDetail();
+                                    selectedCard = -1;
+                                }, 400);
+                            }, 150);
+                        }
+                    }} />
                 </div>
             {/if}
         </div>
@@ -281,7 +291,7 @@
             </div>
 
             <div class="flex flex-col items-center gap-7 w-full px-10">
-                <div in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 500 }} bind:this={cardRefs[0]} onmouseenter={() => { usingKeyboard = false; selectedCard = 0; }} onclick={() => { if (selectedCard === 0) activateJoinNow(); }}>
+                <div in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 500 }} bind:this={cardRefs[0]} onmouseenter={() => { usingKeyboard = false; selectedCard = 0; }}>
                     <MenuItem 
                         title="JOIN NOW" 
                         subtitle="START WORKING ON YOUR PROJECTS!"
@@ -289,6 +299,10 @@
                         selected={selectedCard === 0}
                         preserveIcon
                         {disableAnimations}
+                        showSignup
+                        bind:email={signupEmail}
+                        onSignup={activateJoinNow}
+                        signupHint={usingKeyboard ? "Press enter to enter your email" : "Click to enter your email"}
                     >
                         {#snippet icon()}
                             <img src={horizonIcon} alt="Watch" />
@@ -321,7 +335,7 @@
                 </div>
             </div>
 
-            <div in:fly={{ y: disableAnimations ? 0 : 20, duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 800 }} class="flex justify-center absolute bottom-32 left-0 right-0">
+            <div in:fly={{ y: disableAnimations ? 0 : 20, duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 800 }} class="flex justify-center absolute bottom-24 left-0 right-0">
                 <BobaText text="USE  WASD  OR  YOUR  MOUSE" fontSize={36} wave {disableAnimations} />
             </div>
         </div>
