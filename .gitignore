@@ -1,7 +1,7 @@
 node_modules
 .env
 
-owl-api/mail-service/certs/
+backend/mail-service/certs/
 *.p12
 *.pfx
 *.pem

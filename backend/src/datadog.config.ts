@@ -7,7 +7,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 import tracer from 'dd-trace';
 
-const serviceName = process.env.DD_SERVICE || 'owl-api';
+const serviceName = process.env.DD_SERVICE || 'backend';
 const environment = process.env.DD_ENV || process.env.NODE_ENV || 'production';
 const version = process.env.DD_VERSION || 'unknown';
 

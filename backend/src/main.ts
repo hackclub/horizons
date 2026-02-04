@@ -1,5 +1,6 @@
 import './datadog.config';
 import { NestFactory } from '@nestjs/core';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
@@ -50,6 +51,15 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Horizon API')
+    .setDescription('The Horizon API documentation')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const documentFactory = () => SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, documentFactory);
 
   const port = process.env.PORT || 3002;
   await app.listen(port);

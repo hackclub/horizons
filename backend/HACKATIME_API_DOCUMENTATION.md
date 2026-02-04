@@ -249,7 +249,7 @@ HACKATIME_API_KEY=your_hackatime_api_key_here
 ```
 
 **Important Notes:**
-- Add these variables to the root `.env` file (not `owl-api/.env`)
+- Add these variables to the root `.env` file (not `backend/.env`)
 - The `HACKATIME_ADMIN_API_URL` should be the base URL, not the API key
 - The `HACKATIME_API_KEY` should be your actual bearer token
 - After updating `.env`, restart the API service to load the new variables

@@ -146,7 +146,7 @@ if [ -n "$DD_AGENT_HOST" ]; then
     echo "Datadog trace agent port: ${DD_TRACE_AGENT_PORT:-8126}"
     echo "Datadog APM enabled: ${DD_APM_ENABLED:-false}"
     echo "Datadog profiling enabled: ${DD_PROFILING_ENABLED:-false}"
-    echo "Datadog service: ${DD_SERVICE:-owl-api}"
+    echo "Datadog service: ${DD_SERVICE:-backend}"
     echo "Datadog environment: ${DD_ENV:-production}"
     echo "Datadog version: ${DD_VERSION:-1.0.0}"
     
