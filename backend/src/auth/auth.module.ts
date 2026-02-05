@@ -9,6 +9,5 @@ import { RedisService } from '../redis.service';
 @Module({
   controllers: [AuthController],
   providers: [AuthService, PrismaService, MailService, JobLockService, RedisService],
-  exports: [AuthService],
 })
 export class AuthModule {}

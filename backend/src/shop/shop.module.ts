@@ -9,7 +9,6 @@ import { MailModule } from '../mail/mail.module';
   imports: [ConfigModule, MailModule],
   controllers: [ShopController, ShopAuthController, ShopAdminController],
   providers: [ShopService, PrismaService],
-  exports: [ShopService],
 })
 export class ShopModule {}
 

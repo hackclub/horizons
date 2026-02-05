@@ -9,6 +9,5 @@ import { PosthogService } from '../posthog/posthog.service';
 @Module({
   controllers: [ProjectsController, ProjectsAuthController],
   providers: [ProjectsService, PrismaService, AuthGuard, RedisService, PosthogService],
-  exports: [ProjectsService],
 })
 export class ProjectsModule {}

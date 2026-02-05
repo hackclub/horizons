@@ -8,7 +8,6 @@ import { MailModule } from '../mail/mail.module';
   imports: [MailModule],
   controllers: [GiftCodesController, GiftCodesAdminController],
   providers: [GiftCodesService, PrismaService],
-  exports: [GiftCodesService],
 })
 export class GiftCodesModule {}
 
