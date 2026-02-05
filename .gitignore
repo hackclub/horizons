@@ -1,5 +1,6 @@
 node_modules
 .env
+generated
 
 backend/mail-service/certs/
 *.p12
