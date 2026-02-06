@@ -310,7 +310,8 @@
                 </div>
             </div>
             {#if !isTransitioning}
-                <p class="text-black font-cook text-center text-4xl tracking-widest mt-2 mb-4" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}>300+ PERSON HACKATHON IN SF • DATE XX-XX</p>
+                <!-- <p class="text-black font-cook text-center text-4xl tracking-widest mt-2 mb-4" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}>300+ PERSON HACKATHON IN SF • DATE XX-XX</p> -->
+                <p class="text-black font-cook text-center text-4xl tracking-widest mt-2 mb-6" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}><TextWave text="300+ PERSON HACKATHON IN SF • DATE XX-XX" duration={2} disabled={disableAnimations} /></p>
             {/if}
 
             <div out:captureStripesRect>
@@ -336,7 +337,8 @@
                     <div in:animateLogoIn>
                         <img src={Logo} alt="Hack Club Horizon" class="h-24" />
                     </div>
-                    <p in:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 200 }} class="tagline"><TextWave text="HACK CLUB'S " disabled={disableAnimations} /><span class="underline"><TextWave text="BIGGEST" disabled={disableAnimations} offset={12} /></span><TextWave text=" EVENT" disabled={disableAnimations} offset={19} /></p>
+                    <!-- <p in:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 200 }} class="tagline"><TextWave text="HACK CLUB'S " disabled={disableAnimations} /><span class="underline"><TextWave text="BIGGEST" disabled={disableAnimations} offset={12} /></span><TextWave text=" EVENT" disabled={disableAnimations} offset={19} /></p> -->
+                    <p in:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 200 }} class="tagline"><TextWave text="300+ PERSON HACKATHON IN SF • DATE XX-XX" disabled={disableAnimations} /></p>
                 </div>
                 <div in:animateStripesIn>
                     <Stripes small {disableAnimations} />
