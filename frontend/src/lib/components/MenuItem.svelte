@@ -16,9 +16,10 @@
         onSignup?: (email: string) => void;
         signupHint?: string;
         emailFocused?: boolean;
+        onclick?: () => void;
     }
 
-    let { title, subtitle, selected = false, chevron = false, class: className = '', icon, preserveIcon = false, disableAnimations = false, showSignup = false, email = $bindable(''), onSignup, signupHint, emailFocused = $bindable(false) }: Props = $props();
+    let { title, subtitle, selected = false, chevron = false, class: className = '', icon, preserveIcon = false, disableAnimations = false, showSignup = false, email = $bindable(''), onSignup, signupHint, emailFocused = $bindable(false), onclick }: Props = $props();
 
     let emailInput: HTMLInputElement;
 
@@ -26,7 +27,9 @@
     let showInvalidHint = $state(false);
 
     function handleClick() {
-        if (showSignup && selected && emailInput) {
+        if (onclick) {
+            onclick();
+        } else if (showSignup && selected && emailInput) {
             emailInput.focus();
         }
     }

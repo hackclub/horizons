@@ -31,6 +31,8 @@
     let disableAnimations = $state(false);
     let animationsReady = $state(false);
 
+    let isAuthed = $state(false);
+
     // Sync disableAnimations with localStorage
     onMount(() => {
         const stored = localStorage.getItem('disableAnimations');
@@ -38,6 +40,12 @@
             disableAnimations = stored === 'true';
         }
         animationsReady = true;
+
+        api.GET('/api/user/auth/me').then(response => {
+            if (response.data && response.data.hcaId) {
+                isAuthed = true
+            }
+        })
     });
 
     $effect(() => {
@@ -48,6 +56,13 @@
 
     async function activateJoinNow(email: string) {
         showSlideOut = true;
+
+        if (isAuthed) {
+            setTimeout(() => {
+                goto('/app');
+            }, 1200)
+            return;
+        }
 
         let authURL = await api.GET('/api/user/auth/login', { 
             params: {
@@ -250,7 +265,10 @@
                     selectedCard = Math.min(2, selectedCard + 1);
                     selectedElement = -1;
                 } else if (ev.key === 'Enter') {
-                    if (elements.length > 0) {
+                    if (isAuthed && selectedCard === 0) {
+                        ev.preventDefault();
+                        activateJoinNow('');
+                    } else if (elements.length > 0) {
                         ev.preventDefault();
                         selectedElement = 0;
                         focusSelectedElement();
@@ -325,25 +343,41 @@
                 </div>
             </div>
 
-            <div class="flex flex-col items-center gap-7 w-full px-10">
+            <div class="flex flex-col items-center gap-7 w-full px-10">                
                 <div in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 500 }} bind:this={cardRefs[0]} onmouseenter={() => { if (!signupEmailFocused) { usingKeyboard = false; selectedCard = 0; } }}>
-                    <MenuItem 
-                        title="JOIN NOW" 
-                        subtitle="START WORKING ON YOUR PROJECTS!"
-                        chevron
-                        selected={selectedCard === 0}
-                        preserveIcon
-                        {disableAnimations}
-                        showSignup
-                        bind:email={signupEmail}
-                        bind:emailFocused={signupEmailFocused}
-                        onSignup={activateJoinNow}
-                        signupHint={usingKeyboard ? "Press enter to enter your email" : "Click to enter your email"}
-                    >
-                        {#snippet icon()}
-                            <img src={horizonIcon} alt="Watch" />
-                        {/snippet}
-                    </MenuItem>
+                    {#if isAuthed}
+                        <MenuItem 
+                            title="SIGN BACK IN" 
+                            subtitle="GET BACK TO WORKING ON YOUR PROJECTS!"
+                            chevron
+                            selected={selectedCard === 0}
+                            preserveIcon
+                            {disableAnimations}
+                            onclick={() => activateJoinNow('')}
+                        >
+                            {#snippet icon()}
+                                <img src={horizonIcon} alt="Watch" />
+                            {/snippet}
+                        </MenuItem>
+                    {:else}
+                        <MenuItem 
+                            title="JOIN NOW" 
+                            subtitle="START WORKING ON YOUR PROJECTS!"
+                            chevron
+                            selected={selectedCard === 0}
+                            preserveIcon
+                            {disableAnimations}
+                            showSignup
+                            bind:email={signupEmail}
+                            bind:emailFocused={signupEmailFocused}
+                            onSignup={activateJoinNow}
+                            signupHint={usingKeyboard ? "Press enter to enter your email" : "Click to enter your email"}
+                        >
+                            {#snippet icon()}
+                                <img src={horizonIcon} alt="Watch" />
+                            {/snippet}
+                        </MenuItem>
+                    {/if}
                 </div>
                 <div in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 600 }} bind:this={cardRefs[1]} onmouseenter={() => { if (!signupEmailFocused) { usingKeyboard = false; selectedCard = 1; } }}>
                     <MenuItem 
