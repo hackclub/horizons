@@ -35,7 +35,7 @@
 	let hackatimeLoading = $state(true);
 
 	let allFilled = $derived(
-		!!title.trim() && !!description.trim() && !!demoUrl.trim() && !!codeUrl.trim() && !!readmeUrl.trim() && !!mediaUrl
+		!!title.trim() && !!description.trim() && !!demoUrl.trim() && !!codeUrl.trim() && !!readmeUrl.trim() && !!mediaUrl && selectedHackatimeNames.size > 0
 	);
 
 	async function fetchProject(id: string) {
@@ -102,6 +102,7 @@
 		if (!codeUrl.trim()) missing.push('Code URL');
 		if (!readmeUrl.trim()) missing.push('README URL');
 		if (!mediaUrl) missing.push('Screenshot/Video');
+		if (selectedHackatimeNames.size === 0) missing.push('Hackatime Project');
 
 		if (missing.length > 0) {
 			errorMsg = `Required: ${missing.join(', ')}`;
