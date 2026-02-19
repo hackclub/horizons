@@ -70,10 +70,10 @@
 			<TurbulentImage src={heroUrl || heroPlaceholder} alt={projectTitle} inset="0 0 0 0" filterId="hero-turbulence" />
 		</div>
 
-		<FormCard title="READY TO SUBMIT?" subtitle="Hit submit to submit your project. You won't be able to make any changes until your project is reviewed. You can resubmit your project once reviewed." step={3}>
+		<FormCard title="READY TO SUBMIT?" subtitle="Hit submit to submit your project. You won't be able to make any changes until your project is reviewed. You can resubmit your project once reviewed.">
 			<FormError message={errorMsg} />
 			<FormButtons
-				onback={() => goto(`/app/projects/${projectId}/ship/personal`)}
+				onback={() => goto(`/app/projects/${projectId}/ship/project`)}
 				onnext={handleSubmit}
 				nextLabel="SUBMIT →"
 				loadingLabel="SUBMITTING..."

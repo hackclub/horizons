@@ -132,7 +132,7 @@
 		]);
 
 		if (projectRes.data) {
-			goto(`/app/projects/${projectId}/ship/personal`);
+			goto(`/app/projects/${projectId}/ship/finish`);
 		} else {
 			errorMsg = 'Failed to save project. Please try again.';
 		}
@@ -153,7 +153,7 @@
 			<TurbulentImage src={mediaPreview || heroPlaceholder} alt={title} inset="0 0 0 0" filterId="hero-turbulence" />
 		</div>
 
-		<FormCard title="READY TO SUBMIT?" subtitle="Fill out this information and make sure it looks correct" step={1}>
+		<FormCard title="READY TO SUBMIT?" subtitle="Fill out this information and make sure it looks correct">
 			<div class="flex gap-4 w-full">
 				<div class="flex-1 flex flex-col gap-2 min-w-0">
 					<FormField label="Title" id="title" placeholder="Horizons" bind:value={title} />
