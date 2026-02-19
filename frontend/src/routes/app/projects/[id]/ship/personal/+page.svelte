@@ -81,7 +81,7 @@
 			<TurbulentImage src={heroUrl || heroPlaceholder} alt={projectTitle} inset="0 0 0 0" filterId="hero-turbulence" />
 		</div>
 
-		<FormCard title="READY TO SUBMIT?" subtitle="Verify this information is correct before submitting.">
+		<FormCard title="READY TO SUBMIT?" subtitle="Verify this information is correct before submitting." step={2}>
 			<!-- Personal info -->
 			<div class="flex gap-4 w-full">
 				<div class="flex-1 flex flex-col gap-2 min-w-0">
