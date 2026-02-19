@@ -1,17 +1,16 @@
-import { Controller, Get, Headers, HttpCode, HttpException, HttpStatus, Query } from '@nestjs/common';
-import { AdminService } from './admin.service';
+import { Controller, Get, Headers, HttpCode, Query } from '@nestjs/common';
 // import { PrismaClient } from '../../generated/prisma/client';
 
 @Controller('admin/dashboard')
 export class DashboardController {
   // private mailServicePrisma: PrismaClient;
 
-  constructor(private readonly adminService: AdminService) {
+  constructor() {
     const mailDbUrl = process.env.MAIL_SERVICE_DATABASE_URL || process.env.DATABASE_URL;
     if (!mailDbUrl) {
       throw new Error('MAIL_SERVICE_DATABASE_URL or DATABASE_URL must be configured');
     }
-    
+
     // this.mailServicePrisma = new PrismaClient({
     //   datasources: {
     //     db: {
@@ -92,26 +91,6 @@ export class DashboardController {
     return { message: 'getStats logged' };
   }
 
-  private extractTokenFromCookie(cookies: string): string {
-    if (!cookies) {
-      throw new HttpException(
-        'Authentication required',
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
-
-    const cookieArray = cookies.split(';').map(c => c.trim());
-    const sessionCookie = cookieArray.find(c => c.startsWith('admin_session='));
-    
-    if (!sessionCookie) {
-      throw new HttpException(
-        'Session cookie not found',
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
-
-    return sessionCookie.split('=')[1];
-  }
 
   async onModuleDestroy() {
     // await this.mailServicePrisma.$disconnect();

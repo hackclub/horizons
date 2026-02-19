@@ -2,12 +2,8 @@ import { Module } from '@nestjs/common';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { UserService } from './user.service';
-import { AdminController } from './admin.controller';
-import { AdminService } from './admin.service';
 import { DashboardController } from './dashboard.controller';
 import { PrismaService } from '../prisma.service';
-import { RedisService } from '../redis.service';
-import { JobLockService } from '../job-lock.service';
 import { MailModule } from '../mail/mail.module';
 import { SlackModule } from '../slack/slack.module';
 
@@ -20,13 +16,10 @@ import { SlackModule } from '../slack/slack.module';
     MailModule,
     SlackModule,
   ],
-  controllers: [AdminController, DashboardController],
+  controllers: [DashboardController],
   providers: [
     UserService,
-    AdminService,
     PrismaService,
-    RedisService,
-    JobLockService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

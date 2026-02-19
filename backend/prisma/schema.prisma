@@ -132,32 +132,6 @@ model EmailJob {
   @@map("email_jobs")
 }
 
-model AdminUser {
-  id        String         @id @default(uuid())
-  email     String         @unique
-  isActive  Boolean        @default(true)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  sessions  AdminSession[]
-
-  @@map("admin_users")
-}
-
-model AdminSession {
-  id           String    @id @default(uuid())
-  adminUserId  String
-  otpCode      String
-  otpExpiresAt DateTime
-  isVerified   Boolean   @default(false)
-  verifiedAt   DateTime?
-  expiresAt    DateTime
-  createdAt    DateTime  @default(now())
-  adminUser    AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
-
-  @@index([adminUserId])
-  @@index([otpCode])
-  @@map("admin_sessions")
-}
 
 model StickerToken {
   id         String    @id @default(uuid())
