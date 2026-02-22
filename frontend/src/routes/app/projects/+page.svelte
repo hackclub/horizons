@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { tick, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { tick } from 'svelte';
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { goto } from '$app/navigation';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
@@ -10,16 +9,11 @@
 	import { createListNav } from '$lib/nav/wasd.svelte';
 	import { projectsStore, fetchProjects } from '$lib/store/projectCache';
 	import { preloadProjectDetail } from '$lib/store/projectDetailCache';
-	import type { components } from '$lib/api';
 	import { api, type components } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
 	import BackButton from '$lib/components/BackButton.svelte';
 
 	type ProjectResponse = components['schemas']['ProjectResponse'];
-
-	let projects = $state<ProjectResponse[]>([]);
-	let loading = $state(true);
-	let error = $state<string | null>(null);
 
 	let entered = $state(false);
 	let navigating = $state(false);
@@ -36,19 +30,6 @@
 		goto(href);
 	}
 
-	async function fetchProjects() {
-		loading = true;
-		error = null;
-		const { data, error: err } = await api.GET('/api/projects/auth');
-		if (data) {
-			projects = (data as ProjectResponse[]) ?? [];
-		} else {
-			error = 'Failed to load projects';
-		}
-		loading = false;
-	}
-
-	fetchProjects();
 	let projectState = $state({ projects: [], loading: true, error: null });
 	let unsubscribe: (() => void) | null = null;
 
@@ -81,16 +62,13 @@
 		wheel: 80,
 		onChange: () => updateScroll(),
 		onEscape: () => navigateTo('/app?noanimate', { exitBack: true }),
-		onEscape: () => goto('/app?noanimate'),
 		onSelect: (i) => {
 			if (i === projects.length) {
 				navigateTo('/app/projects/new');
-				goto('/app/projects/new');
 			} else {
 				const project = projects[i];
 				if (project) {
 					navigateTo(`/app/projects/${project.projectId}`);
-					goto(`/app/projects/${project.projectId}`);
 				}
 			}
 		},
@@ -201,8 +179,6 @@
 						onfocus={() => { nav.selectedIndex = i; updateScroll(); }}
 						onclick={() => { if (clickWasSelected) { navigateTo(`/app/projects/${project.projectId}`) } }}
 						style="--card-index: {i}; width: {selected ? '824px' : '649px'}; background-color: {selected ? 'var(--selected-color)' : '#f3e8d8'}; gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
-						onclick={() => { if (clickWasSelected) { goto(`/app/projects/${project.projectId}`) } }}
-						style="width: {selected ? '824px' : '649px'}; background-color: {selected ? 'var(--selected-color)' : '#f3e8d8'}; gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
 					>
 						<div class="flex flex-col gap-1 z-1 w-full">
 							<p class="font-cook font-semibold text-black m-0 leading-[1.1] transition-[font-size_0.3s_ease]" style="font-size: {selected ? '64px' : '40px'};">{project.projectTitle}</p>
@@ -234,8 +210,6 @@
 					onfocus={() => { nav.selectedIndex = projects.length; updateScroll(); }}
 					onclick={() => { if (clickWasSelected) { navigateTo('/app/projects/new'); } }}
 					style="--card-index: {projects.length}; width: {nav.selectedIndex === projects.length ? '824px' : '649px'}; background-color: {nav.selectedIndex === projects.length ? 'var(--selected-color)' : '#f3e8d8'}; gap: {nav.selectedIndex === projects.length ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
-					onclick={() => { if (clickWasSelected) { goto('/app/projects/new'); } }}
-					style="width: {nav.selectedIndex === projects.length ? '824px' : '649px'}; background-color: {nav.selectedIndex === projects.length ? 'var(--selected-color)' : '#f3e8d8'}; gap: {nav.selectedIndex === projects.length ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
 				>
 					<div class="flex flex-col gap-1 z-1 w-full">
 						<p class="font-cook font-semibold text-black m-0 leading-[1.1] opacity-70 transition-[font-size_0.3s_ease]" style="font-size: {nav.selectedIndex === projects.length ? '64px' : '40px'};">+ CREATE PROJECT</p>
@@ -258,13 +232,9 @@
 	</div>
 
 	<!-- Back button -->
-	<BackButton
-		onclick={() => navigateTo('/app?noanimate', { exitBack: true })}
-		exiting={backExiting}
-		flyIn={page.url.searchParams.has('back')}
 	<button
 		class="absolute left-8 top-13 z-5 flex items-center gap-2.5 p-5 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] cursor-pointer overflow-hidden hover:bg-[#ffa936]"
-		onclick={() => goto('/app?noanimate')}
+		onclick={() => navigateTo('/app?noanimate', { exitBack: true })}
 		style="transition: background-color var(--selected-duration) ease, transform var(--juice-duration) var(--juice-easing);"
 		onmouseenter={(e) => e.currentTarget.style.transform = 'scale(var(--juice-scale))'}
 		onmouseleave={(e) => e.currentTarget.style.transform = 'scale(1)'}
