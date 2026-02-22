@@ -402,7 +402,7 @@
                         {/snippet}
                     </MenuItem>
                 </div>
-                <div class="w-full flex justify-center" in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 700 }} bind:this={cardRefs[2]} onmouseenter={() => { if (!signupEmailFocused) nav.select(2); }}>
+                <!-- <div class="w-full flex justify-center" in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 700 }} bind:this={cardRefs[2]} onmouseenter={() => { if (!signupEmailFocused) nav.select(2); }}>
                     <MenuItem
                         title="WATCH THE VIDEO"
                         subtitle="SOMETHING SOMETHING SOMETHING IDK"
@@ -414,7 +414,7 @@
                             <img src={playIcon} alt="Watch" />
                         {/snippet}
                     </MenuItem>
-                </div>
+                </div> -->
             </div>
 
             <div in:fly={{ y: disableAnimations ? 0 : 20, duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 800 }} class="hidden sm:flex justify-center absolute bottom-4 left-0 right-0">
