@@ -53,7 +53,7 @@
     }
 </script>
 
-<div class="menu-item {className} cursor-pointer" class:selected class:no-anim={disableAnimations} onclick={handleClick}>
+<div class="menu-item {className} cursor-pointer" class:selected class:no-anim={disableAnimations} onclick={handleClick} tabindex={onclick ? 0 : -1} onkeydown={(e) => { if (onclick && e.key === 'Enter') { e.preventDefault(); handleClick(); } }}>
     <div class="content">
         <p class="title">{title}</p>
         <p class="subtitle" class:visible={subtitle && selected}>{subtitle ?? ''}</p>

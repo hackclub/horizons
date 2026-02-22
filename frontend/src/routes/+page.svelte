@@ -78,6 +78,13 @@
         }, 1200)
     }
 
+    function navigateToFaq() {
+        showSlideOut = true;
+        setTimeout(() => {
+            goto('/faq');
+        }, 500);
+    }
+
     let logoRect: DOMRect | null = $state(null);
     let stripesRect: DOMRect | null = $state(null);
 
@@ -133,6 +140,8 @@
             const elements = getFocusableElements(index);
             if (isAuthed && index === 0) {
                 activateJoinNow('');
+            } else if (index === 1) {
+                navigateToFaq();
             } else if (elements.length > 0) {
                 selectedElement = 0;
                 focusSelectedElement();
@@ -396,6 +405,7 @@
                         selected={nav.selectedIndex === 1}
                         preserveIcon
                         {disableAnimations}
+                        onclick={() => navigateToFaq()}
                     >
                         {#snippet icon()}
                             <img src={faqIcon} alt="Watch" />

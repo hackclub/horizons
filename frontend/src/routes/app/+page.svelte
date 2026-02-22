@@ -16,12 +16,12 @@
 
 	const hrefs = [
 		['/app/projects?back', '/app/events'],
-		['/app/explore', '/app/settings', '/app/faq'],
+		['/app/explore', '/app/settings', '/faq?from=app'],
 	];
 
 	// Only projects (0,0) is enabled
 	function isDisabled(col: number, row: number) {
-		return !(col === 0 && row === 0);
+		return !(col === 0 && row === 0) && !(col === 1 && row === 2);
 	}
 
 	let shakingKey = $state<string | null>(null);
@@ -148,9 +148,9 @@
 				</a>
 				</div>
 
-				<!-- FAQ (disabled; was: selected #ff6fbe) -->
+				<!-- FAQ -->
 				<div class="exit-right" class:exiting={navigating} style:--exit-delay="300ms">
-				<a href="/app/faq" class="card relative block h-[174px] w-full bg-[#F3E8D8]" class:selected={nav.isSelected(1, 2)} class:disabled={true} class:shaking={isShaking(1, 2)} style:background-color={nav.isSelected(1, 2) ? '#C4C4C4' : ''} onmouseenter={() => nav.select(1, 2)} onclick={(e) => { e.preventDefault(); triggerShake(1, 2); }} onanimationend={() => { shakingKey = null; }}>
+				<a href="/faq?from=app" class="card relative block h-[174px] w-full bg-[#F3E8D8]" class:selected={nav.isSelected(1, 2)} class:shaking={isShaking(1, 2)} style:background-color={nav.isSelected(1, 2) ? '#FF6FBE' : ''} onmouseenter={() => nav.select(1, 2)} onanimationend={() => { shakingKey = null; }}>
 					<p class="absolute left-4 top-4 w-[218px] font-cook text-[36px] font-semibold text-black m-0">
 						FAQ
 					</p>
