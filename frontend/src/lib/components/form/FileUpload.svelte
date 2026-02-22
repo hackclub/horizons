@@ -38,8 +38,9 @@
 		});
 
 		if (data) {
-			mediaUrl = data.url;
-			onupload?.(data.url, preview);
+			const uploadData = data as unknown as { url: string };
+			mediaUrl = uploadData.url;
+			onupload?.(uploadData.url, preview);
 		} else {
 			mediaPreview = null;
 			mediaUrl = null;

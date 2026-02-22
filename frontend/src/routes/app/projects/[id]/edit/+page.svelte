@@ -12,16 +12,24 @@
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
 
 	const projectTypes = [
-		{ label: 'Windows Playable', value: 'windows_playable' },
+		{ label: 'Windows Playable', value: 'windows_plairtableayable' },
 		{ label: 'Mac Playable', value: 'mac_playable' },
 		{ label: 'Linux Playable', value: 'linux_playable' },
 		{ label: 'Web Playable', value: 'web_playable' },
 		{ label: 'Cross-Platform Playable', value: 'cross_platform_playable' },
 	];
 
-	const projectId = $derived(page.params.id);
+	const projectId = $derived(page.params.id!);
 
-	let editState = $state({ project: null, allHackatimeProjects: [], linkedHackatimeProjects: [], loading: true, hackatimeLoading: true, error: null });
+	type ProjectResponse = components['schemas']['ProjectResponse'];
+	let editState = $state<{
+		project: ProjectResponse | null;
+		allHackatimeProjects: any[];
+		linkedHackatimeProjects: string[];
+		loading: boolean;
+		hackatimeLoading: boolean;
+		error: string | null;
+	}>({ project: null, allHackatimeProjects: [], linkedHackatimeProjects: [], loading: true, hackatimeLoading: true, error: null });
 	let unsubscribe: (() => void) | null = null;
 
 	$effect(() => {

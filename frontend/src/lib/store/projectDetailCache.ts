@@ -47,7 +47,7 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 
 		const [projectRes, submissionsRes] = await Promise.all([
 			api.GET('/api/projects/auth/{id}', {
-				params: { path: { id } }
+				params: { path: { id: Number(id) } }
 			}),
 			api.GET('/api/projects/auth/{id}/submissions', {
 				params: { path: { id: Number(id) } }
@@ -172,9 +172,9 @@ export async function fetchEditData(id: string, forceRefresh = false) {
 		editDataStore.update(s => ({ ...s, loading: true, hackatimeLoading: true, error: null }));
 
 		const [projectRes, allHackatimeRes, linkedHackatimeRes] = await Promise.all([
-			api.GET('/api/projects/auth/{id}', { params: { path: { id } } }),
+			api.GET('/api/projects/auth/{id}', { params: { path: { id: Number(id) } } }),
 			api.GET('/api/hackatime/projects/all'),
-			api.GET('/api/projects/auth/{id}/hackatime-projects', { params: { path: { id } } })
+			api.GET('/api/projects/auth/{id}/hackatime-projects', { params: { path: { id: Number(id) } } })
 		]);
 
 		let project: ProjectResponse | null = null;
@@ -256,7 +256,6 @@ export function invalidateProjectCaches(id: string) {
 
 // Invalidate all caches (call after significant changes)
 export function invalidateAllProjectCaches() {
-	cache.clear();
 	detailCache.clear();
 	editDataCache.clear();
 }
