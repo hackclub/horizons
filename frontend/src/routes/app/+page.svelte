@@ -149,7 +149,7 @@
 				</div>
 
 				<!-- FAQ -->
-				<div class="exit-right" class:exiting={navigating} style:--exit-delay="300ms">
+				<div class="exit-right enter-right" class:exiting={navigating} style:--exit-delay="200ms" style:--enter-delay="200ms">
 				<a href="/faq?from=app" class="card relative block h-[174px] w-full bg-[#F3E8D8]" class:selected={nav.isSelected(1, 2)} class:shaking={isShaking(1, 2)} style:background-color={nav.isSelected(1, 2) ? '#FF6FBE' : ''} onmouseenter={() => nav.select(1, 2)} onanimationend={() => { shakingKey = null; }}>
 					<p class="absolute left-4 top-4 w-[218px] font-cook text-[36px] font-semibold text-black m-0">
 						FAQ
