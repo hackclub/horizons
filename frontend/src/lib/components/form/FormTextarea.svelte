@@ -5,6 +5,8 @@
 		value?: string;
 		placeholder?: string;
 		rows?: number;
+		oninput?: (e: Event) => void;
+		onblur?: (e: Event) => void;
 	}
 
 	let {
@@ -13,6 +15,8 @@
 		value = $bindable(''),
 		placeholder = '',
 		rows = 4,
+		oninput,
+		onblur,
 	}: Props = $props();
 </script>
 
@@ -24,5 +28,7 @@
 		{placeholder}
 		{rows}
 		bind:value
+		{oninput}
+		{onblur}
 	></textarea>
 </div>

@@ -9,6 +9,7 @@
 		placeholder?: string;
 		prefilled?: boolean;
 		oninput?: (e: Event) => void;
+		onblur?: (e: Event) => void;
 		children?: Snippet;
 	}
 
@@ -19,6 +20,8 @@
 		type = 'text',
 		placeholder = '',
 		prefilled = false,
+		oninput,
+		onblur,
 		children,
 	}: Props = $props();
 </script>
@@ -35,6 +38,8 @@
 			{placeholder}
 			readonly={prefilled}
 			bind:value
+			{oninput}
+			{onblur}
 		/>
 	{/if}
 </div>

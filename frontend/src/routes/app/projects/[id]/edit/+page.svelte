@@ -58,6 +58,7 @@
 	let description = $state('');
 	let demoUrl = $state('');
 	let codeUrl = $state('');
+	let readmeUrl = $state('');
 	let submitting = $state(false);
 	let mediaUrl = $state<string | null>(null);
 	let mediaPreview = $state<string | null>(null);
@@ -72,6 +73,7 @@
 			description = p.description ?? '';
 			demoUrl = p.playableUrl ?? '';
 			codeUrl = p.repoUrl ?? '';
+			readmeUrl = p.readmeUrl ?? '';
 			mediaUrl = p.screenshotUrl ?? null;
 			mediaPreview = p.screenshotUrl ?? null;
 		}
@@ -116,6 +118,7 @@
 					description: description.trim(),
 					playableUrl: demoUrl.trim() || undefined,
 					repoUrl: codeUrl.trim() || undefined,
+					readmeUrl: readmeUrl.trim() || undefined,
 					screenshotUrl: mediaUrl || undefined,
 				},
 			}),
@@ -168,6 +171,7 @@
 				<div class="flex-1 flex flex-col gap-2 min-w-0">
 					<FormField label="Demo URL" id="demo-url" type="url" placeholder="https://username.itch.io/mygame" bind:value={demoUrl} />
 					<FormField label="Code URL" id="code-url" type="url" placeholder="https://username.itch.io/mygame" bind:value={codeUrl} />
+					<FormField label="README URL" id="readme-url" type="url" placeholder="https://username.itch.io/mygame" bind:value={readmeUrl} />
 					<HackatimeSelect
 						projects={allHackatimeProjects}
 						selectedNames={selectedHackatimeNames}

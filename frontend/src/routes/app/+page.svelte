@@ -69,7 +69,7 @@
 <div class="flex flex-col items-center justify-center">
 	<div class="flex flex-col items-center gap-[25px] w-[1008px] max-w-full mx-auto mt-12">
 		<!-- Header -->
-		<div class="flex items-end gap-4 w-full exit-up" class:exiting={navigating}>
+		<div class="flex items-end gap-4 w-full exit-up enter-up" class:exiting={navigating}>
 			<div class="w-[347.58px] h-[75.13px] shrink-0">
 				<img src={logoSvg} alt="Horizon" class="w-full h-full block" />
 			</div>
@@ -83,7 +83,7 @@
 			<!-- Col 1 -->
 			<div class="flex flex-col gap-6 w-[635px] shrink-0">
 				<!-- Projects -->
-				<div class="exit-left" class:exiting={navigating} style:--exit-delay="50ms">
+				<div class="exit-left enter-left" class:exiting={navigating} style:--exit-delay="50ms" style:--enter-delay="50ms">
 				<a href="/app/projects" class="card relative block h-[276px] w-full bg-[#F3E8D8]" class:selected={nav.isSelected(0, 0)} style:background-color={nav.isSelected(0, 0) ? '#ffa936' : ''} onmouseenter={() => nav.select(0, 0)} onclick={(e) => { e.preventDefault(); navigateTo('/app/projects?back'); }}>
 					<div class="absolute left-[103px] top-[-48px] w-[383px] h-[363px] flex items-center justify-center text-black opacity-8 transition-all icon">
 						<svg xmlns="http://www.w3.org/2000/svg" height="180mm" width="190mm" version="1.1" viewBox="0 0 673.22835 637.79528">
@@ -100,7 +100,7 @@
 				</div>
 
 				<!-- Events (disabled; was: selected #f86d95) -->
-				<div class="exit-left" class:exiting={navigating} style:--exit-delay="175ms">
+				<div class="exit-left enter-left" class:exiting={navigating} style:--exit-delay="175ms" style:--enter-delay="175ms">
 				<a href="/app/events" class="card relative block h-[276px] w-[634px] bg-[#F3E8D8]" class:selected={nav.isSelected(0, 1)} class:disabled={true} class:shaking={isShaking(0, 1)} style:background-color={nav.isSelected(0, 1) ? '#C4C4C4' : ''} onmouseenter={() => nav.select(0, 1)} onclick={(e) => { e.preventDefault(); triggerShake(0, 1); }} onanimationend={() => { shakingKey = null; }}>
 					<div class="absolute inset-[-29.35%_9.03%_-36.08%_6.31%] flex items-center justify-center text-black opacity-8 transition-all icon">
 						<svg class="flex-none w-[462.19px] h-[348.83px] -rotate-15" viewBox="0 0 462.191 348.83" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -120,7 +120,7 @@
 			<!-- Col 2 -->
 			<div class="flex flex-col gap-6 w-[349px] shrink-0">
 				<!-- Explore (disabled; was: selected #ff6fbe) -->
-				<div class="exit-right" class:exiting={navigating} style:--exit-delay="100ms">
+				<div class="exit-right enter-right" class:exiting={navigating} style:--exit-delay="100ms" style:--enter-delay="100ms">
 				<a href="/app/explore" class="card relative block h-[174px] w-full bg-[#F3E8D8]" class:selected={nav.isSelected(1, 0)} class:disabled={true} class:shaking={isShaking(1, 0)} style:background-color={nav.isSelected(1, 0) ? '#C4C4C4' : ''} onmouseenter={() => nav.select(1, 0)} onclick={(e) => { e.preventDefault(); triggerShake(1, 0); }} onanimationend={() => { shakingKey = null; }}>
 					<div class="absolute left-[179px] top-[5px] w-[145px] h-[145px] text-black opacity-8 transition-all icon">
 						<svg width="154" height="154" viewBox="0 0 154 154" fill="none" xmlns="http://www.w3.org/2000/svg">dd
@@ -135,7 +135,7 @@
 				</div>
 
 				<!-- Settings (disabled; was: selected #FC5B3C) -->
-				<div class="exit-right" class:exiting={navigating} style:--exit-delay="200ms">
+				<div class="exit-right enter-right" class:exiting={navigating} style:--exit-delay="200ms" style:--enter-delay="200ms">
 				<a href="/app/settings" class="card relative block h-[174px] w-full bg-[#F3E8D8]" class:selected={nav.isSelected(1, 1)} class:disabled={true} class:shaking={isShaking(1, 1)} style:background-color={nav.isSelected(1, 1) ? '#C4C4C4' : ''} onmouseenter={() => nav.select(1, 1)} onclick={(e) => { e.preventDefault(); triggerShake(1, 1); }} onanimationend={() => { shakingKey = null; }}>
 					<div class="absolute left-[179px] top-[10px] w-[145px] h-[145px] text-black opacity-8 transition-all icon">
 						<svg width="224" height="223" viewBox="0 0 224 223" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -181,6 +181,53 @@
 </div>
 
 <style>
+	/* Entry / exit animations */
+	@keyframes fly-in-top {
+		from { transform: translateY(-120vh); }
+		to   { transform: translateY(0); }
+	}
+	@keyframes fly-out-top {
+		from { transform: translateY(0); }
+		to   { transform: translateY(-120vh); }
+	}
+	@keyframes fly-in-left {
+		from { transform: translateX(-120vw); }
+		to   { transform: translateX(0); }
+	}
+	@keyframes fly-out-left {
+		from { transform: translateX(0); }
+		to   { transform: translateX(-120vw); }
+	}
+	@keyframes fly-in-right {
+		from { transform: translateX(120vw); }
+		to   { transform: translateX(0); }
+	}
+	@keyframes fly-out-right {
+		from { transform: translateX(0); }
+		to   { transform: translateX(120vw); }
+	}
+
+	.enter-up {
+		animation: fly-in-top var(--enter-duration) var(--enter-easing) var(--enter-delay, 0ms) both;
+	}
+	.enter-up.exiting {
+		animation: fly-out-top var(--exit-duration) var(--exit-easing) var(--exit-delay, 0ms) both;
+	}
+
+	.enter-left {
+		animation: fly-in-left var(--enter-duration) var(--enter-easing) var(--enter-delay, 0ms) both;
+	}
+	.enter-left.exiting {
+		animation: fly-out-left var(--exit-duration) var(--exit-easing) var(--exit-delay, 0ms) both;
+	}
+
+	.enter-right {
+		animation: fly-in-right var(--enter-duration) var(--enter-easing) var(--enter-delay, 0ms) both;
+	}
+	.enter-right.exiting {
+		animation: fly-out-right var(--exit-duration) var(--exit-easing) var(--exit-delay, 0ms) both;
+	}
+
 	.exit-up {
 		transition: transform var(--exit-duration) var(--exit-easing) var(--exit-delay, 0ms);
 	}
