@@ -1,6 +1,7 @@
 <script lang="ts">
 	import wasdSvg from '$lib/assets/prompts/wasd.svg';
 	import wsSvg from '$lib/assets/prompts/ws.svg';
+	import adSvg from '$lib/assets/prompts/ad.svg';
 	import escSvg from '$lib/assets/prompts/esc.svg';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
 	import mouseSvg from '$lib/assets/prompts/mouse.svg';
@@ -20,6 +21,8 @@
 		<img src={wasdSvg} alt="WASD keys" class="h-full" />
 	{:else if type == 'WS'}
 		<img src={wsSvg} alt="WS keys" class="h-full" />
+	{:else if type == 'AD'}
+		<img src={adSvg} alt="AD keys" class="h-full" />
 	{:else if type == 'ESC'}
 		<img src={escSvg} alt="Escape key" class="h-full" />
 	{:else if type == 'Enter'}

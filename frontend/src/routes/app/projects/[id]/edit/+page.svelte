@@ -4,6 +4,7 @@
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { api, type components } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
+	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, FormError, FormSubmitButton, HackatimeSelect } from '$lib/components/form';
 	import { editDataStore, fetchEditData, invalidateProjectCaches } from '$lib/store/projectDetailCache';
 	import { invalidateCache } from '$lib/store/projectCache';
@@ -137,6 +138,8 @@
 
 		submitting = false;
 	}
+
+	let focusedButtonIndex = $state(0);
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -175,9 +178,44 @@
 			</div>
 
 			<FormError message={errorMsg} />
-			<FormSubmitButton label="SAVE CHANGES" loadingLabel="SAVING..." onclick={handleSubmit} loading={submitting} />
+			<FormSubmitButton
+				class="submit-btn {focusedButtonIndex === 0 ? 'selected' : ''}"
+				label="SAVE CHANGES"
+				loadingLabel="SAVING..."
+				onclick={handleSubmit}
+				loading={submitting}
+				onfocus={() => focusedButtonIndex = 0}
+			/>
 		</FormCard>
 	{/if}
 
 	<BackButton onclick={() => goto(`/app/projects/${projectId}`)} />
+
+	<NavigationHint
+		segments={[
+			{ type: 'input', value: 'click' },
+			{ type: 'text', value: 'TO FILL FIELDS' }
+		]}
+		position="bottom-right"
+	/>
 </div>
+
+<style>
+	:global(.submit-btn) {
+		background-color: #f3e8d8;
+		transition:
+			background-color var(--selected-duration) ease,
+			transform var(--juice-duration) var(--juice-easing),
+			font-size var(--juice-duration) var(--juice-easing);
+	}
+
+	:global(.submit-btn.selected) {
+		background-color: #ffa936;
+		transform: scale(var(--juice-scale));
+		font-size: 1.125rem;
+	}
+
+	:global(.submit-btn:hover:not(.selected)) {
+		background-color: #f3e8d8;
+	}
+</style>
