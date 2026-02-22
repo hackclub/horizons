@@ -4,7 +4,8 @@
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { api } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
-	import { BackButton, FormSubmitButton } from '$lib/components/form';
+	import { FormSubmitButton } from '$lib/components/form';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	const projectId = $derived($page.params.id);
 

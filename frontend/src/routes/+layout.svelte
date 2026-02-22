@@ -22,6 +22,9 @@
 		--selected-color: #ffa936;
 		--selected-duration: 0.25s;
 
+		--enter-duration: 750ms;
+		--enter-easing: cubic-bezier(0, 0.55, 0.45, 1);
+
 		--exit-duration: 750ms;
 		--exit-easing: cubic-bezier(0.55, -0.2, 1, 0.45);
 

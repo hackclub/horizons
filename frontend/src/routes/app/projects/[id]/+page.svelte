@@ -4,6 +4,7 @@
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 	import { projectDetailStore, fetchProjectDetail, preloadEditData } from '$lib/store/projectDetailCache';
 	import type { components } from '$lib/api';
 
@@ -150,23 +151,11 @@
 	{/if}
 
 	<!-- Back button -->
-	<button
-		class="back-card absolute left-8 top-13 z-5 flex items-center gap-2.5 p-5 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] cursor-pointer overflow-hidden hover:bg-[#ffa936] hover:scale-(--juice-scale)"
-		onclick={() => goto('/app/projects?noanimate')}
-	>
-		<InputPrompt type="ESC" />
-		<span class="font-cook text-2xl font-semibold text-black">BACK</span>
-	</button>
+	<BackButton onclick={() => goto('/app/projects?noanimate')} />
 </div>
 
 <style>
 	.action-btn {
-		transition:
-			background-color var(--selected-duration) ease,
-			scale var(--juice-duration) var(--juice-easing);
-	}
-
-	.back-card {
 		transition:
 			background-color var(--selected-duration) ease,
 			scale var(--juice-duration) var(--juice-easing);

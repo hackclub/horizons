@@ -4,9 +4,10 @@
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { api, type components } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
-	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, BackButton, FormError, FormSubmitButton, HackatimeSelect } from '$lib/components/form';
+	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, FormError, FormSubmitButton, HackatimeSelect } from '$lib/components/form';
 	import { editDataStore, fetchEditData, invalidateProjectCaches } from '$lib/store/projectDetailCache';
 	import { invalidateCache } from '$lib/store/projectCache';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
 
