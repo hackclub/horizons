@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
@@ -10,9 +10,14 @@
 
 	type ProjectResponse = components['schemas']['ProjectResponse'];
 
-	const projectId = $derived($page.params.id);
+	const projectId = $derived(page.params.id!);
 
-	let detailState = $state({ project: null, submission: null, loading: true, error: null });
+	let detailState = $state<{
+		project: ProjectResponse | null;
+		submission: any | null;
+		loading: boolean;
+		error: string | null;
+	}>({ project: null, submission: null, loading: true, error: null });
 	let unsubscribe: (() => void) | null = null;
 
 	$effect(() => {
