@@ -164,7 +164,7 @@ export class ProjectsService {
     }
 
     if (!user.addressLine1 || !user.city || !user.state || !user.country || !user.zipCode) {
-      throw new ForbiddenException('User address incomplete. Please complete your address information first.');
+      throw new ForbiddenException('Oops! Looks like your address didn\'t get set. Please re-link your Hack Club Account.');
     }
 
     if (this.calculateAge(user.birthday) >= 19) {
