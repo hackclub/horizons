@@ -4,7 +4,8 @@
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { api, type components } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
-	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, BackButton, FormButtons, FormError, HackatimeSelect } from '$lib/components/form';
+	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, FormButtons, FormError, HackatimeSelect } from '$lib/components/form';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
 

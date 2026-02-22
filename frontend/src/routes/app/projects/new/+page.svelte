@@ -2,7 +2,8 @@
 	import { goto } from '$app/navigation';
 	import HackatimeLinkButton from '$lib/components/HackatimeLinkButton.svelte';
 	import { api, type components } from '$lib/api';
-	import { FormField, FormTextarea, FormSelect, FileUpload, BackButton, FormError, FormSubmitButton } from '$lib/components/form';
+	import { FormField, FormTextarea, FormSelect, FileUpload, FormError, FormSubmitButton } from '$lib/components/form';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
 

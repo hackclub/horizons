@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, onMount } from 'svelte';
+	import { page } from '$app/state';
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { goto } from '$app/navigation';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
@@ -7,12 +8,29 @@
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { createListNav } from '$lib/nav/wasd.svelte';
 	import { api, type components } from '$lib/api';
+	import { EXIT_DURATION } from '$lib';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	type ProjectResponse = components['schemas']['ProjectResponse'];
 
 	let projects = $state<ProjectResponse[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+
+	let entered = $state(false);
+	let navigating = $state(false);
+	let backExiting = $state(false);
+
+	onMount(() => {
+		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
+	});
+
+	async function navigateTo(href: string, opts: { exitBack?: boolean } = {}) {
+		navigating = true;
+		if (opts.exitBack) backExiting = true;
+		await new Promise(resolve => setTimeout(resolve, EXIT_DURATION + 350));
+		goto(href);
+	}
 
 	async function fetchProjects() {
 		loading = true;
@@ -36,14 +54,14 @@
 		count: () => projects.length + 1, // +1 for create project card
 		wheel: 80,
 		onChange: () => updateScroll(),
-		onEscape: () => goto('/app?noanimate'),
+		onEscape: () => navigateTo('/app?noanimate', { exitBack: true }),
 		onSelect: (i) => {
 			if (i === projects.length) {
-				goto('/app/projects/new');
+				navigateTo('/app/projects/new');
 			} else {
 				const project = projects[i];
 				if (project) {
-					goto(`/app/projects/${project.projectId}`);
+					navigateTo(`/app/projects/${project.projectId}`);
 				}
 			}
 		},
@@ -86,7 +104,7 @@
 
 <div class="relative size-full">
 	<!-- Hero image -->
-	<div style="opacity: {selectedProject ? 1 : 0}; transition: opacity 0.4s ease;">
+	<div style="opacity: {navigating || !entered ? 0 : selectedProject ? 1 : 0}; transition: opacity 0.4s ease;">
 		<TurbulentImage
 			src={selectedProject?.screenshotUrl ?? heroPlaceholder}
 			alt={selectedProject?.projectTitle ?? 'New Project'}
@@ -112,10 +130,11 @@
 					<button
 						class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start overflow-hidden relative cursor-pointer text-left outline-none"
 						class:selected
+						class:exiting={navigating}
 						onpointerdown={() => { clickWasSelected = nav.selectedIndex === i; }}
 						onfocus={() => { nav.selectedIndex = i; updateScroll(); }}
-						onclick={() => { if (clickWasSelected) { goto(`/app/projects/${project.projectId}`) } }}
-						style="width: {selected ? '824px' : '649px'}; background-color: {selected ? 'var(--selected-color)' : '#f3e8d8'}; gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
+						onclick={() => { if (clickWasSelected) { navigateTo(`/app/projects/${project.projectId}`) } }}
+						style="--card-index: {i}; width: {selected ? '824px' : '649px'}; background-color: {selected ? 'var(--selected-color)' : '#f3e8d8'}; gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
 					>
 						<div class="flex flex-col gap-1 z-1 w-full">
 							<p class="font-cook font-semibold text-black m-0 leading-[1.1] transition-[font-size_0.3s_ease]" style="font-size: {selected ? '64px' : '40px'};">{project.projectTitle}</p>
@@ -142,10 +161,11 @@
 				<button
 					class="project-card border-dashed bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start overflow-hidden relative cursor-pointer text-left outline-none"
 					class:selected={nav.selectedIndex === projects.length}
+					class:exiting={navigating}
 					onpointerdown={() => { clickWasSelected = nav.selectedIndex === projects.length; }}
 					onfocus={() => { nav.selectedIndex = projects.length; updateScroll(); }}
-					onclick={() => { if (clickWasSelected) { goto('/app/projects/new'); } }}
-					style="width: {nav.selectedIndex === projects.length ? '824px' : '649px'}; background-color: {nav.selectedIndex === projects.length ? 'var(--selected-color)' : '#f3e8d8'}; gap: {nav.selectedIndex === projects.length ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
+					onclick={() => { if (clickWasSelected) { navigateTo('/app/projects/new'); } }}
+					style="--card-index: {projects.length}; width: {nav.selectedIndex === projects.length ? '824px' : '649px'}; background-color: {nav.selectedIndex === projects.length ? 'var(--selected-color)' : '#f3e8d8'}; gap: {nav.selectedIndex === projects.length ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
 				>
 					<div class="flex flex-col gap-1 z-1 w-full">
 						<p class="font-cook font-semibold text-black m-0 leading-[1.1] opacity-70 transition-[font-size_0.3s_ease]" style="font-size: {nav.selectedIndex === projects.length ? '64px' : '40px'};">+ CREATE PROJECT</p>
@@ -168,25 +188,56 @@
 	</div>
 
 	<!-- Back button -->
-	<button
-		class="absolute left-8 top-13 z-5 flex items-center gap-2.5 p-5 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] cursor-pointer overflow-hidden hover:bg-[#ffa936]"
-		onclick={() => goto('/app?noanimate')}
-		style="transition: background-color var(--selected-duration) ease, transform var(--juice-duration) var(--juice-easing);"
-		onmouseenter={(e) => e.currentTarget.style.transform = 'scale(var(--juice-scale))'}
-		onmouseleave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-	>
-		<InputPrompt type="ESC" />
-		<span class="font-cook text-2xl font-semibold text-black">BACK</span>
-	</button>
-
-	<NavigationHint
-		segments={[
-			{ type: 'text', value: 'USE' },
-			{ type: 'input', value: 'WS' },
-			{ type: 'text', value: 'OR' },
-			{ type: 'input', value: 'mouse-scroll' },
-			{ type: 'text', value: 'TO NAVIGATE' }
-		]}
-		position="bottom-right"
+	<BackButton
+		onclick={() => navigateTo('/app?noanimate', { exitBack: true })}
+		exiting={backExiting}
+		flyIn={page.url.searchParams.has('back')}
 	/>
+
+	<div class="fade-wrap" class:entered class:exiting={navigating}>
+		<NavigationHint
+			segments={[
+				{ type: 'text', value: 'USE' },
+				{ type: 'input', value: 'WS' },
+				{ type: 'text', value: 'OR' },
+				{ type: 'input', value: 'mouse-scroll' },
+				{ type: 'text', value: 'TO NAVIGATE' }
+			]}
+			position="bottom-right"
+		/>
+	</div>
 </div>
+
+<style>
+	/* Per-card staggered entry */
+	@keyframes card-enter {
+		from { transform: translateX(-120vw); }
+		to   { transform: translateX(0); }
+	}
+	.project-card {
+		animation: card-enter var(--enter-duration) var(--enter-easing) both;
+		animation-delay: calc(var(--card-index, 0) * 75ms);
+	}
+
+	/* Per-card staggered exit */
+	@keyframes card-exit {
+		from { transform: translateX(0); }
+		to   { transform: translateX(-120vw); }
+	}
+	.project-card.exiting {
+		animation: card-exit var(--exit-duration) var(--exit-easing) both;
+		animation-delay: calc(var(--card-index, 0) * 75ms);
+	}
+
+	.fade-wrap {
+		opacity: 0;
+	}
+	.fade-wrap.entered {
+		opacity: 1;
+		transition: opacity var(--enter-duration) ease;
+	}
+	.fade-wrap.exiting {
+		opacity: 0;
+		transition: opacity 250ms ease;
+	}
+</style>
