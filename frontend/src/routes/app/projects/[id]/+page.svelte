@@ -5,53 +5,47 @@
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
-	import { api, type components } from '$lib/api';
+	import { projectDetailStore, fetchProjectDetail, preloadEditData } from '$lib/store/projectDetailCache';
+	import type { components } from '$lib/api';
 
 	type ProjectResponse = components['schemas']['ProjectResponse'];
 
 	const projectId = $derived($page.params.id);
 
-	let project = $state<ProjectResponse | null>(null);
-	let loading = $state(true);
-	let error = $state<string | null>(null);
+	let detailState = $state({ project: null, submission: null, loading: true, error: null });
+	let unsubscribe: (() => void) | null = null;
+
+	$effect(() => {
+		// Subscribe to store updates
+		unsubscribe = projectDetailStore.subscribe(state => {
+			detailState = state;
+		});
+
+		// Fetch project details on mount or ID change
+		fetchProjectDetail(projectId).catch(() => {
+			// Error is already in store
+		});
+
+		return () => {
+			unsubscribe?.();
+		};
+	});
+
+	let project = $derived(detailState.project);
+	let loading = $derived(detailState.loading);
+	let error = $derived(detailState.error);
 
 	// Submission tracking
-	let latestSubmission = $state<{ approvalStatus: string } | null>(null);
+	let latestSubmission = $derived(detailState.submission);
 	let hasSubmission = $derived(latestSubmission !== null);
 	let isPending = $derived(latestSubmission?.approvalStatus === 'pending');
 	let isApproved = $derived(latestSubmission?.approvalStatus === 'approved');
 
-	async function fetchProject(id: string) {
-		loading = true;
-		error = null;
-
-		const [projectRes, submissionsRes] = await Promise.all([
-			api.GET('/api/projects/auth/{id}', {
-				params: { path: { id } }
-			}),
-			api.GET('/api/projects/auth/{id}/submissions', {
-				params: { path: { id: Number(id) } }
-			})
-		]);
-
-		if (projectRes.data) {
-			project = projectRes.data as ProjectResponse;
-		} else {
-			error = 'Failed to load project';
-		}
-
-		if (submissionsRes.data) {
-			const submissions = submissionsRes.data as any[];
-			if (submissions.length > 0) {
-				latestSubmission = submissions[0];
-			}
-		}
-
-		loading = false;
-	}
-
+	// Preload edit page data when project detail is available
 	$effect(() => {
-		fetchProject(projectId);
+		if (projectId) {
+			preloadEditData(projectId);
+		}
 	});
 
 	function handleKeydown(e: KeyboardEvent) {

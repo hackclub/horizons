@@ -5,6 +5,8 @@
 	import { api, type components } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, FormError, FormSubmitButton, HackatimeSelect } from '$lib/components/form';
+	import { editDataStore, fetchEditData, invalidateProjectCaches } from '$lib/store/projectDetailCache';
+	import { invalidateCache } from '$lib/store/projectCache';
 	import BackButton from '$lib/components/BackButton.svelte';
 
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
@@ -19,34 +21,43 @@
 
 	const projectId = $derived(page.params.id);
 
-	let loading = $state(true);
+	let editState = $state({ project: null, allHackatimeProjects: [], linkedHackatimeProjects: [], loading: true, hackatimeLoading: true, error: null });
+	let unsubscribe: (() => void) | null = null;
+
+	$effect(() => {
+		// Subscribe to store updates
+		unsubscribe = editDataStore.subscribe(state => {
+			editState = state;
+		});
+
+		// Fetch edit data on mount
+		fetchEditData(projectId).catch(() => {
+			// Error is already in store
+		});
+
+		return () => {
+			unsubscribe?.();
+		};
+	});
+
+	let loading = $derived(editState.loading);
+	let hackatimeLoading = $derived(editState.hackatimeLoading);
+	let errorMsg = $state<string | null>(null);
+
 	let title = $state('');
 	let projectType = $state<ProjectType>('web_playable');
 	let description = $state('');
 	let demoUrl = $state('');
 	let codeUrl = $state('');
 	let submitting = $state(false);
-	let errorMsg = $state<string | null>(null);
 	let mediaUrl = $state<string | null>(null);
 	let mediaPreview = $state<string | null>(null);
-
-	let allHackatimeProjects = $state<{ name: string; total_seconds?: number }[]>([]);
 	let selectedHackatimeNames = $state<Set<string>>(new Set());
-	let hackatimeLoading = $state(true);
 
-	async function fetchProject(id: string) {
-		loading = true;
-		hackatimeLoading = true;
-		errorMsg = null;
-
-		const [projectRes, allHackatimeRes, linkedHackatimeRes] = await Promise.all([
-			api.GET('/api/projects/auth/{id}', { params: { path: { id: parseInt(id) } } }),
-			api.GET('/api/hackatime/projects/all'),
-			api.GET('/api/projects/auth/{id}/hackatime-projects', { params: { path: { id: parseInt(id) } } })
-		]);
-
-		if (projectRes.data) {
-			const p = projectRes.data as any;
+	// Populate form from cached data
+	$effect(() => {
+		if (editState.project) {
+			const p = editState.project as any;
 			title = p.projectTitle ?? '';
 			projectType = p.projectType ?? 'web_playable';
 			description = p.description ?? '';
@@ -54,25 +65,14 @@
 			codeUrl = p.repoUrl ?? '';
 			mediaUrl = p.screenshotUrl ?? null;
 			mediaPreview = p.screenshotUrl ?? null;
-		} else {
-			errorMsg = 'Failed to load project';
 		}
-
-		if (allHackatimeRes.data) {
-			allHackatimeProjects = allHackatimeRes.data.projects;
-		}
-
-		if (linkedHackatimeRes.data) {
-			selectedHackatimeNames = new Set(linkedHackatimeRes.data.hackatimeProjects ?? []);
-		}
-
-		loading = false;
-		hackatimeLoading = false;
-	}
+	});
 
 	$effect(() => {
-		if (projectId) fetchProject(projectId);
+		selectedHackatimeNames = new Set(editState.linkedHackatimeProjects ?? []);
 	});
+
+	let allHackatimeProjects = $derived(editState.allHackatimeProjects);
 
 	function toggleHackatimeProject(name: string) {
 		const next = new Set(selectedHackatimeNames);
@@ -117,6 +117,11 @@
 		]);
 
 		if (projectRes.data) {
+			// Invalidate all caches so fresh data loads when navigating back
+			// Clear project detail cache + edit cache for this project
+			invalidateProjectCaches(projectId);
+			// Also clear projects list cache since this project's info changed
+			invalidateCache();
 			goto(`/app/projects/${projectId}`);
 		} else {
 			errorMsg = 'Failed to update project. Please try again.';
