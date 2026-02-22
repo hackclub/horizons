@@ -16,10 +16,10 @@
 </script>
 
 <div class="absolute {positionClasses[position]} z-20">
-	<div class="flex items-center gap-2.5 p-5 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden">
+	<div class="flex items-center gap-5 px-7 py-5 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden">
 		{#each segments as segment, i (i)}
 			{#if segment.type === 'text'}
-				<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0">{segment.value}</p>
+				<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{segment.value}</p>
 			{:else}
 				<InputPrompt type={segment.value} />
 			{/if}

@@ -1,1 +1,1 @@
-export type InputPromptType = 'WASD' | 'WS' | 'ESC' | 'Enter' | 'mouse' | 'mouse-scroll' | 'click';
+export type InputPromptType = 'WASD' | 'WS' | 'AD' | 'ESC' | 'Enter' | 'mouse' | 'mouse-scroll' | 'click';

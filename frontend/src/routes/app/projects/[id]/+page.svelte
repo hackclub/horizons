@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
+	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { api, type components } from '$lib/api';
 
@@ -19,6 +20,27 @@
 	let hasSubmission = $derived(latestSubmission !== null);
 	let isPending = $derived(latestSubmission?.approvalStatus === 'pending');
 	let isApproved = $derived(latestSubmission?.approvalStatus === 'approved');
+
+	// Button navigation (left/right arrows)
+	let selectedButton = $state(0);
+	
+	function handleNavigationKeydown(e: KeyboardEvent) {
+		if (isPending) return;
+		
+		if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+			e.preventDefault();
+			selectedButton = Math.max(0, selectedButton - 1);
+		} else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+			e.preventDefault();
+			selectedButton = Math.min(1, selectedButton + 1);
+		} else if (e.key === 'Enter') {
+			if (selectedButton === 0) {
+				goto(`/app/projects/${projectId}/edit`);
+			} else if (selectedButton === 1) {
+				goto(`/app/projects/${projectId}/ship/presubmit`);
+			}
+		}
+	}
 
 	async function fetchProject(id: string) {
 		loading = true;
@@ -57,6 +79,7 @@
 		if (e.key === 'Escape') {
 			goto('/app/projects?noanimate');
 		}
+		handleNavigationKeydown(e);
 	}
 </script>
 
@@ -138,15 +161,17 @@
 
 			<div class="flex gap-2.5 w-full justify-center">
 				<button
-					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black cursor-pointer overflow-hidden hover:scale-(--juice-scale) {isPending ? 'bg-[rgba(204,204,204,0.5)] cursor-not-allowed' : 'bg-[#ffa936]'}"
+					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black cursor-pointer overflow-hidden {isPending ? 'bg-[rgba(204,204,204,0.5)] cursor-not-allowed' : 'bg-[#ffa936]'} {selectedButton === 0 ? 'selected' : ''}"
 					onclick={() => goto(`/app/projects/${projectId}/edit`)}
+					onfocus={() => selectedButton = 0}
 					disabled={isPending}
 				>
 					EDIT PROJECT
 				</button>
 				<button
-					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black cursor-pointer overflow-hidden hover:scale-(--juice-scale) {isPending ? 'bg-[rgba(204,204,204,0.5)] cursor-not-allowed' : 'bg-[#ffa936]'}"
+					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black cursor-pointer overflow-hidden {isPending ? 'bg-[rgba(204,204,204,0.5)] cursor-not-allowed' : 'bg-[#ffa936]'} {selectedButton === 1 ? 'selected' : ''}"
 					onclick={() => goto(`/app/projects/${projectId}/ship/presubmit`)}
+					onfocus={() => selectedButton = 1}
 					disabled={isPending}
 				>
 					{isPending ? "I'M READY TO SHIP" : 'SHIP'}
@@ -163,13 +188,34 @@
 		<InputPrompt type="ESC" />
 		<span class="font-cook text-2xl font-semibold text-black">BACK</span>
 	</button>
+
+	<NavigationHint
+		segments={[
+			{ type: 'text', value: 'USE' },
+			{ type: 'input', value: 'AD' },
+			{ type: 'text', value: 'TO NAVIGATE' }
+		]}
+		position="bottom-right"
+	/>
 </div>
 
 <style>
 	.action-btn {
+		background-color: #f3e8d8 !important;
 		transition:
 			background-color var(--selected-duration) ease,
-			scale var(--juice-duration) var(--juice-easing);
+			transform var(--juice-duration) var(--juice-easing),
+			font-size var(--juice-duration) var(--juice-easing);
+	}
+
+	.action-btn.selected {
+		background-color: #ffa936 !important;
+		transform: scale(var(--juice-scale));
+		font-size: 1.0625rem;
+	}
+
+	.action-btn:hover:not(.selected) {
+		background-color: #f3e8d8 !important;
 	}
 
 	.back-card {
