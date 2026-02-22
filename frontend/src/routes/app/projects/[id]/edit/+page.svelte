@@ -12,7 +12,7 @@
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
 
 	const projectTypes = [
-		{ label: 'Windows Playable', value: 'windows_plairtableayable' },
+		{ label: 'Windows Playable', value: 'windows_playable' },
 		{ label: 'Mac Playable', value: 'mac_playable' },
 		{ label: 'Linux Playable', value: 'linux_playable' },
 		{ label: 'Web Playable', value: 'web_playable' },
