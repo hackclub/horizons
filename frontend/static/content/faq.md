@@ -30,7 +30,11 @@ Any kind of technical project is allowed - websites, games, hardware - anything!
 
 ## Can I use AI?
 
-Use of generative AI **for graphics and audio** is **prohibited**. Use of generative AI for other purposes is allowed, as long as less than 25% of the code in your project was written with the assistance of generative AI. Additionally, you shouldn't write updates or project descriptions using AI.
+Use of generative AI **for graphics and audio** is **prohibited**. Use of generative AI for other purposes is allowed, but we will not accept projects which qualify as "AI slop." Additionally, you shouldn't write updates or project descriptions using AI.
+
+We encourage you to write code without being completely reliant on AI, especially if you're a beginner! Writing code yourself is the best way to learn, and learning the fundamentals allows you to become a more technical person and build better projects - even with the use of AI tools.
+
+"AI slop" are projects which feel like they have little human effort put in beyond vibecoding for the sake of making _any project at all_ to code for hours. Examples include projects like "interactive periodic table" and "generic task management website." We reserve the right to decide whether or not a project qualifies as "AI slop" and reject it. If your project is polished and looks like it has a real human touch, we're highly unlikely to reject it!
 
 ## Does making art or music count towards my time?
 
