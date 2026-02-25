@@ -34,7 +34,7 @@ Use of generative AI **for graphics and audio** is **prohibited**. Use of genera
 
 We encourage you to write code without being completely reliant on AI, especially if you're a beginner! Writing code yourself is the best way to learn, and learning the fundamentals allows you to become a more technical person and build better projects - even with the use of AI tools.
 
-"AI slop" are projects which feel like they have little human effort put in beyond vibecoding for the sake of making _any project at all_ to code for hours. Examples include projects like "interactive periodic table" and "generic task management website." We reserve the right to decide whether or not a project qualifies as "AI slop" and reject it. If your project is polished and looks like it has a real human touch, we're highly unlikely to reject it!
+"AI slop" are projects which feel like they have little human effort put in beyond vibecoding for the sake of making any project at all to code for hours. Examples include projects like "interactive periodic table" and "generic task management website." We reserve the right to decide whether or not a project qualifies as "AI slop" and reject it. If your project is polished and looks like it has a real human touch, we're highly unlikely to reject it!
 
 ## Does making art or music count towards my time?
 
