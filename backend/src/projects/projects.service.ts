@@ -409,8 +409,15 @@ export class ProjectsService {
       select: {
         projectId: true,
         nowHackatimeProjects: true,
-        nowHackatimeHours: true,
         userId: true,
+        user: {
+          select: { hackatimeAccount: true },
+        },
+        submissions: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { hackatimeHours: true },
+        },
       },
     });
 
@@ -422,10 +429,46 @@ export class ProjectsService {
       throw new ForbiddenException('Access denied');
     }
 
+    const lastSubmission = project.submissions[0];
+    const lastSubmittedHours = lastSubmission?.hackatimeHours ?? null;
+    const projectNames = project.nowHackatimeProjects ?? [];
+
+    // Always calculate live hours from the Hackatime API
+    if (!project.user.hackatimeAccount || projectNames.length === 0) {
+      return {
+        projectId: project.projectId,
+        hackatimeProjects: projectNames,
+        currentHackatimeHours: 0,
+        hackatimeProjectHours: {},
+        lastSubmittedHours,
+      };
+    }
+
+    const hackatimeBaseUrl =
+      process.env.HACKATIME_ADMIN_API_URL || 'https://hackatime.hackclub.com/api/admin/v1';
+    const hackatimeApiKey = process.env.HACKATIME_API_KEY;
+
+    const durationsMap = await this.fetchHackatimeProjectDurationsAfterDate(
+      project.user.hackatimeAccount,
+      projectNames,
+      hackatimeBaseUrl,
+      hackatimeApiKey,
+    );
+
+    const hackatimeProjectHours: Record<string, number> = {};
+    let totalSeconds = 0;
+    for (const name of projectNames) {
+      const seconds = durationsMap.get(name) ?? 0;
+      hackatimeProjectHours[name] = Math.round((seconds / 3600) * 10) / 10;
+      totalSeconds += seconds;
+    }
+
     return {
       projectId: project.projectId,
-      hackatimeProjects: project.nowHackatimeProjects,
-      hackatimeHours: project.nowHackatimeHours,
+      hackatimeProjects: projectNames,
+      currentHackatimeHours: Math.round((totalSeconds / 3600) * 10) / 10,
+      hackatimeProjectHours,
+      lastSubmittedHours,
     };
   }
 
@@ -492,7 +535,6 @@ export class ProjectsService {
     cutoffDate: Date = new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z'),
   ): Promise<Map<string, number>> {
     const startDate = cutoffDate.toISOString().split('T')[0];
-    const hackatimeApiUrl = baseUrl.replace('/api/admin/v1', '/api/v1');
     const uri = `https://hackatime.hackclub.com/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${startDate}`;
 
     const headers: Record<string, string> = {
