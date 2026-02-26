@@ -16,13 +16,13 @@ export class ProjectsService {
     private posthog: PosthogService,
   ) {}
 
-  private excludeHoursJustification<T extends { hoursJustification?: any }>(obj: T): Omit<T, 'hoursJustification'> {
-    const { hoursJustification, ...rest } = obj;
+  private excludeAdminFields<T extends { hoursJustification?: any; isFraud?: any }>(obj: T): Omit<T, 'hoursJustification' | 'isFraud'> {
+    const { hoursJustification, isFraud, ...rest } = obj;
     return rest;
   }
 
-  private excludeHoursJustificationFromArray<T extends { hoursJustification?: any }>(arr: T[]): Omit<T, 'hoursJustification'>[] {
-    return arr.map(item => this.excludeHoursJustification(item));
+  private excludeAdminFieldsFromArray<T extends { hoursJustification?: any; isFraud?: any }>(arr: T[]): Omit<T, 'hoursJustification' | 'isFraud'>[] {
+    return arr.map(item => this.excludeAdminFields(item));
   }
 
   async createProject(createProjectDto: CreateProjectDto, userId: number) {
@@ -86,7 +86,7 @@ export class ProjectsService {
         });
       }
 
-      return this.excludeHoursJustification(project);
+      return this.excludeAdminFields(project);
     } finally {
       await this.redis.releaseLock(lockKey, lockValue);
     }
@@ -101,7 +101,7 @@ export class ProjectsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return this.excludeHoursJustificationFromArray(projects);
+    return this.excludeAdminFieldsFromArray(projects);
   }
 
   async getProject(projectId: number, userId: number) {
@@ -127,7 +127,7 @@ export class ProjectsService {
       throw new ForbiddenException('Access denied');
     }
 
-    return this.excludeHoursJustification(project);
+    return this.excludeAdminFields(project);
   }
 
   async createSubmission(createSubmissionDto: CreateSubmissionDto, userId: number) {
@@ -298,7 +298,7 @@ export class ProjectsService {
     if (Object.keys(updateData).length === 0) {
       return {
         message: 'No changes provided.',
-        project: this.excludeHoursJustification(project),
+        project: this.excludeAdminFields(project),
       };
     }
 
@@ -309,7 +309,7 @@ export class ProjectsService {
 
     return {
       message: 'Project updated successfully.',
-      project: this.excludeHoursJustification(updatedProject),
+      project: this.excludeAdminFields(updatedProject),
     };
   }
 
@@ -399,7 +399,7 @@ export class ProjectsService {
 
     return {
       message: 'Hackatime projects updated successfully.',
-      project: this.excludeHoursJustification(updatedProject),
+      project: this.excludeAdminFields(updatedProject),
     };
   }
 

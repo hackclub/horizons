@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { createHmac } from 'crypto';
 
@@ -277,16 +277,29 @@ export class HackatimeService {
   }
 
   async getLinkedHackatimeProjects(userEmail: string, projectId: number): Promise<any> {
-    const allProjects = await this.getAllHackatimeProjects(userEmail);
+    const user = await this.prisma.user.findUnique({
+      where: { email: userEmail },
+      select: { userId: true },
+    });
+
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
 
     const project = await this.prisma.project.findUnique({
       where: { projectId },
-      select: { nowHackatimeProjects: true },
+      select: { nowHackatimeProjects: true, userId: true },
     });
 
     if (!project) {
       throw new HttpException('Project not found', HttpStatus.NOT_FOUND);
     }
+
+    if (project.userId !== user.userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const allProjects = await this.getAllHackatimeProjects(userEmail);
 
     const linkedProjectNames = new Set<string>(project.nowHackatimeProjects || []);
 

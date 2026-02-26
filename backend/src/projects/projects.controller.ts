@@ -1,5 +1,5 @@
-import { Controller, Post, Get, Put, Delete, Body, Param, Req, ParseIntPipe, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiOkResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Get, Put, Delete, Body, Param, Req, ParseIntPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiOkResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -8,11 +8,9 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateHackatimeProjectsDto } from './dto/update-hackatime-projects.dto';
 import { Public } from '../auth/public.decorator';
 import {
-  ProjectResponse,
   CreateProjectResponse,
   ProjectMessageResponse,
   DeleteProjectResponse,
-  LeaderboardEntry,
   HackatimeProjectsInfoResponse,
 } from './response';
 
@@ -20,23 +18,22 @@ import {
 @Controller('api/projects')
 @Public()
 export class ProjectsController {
-  constructor(private projectsService: ProjectsService) {}
 
-  @Get('approved')
-  @ApiOperation({ summary: 'Get all approved projects' })
-  @ApiOkResponse({ type: [ProjectResponse], description: 'List of approved projects' })
-  async getApprovedProjects() {
-    return this.projectsService.getApprovedProjects();
-  }
+  // @Get('approved')
+  // @ApiOperation({ summary: 'Get all approved projects' })
+  // @ApiOkResponse({ type: [ProjectResponse], description: 'List of approved projects' })
+  // async getApprovedProjects() {
+  //   return this.projectsService.getApprovedProjects();
+  // }
 
-  @Get('leaderboard')
-  @ApiOperation({ summary: 'Get leaderboard' })
-  @ApiQuery({ name: 'sortBy', required: false, enum: ['hours', 'approved'], description: 'Sort leaderboard by hours or approved hours' })
-  @ApiOkResponse({ type: [LeaderboardEntry], description: 'Top 10 leaderboard entries' })
-  async getLeaderboard(@Query('sortBy') sortBy?: string) {
-    const sortType = sortBy === 'approved' ? 'approved' : 'hours';
-    return this.projectsService.getLeaderboard(sortType);
-  }
+  // @Get('leaderboard')
+  // @ApiOperation({ summary: 'Get leaderboard' })
+  // @ApiQuery({ name: 'sortBy', required: false, enum: ['hours', 'approved'], description: 'Sort leaderboard by hours or approved hours' })
+  // @ApiOkResponse({ type: [LeaderboardEntry], description: 'Top 10 leaderboard entries' })
+  // async getLeaderboard(@Query('sortBy') sortBy?: string) {
+  //   const sortType = sortBy === 'approved' ? 'approved' : 'hours';
+  //   return this.projectsService.getLeaderboard(sortType);
+  // }
 }
 
 @ApiTags('Projects (Auth)')
