@@ -29,6 +29,11 @@ export class CreateProjectDto {
   @IsOptional()
   repoUrl?: string;
 
+  @ApiPropertyOptional({ description: 'README URL' })
+  @IsUrl()
+  @IsOptional()
+  readmeUrl?: string;
+
   @ApiPropertyOptional({ description: 'Screenshot URL' })
   @IsUrl()
   @IsOptional()

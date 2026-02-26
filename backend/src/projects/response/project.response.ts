@@ -19,6 +19,9 @@ export class ProjectResponse {
   @ApiPropertyOptional({ description: 'Repository URL' })
   repoUrl: string | null;
 
+  @ApiPropertyOptional({ description: 'README URL' })
+  readmeUrl: string | null;
+
   @ApiPropertyOptional({ description: 'Approved hours' })
   approvedHours: number | null;
 
@@ -64,6 +67,9 @@ export class CreateProjectResponse {
 
   @ApiPropertyOptional({ description: 'Repository URL' })
   repoUrl: string | null;
+
+  @ApiPropertyOptional({ description: 'README URL' })
+  readmeUrl: string | null;
 
   @ApiPropertyOptional({ description: 'Approved hours' })
   approvedHours: number | null;

@@ -47,6 +47,7 @@ export class ProjectsService {
           projectTitle: createProjectDto.projectTitle,
           projectType: createProjectDto.projectType,
           description: createProjectDto.projectDescription,
+          readmeUrl: createProjectDto.readmeUrl,
         },
         include: {
           user: {
