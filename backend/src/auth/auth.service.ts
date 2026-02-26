@@ -332,7 +332,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired session');
     }
 
-    return session.user;
+    const { isSus, isFraud, hackatimeAccessToken, airtableRecId, ...safeUser } = session.user as any;
+    if (safeUser.projects) {
+      safeUser.projects = safeUser.projects.map(({ isFraud: _, ...project }: any) => project);
+    }
+    return safeUser;
   }
 
   async logout(sessionId: string) {
