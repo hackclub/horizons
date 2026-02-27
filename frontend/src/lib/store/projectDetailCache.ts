@@ -3,9 +3,17 @@ import { api, type components } from '$lib/api';
 
 type ProjectResponse = components['schemas']['ProjectResponse'];
 
+interface HackatimeInfo {
+	hackatimeProjects: string[];
+	currentHackatimeHours: number;
+	hackatimeProjectHours: Record<string, number>;
+	lastSubmittedHours: number | null;
+}
+
 interface ProjectDetailCache {
 	project: ProjectResponse | null;
 	submission: any | null;
+	hackatimeInfo: HackatimeInfo | null;
 	timestamp: number;
 }
 
@@ -17,11 +25,13 @@ let detailCache: Map<string, ProjectDetailCache> = new Map();
 export const projectDetailStore: Writable<{
 	project: ProjectResponse | null;
 	submission: any | null;
+	hackatimeInfo: HackatimeInfo | null;
 	loading: boolean;
 	error: string | null;
 }> = writable({
 	project: null,
 	submission: null,
+	hackatimeInfo: null,
 	loading: true,
 	error: null,
 });
@@ -36,26 +46,31 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 		projectDetailStore.set({
 			project: cached.project,
 			submission: cached.submission,
+			hackatimeInfo: cached.hackatimeInfo,
 			loading: false,
 			error: null,
 		});
-		return { project: cached.project, submission: cached.submission };
+		return { project: cached.project, submission: cached.submission, hackatimeInfo: cached.hackatimeInfo };
 	}
 
 	try {
 		projectDetailStore.update(s => ({ ...s, loading: true, error: null }));
 
-		const [projectRes, submissionsRes] = await Promise.all([
+		const [projectRes, submissionsRes, hackatimeRes] = await Promise.all([
 			api.GET('/api/projects/auth/{id}', {
 				params: { path: { id: Number(id) } }
 			}),
 			api.GET('/api/projects/auth/{id}/submissions', {
 				params: { path: { id: Number(id) } }
-			})
+			}),
+			api.GET('/api/projects/auth/{id}/hackatime-projects', {
+				params: { path: { id: Number(id) } }
+			}),
 		]);
 
 		let project: ProjectResponse | null = null;
 		let submission: any = null;
+		let hackatimeInfo: HackatimeInfo | null = null;
 		let error: string | null = null;
 
 		if (projectRes.data) {
@@ -71,6 +86,14 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 			}
 		}
 
+		const d = hackatimeRes.data as any;
+		hackatimeInfo = {
+			hackatimeProjects: d?.hackatimeProjects ?? [],
+			currentHackatimeHours: d?.currentHackatimeHours ?? 0,
+			hackatimeProjectHours: d?.hackatimeProjectHours ?? {},
+			lastSubmittedHours: d?.lastSubmittedHours ?? null,
+		};
+
 		if (error) {
 			throw new Error(error);
 		}
@@ -78,6 +101,7 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 		const cacheEntry: ProjectDetailCache = {
 			project,
 			submission,
+			hackatimeInfo,
 			timestamp: now,
 		};
 		detailCache.set(cacheKey, cacheEntry);
@@ -85,16 +109,18 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 		projectDetailStore.set({
 			project,
 			submission,
+			hackatimeInfo,
 			loading: false,
 			error: null,
 		});
 
-		return { project, submission };
+		return { project, submission, hackatimeInfo };
 	} catch (err) {
 		const errorMsg = err instanceof Error ? err.message : 'Failed to load project details';
 		projectDetailStore.set({
 			project: null,
 			submission: null,
+			hackatimeInfo: null,
 			loading: false,
 			error: errorMsg,
 		});
@@ -171,10 +197,12 @@ export async function fetchEditData(id: string, forceRefresh = false) {
 	try {
 		editDataStore.update(s => ({ ...s, loading: true, hackatimeLoading: true, error: null }));
 
-		const [projectRes, allHackatimeRes, linkedHackatimeRes] = await Promise.all([
-			api.GET('/api/projects/auth/{id}', { params: { path: { id: Number(id) } } }),
-			api.GET('/api/hackatime/projects/all'),
-			api.GET('/api/projects/auth/{id}/hackatime-projects', { params: { path: { id: Number(id) } } })
+		const numericId = Number(id);
+		const [projectRes, linkedHackatimeRes, unlinkedHackatimeRes, projectHackatimeRes] = await Promise.all([
+			api.GET('/api/projects/auth/{id}', { params: { path: { id: numericId } } }),
+			api.GET('/api/hackatime/projects/linked/{id}', { params: { path: { id: numericId } } }),
+			api.GET('/api/hackatime/projects/unlinked'),
+			api.GET('/api/projects/auth/{id}/hackatime-projects', { params: { path: { id: numericId } } }),
 		]);
 
 		let project: ProjectResponse | null = null;
@@ -188,12 +216,19 @@ export async function fetchEditData(id: string, forceRefresh = false) {
 			error = 'Failed to load project';
 		}
 
-		if (allHackatimeRes.data) {
-			allHackatimeProjects = allHackatimeRes.data.projects || [];
-		}
+		// Merge linked (for this project) + unlinked projects — linked shown first
+		const extractProjects = (data: any): any[] => {
+			if (Array.isArray(data)) return data;
+			if (data?.projects && Array.isArray(data.projects)) return data.projects;
+			return [];
+		};
+		const linked = extractProjects(linkedHackatimeRes.data);
+		const unlinked = extractProjects(unlinkedHackatimeRes.data);
+		const linkedNames = new Set(linked.map((p: any) => p.name));
+		allHackatimeProjects = [...linked, ...unlinked.filter((p: any) => !linkedNames.has(p.name))];
 
-		if (linkedHackatimeRes.data) {
-			linkedHackatimeProjects = linkedHackatimeRes.data.hackatimeProjects || [];
+		if (projectHackatimeRes.data) {
+			linkedHackatimeProjects = (projectHackatimeRes.data as any).hackatimeProjects || [];
 		}
 
 		if (error) {

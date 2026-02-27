@@ -16,9 +16,10 @@
 	let detailState = $state<{
 		project: ProjectResponse | null;
 		submission: any | null;
+		hackatimeInfo: { hackatimeProjects: string[]; currentHackatimeHours: number; hackatimeProjectHours: Record<string, number>; lastSubmittedHours: number | null } | null;
 		loading: boolean;
 		error: string | null;
-	}>({ project: null, submission: null, loading: true, error: null });
+	}>({ project: null, submission: null, hackatimeInfo: null, loading: true, error: null });
 	let unsubscribe: (() => void) | null = null;
 
 	$effect(() => {
@@ -40,12 +41,17 @@
 	let project = $derived(detailState.project);
 	let loading = $derived(detailState.loading);
 	let error = $derived(detailState.error);
+	let hackatimeInfo = $derived(detailState.hackatimeInfo);
 
 	// Submission tracking
 	let latestSubmission = $derived(detailState.submission);
 	let hasSubmission = $derived(latestSubmission !== null);
 	let isPending = $derived(latestSubmission?.approvalStatus === 'pending');
 	let isApproved = $derived(latestSubmission?.approvalStatus === 'approved');
+
+	// Hackatime derived
+	let currentHours = $derived(hackatimeInfo?.currentHackatimeHours ?? 0);
+	let pendingHours = $derived(isPending ? (latestSubmission?.hackatimeHours ?? null) : null);
 
 	// Button navigation (left/right arrows)
 	let selectedButton = $state(0);
@@ -120,6 +126,21 @@
 					<p class="font-bricolage text-[32px] font-semibold m-0">
 						{project.description}
 					</p>
+				{/if}
+				<!-- Hackatime Hours & Linked Projects -->
+				{#if hackatimeInfo}
+					<p class="font-bricolage text-[22px] font-semibold text-black/60 m-0">
+						tracked {currentHours} hrs{pendingHours !== null ? ` · submitted ${pendingHours} hrs` : ''}
+					</p>
+					{#if hackatimeInfo.hackatimeProjects.length > 0}
+						<div class="flex flex-wrap gap-1">
+							{#each hackatimeInfo.hackatimeProjects as name}
+								<span class="bg-black text-[#f3e8d8] font-bricolage text-sm font-semibold px-2 py-0.5 rounded-sm whitespace-nowrap">
+									{name}
+								</span>
+							{/each}
+						</div>
+					{/if}
 				{/if}
 			</div>
 
