@@ -182,7 +182,7 @@
 						<div class="flex flex-col gap-1 z-1 w-full">
 							<p class="font-cook font-semibold text-black m-0 leading-[1.1] transition-[font-size_0.3s_ease]" style="font-size: {selected ? '64px' : '40px'};">{project.projectTitle}</p>
 							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease]" style="font-size: {selected ? '32px' : '20px'};">{project.description ?? ''}</p>
-							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease]" style="font-size: {selected ? '32px' : '20px'};">{project.approvedHours ?? 0} hours approved</p>
+							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease]" style="font-size: {selected ? '32px' : '20px'};">{project.nowHackatimeHours ?? 0} hrs tracked</p>
 						</div>
 
 						{#if selected}

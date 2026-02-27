@@ -25,6 +25,9 @@ export class ProjectResponse {
   @ApiPropertyOptional({ description: 'Approved hours' })
   approvedHours: number | null;
 
+  @ApiPropertyOptional({ description: 'Current tracked Hackatime hours' })
+  nowHackatimeHours: number | null;
+
   @ApiProperty({ description: 'Creation timestamp' })
   createdAt: string;
 

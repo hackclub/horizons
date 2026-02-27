@@ -1191,6 +1191,8 @@ export interface components {
             repoUrl?: string;
             /** @description Approved hours */
             approvedHours?: number;
+            /** @description Current tracked Hackatime hours */
+            nowHackatimeHours?: number;
             /** @description Creation timestamp */
             createdAt: string;
             /** @description Last update timestamp */
