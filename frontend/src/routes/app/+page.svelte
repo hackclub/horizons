@@ -15,7 +15,7 @@
 		"OH YEAH. IT'S ALL COMING TOGETHER",
 		"ITS! TIME! TO! COOK!",
 		"HACKCLUB HORIZONS 4EVER",
-		"in every continent(dont tell antarctica)",
+		"IN EVERY CONTINENT(DON'T TELL ANTARCTICA)",
 	];
 	const headerText = phrases[Math.floor(Math.random() * phrases.length)];
 
