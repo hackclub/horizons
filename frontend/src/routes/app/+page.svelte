@@ -15,8 +15,6 @@
 		"OH YEAH. IT'S ALL COMING TOGETHER",
 		"ITS! TIME! TO! COOK!",
 		"HACKCLUB HORIZONS 4EVER",
-		"never in #meta",
-		"double dip with #sleepover!!!!",
 		"in every continent(dont tell antarctica)",
 	];
 	const headerText = phrases[Math.floor(Math.random() * phrases.length)];
