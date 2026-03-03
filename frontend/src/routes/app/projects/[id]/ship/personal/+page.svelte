@@ -31,7 +31,7 @@
 		if (userRes.data) {
 			const user = userRes.data as any;
 			if (user.hasAddress) {
-				goto(`/app/projects/${id}/ship/finish`);
+				goto(`/app/projects/${id}/ship/integrity`);
 				return;
 			}
 		}

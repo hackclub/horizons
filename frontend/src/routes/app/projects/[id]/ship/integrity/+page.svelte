@@ -1,17 +1,15 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { api } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
-	import { FormCard, FormButtons, FormError } from '$lib/components/form';
+	import { FormCard, FormButtons } from '$lib/components/form';
 	import BackButton from '$lib/components/BackButton.svelte';
 
-	const projectId = $derived($page.params.id);
+	const projectId = $derived(page.params.id);
 
 	let loading = $state(true);
-	let submitting = $state(false);
-	let errorMsg = $state<string | null>(null);
 	let heroUrl = $state<string | null>(null);
 	let projectTitle = $state('');
 
@@ -34,28 +32,8 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
-			goto(`/app/projects/${projectId}`);
+			goto(`/app/projects/${projectId}/ship/personal`);
 		}
-	}
-
-	async function handleSubmit() {
-		submitting = true;
-		errorMsg = null;
-
-		const { error } = await api.POST('/api/projects/auth/submissions', {
-			body: {
-				projectId: Number(projectId),
-			},
-		});
-
-		if (!error) {
-			goto(`/app/projects/${projectId}`);
-		} else {
-			const e = error as any;
-			errorMsg = e?.error ?? e?.message ?? 'Failed to submit project. Please try again.';
-		}
-
-		submitting = false;
 	}
 </script>
 
@@ -71,18 +49,23 @@
 			<TurbulentImage src={heroUrl || heroPlaceholder} alt={projectTitle} inset="0 0 0 0" filterId="hero-turbulence" />
 		</div>
 
-		<FormCard title="READY TO SUBMIT?" subtitle="Hit submit to submit your project. You won't be able to make any changes until your project is reviewed. You can resubmit your project once reviewed.">
-			<FormError message={errorMsg} />
+		<FormCard title="HACKATIME INTEGRITY AGREEMENT">
+			<div class="bg-white/50 rounded-lg p-2 w-full">
+				<p class="font-bricolage text-[20px] leading-normal tracking-[-0.22px] text-black m-0">
+					Don't cheat the time tracking system. No bots, no fake key presses, no UI manipulation. If you do, you'll be banned from Hackatime and other participating YSWS / events / programs
+				</p>
+			</div>
+			<p class="font-bricolage text-[20px] leading-normal tracking-[-0.22px] text-black m-0">
+				By submitting your project to Horizons, you agree to the Hackatime Integrity Agreement.
+			</p>
 			<FormButtons
-				onback={() => goto(`/app/projects/${projectId}/ship/integrity`)}
-				onnext={handleSubmit}
-				nextLabel="SUBMIT →"
-				loadingLabel="SUBMITTING..."
-				loading={submitting}
+				onback={() => goto(`/app/projects/${projectId}/ship/personal`)}
+				onnext={() => goto(`/app/projects/${projectId}/ship/finish`)}
+				nextLabel="AGREE TO TERMS →"
 				blink
 			/>
 		</FormCard>
 	{/if}
 
-	<BackButton onclick={() => goto(`/app/projects/${projectId}`)} />
+	<BackButton onclick={() => goto(`/app/projects/${projectId}/ship/personal`)} />
 </div>
