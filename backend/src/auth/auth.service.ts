@@ -10,6 +10,14 @@ interface HackClubTokenResponse {
   id_token: string;
 }
 
+interface HackClubAddress {
+  street_address?: string;
+  locality?: string;
+  region?: string;
+  postal_code?: string;
+  country?: string;
+}
+
 interface HackClubIdTokenClaims {
   iss: string;
   sub: string;
@@ -19,11 +27,15 @@ interface HackClubIdTokenClaims {
   name?: string;
   given_name?: string;
   family_name?: string;
+  nickname?: string;
+  updated_at?: number;
   email?: string;
   email_verified?: boolean;
   birthdate?: string;
+  address?: HackClubAddress;
   slack_id?: string;
   verification_status?: string;
+  ysws_eligible?: boolean;
 }
 
 @Injectable()
@@ -88,7 +100,7 @@ export class AuthService {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: 'openid profile email slack_id verification_status',
+      scope: 'openid email name profile birthdate address verification_status slack_id basic_info',
       state,
     });
 
@@ -158,12 +170,16 @@ export class AuthService {
       iat: 0,
       email: userInfo.email,
       email_verified: userInfo.email_verified,
+      name: userInfo.name,
       given_name: userInfo.given_name,
       family_name: userInfo.family_name,
-      name: userInfo.name,
-      birthdate: userInfo.birthdate || new Date('10/10/2010'), //this is BAD; needs to be REPLACED; HIGH severity
+      nickname: userInfo.nickname,
+      updated_at: userInfo.updated_at,
+      birthdate: userInfo.birthdate,
+      address: userInfo.address,
       slack_id: userInfo.slack_id,
       verification_status: userInfo.verification_status,
+      ysws_eligible: userInfo.ysws_eligible,
     };
 
     const { user, isNewUser } = await this.findOrCreateUser(claims, referralCode);
@@ -264,6 +280,12 @@ export class AuthService {
           birthday,
           slackUserId,
           verificationStatus,
+          addressLine1: claims.address?.street_address?.split('\n')[0] || null,
+          addressLine2: claims.address?.street_address?.split('\n')[1] || null,
+          city: claims.address?.locality || null,
+          state: claims.address?.region || null,
+          zipCode: claims.address?.postal_code || null,
+          country: claims.address?.country || null,
           role: 'user',
           hackatimeAccount: hackatimeAccount?.toString() || null,
           referralCode,
@@ -299,6 +321,16 @@ export class AuthService {
         updateData.birthday = incomingBirthday;
       }
     }
+    if (claims.address) {
+      const line1 = claims.address.street_address?.split('\n')[0] || null;
+      const line2 = claims.address.street_address?.split('\n')[1] || null;
+      if (line1 && existingUser.addressLine1 !== line1) updateData.addressLine1 = line1;
+      if (line2 && existingUser.addressLine2 !== line2) updateData.addressLine2 = line2;
+      if (claims.address.locality && existingUser.city !== claims.address.locality) updateData.city = claims.address.locality;
+      if (claims.address.region && existingUser.state !== claims.address.region) updateData.state = claims.address.region;
+      if (claims.address.postal_code && existingUser.zipCode !== claims.address.postal_code) updateData.zipCode = claims.address.postal_code;
+      if (claims.address.country && existingUser.country !== claims.address.country) updateData.country = claims.address.country;
+    }
 
     if (Object.keys(updateData).length > 0) {
       existingUser = await this.prisma.user.update({
@@ -319,7 +351,23 @@ export class AuthService {
       where: { id: sessionId },
       include: {
         user: {
-          include: {
+          select: {
+            userId: true,
+            hcaId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            birthday: true,
+            slackUserId: true,
+            verificationStatus: true,
+            role: true,
+            onboardComplete: true,
+            onboardedAt: true,
+            hackatimeAccount: true,
+            referralCode: true,
+            rafflePos: true,
+            createdAt: true,
+            updatedAt: true,
             projects: {
               include: { submissions: true },
             },
@@ -332,11 +380,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired session');
     }
 
-    const { isSus, isFraud, hackatimeAccessToken, airtableRecId, ...safeUser } = session.user as any;
-    if (safeUser.projects) {
-      safeUser.projects = safeUser.projects.map(({ isFraud: _, ...project }: any) => project);
+    const user = session.user as any;
+    if (user.projects) {
+      user.projects = user.projects.map(({ isFraud: _, hoursJustification: __, ...project }: any) => project);
     }
-    return safeUser;
+    return user;
   }
 
   async logout(sessionId: string) {
