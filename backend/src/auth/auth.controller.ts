@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Req, Res, Query } from '@nestjs/common';
+import { Controller, Post, Get, Req, Res, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
@@ -65,7 +65,8 @@ export class AuthController {
       });
     }
 
-    res.redirect('/app');
+    const destination = result.redirectPath ?? '/app';
+    res.redirect(destination);
   }
 
   @Get('me')
@@ -129,7 +130,7 @@ export class AuthController {
   @Post('sync')
   @ApiOperation({ summary: 'Get re-login URL to force sync user data from HCA' })
   @ApiOkResponse({ type: AuthUrlResponse })
-  async syncHcaData(@Req() req: Request): Promise<AuthUrlResponse> {
-    return this.authService.getAuthUrl(req.user.email);
+  async syncHcaData(@Req() req: Request, @Body() body: { redirectPath?: string }): Promise<AuthUrlResponse> {
+    return this.authService.getAuthUrl(req.user.email, undefined, body?.redirectPath);
   }
 }

@@ -74,7 +74,7 @@
 		<FormCard title="READY TO SUBMIT?" subtitle="Hit submit to submit your project. You won't be able to make any changes until your project is reviewed. You can resubmit your project once reviewed.">
 			<FormError message={errorMsg} />
 			<FormButtons
-				onback={() => goto(`/app/projects/${projectId}/ship/project`)}
+				onback={() => goto(`/app/projects/${projectId}/ship/personal`)}
 				onnext={handleSubmit}
 				nextLabel="SUBMIT →"
 				loadingLabel="SUBMITTING..."

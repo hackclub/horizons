@@ -59,7 +59,7 @@ export class AuthService {
     return Buffer.from(JSON.stringify({ data, signature })).toString('base64url');
   }
 
-  private verifyState(encodedState: string): { referralCode: string | null; timestamp: number } {
+  private verifyState(encodedState: string): { referralCode: string | null; timestamp: number; redirectPath: string | null } {
     try {
       const { data, signature } = JSON.parse(Buffer.from(encodedState, 'base64url').toString());
       const expectedSignature = createHmac('sha256', this.getStateSecret()).update(data).digest('hex');
@@ -83,7 +83,7 @@ export class AuthService {
 
   constructor(private prisma: PrismaService) {}
 
-  getAuthUrl(email?: string, referralCode?: string): { url: string } {
+  getAuthUrl(email?: string, referralCode?: string, redirectPath?: string): { url: string } {
     const clientId = process.env.HACKCLUB_CLIENT_ID;
     const redirectUri = process.env.HACKCLUB_REDIRECT_URI;
 
@@ -94,6 +94,7 @@ export class AuthService {
     const state = this.signState({
       referralCode: referralCode || null,
       timestamp: Date.now(),
+      redirectPath: redirectPath || null,
     });
 
     const params = new URLSearchParams({
@@ -113,7 +114,7 @@ export class AuthService {
     };
   }
 
-  async handleCallback(code: string, state?: string): Promise<{ sessionId: string; isNewUser: boolean; user: any }> {
+  async handleCallback(code: string, state?: string): Promise<{ sessionId: string; isNewUser: boolean; user: any; redirectPath: string | null }> {
     const clientId = process.env.HACKCLUB_CLIENT_ID;
     const clientSecret = process.env.HACKCLUB_CLIENT_SECRET;
     const redirectUri = process.env.HACKCLUB_REDIRECT_URI;
@@ -126,7 +127,7 @@ export class AuthService {
       throw new BadRequestException('Missing state parameter');
     }
 
-    const { referralCode } = this.verifyState(state);
+    const { referralCode, redirectPath } = this.verifyState(state);
 
     const tokenResponse = await fetch(`${this.HACKCLUB_AUTH_URL}/oauth/token`, {
       method: 'POST',
@@ -204,6 +205,7 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
       },
+      redirectPath,
     };
   }
 
@@ -368,6 +370,11 @@ export class AuthService {
             rafflePos: true,
             createdAt: true,
             updatedAt: true,
+            addressLine1: true,
+            city: true,
+            state: true,
+            country: true,
+            zipCode: true,
             projects: {
               include: { submissions: true },
             },
@@ -381,10 +388,12 @@ export class AuthService {
     }
 
     const user = session.user as any;
-    if (user.projects) {
-      user.projects = user.projects.map(({ isFraud: _, hoursJustification: __, ...project }: any) => project);
+    const hasAddress = !!(user.addressLine1 && user.city && user.state && user.country && user.zipCode);
+    const { addressLine1, city, state, country, zipCode, ...userWithoutAddress } = user;
+    if (userWithoutAddress.projects) {
+      userWithoutAddress.projects = userWithoutAddress.projects.map(({ isFraud: _, hoursJustification: __, ...project }: any) => project);
     }
-    return user;
+    return { ...userWithoutAddress, hasAddress };
   }
 
   async logout(sessionId: string) {

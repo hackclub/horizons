@@ -185,7 +185,7 @@
 		submitting = true;
 		errorMsg = null;
 
-		const [projectRes, hackatimeRes] = await Promise.all([
+		const [projectRes, _hackatimeRes] = await Promise.all([
 			api.PUT('/api/projects/auth/{id}', {
 				params: { path: { id: Number(projectId) } },
 				body: {
@@ -204,7 +204,7 @@
 		]);
 
 		if (projectRes.data) {
-			goto(`/app/projects/${projectId}/ship/finish`);
+			goto(`/app/projects/${projectId}/ship/personal`);
 		} else {
 			errorMsg = 'Failed to save project. Please try again.';
 		}
