@@ -6,6 +6,7 @@
 	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { createGridNav } from '$lib/nav/wasd.svelte';
 	import { projectDetailStore, fetchProjectDetail, preloadEditData } from '$lib/store/projectDetailCache';
 	import type { components } from '$lib/api';
 
@@ -53,26 +54,14 @@
 	let currentHours = $derived(hackatimeInfo?.currentHackatimeHours ?? 0);
 	let pendingHours = $derived(isPending ? (latestSubmission?.hackatimeHours ?? null) : null);
 
-	// Button navigation (left/right arrows)
-	let selectedButton = $state(0);
-
-	function handleNavigationKeydown(e: KeyboardEvent) {
-		if (isPending) return;
-
-		if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-			e.preventDefault();
-			selectedButton = Math.max(0, selectedButton - 1);
-		} else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-			e.preventDefault();
-			selectedButton = Math.min(1, selectedButton + 1);
-		} else if (e.key === 'Enter') {
-			if (selectedButton === 0) {
-				goto(`/app/projects/${projectId}/edit`);
-			} else if (selectedButton === 1) {
-				goto(`/app/projects/${projectId}/ship/presubmit`);
-			}
-		}
-	}
+	const nav = createGridNav({
+		columns: () => [1, 1],
+		onSelect: (col) => {
+			if (col === 0) goto(`/app/projects/${projectId}/edit`);
+			else goto(`/app/projects/${projectId}/ship/presubmit`);
+		},
+		onEscape: () => goto('/app/projects?noanimate'),
+	});
 
 	// Preload edit page data when project detail is available
 	$effect(() => {
@@ -84,8 +73,9 @@
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
 			goto('/app/projects?noanimate');
+			return;
 		}
-		handleNavigationKeydown(e);
+		if (!isPending) nav.handleKeydown(e);
 	}
 </script>
 
@@ -182,17 +172,21 @@
 
 			<div class="flex gap-2.5 w-full justify-center">
 				<button
-					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black cursor-pointer overflow-hidden {isPending ? 'bg-[rgba(204,204,204,0.5)] cursor-not-allowed' : 'bg-[#ffa936]'} {selectedButton === 0 ? 'selected' : ''}"
+					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+					class:selected={nav.usingKeyboard && nav.isSelected(0, 0)}
+					class:pending={isPending}
 					onclick={() => goto(`/app/projects/${projectId}/edit`)}
-					onfocus={() => selectedButton = 0}
+					onmouseenter={() => nav.select(0, 0)}
 					disabled={isPending}
 				>
 					EDIT PROJECT
 				</button>
 				<button
-					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black cursor-pointer overflow-hidden {isPending ? 'bg-[rgba(204,204,204,0.5)] cursor-not-allowed' : 'bg-[#ffa936]'} {selectedButton === 1 ? 'selected' : ''}"
+					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+					class:selected={nav.usingKeyboard && nav.isSelected(1, 0)}
+					class:pending={isPending}
 					onclick={() => goto(`/app/projects/${projectId}/ship/presubmit`)}
-					onfocus={() => selectedButton = 1}
+					onmouseenter={() => nav.select(1, 0)}
 					disabled={isPending}
 				>
 					{isPending ? "I'M READY TO SHIP" : 'SHIP'}
@@ -216,16 +210,21 @@
 
 <style>
 	.action-btn {
-		background-color: #f3e8d8 !important;
+		background-color: #f3e8d8;
+		cursor: pointer;
 		transition:
 			background-color var(--selected-duration) ease,
-			transform var(--juice-duration) var(--juice-easing),
-			font-size var(--juice-duration) var(--juice-easing);
+			transform var(--juice-duration) var(--juice-easing);
 	}
 
+	.action-btn.pending {
+		background-color: rgba(204, 204, 204, 0.5);
+		cursor: not-allowed;
+	}
+
+	.action-btn:not(.pending):hover,
 	.action-btn.selected {
-		background-color: #ffa936 !important;
+		background-color: #ffa936;
 		transform: scale(var(--juice-scale));
-		font-size: 1.0625rem;
 	}
 </style>
