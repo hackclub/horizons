@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
@@ -6,12 +7,27 @@
 	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { createGridNav } from '$lib/nav/wasd.svelte';
 	import { projectDetailStore, fetchProjectDetail, preloadEditData } from '$lib/store/projectDetailCache';
 	import type { components } from '$lib/api';
+	import { EXIT_DURATION } from '$lib';
 
 	type ProjectResponse = components['schemas']['ProjectResponse'];
 
 	const projectId = $derived(page.params.id!);
+
+	let entered = $state(false);
+	let navigating = $state(false);
+
+	onMount(() => {
+		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
+	});
+
+	async function navigateTo(href: string) {
+		navigating = true;
+		await new Promise(resolve => setTimeout(resolve, EXIT_DURATION + 350));
+		goto(href);
+	}
 
 	let detailState = $state<{
 		project: ProjectResponse | null;
@@ -53,26 +69,14 @@
 	let currentHours = $derived(hackatimeInfo?.currentHackatimeHours ?? 0);
 	let pendingHours = $derived(isPending ? (latestSubmission?.hackatimeHours ?? null) : null);
 
-	// Button navigation (left/right arrows)
-	let selectedButton = $state(0);
-
-	function handleNavigationKeydown(e: KeyboardEvent) {
-		if (isPending) return;
-
-		if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-			e.preventDefault();
-			selectedButton = Math.max(0, selectedButton - 1);
-		} else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-			e.preventDefault();
-			selectedButton = Math.min(1, selectedButton + 1);
-		} else if (e.key === 'Enter') {
-			if (selectedButton === 0) {
-				goto(`/app/projects/${projectId}/edit`);
-			} else if (selectedButton === 1) {
-				goto(`/app/projects/${projectId}/ship/presubmit`);
-			}
-		}
-	}
+	const nav = createGridNav({
+		columns: () => [1, 1],
+		onSelect: (col) => {
+			if (col === 0) navigateTo(`/app/projects/${projectId}/edit`);
+			else navigateTo(`/app/projects/${projectId}/ship/presubmit`);
+		},
+		onEscape: () => navigateTo('/app/projects?noanimate'),
+	});
 
 	// Preload edit page data when project detail is available
 	$effect(() => {
@@ -83,9 +87,10 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
-			goto('/app/projects?noanimate');
+			navigateTo('/app/projects?noanimate');
+			return;
 		}
-		handleNavigationKeydown(e);
+		if (!isPending) nav.handleKeydown(e);
 	}
 </script>
 
@@ -105,6 +110,7 @@
 		<!-- Hero image -->
 		<div
 			class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none"
+			style="opacity: {navigating || !entered ? 0 : 1}; transition: opacity 0.4s ease;"
 		>
 			<TurbulentImage
 				src={project.screenshotUrl || heroPlaceholder}
@@ -115,8 +121,10 @@
 		</div>
 
 		<!-- Project details card -->
+		<div class="absolute bottom-20 left-1/2 -translate-x-[calc(50%+0.5px)] z-2">
 		<div
-			class="absolute bottom-20 left-1/2 -translate-x-[calc(50%+0.5px)] w-181.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start gap-8 overflow-hidden z-2"
+			class="detail-card w-181.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start gap-8 overflow-hidden"
+			class:exiting={navigating}
 		>
 			<div class="flex flex-col gap-2 w-full leading-normal text-black">
 				<p class="font-cook text-[36px] font-semibold m-0">
@@ -182,50 +190,94 @@
 
 			<div class="flex gap-2.5 w-full justify-center">
 				<button
-					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black cursor-pointer overflow-hidden {isPending ? 'bg-[rgba(204,204,204,0.5)] cursor-not-allowed' : 'bg-[#ffa936]'} {selectedButton === 0 ? 'selected' : ''}"
-					onclick={() => goto(`/app/projects/${projectId}/edit`)}
-					onfocus={() => selectedButton = 0}
+					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+					class:selected={nav.usingKeyboard && nav.isSelected(0, 0)}
+					class:keyboard={nav.usingKeyboard}
+					class:pending={isPending}
+					onclick={() => navigateTo(`/app/projects/${projectId}/edit`)}
+					onmouseenter={() => nav.select(0, 0)}
 					disabled={isPending}
 				>
 					EDIT PROJECT
 				</button>
 				<button
-					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black cursor-pointer overflow-hidden {isPending ? 'bg-[rgba(204,204,204,0.5)] cursor-not-allowed' : 'bg-[#ffa936]'} {selectedButton === 1 ? 'selected' : ''}"
-					onclick={() => goto(`/app/projects/${projectId}/ship/presubmit`)}
-					onfocus={() => selectedButton = 1}
+					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+					class:selected={nav.usingKeyboard && nav.isSelected(1, 0)}
+					class:keyboard={nav.usingKeyboard}
+					class:pending={isPending}
+					onclick={() => navigateTo(`/app/projects/${projectId}/ship/presubmit`)}
+					onmouseenter={() => nav.select(1, 0)}
 					disabled={isPending}
 				>
 					{isPending ? "I'M READY TO SHIP" : 'SHIP'}
 				</button>
 			</div>
 		</div>
+		</div>
 	{/if}
 
 	<!-- Back button -->
-	<BackButton onclick={() => goto('/app/projects?noanimate')} />
+	<BackButton onclick={() => navigateTo('/app/projects?noanimate')} />
 
-	<NavigationHint
-		segments={[
-			{ type: 'text', value: 'USE' },
-			{ type: 'input', value: 'AD' },
-			{ type: 'text', value: 'TO NAVIGATE' }
-		]}
-		position="bottom-right"
-	/>
+	<div class="fade-wrap" class:entered class:exiting={navigating}>
+		<NavigationHint
+			segments={[
+				{ type: 'text', value: 'USE' },
+				{ type: 'input', value: 'AD' },
+				{ type: 'text', value: 'TO NAVIGATE' }
+			]}
+			position="bottom-right"
+		/>
+	</div>
 </div>
 
 <style>
-	.action-btn {
-		background-color: #f3e8d8 !important;
-		transition:
-			background-color var(--selected-duration) ease,
-			transform var(--juice-duration) var(--juice-easing),
-			font-size var(--juice-duration) var(--juice-easing);
+	@keyframes card-enter {
+		from { transform: translateY(120vh); }
+		to   { transform: translateY(0); }
 	}
 
+	@keyframes card-exit {
+		from { transform: translateY(0); }
+		to   { transform: translateY(120vh); }
+	}
+
+	.detail-card {
+		animation: card-enter var(--enter-duration) var(--enter-easing) both;
+	}
+
+	.detail-card.exiting {
+		animation: card-exit var(--exit-duration) var(--exit-easing) both;
+	}
+
+	.fade-wrap {
+		opacity: 0;
+	}
+	.fade-wrap.entered {
+		opacity: 1;
+		transition: opacity var(--enter-duration) ease;
+	}
+	.fade-wrap.exiting {
+		opacity: 0;
+		transition: opacity 250ms ease;
+	}
+
+	.action-btn {
+		background-color: #f3e8d8;
+		cursor: pointer;
+		transition:
+			background-color var(--selected-duration) ease,
+			transform var(--juice-duration) var(--juice-easing);
+	}
+
+	.action-btn.pending {
+		background-color: rgba(204, 204, 204, 0.5);
+		cursor: not-allowed;
+	}
+
+	.action-btn:not(.pending):not(.keyboard):hover,
 	.action-btn.selected {
-		background-color: #ffa936 !important;
+		background-color: #ffa936;
 		transform: scale(var(--juice-scale));
-		font-size: 1.0625rem;
 	}
 </style>
