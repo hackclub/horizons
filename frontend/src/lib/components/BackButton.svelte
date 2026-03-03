@@ -19,7 +19,7 @@
 	});
 </script>
 
-<div class="fly-up absolute left-8 top-13 z-5" class:entered class:exiting>
+<div class="fly-left absolute left-8 top-13 z-5" class:entered class:exiting>
 	<button
 		class="flex items-center gap-2.5 p-5 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] cursor-pointer overflow-hidden hover:bg-[#ffa936]"
 		{onclick}
@@ -33,15 +33,15 @@
 </div>
 
 <style>
-	.fly-up {
-		transform: translateY(-120vh);
+	.fly-left {
+		transform: translateX(-120vw);
 	}
-	.fly-up.entered {
-		transform: translateY(0);
+	.fly-left.entered {
+		transform: translateX(0);
 		transition: transform var(--enter-duration) var(--enter-easing);
 	}
-	.fly-up.exiting {
-		transform: translateY(-120vh);
+	.fly-left.exiting {
+		transform: translateX(-120vw);
 		transition: transform var(--exit-duration) var(--exit-easing);
 	}
 </style>
