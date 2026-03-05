@@ -1,5 +1,8 @@
 # FAQ
 
+## What is Horizons?
+Horizons is a series of hackathons happening in San Francisco, Singapore, Central Europe, South America, Australia/New Zealand, and Africa. Horizons Nexus (the event in San Francisco) is on June 19-21st! (Dates and exact cities are TBA for the other events.)
+
 ## What's a hackathon?
 
 A hackathon is an event where you build a technical project from scratch. It's about teamwork, creativity, having fun, and learning new things.
@@ -28,6 +31,9 @@ Yes, we want you to! This hackathon is for all skill levels. We'll be running wo
 
 Any kind of technical project is allowed - websites, games, hardware - anything!
 
+## How do I qualify?
+For Horizons Nexus (San Francisco), you are required to code and ship 30 hours of projects. Hour requirements for the other events are TBA, but will be around 30 hours.
+
 ## Can I use AI?
 
 Use of generative AI **for graphics and audio** is **prohibited**. Use of generative AI for other purposes is allowed, but we will not accept projects which qualify as "AI slop." Additionally, you shouldn't write updates or project descriptions using AI.
@@ -38,7 +44,7 @@ We encourage you to write code without being completely reliant on AI, especiall
 
 ## Does making art or music count towards my time?
 
-Yes; artists and musicians are encouraged to participate even if you've never coded before. However, this is a technical event, so a maximum of ⅓ of the total logged time can be spent on music or art.
+Yes; artists and musicians are encouraged to participate even if you've never coded before. A maximum of ⅓ of your total time time logged can be spent on music or art. You can use [Lapse](https://lapse.hackclub.com) to log your hours on art!
 
 ## Can I work in a team?
 
