@@ -31,6 +31,25 @@
 }
 </style>
 
+<svelte:head>
+	<link rel="icon" href="/favicon.ico" sizes="any" />
+	<link rel="icon" href="/favicon.png" type="image/png" />
+	<title>Horizons | Hack Club</title>
+	<meta name="description" content="High school flagship hackathons across the world, brought to you by Hack Club." />
+
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://horizons.hackclub.com/" />
+	<meta property="og:title" content="Horizons | Hack Club" />
+	<meta property="og:description" content="High school flagship hackathons across the world, brought to you by Hack Club." />
+	<meta property="og:image" content="https://cdn.hackclub.com/019cc6d0-c592-7ddd-afb1-5685cc0e8aa0/splash.jpg" />
+
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:url" content="https://horizons.hackclub.com/" />
+	<meta name="twitter:title" content="Horizons | Hack Club" />
+	<meta name="twitter:description" content="High school flagship hackathons across the world, brought to you by Hack Club." />
+	<meta name="twitter:image" content="https://cdn.hackclub.com/019cc6d0-c592-7ddd-afb1-5685cc0e8aa0/splash.jpg" />
+</svelte:head>
+
 <svelte:window bind:innerWidth={windowWidth} bind:innerHeight={windowHeight} />
 
 {#if isAdmin}
