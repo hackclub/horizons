@@ -207,8 +207,9 @@ export class HackatimeService {
       throw new HttpException('Hackatime access token not available. Please relink your account.', HttpStatus.UNAUTHORIZED);
     }
 
+    const startDate = new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z').toISOString().split('T')[0];
     const res = await fetch(
-      `${this.HACKATIME_BASE_URL}/api/v1/authenticated/projects`,
+      `${this.HACKATIME_BASE_URL}/api/v1/authenticated/projects?start_date=${startDate}`,
       {
         method: 'GET',
         headers: {
@@ -400,7 +401,8 @@ export class HackatimeService {
   }
 
   private async fetchHackatimeProjectsData(accessToken: string) {
-    const response = await fetch(`${this.HACKATIME_BASE_URL}/api/v1/authenticated/projects`, {
+    const startDate = new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z').toISOString().split('T')[0];
+    const response = await fetch(`${this.HACKATIME_BASE_URL}/api/v1/authenticated/projects?start_date=${startDate}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -447,7 +449,7 @@ export class HackatimeService {
     hackatimeAccount: string,
     projectNames: string[],
     accessToken: string,
-    cutoffDate: Date = new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z'),
+    cutoffDate: Date = new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z'),
   ): Promise<Map<string, number>> {
     const startDate = cutoffDate.toISOString().split('T')[0];
     const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${startDate}`;
@@ -499,7 +501,7 @@ export class HackatimeService {
     accessToken?: string,
   ) {
     if (hackatimeAccount && accessToken) {
-      const cutoffDate = new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z');
+      const cutoffDate = new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z');
       const filteredDurations = await this.fetchHackatimeProjectDurationsAfterDate(
         hackatimeAccount,
         projectNames,
