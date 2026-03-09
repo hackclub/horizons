@@ -33,7 +33,7 @@
     
 
     .title {
-        font-family: 'Cook Widetype', sans-serif;
+        font-family: var(--font-cook);
         font-size: 20px;
         font-weight: 600;
         text-align: center;

@@ -129,7 +129,7 @@
     }
 
     .title {
-        font-family: 'Cook Widetype', sans-serif;
+        font-family: var(--font-cook);
         font-size: 48px;
         font-weight: 600;
         color: black;

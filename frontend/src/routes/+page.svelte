@@ -463,7 +463,7 @@
     }
 
     .tagline {
-        font-family: 'Cook Widetype', sans-serif;
+        font-family: var(--font-cook);
         font-size: clamp(16px, 2.5vw, 32px);
         font-weight: 600;
         color: black;

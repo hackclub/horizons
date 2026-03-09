@@ -2,15 +2,15 @@
 @import 'tailwindcss';
 
 @font-face {
-	font-family: 'Cook Widetype';
-	src: url('$lib/fonts/CookWidetype.woff2') format('woff2');
+	font-family: 'Grotesqon';
+	src: url('$lib/fonts/Grotesqon.woff2') format('woff2');
 	font-weight: normal;
 	font-style: normal;
 	font-display: swap;
 }
 
 @theme {
-	--font-cook: 'Cook Widetype', sans-serif;
+	--font-cook: 'Grotesqon', sans-serif;
 	--font-bricolage: 'Bricolage Grotesque', sans-serif;
 }
 
