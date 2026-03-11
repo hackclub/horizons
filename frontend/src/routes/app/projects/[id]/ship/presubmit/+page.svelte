@@ -17,6 +17,7 @@
 		'You have an experienceable link (a URL where anyone can try your project now)',
 		'Your project has a screenshot or video uploaded',
 		'Your project description clearly explains what it does',
+		'AI use is declared in your project\'s README'
 	];
 
 	let checked = $state<boolean[]>(checklistItems.map(() => false));

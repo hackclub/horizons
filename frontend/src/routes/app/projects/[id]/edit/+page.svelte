@@ -136,7 +136,8 @@
 			invalidateCache();
 			goto(`/app/projects/${projectId}`);
 		} else {
-			errorMsg = 'Failed to update project. Please try again.';
+			const err = projectRes.error as any;
+			errorMsg = err?.message ?? err?.error ?? 'Failed to update project. Please try again.';
 		}
 
 		submitting = false;
