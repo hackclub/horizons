@@ -99,9 +99,6 @@ export class AdminService {
     if (updateSubmissionDto.userFeedback !== undefined) {
       updateData.hoursJustification = updateSubmissionDto.userFeedback;
     }
-    if (updateSubmissionDto.adminComment !== undefined) {
-      updateData.adminComment = updateSubmissionDto.adminComment;
-    }
     if (updateSubmissionDto.approvalStatus !== undefined) {
       updateData.approvalStatus = updateSubmissionDto.approvalStatus;
       updateData.reviewedBy = adminUserId.toString();
@@ -156,6 +153,9 @@ export class AdminService {
     // We store it in the project table for admin reference and Airtable sync only
     if (updateSubmissionDto.hoursJustification !== undefined) {
       projectUpdateData.hoursJustification = updateSubmissionDto.hoursJustification;
+    }
+    if (updateSubmissionDto.adminComment !== undefined) {
+      projectUpdateData.adminComment = updateSubmissionDto.adminComment;
     }
     if (updateSubmissionDto.approvalStatus === 'approved') {
       // When approving, update project with submission data

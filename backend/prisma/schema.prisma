@@ -72,6 +72,7 @@ model Project {
   screenshotUrl      String?      @map("screenshot_url")
   isLocked           Boolean      @default(false) @map("is_locked")
   isFraud             Boolean      @default(false) @map("is_fraud")
+  adminComment       String?      @map("admin_comment") @db.VarChar(1000)
   user               User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
   submissions        Submission[]
   @@index([userId])
@@ -88,7 +89,6 @@ model Submission {
   approvedHours    Float?         @map("approved_hours")
   hackatimeHours   Float?         @map("hackatime_hours")
   hoursJustification String?      @map("hours_justification") @db.VarChar(500)
-  adminComment     String?        @map("admin_comment") @db.VarChar(1000)
   approvalStatus   ApprovalStatus @default(pending) @map("approval_status")
   reviewedBy       String?        @map("reviewed_by")
   reviewedAt       DateTime?      @map("reviewed_at")

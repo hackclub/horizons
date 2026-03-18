@@ -27,7 +27,6 @@
         approvalStatus: string;
         approvedHours: number | null;
         hoursJustification: string | null; // User feedback - what user submits with their submission
-        adminComment: string | null;
         description: string | null;
         playableUrl: string | null;
         repoUrl: string | null;
@@ -46,6 +45,7 @@
             nowHackatimeProjects: string[] | null;
             approvedHours: number | null;
             hoursJustification: string | null; // Admin's justification - synced to Airtable
+            adminComment: string | null;
             isFraud: boolean;
             user: AdminLightUser;
         };
@@ -208,7 +208,7 @@
         userFeedback: submission.hoursJustification ?? "",
         // Hours justification - admin's internal notes for Airtable
         hoursJustification: submission.project.hoursJustification ?? "",
-        adminComment: submission.adminComment ?? "",
+        adminComment: submission.project.adminComment ?? "",
         sendEmailNotification: false,
     });
 
@@ -464,8 +464,8 @@
             case "submission": return "Submitted";
             case "resubmission": return "Resubmitted";
             case "project_updated": return "Project Updated";
-            case "admin_review": return "Admin Review";
-            case "admin_update": return "Admin Update";
+            case "admin_review": return "Admin Reviewed Project";
+            case "admin_update": return "Admin Updated Project Review";
             default: return type;
         }
     }
@@ -3325,7 +3325,7 @@
                                             </div>
                                         {/if}
 
-                                        {#if selectedSubmission.adminComment}
+                                        {#if selectedSubmission.project.adminComment}
                                             <div
                                                 class="space-y-2 bg-orange-950/30 border border-orange-800 rounded-lg p-4"
                                             >
@@ -3337,7 +3337,7 @@
                                                 <p
                                                     class="text-sm text-gray-300 break-words"
                                                 >
-                                                    {selectedSubmission.adminComment}
+                                                    {selectedSubmission.project.adminComment}
                                                 </p>
                                             </div>
                                         {/if}
