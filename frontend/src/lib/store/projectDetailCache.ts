@@ -82,7 +82,10 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 		if (submissionsRes.data) {
 			const submissions = submissionsRes.data as any[];
 			if (submissions.length > 0) {
-				submission = submissions[0];
+				// Use the most recent submission
+				submission = submissions.sort((a: any, b: any) =>
+					new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+				)[0];
 			}
 		}
 

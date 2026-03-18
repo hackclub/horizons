@@ -32,7 +32,7 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
-			goto(`/app/projects/${projectId}/ship/personal`);
+			goto(`/app/projects/${projectId}/ship/project`);
 		}
 	}
 </script>
@@ -59,7 +59,7 @@
 				By submitting your project to Horizons, you agree to the Hackatime Integrity Agreement.
 			</p>
 			<FormButtons
-				onback={() => goto(`/app/projects/${projectId}/ship/personal`)}
+				onback={() => goto(`/app/projects/${projectId}/ship/project`)}
 				onnext={() => goto(`/app/projects/${projectId}/ship/finish`)}
 				nextLabel="AGREE TO TERMS →"
 				blink
@@ -67,5 +67,5 @@
 		</FormCard>
 	{/if}
 
-	<BackButton onclick={() => goto(`/app/projects/${projectId}/ship/personal`)} />
+	<BackButton onclick={() => goto(`/app/projects/${projectId}/ship/project`)} />
 </div>

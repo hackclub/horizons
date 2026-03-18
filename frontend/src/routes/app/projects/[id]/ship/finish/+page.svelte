@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { api } from '$lib/api';
+	import { invalidateProjectCaches } from '$lib/store/projectDetailCache';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { FormCard, FormButtons, FormError } from '$lib/components/form';
 	import BackButton from '$lib/components/BackButton.svelte';
@@ -49,6 +50,7 @@
 		});
 
 		if (!error) {
+			invalidateProjectCaches(projectId);
 			goto(`/app/projects/${projectId}`);
 		} else {
 			const e = error as any;
