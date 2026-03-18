@@ -45,7 +45,7 @@
         api.GET('/api/user/auth/me').then(response => {
             if (response.data && response.data.hcaId) {
                 // isAuthed = true
-                goto('/app');
+                window.location.href = '/app';
             }
         })
     });
