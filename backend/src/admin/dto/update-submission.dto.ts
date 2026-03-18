@@ -15,6 +15,11 @@ export class UpdateSubmissionDto {
   @MaxLength(500)
   hoursJustification?: string; // Admin's internal justification, synced to Airtable, stored in project table
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  adminComment?: string;
+
   @IsEnum(['pending', 'approved', 'rejected'])
   @IsOptional()
   approvalStatus?: 'pending' | 'approved' | 'rejected';

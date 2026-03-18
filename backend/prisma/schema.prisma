@@ -88,15 +88,33 @@ model Submission {
   approvedHours    Float?         @map("approved_hours")
   hackatimeHours   Float?         @map("hackatime_hours")
   hoursJustification String?      @map("hours_justification") @db.VarChar(500)
+  adminComment     String?        @map("admin_comment") @db.VarChar(1000)
   approvalStatus   ApprovalStatus @default(pending) @map("approval_status")
   reviewedBy       String?        @map("reviewed_by")
   reviewedAt       DateTime?      @map("reviewed_at")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
   project          Project        @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+  auditLogs        SubmissionAuditLog[]
 
   @@index([projectId])
   @@map("submissions")
+}
+
+model SubmissionAuditLog {
+  id              Int            @id @default(autoincrement())
+  submissionId    Int            @map("submission_id")
+  adminId         Int            @map("admin_id")
+  action          String         // "review" or "update"
+  newStatus       String?        @map("new_status") // "approved", "rejected", or null for non-status updates
+  approvedHours   Float?         @map("approved_hours")
+  changes         Json?          // snapshot of fields changed
+  createdAt       DateTime       @default(now()) @map("created_at")
+  submission      Submission     @relation(fields: [submissionId], references: [submissionId], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([adminId])
+  @@map("submission_audit_logs")
 }
 
 model UserSession {

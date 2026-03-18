@@ -99,6 +99,9 @@ export class AdminService {
     if (updateSubmissionDto.userFeedback !== undefined) {
       updateData.hoursJustification = updateSubmissionDto.userFeedback;
     }
+    if (updateSubmissionDto.adminComment !== undefined) {
+      updateData.adminComment = updateSubmissionDto.adminComment;
+    }
     if (updateSubmissionDto.approvalStatus !== undefined) {
       updateData.approvalStatus = updateSubmissionDto.approvalStatus;
       updateData.reviewedBy = adminUserId.toString();
@@ -121,6 +124,25 @@ export class AdminService {
             },
           },
         },
+      },
+    });
+
+    // Create audit log entry
+    const isReview = updateSubmissionDto.approvalStatus !== undefined;
+    const auditChanges: Record<string, any> = {};
+    if (updateSubmissionDto.approvedHours !== undefined) auditChanges.approvedHours = updateSubmissionDto.approvedHours;
+    if (updateSubmissionDto.userFeedback !== undefined) auditChanges.userFeedback = updateSubmissionDto.userFeedback;
+    if (updateSubmissionDto.hoursJustification !== undefined) auditChanges.hoursJustification = updateSubmissionDto.hoursJustification;
+    if (updateSubmissionDto.adminComment !== undefined) auditChanges.adminComment = updateSubmissionDto.adminComment;
+
+    await this.prisma.submissionAuditLog.create({
+      data: {
+        submissionId,
+        adminId: adminUserId,
+        action: isReview ? 'review' : 'update',
+        newStatus: updateSubmissionDto.approvalStatus || null,
+        approvedHours: updateSubmissionDto.approvedHours ?? null,
+        changes: auditChanges,
       },
     });
 
@@ -327,6 +349,23 @@ export class AdminService {
               },
             },
           },
+        },
+      },
+    });
+
+    // Create audit log entry for quick approve
+    await this.prisma.submissionAuditLog.create({
+      data: {
+        submissionId,
+        adminId: adminUserId,
+        action: 'review',
+        newStatus: 'approved',
+        approvedHours,
+        changes: {
+          quickApprove: true,
+          approvedHours,
+          hoursJustification: adminHoursJustification,
+          userFeedback: userFeedback || null,
         },
       },
     });
@@ -1129,6 +1168,34 @@ export class AdminService {
       totalApprovedHours: Number(user.total_approved_hours),
       potentialHoursIfApproved: Number(user.potential_hours_if_approved),
       reason: user.reason,
+    }));
+  }
+
+  async getSubmissionAuditLogs(submissionId: number) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+    });
+
+    if (!submission) {
+      throw new NotFoundException('Submission not found');
+    }
+
+    const logs = await this.prisma.submissionAuditLog.findMany({
+      where: { submissionId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Resolve admin user info
+    const adminIds = [...new Set(logs.map(l => l.adminId))];
+    const admins = await this.prisma.user.findMany({
+      where: { userId: { in: adminIds } },
+      select: { userId: true, firstName: true, lastName: true, email: true },
+    });
+    const adminMap = new Map(admins.map(a => [a.userId, a]));
+
+    return logs.map(log => ({
+      ...log,
+      admin: adminMap.get(log.adminId) || null,
     }));
   }
 }
