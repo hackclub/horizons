@@ -7,6 +7,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY backend/package.json ./backend/
 RUN pnpm install --frozen-lockfile --filter backend
 COPY backend/prisma ./backend/prisma
+COPY backend/prisma.config.ts ./backend/prisma.config.ts
 RUN pnpm --filter backend exec prisma generate
 COPY backend/src ./backend/src
 COPY backend/tsconfig*.json ./backend/
@@ -29,7 +30,8 @@ COPY --from=deps /app/backend/node_modules ./node_modules
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/package.json ./package.json
 COPY --from=builder /app/backend/prisma ./prisma
+COPY --from=builder /app/backend/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 3002
 
-CMD ["sh", "-c", "pnpm prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
