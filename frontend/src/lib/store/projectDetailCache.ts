@@ -299,10 +299,15 @@ export function invalidateEditCache(id: string) {
 export function invalidateProjectCaches(id: string) {
 	detailCache.delete(`project-${id}`);
 	editDataCache.delete(`edit-${id}`);
+	submissionStatusMap.update(m => {
+		const { [id]: _, ...rest } = m;
+		return rest;
+	});
 }
 
 // Invalidate all caches (call after significant changes)
 export function invalidateAllProjectCaches() {
 	detailCache.clear();
 	editDataCache.clear();
+	submissionStatusMap.set({});
 }

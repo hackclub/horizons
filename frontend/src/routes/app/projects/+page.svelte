@@ -8,7 +8,7 @@
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { createListNav } from '$lib/nav/wasd.svelte';
 	import { projectsStore, fetchProjects } from '$lib/store/projectCache';
-	import { preloadProjectDetail, submissionStatusMap } from '$lib/store/projectDetailCache';
+	import { fetchProjectDetail, submissionStatusMap } from '$lib/store/projectDetailCache';
 	import type { components } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
 	import BackButton from '$lib/components/BackButton.svelte';
@@ -126,26 +126,23 @@
 		}
 	}
 
-	// Preload selected project details and routes
+	// Preload routes for selected project
 	$effect(() => {
 		if (selectedProject?.projectId) {
-			preloadProjectDetail(String(selectedProject.projectId));
-			// Preload routes for selected project
 			preloadRoute(`/app/projects/${selectedProject.projectId}/edit`);
 			preloadRoute(`/app/projects/${selectedProject.projectId}/ship/presubmit`);
 		}
 	});
 
-	// Preload all projects in background
+	// Fetch all project details (force refresh for up-to-date review statuses)
 	$effect(() => {
 		if (projects.length > 0) {
-			// Stagger preloading to avoid network congestion
 			projects.forEach((project, index) => {
 				setTimeout(() => {
 					if (project.projectId) {
-						preloadProjectDetail(String(project.projectId));
+						fetchProjectDetail(String(project.projectId), true).catch(() => {});
 					}
-				}, index * 200); // 200ms between preloads
+				}, index * 200);
 			});
 		}
 	});
