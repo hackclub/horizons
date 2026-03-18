@@ -27,6 +27,7 @@
         approvalStatus: string;
         approvedHours: number | null;
         hoursJustification: string | null; // User feedback - what user submits with their submission
+        adminComment: string | null;
         description: string | null;
         playableUrl: string | null;
         repoUrl: string | null;
@@ -207,6 +208,7 @@
         userFeedback: submission.hoursJustification ?? "",
         // Hours justification - admin's internal notes for Airtable
         hoursJustification: submission.project.hoursJustification ?? "",
+        adminComment: submission.adminComment ?? "",
         sendEmailNotification: false,
     });
 
@@ -218,6 +220,7 @@
                 approvedHours: string;
                 userFeedback: string;
                 hoursJustification: string;
+                adminComment: string;
                 sendEmailNotification: boolean;
             }
         > = {};
@@ -417,6 +420,80 @@
     let priorityUsersLoaded = $state(false);
     let priorityFilterEnabled = $state(false);
 
+    type TimelineEvent = {
+        type: string;
+        timestamp: string;
+        actor: { userId: number; firstName: string | null; lastName: string | null; email: string } | null;
+        details: Record<string, any>;
+    };
+
+    type ProjectTimeline = {
+        projectId: number;
+        projectTitle: string;
+        user: { userId: number; firstName: string | null; lastName: string | null; email: string };
+        timeline: TimelineEvent[];
+    };
+
+    let timelineByProject = $state<Record<number, ProjectTimeline>>({});
+    let timelineLoading = $state<Record<number, boolean>>({});
+    let timelineOpen = $state<Record<number, boolean>>({});
+
+    async function loadTimeline(projectId: number) {
+        if (timelineByProject[projectId]) {
+            timelineOpen = { ...timelineOpen, [projectId]: !timelineOpen[projectId] };
+            return;
+        }
+        timelineLoading = { ...timelineLoading, [projectId]: true };
+        try {
+            const res = await fetch(`${apiUrl}/api/admin/projects/${projectId}/timeline`, { credentials: "include" });
+            if (res.ok) {
+                const data = await res.json();
+                timelineByProject = { ...timelineByProject, [projectId]: data };
+                timelineOpen = { ...timelineOpen, [projectId]: true };
+            }
+        } catch (e) {
+            console.error("Failed to load timeline", e);
+        } finally {
+            timelineLoading = { ...timelineLoading, [projectId]: false };
+        }
+    }
+
+    function timelineEventLabel(type: string): string {
+        switch (type) {
+            case "project_created": return "Project Created";
+            case "submission": return "Submitted";
+            case "resubmission": return "Resubmitted";
+            case "project_updated": return "Project Updated";
+            case "admin_review": return "Admin Review";
+            case "admin_update": return "Admin Update";
+            default: return type;
+        }
+    }
+
+    function timelineEventColor(type: string): string {
+        switch (type) {
+            case "project_created": return "border-blue-500 bg-blue-500/10";
+            case "submission": return "border-green-500 bg-green-500/10";
+            case "resubmission": return "border-yellow-500 bg-yellow-500/10";
+            case "project_updated": return "border-cyan-500 bg-cyan-500/10";
+            case "admin_review": return "border-purple-500 bg-purple-500/10";
+            case "admin_update": return "border-orange-500 bg-orange-500/10";
+            default: return "border-gray-500 bg-gray-500/10";
+        }
+    }
+
+    function timelineDotColor(type: string): string {
+        switch (type) {
+            case "project_created": return "bg-blue-500";
+            case "submission": return "bg-green-500";
+            case "resubmission": return "bg-yellow-500";
+            case "project_updated": return "bg-cyan-500";
+            case "admin_review": return "bg-purple-500";
+            case "admin_update": return "bg-orange-500";
+            default: return "bg-gray-500";
+        }
+    }
+
     const filteredTransactions = $derived(() => {
         let transactions = shopTransactions;
 
@@ -509,6 +586,7 @@
                 approvedHours: string;
                 userFeedback: string;
                 hoursJustification: string;
+                adminComment: string;
                 sendEmailNotification: boolean;
             }
         >
@@ -1219,6 +1297,8 @@
                 draft.hoursJustification === ""
                     ? null
                     : draft.hoursJustification,
+            adminComment:
+                draft.adminComment === "" ? null : draft.adminComment,
             sendEmail: shouldSendEmail,
         };
 
@@ -1248,6 +1328,12 @@
                 ...submissionSuccess,
                 [submissionId]: "Submission updated",
             };
+            // Invalidate timeline cache for the project
+            const sub = submissions.find(s => s.submissionId === submissionId);
+            if (sub) {
+                const { [sub.project.projectId]: _, ...rest } = timelineByProject;
+                timelineByProject = rest;
+            }
             if (activeTab === "submissions") {
                 await loadSubmissions();
             }
@@ -1323,6 +1409,10 @@
                 [submission.submissionId]:
                     "Submission quick approved and synced to Airtable",
             };
+
+            // Invalidate timeline cache for the project
+            const { [submission.project.projectId]: _, ...restTimeline } = timelineByProject;
+            timelineByProject = restTimeline;
 
             const currentSubmissionId = submission.submissionId;
             if (activeTab === "submissions") {
@@ -3235,6 +3325,23 @@
                                             </div>
                                         {/if}
 
+                                        {#if selectedSubmission.adminComment}
+                                            <div
+                                                class="space-y-2 bg-orange-950/30 border border-orange-800 rounded-lg p-4"
+                                            >
+                                                <h4
+                                                    class="text-sm font-semibold uppercase tracking-wide text-orange-300"
+                                                >
+                                                    Admin Comment
+                                                </h4>
+                                                <p
+                                                    class="text-sm text-gray-300 break-words"
+                                                >
+                                                    {selectedSubmission.adminComment}
+                                                </p>
+                                            </div>
+                                        {/if}
+
                                         <div class="flex flex-wrap gap-2">
                                             <h4
                                                 class="text-sm font-semibold uppercase tracking-wide text-gray-400 w-full"
@@ -3426,6 +3533,25 @@
                                                 }
                                             ></textarea>
                                         </div>
+                                        <div class="space-y-2">
+                                            <label
+                                                class="text-sm font-medium text-gray-300"
+                                                for="submission-{selectedSubmission.submissionId}-admin-comment"
+                                                >Admin Comment (internal, logged in timeline)</label
+                                            >
+                                            <textarea
+                                                id="submission-{selectedSubmission.submissionId}-admin-comment"
+                                                class="w-full min-w-0 rounded-lg border border-orange-600 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-y"
+                                                rows="2"
+                                                placeholder="Internal comment (visible to admins only)..."
+                                                bind:value={
+                                                    submissionDrafts[
+                                                        selectedSubmission
+                                                            .submissionId
+                                                    ].adminComment
+                                                }
+                                            ></textarea>
+                                        </div>
                                     </div>
 
                                     <div class="flex items-center gap-3 py-3">
@@ -3531,6 +3657,107 @@
                                             {/if}
                                         </div>
                                     </div>
+                                </div>
+
+                                <!-- Timeline Section -->
+                                <div class="border-t border-gray-700 pt-4">
+                                    <button
+                                        class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-400 hover:text-gray-200 transition-colors"
+                                        onclick={() => loadTimeline(selectedSubmission.project.projectId)}
+                                    >
+                                        {#if timelineLoading[selectedSubmission.project.projectId]}
+                                            <span class="animate-spin">&#8635;</span> Loading Timeline...
+                                        {:else}
+                                            <span>{timelineOpen[selectedSubmission.project.projectId] ? '▼' : '▶'}</span>
+                                            Project Timeline
+                                        {/if}
+                                    </button>
+
+                                    {#if timelineOpen[selectedSubmission.project.projectId] && timelineByProject[selectedSubmission.project.projectId]}
+                                        {@const timeline = timelineByProject[selectedSubmission.project.projectId].timeline}
+                                        <div class="mt-4 relative ml-3">
+                                            <!-- Vertical line -->
+                                            <div class="absolute left-1 top-0 bottom-0 w-0.5 bg-gray-700"></div>
+
+                                            <div class="space-y-3">
+                                                {#each timeline as event, i}
+                                                    <div class="relative pl-6">
+                                                        <!-- Dot -->
+                                                        <div class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full {timelineDotColor(event.type)} ring-2 ring-gray-900"></div>
+
+                                                        <div class="rounded-lg border p-3 {timelineEventColor(event.type)}">
+                                                            <div class="flex flex-wrap items-center gap-2 mb-1">
+                                                                <span class="text-xs font-bold uppercase tracking-wide text-gray-200">
+                                                                    {timelineEventLabel(event.type)}
+                                                                </span>
+                                                                <span class="text-xs text-gray-400">
+                                                                    {formatDate(event.timestamp)}
+                                                                </span>
+                                                                {#if event.actor}
+                                                                    <span class="text-xs text-gray-400">
+                                                                        by {event.actor.firstName ?? ''} {event.actor.lastName ?? ''} ({event.actor.email})
+                                                                    </span>
+                                                                {/if}
+                                                            </div>
+
+                                                            {#if event.type === 'admin_review' && event.details.newStatus}
+                                                                <div class="flex items-center gap-2 text-xs">
+                                                                    {#if event.details.changes?.previousStatus}
+                                                                        <span class="px-1.5 py-0.5 rounded {event.details.changes.previousStatus === 'approved' ? 'bg-green-500/20 text-green-300' : event.details.changes.previousStatus === 'rejected' ? 'bg-red-500/20 text-red-300' : 'bg-yellow-500/20 text-yellow-300'}">
+                                                                            {event.details.changes.previousStatus}
+                                                                        </span>
+                                                                        <span class="text-gray-500">&rarr;</span>
+                                                                    {/if}
+                                                                    <span class="px-1.5 py-0.5 rounded {event.details.newStatus === 'approved' ? 'bg-green-500/20 text-green-300' : event.details.newStatus === 'rejected' ? 'bg-red-500/20 text-red-300' : 'bg-yellow-500/20 text-yellow-300'}">
+                                                                        {event.details.newStatus}
+                                                                    </span>
+                                                                    {#if event.details.approvedHours != null}
+                                                                        <span class="text-gray-400">({event.details.approvedHours}h)</span>
+                                                                    {/if}
+                                                                    {#if event.details.changes?.quickApprove}
+                                                                        <span class="px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-600 text-[10px]">Quick Approve</span>
+                                                                    {/if}
+                                                                </div>
+                                                            {/if}
+
+                                                            {#if event.type === 'admin_update' && event.details.changes}
+                                                                <div class="text-xs text-gray-300 space-y-0.5">
+                                                                    {#if event.details.changes.adminComment !== undefined}
+                                                                        <p>Comment: <span class="text-gray-100">"{event.details.changes.adminComment}"</span></p>
+                                                                    {/if}
+                                                                    {#if event.details.changes.approvedHours !== undefined}
+                                                                        <p>Approved hours set to <span class="font-semibold text-gray-100">{event.details.changes.approvedHours}</span></p>
+                                                                    {/if}
+                                                                    {#if event.details.changes.userFeedback !== undefined}
+                                                                        <p>User feedback updated</p>
+                                                                    {/if}
+                                                                    {#if event.details.changes.hoursJustification !== undefined}
+                                                                        <p>Hours justification updated</p>
+                                                                    {/if}
+                                                                </div>
+                                                            {/if}
+
+                                                            {#if event.details.changes?.adminComment !== undefined && event.type === 'admin_review'}
+                                                                <p class="text-xs text-gray-300 mt-1">Comment: <span class="text-gray-100">"{event.details.changes.adminComment}"</span></p>
+                                                            {/if}
+
+                                                            {#if event.type === 'project_updated' && event.details.changedFields}
+                                                                <div class="text-xs text-gray-300 space-y-0.5">
+                                                                    {#each Object.entries(event.details.changedFields) as [field, change]}
+                                                                        <p><span class="text-gray-400">{field}:</span> changed</p>
+                                                                    {/each}
+                                                                </div>
+                                                            {/if}
+
+                                                            {#if (event.type === 'submission' || event.type === 'resubmission') && event.details.hackatimeHours != null}
+                                                                <p class="text-xs text-gray-400">Hackatime hours at submission: <span class="text-gray-200 font-semibold">{event.details.hackatimeHours}</span></p>
+                                                            {/if}
+                                                        </div>
+                                                    </div>
+                                                {/each}
+                                            </div>
+                                        </div>
+                                    {/if}
                                 </div>
                             </div>
                         {/each}
