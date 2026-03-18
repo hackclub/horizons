@@ -56,6 +56,13 @@ export class AdminController {
     return this.adminService.unlockProject(id, req.user.userId);
   }
 
+  @Get('projects/:id/timeline')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  async getProjectTimeline(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getProjectTimeline(id);
+  }
+
   @Get('projects')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
