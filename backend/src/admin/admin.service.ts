@@ -1243,12 +1243,19 @@ export class AdminService {
       },
     });
 
-    // Resolve all admin IDs from audit logs upfront
+    // Resolve all admin IDs from audit logs + reviewedBy fields upfront
     const allAuditLogs = project.submissions.flatMap(s => s.auditLogs);
-    const adminIds = [...new Set(allAuditLogs.map(l => l.adminId))];
-    const admins = adminIds.length > 0
+    const adminIds = new Set(allAuditLogs.map(l => l.adminId));
+    for (const sub of project.submissions) {
+      if (sub.reviewedBy) {
+        const parsed = parseInt(sub.reviewedBy);
+        if (!isNaN(parsed)) adminIds.add(parsed);
+      }
+    }
+    const adminIdArray = [...adminIds];
+    const admins = adminIdArray.length > 0
       ? await this.prisma.user.findMany({
-          where: { userId: { in: adminIds } },
+          where: { userId: { in: adminIdArray } },
           select: { userId: true, firstName: true, lastName: true, email: true },
         })
       : [];
@@ -1308,6 +1315,24 @@ export class AdminService {
             newStatus: log.newStatus,
             approvedHours: log.approvedHours,
             changes: log.changes,
+          },
+        });
+      }
+
+      // Fallback: if submission was reviewed but has no audit log review entries,
+      // synthesize one from the submission's own reviewedBy/reviewedAt fields
+      const hasAuditReview = submission.auditLogs.some(l => l.action === 'review');
+      if (!hasAuditReview && submission.reviewedBy && submission.reviewedAt) {
+        const reviewerAdminId = parseInt(submission.reviewedBy);
+        events.push({
+          type: 'admin_review',
+          timestamp: submission.reviewedAt,
+          actor: !isNaN(reviewerAdminId) ? (adminMap.get(reviewerAdminId) || null) : null,
+          details: {
+            submissionId: submission.submissionId,
+            newStatus: submission.approvalStatus,
+            approvedHours: submission.approvedHours,
+            legacy: true,
           },
         });
       }
