@@ -4,7 +4,10 @@
 	import SlideOut from '$lib/components/anim/SlideOut.svelte';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { preloadProjects } from '$lib/store/projectCache';
+	import { requireAuth } from '$lib/auth';
 	import { onMount } from 'svelte';
+
+	let authed = $state(false);
 
 	let windowWidth = $state(0);
 	let isMobile = $derived(windowWidth > 0 && windowWidth < 768);
@@ -14,7 +17,11 @@
 	let disableAnimations = false;
 
 	// Preload critical data and assets on app load
-	onMount(() => {
+	onMount(async () => {
+		// Check auth — redirect to landing if not logged in
+		const isAuthed = await requireAuth();
+		if (isAuthed) authed = true;
+
 		// Prefetch projects data in background
 		preloadProjects();
 
@@ -47,7 +54,9 @@
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-{#if isMobile}
+{#if !authed}
+	<!-- Waiting for auth check -->
+{:else if isMobile}
 	<div class="fixed inset-0 z-50 bg-[#271c0c] flex flex-col items-center justify-center gap-4 p-8 text-center">
 		<p class="font-cook text-[32px] font-semibold text-[#f3e8d8] leading-tight">THIS SITE ISN'T READY FOR MOBILE YET.</p>
 		<p class="font-bricolage text-[18px] font-semibold text-[#f3e8d8] tracking-wide">We recommend opening this on desktop.</p>
