@@ -22,6 +22,9 @@ const CACHE_DURATION = 3 * 60 * 1000; // 3 minutes
 // In-memory cache for individual projects
 let detailCache: Map<string, ProjectDetailCache> = new Map();
 
+// Map of projectId -> approvalStatus for use in project list
+export const submissionStatusMap: Writable<Record<string, string | null>> = writable({});
+
 export const projectDetailStore: Writable<{
 	project: ProjectResponse | null;
 	submission: any | null;
@@ -116,6 +119,12 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 			loading: false,
 			error: null,
 		});
+
+		// Update submission status map for project list pills
+		submissionStatusMap.update(m => ({
+			...m,
+			[id]: submission?.approvalStatus ?? 'unsubmitted',
+		}));
 
 		return { project, submission, hackatimeInfo };
 	} catch (err) {

@@ -8,7 +8,7 @@
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { createListNav } from '$lib/nav/wasd.svelte';
 	import { projectsStore, fetchProjects } from '$lib/store/projectCache';
-	import { preloadProjectDetail } from '$lib/store/projectDetailCache';
+	import { preloadProjectDetail, submissionStatusMap } from '$lib/store/projectDetailCache';
 	import type { components } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
 	import BackButton from '$lib/components/BackButton.svelte';
@@ -52,6 +52,14 @@
 	let projects = $derived(projectState.projects);
 	let loading = $derived(projectState.loading);
 	let error = $derived(projectState.error);
+
+	let statusMap = $state<Record<string, string | null>>({});
+	let statusUnsub: (() => void) | null = null;
+
+	$effect(() => {
+		statusUnsub = submissionStatusMap.subscribe(m => { statusMap = m; });
+		return () => { statusUnsub?.(); };
+	});
 
 	let scrollOffset = $state(0);
 	let listEl: HTMLDivElement;
@@ -170,6 +178,7 @@
 			{:else}
 				{#each projects as project, i (project.projectId)}
 					{@const selected = i === nav.selectedIndex}
+					{@const status = statusMap[String(project.projectId)] ?? null}
 					<button
 						class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start overflow-hidden relative cursor-pointer text-left outline-none"
 						class:selected
@@ -195,6 +204,15 @@
 
 								<span class="font-bricolage text-2xl font-bold text-black">TO VIEW</span>
 							</div>
+						{/if}
+
+						{#if status}
+							<span
+								class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black z-1"
+								style="background-color: {status === 'approved' ? '#ffa936' : status === 'pending' ? '#facc15' : status === 'rejected' ? '#e05632' : status === 'unsubmitted' ? '#d1d5db' : 'transparent'};"
+							>
+								{status.toUpperCase()}
+							</span>
 						{/if}
 
 					</button>
