@@ -256,8 +256,16 @@
 		}, 600);
 	}
 
+	let hasUrlErrors = $derived(
+		demoUrlStatus === 'error' || codeUrlStatus === 'error' || readmeUrlStatus === 'error'
+	);
+
+	let urlsChecking = $derived(
+		demoUrlStatus === 'checking' || codeUrlStatus === 'checking' || readmeUrlStatus === 'checking'
+	);
+
 	let allFilled = $derived(
-		!!title.trim() && !!description.trim() && !!demoUrl.trim() && !!codeUrl.trim() && !!readmeUrl.trim() && !!mediaUrl && selectedHackatimeNames.size > 0
+		!!title.trim() && !!description.trim() && !!demoUrl.trim() && !!codeUrl.trim() && !!readmeUrl.trim() && !!mediaUrl && selectedHackatimeNames.size > 0 && !hasUrlErrors && !urlsChecking
 	);
 
 	let missingFields = $state<Set<string>>(new Set());
@@ -403,7 +411,17 @@
 			errorMsg = `Required: ${missingLabels.join(', ')}`;
 			return;
 		}
-		
+
+		if (hasUrlErrors) {
+			errorMsg = 'Please fix the URL errors before continuing.';
+			return;
+		}
+
+		if (urlsChecking) {
+			errorMsg = 'Please wait for URL checks to finish.';
+			return;
+		}
+
 		missingFields.clear();
 
 		submitting = true;
@@ -654,6 +672,7 @@
 				onback={() => goto(`/app/projects/${projectId}/ship/presubmit`)}
 				onnext={handleNext}
 				loading={submitting}
+				disabled={hasUrlErrors || urlsChecking}
 				blink={allFilled}
 			/>
 		</FormCard>
