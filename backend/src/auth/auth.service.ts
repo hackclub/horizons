@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { AirtableService } from '../airtable/airtable.service';
 
 import { createHmac } from 'crypto';
 import * as jose from 'jose';
@@ -81,7 +82,10 @@ export class AuthService {
     }
   }
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private airtableService: AirtableService,
+  ) {}
 
   getAuthUrl(email?: string, referralCode?: string, redirectPath?: string): { url: string } {
     const clientId = process.env.HACKCLUB_CLIENT_ID;
@@ -294,6 +298,10 @@ export class AuthService {
           rafflePos,
         },
       });
+
+      this.airtableService.syncUserEvent(email, 'signUp').catch((err) =>
+        console.error('Error syncing signUp event to Airtable:', err),
+      );
 
       return { user: existingUser, isNewUser: true };
     }

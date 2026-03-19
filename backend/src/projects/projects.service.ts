@@ -7,6 +7,7 @@ import { UpdateHackatimeProjectsDto } from './dto/update-hackatime-projects.dto'
 import { RedisService } from '../redis.service';
 import { randomBytes } from 'crypto';
 import { PosthogService } from '../posthog/posthog.service';
+import { AirtableService } from '../airtable/airtable.service';
 
 @Injectable()
 export class ProjectsService {
@@ -14,6 +15,7 @@ export class ProjectsService {
     private prisma: PrismaService,
     private redis: RedisService,
     private posthog: PosthogService,
+    private airtableService: AirtableService,
   ) {}
 
   private excludeAdminFields<T extends { hoursJustification?: any; isFraud?: any }>(obj: T): Omit<T, 'hoursJustification' | 'isFraud'> {
@@ -53,6 +55,7 @@ export class ProjectsService {
           user: {
             select: {
               userId: true,
+              email: true,
               firstName: true,
               lastName: true,
             },
@@ -85,6 +88,10 @@ export class ProjectsService {
             projectId: project.projectId,
           },
         });
+
+        this.airtableService.syncUserEvent(project.user.email, 'firstProjectCreated').catch((err) =>
+          console.error('Error syncing firstProjectCreated event to Airtable:', err),
+        );
       }
 
       return this.excludeAdminFields(project);
@@ -238,6 +245,12 @@ export class ProjectsService {
         isResubmission,
       },
     });
+
+    if (!isResubmission) {
+      this.airtableService.syncUserEvent(project.user.email, 'firstSubmit').catch((err) =>
+        console.error('Error syncing firstSubmit event to Airtable:', err),
+      );
+    }
 
     return submission;
   }
