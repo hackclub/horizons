@@ -15,6 +15,7 @@
 		{ label: 'Linux Playable', value: 'linux_playable' },
 		{ label: 'Web Playable', value: 'web_playable' },
 		{ label: 'Cross-Platform Playable', value: 'cross_platform_playable' },
+		{ label: 'Hardware', value: 'hardware' },
 	];
 
 	const projectId = $derived(page.params.id);
@@ -26,6 +27,7 @@
 	let demoUrl = $state('');
 	let codeUrl = $state('');
 	let readmeUrl = $state('');
+	let journalUrl = $state('');
 	let submitting = $state(false);
 	let errorMsg = $state<string | null>(null);
 	let mediaUrl = $state<string | null>(null);
@@ -35,8 +37,10 @@
 	let selectedHackatimeNames = $state<Set<string>>(new Set());
 	let hackatimeLoading = $state(true);
 
+	let isHardware = $derived(projectType === 'hardware');
+
 	let allFilled = $derived(
-		!!title.trim() && !!description.trim() && !!demoUrl.trim() && !!codeUrl.trim() && !!readmeUrl.trim() && !!mediaUrl && selectedHackatimeNames.size > 0
+		!!title.trim() && !!description.trim() && !!demoUrl.trim() && !!codeUrl.trim() && !!readmeUrl.trim() && !!mediaUrl && selectedHackatimeNames.size > 0 && (!isHardware || !!journalUrl.trim())
 	);
 
 	let missingFields = $state<Set<string>>(new Set());
@@ -74,6 +78,11 @@
 				next.delete('readme-url');
 			}
 		}
+		if (fieldId === 'journal-url' && journalUrl.trim()) {
+			if (isValidUrl(journalUrl.trim())) {
+				next.delete('journal-url');
+			}
+		}
 		if (fieldId === 'media' && mediaUrl) {
 			next.delete('media');
 		}
@@ -103,6 +112,7 @@
 			demoUrl = p.playableUrl ?? '';
 			codeUrl = p.repoUrl ?? '';
 			readmeUrl = p.readmeUrl ?? '';
+			journalUrl = p.journalUrl ?? '';
 			mediaUrl = p.screenshotUrl ?? null;
 			mediaPreview = p.screenshotUrl ?? null;
 		} else {
@@ -165,6 +175,10 @@
 			missing.add('readme-url');
 			missingLabels.push('README URL');
 		}
+		if (projectType === 'hardware' && !journalUrl.trim()) {
+			missing.add('journal-url');
+			missingLabels.push('Journal URL');
+		}
 		if (!mediaUrl) {
 			missing.add('media');
 			missingLabels.push('Screenshot/Video');
@@ -194,6 +208,7 @@
 					playableUrl: demoUrl.trim(),
 					repoUrl: codeUrl.trim(),
 					readmeUrl: readmeUrl.trim(),
+					...(projectType === 'hardware' && journalUrl.trim() ? { journalUrl: journalUrl.trim() } : {}),
 					screenshotUrl: mediaUrl!,
 				},
 			}),
@@ -293,11 +308,11 @@
 						{/if}
 					</div>
 					<div class={missingFields.has('readme-url') ? 'error-wrapper' : ''}>
-						<FormField 
-							label="README URL" 
-							id="readme-url" 
-							type="url" 
-							placeholder="https://username.itch.io/mygame" 
+						<FormField
+							label="README URL"
+							id="readme-url"
+							type="url"
+							placeholder="https://username.itch.io/mygame"
 							bind:value={readmeUrl}
 							onblur={() => handleFieldBlur('readme-url')}
 						/>
@@ -305,6 +320,21 @@
 							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
 						{/if}
 					</div>
+					{#if isHardware}
+						<div class={missingFields.has('journal-url') ? 'error-wrapper' : ''}>
+							<FormField
+								label="JOURNAL.md URL"
+								id="journal-url"
+								type="url"
+								placeholder="https://github.com/username/repo/blob/main/JOURNAL.md"
+								bind:value={journalUrl}
+								onblur={() => handleFieldBlur('journal-url')}
+							/>
+							{#if missingFields.has('journal-url')}
+								<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
+							{/if}
+						</div>
+					{/if}
 					<div class={missingFields.has('hackatime') ? 'error-wrapper' : ''}>
 						<HackatimeSelect
 							projects={allHackatimeProjects}

@@ -292,6 +292,9 @@ export class ProjectsService {
     if (updateProjectDto.readmeUrl !== undefined) {
       updateData.readmeUrl = updateProjectDto.readmeUrl;
     }
+    if (updateProjectDto.journalUrl !== undefined) {
+      updateData.journalUrl = updateProjectDto.journalUrl;
+    }
     if (updateProjectDto.screenshotUrl !== undefined) {
       updateData.screenshotUrl = updateProjectDto.screenshotUrl;
     }

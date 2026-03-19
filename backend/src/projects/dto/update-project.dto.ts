@@ -31,6 +31,11 @@ export class UpdateProjectDto {
   @IsOptional()
   readmeUrl?: string;
 
+  @ApiPropertyOptional({ description: 'Journal URL (for hardware projects)' })
+  @IsUrl()
+  @IsOptional()
+  journalUrl?: string;
+
   @ApiPropertyOptional({ description: 'Screenshot URL' })
   @IsUrl()
   @IsOptional()
