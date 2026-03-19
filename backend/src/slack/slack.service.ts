@@ -200,9 +200,8 @@ export class SlackService {
       return { success: false, error: 'User has no linked Slack account' };
     }
 
-    const projectUrl = `${process.env.FRONTEND_URL || 'https://midnight.hackclub.com'}/app/projects/${data.projectId}`;
+    const projectUrl = `${process.env.FRONTEND_URL || 'https://horizons.hackclub.com'}/app/projects/${data.projectId}`;
     const statusEmoji = data.approved ? '✅' : '❌';
-    const statusText = data.approved ? 'approved' : 'needs changes';
 
     const blocks: SlackMessageBlock[] = [
       {
@@ -217,7 +216,9 @@ export class SlackService {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `Your submission for *${data.projectTitle}* has been ${statusText}.`,
+          text: data.approved
+            ? `Your submission for *${data.projectTitle}* has been approved.`
+            : `Your submission for *${data.projectTitle}* needs changes.`,
         },
       },
     ];
@@ -237,7 +238,7 @@ export class SlackService {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*Feedback:*\n${data.feedback}`,
+          text: `*Feedback:*\n>${data.feedback.split('\n').join('\n>')}`,
         },
       });
     }
@@ -250,7 +251,9 @@ export class SlackService {
       },
     });
 
-    const fallbackText = `Your submission for "${data.projectTitle}" has been ${statusText}.${data.feedback ? ` Feedback: ${data.feedback}` : ''}`;
+    const fallbackText = data.approved
+      ? `Your submission for "${data.projectTitle}" has been approved.${data.feedback ? ` Feedback: ${data.feedback}` : ''}`
+      : `Your submission for "${data.projectTitle}" needs changes.${data.feedback ? ` Feedback: ${data.feedback}` : ''}`;
 
     return this.sendDirectMessage(user.slackUserId, fallbackText, blocks);
   }
