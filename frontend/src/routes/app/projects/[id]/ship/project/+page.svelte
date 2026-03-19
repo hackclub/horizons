@@ -153,6 +153,11 @@
 			if (data?.ok) {
 				codeUrlStatus = 'ok';
 				codeUrlError = null;
+				if (codeUrlType === 'github' && !readmeUrl.trim()) {
+					const repoBase = trimmed.replace(/\/$/, '');
+					readmeUrl = `${repoBase}/blob/main/README.md`;
+					checkReadmeUrl(readmeUrl);
+				}
 			} else {
 				codeUrlStatus = 'error';
 				codeUrlError = data?.error || `HTTP ${data?.status}`;
@@ -188,6 +193,65 @@
 				codeUrlType = null;
 			} else {
 				checkCodeUrl(codeUrl);
+			}
+		}, 600);
+	}
+
+	let readmeUrlStatus = $state<'idle' | 'checking' | 'ok' | 'error'>('idle');
+	let readmeUrlError = $state<string | null>(null);
+
+	let readmeCheckTimeout: ReturnType<typeof setTimeout> | undefined;
+
+	async function checkReadmeUrl(url: string) {
+		const trimmed = url.trim();
+		if (!trimmed || !isValidUrl(trimmed)) {
+			readmeUrlStatus = 'idle';
+			readmeUrlError = null;
+			return;
+		}
+
+		readmeUrlStatus = 'checking';
+		readmeUrlError = null;
+
+		try {
+			const { data } = await api.GET('/api/utils/check-url', {
+				params: { query: { url: trimmed } },
+			});
+
+			if (data?.ok) {
+				readmeUrlStatus = 'ok';
+				readmeUrlError = null;
+			} else {
+				readmeUrlStatus = 'error';
+				readmeUrlError = data?.error || `HTTP ${data?.status}`;
+			}
+		} catch {
+			readmeUrlStatus = 'error';
+			readmeUrlError = "Hmm, something's not right. We couldn't reach your README — please make sure the URL is correct and reachable.";
+		}
+	}
+
+	function handleReadmeUrlBlur() {
+		handleFieldBlur('readme-url');
+		clearTimeout(readmeCheckTimeout);
+		const url = readmeUrl.trim();
+		if (url && !isValidUrl(url)) {
+			readmeUrlStatus = 'error';
+			readmeUrlError = 'Invalid URL format';
+		} else {
+			checkReadmeUrl(readmeUrl);
+		}
+	}
+
+	function handleReadmeUrlInput() {
+		clearTimeout(readmeCheckTimeout);
+		readmeCheckTimeout = setTimeout(() => {
+			const url = readmeUrl.trim();
+			if (url && !isValidUrl(url)) {
+				readmeUrlStatus = 'error';
+				readmeUrlError = 'Invalid URL format';
+			} else {
+				checkReadmeUrl(readmeUrl);
 			}
 		}, 600);
 	}
@@ -264,6 +328,7 @@
 			mediaPreview = p.screenshotUrl ?? null;
 			if (demoUrl) checkDemoUrl(demoUrl);
 			if (codeUrl) checkCodeUrl(codeUrl);
+			if (readmeUrl) checkReadmeUrl(readmeUrl);
 		} else {
 			errorMsg = 'Failed to load project';
 		}
@@ -522,14 +587,47 @@
 						{/if}
 					</div>
 					<div class={missingFields.has('readme-url') ? 'error-wrapper' : ''}>
-						<FormField 
-							label="README URL" 
-							id="readme-url" 
-							type="url" 
-							placeholder="https://username.itch.io/mygame" 
+						<FormField
+							label="README URL"
+							id="readme-url"
+							type="url"
+							placeholder="https://github.com/username/myproject/blob/main/README.md"
 							bind:value={readmeUrl}
-							onblur={() => handleFieldBlur('readme-url')}
-						/>
+							onblur={handleReadmeUrlBlur}
+							oninput={handleReadmeUrlInput}
+						>
+							{#snippet children()}
+								<div class="relative w-full">
+									<input
+										id="readme-url"
+										class="border-2 border-black rounded-lg pl-4 pr-10 py-2 shadow-[2px_2px_0px_0px_black] font-bricolage text-base font-semibold w-full outline-none appearance-none text-black bg-[#f3e8d8] placeholder:text-black/50"
+										type="url"
+										placeholder="https://github.com/username/myproject/blob/main/README.md"
+										bind:value={readmeUrl}
+										onblur={handleReadmeUrlBlur}
+										oninput={handleReadmeUrlInput}
+									/>
+									<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+										{#if readmeUrlStatus === 'checking'}
+											<div class="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+										{:else if readmeUrlStatus === 'ok'}
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-green-600">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+										{:else if readmeUrlStatus === 'error'}
+											<span title={readmeUrlError || 'URL unreachable'}>
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-amber-500">
+													<path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+												</svg>
+											</span>
+										{/if}
+									</div>
+								</div>
+								{#if readmeUrlStatus === 'error' && readmeUrlError}
+									<p class="text-amber-600 text-xs font-semibold mt-1 m-0">{readmeUrlError}</p>
+								{/if}
+							{/snippet}
+						</FormField>
 						{#if missingFields.has('readme-url')}
 							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
 						{/if}
