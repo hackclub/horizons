@@ -1,7 +1,9 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class AirtableService {
+  constructor(private prisma: PrismaService) {}
   private readonly AIRTABLE_API_KEY = process.env.YSWS_AIRTABLE_API_KEY;
   private readonly YSWS_BASE_ID = process.env.YSWS_BASE_ID;
   private readonly APPROVED_PROJECTS_TABLE_ID = process.env.YSWS_APPROVED_PROJECTS_TABLE_ID;
@@ -207,28 +209,29 @@ export class AirtableService {
     const now = dateOverride || new Date().toISOString().split('T')[0];
 
     try {
+      let recordId: string | null = null;
       const existingRecord = await this.findUserRecord(email);
 
       if (existingRecord) {
-        if (existingRecord.fields[fieldName]) {
-          return;
-        }
+        recordId = existingRecord.id;
 
-        await fetch(
-          `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}/${existingRecord.id}`,
-          {
-            method: 'PATCH',
-            headers: {
-              Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
-              'Content-Type': 'application/json',
+        if (!existingRecord.fields[fieldName]) {
+          await fetch(
+            `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}/${existingRecord.id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                fields: { [fieldName]: now },
+              }),
             },
-            body: JSON.stringify({
-              fields: { [fieldName]: now },
-            }),
-          },
-        );
+          );
+        }
       } else {
-        await fetch(
+        const response = await fetch(
           `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}`,
           {
             method: 'POST',
@@ -248,6 +251,18 @@ export class AirtableService {
             }),
           },
         );
+
+        if (response.ok) {
+          const result = await response.json();
+          recordId = result.records?.[0]?.id ?? null;
+        }
+      }
+
+      if (recordId) {
+        await this.prisma.user.update({
+          where: { email },
+          data: { airtableRecId: recordId },
+        });
       }
     } catch (error) {
       console.error(`Error syncing user event '${event}' to Airtable:`, error);
