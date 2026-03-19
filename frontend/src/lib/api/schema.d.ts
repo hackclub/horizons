@@ -237,40 +237,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/projects/approved": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all approved projects */
-        get: operations["ProjectsController_getApprovedProjects"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/projects/leaderboard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get leaderboard */
-        get: operations["ProjectsController_getLeaderboard"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/projects/auth": {
         parameters: {
             query?: never;
@@ -376,6 +342,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/submissions/{id}/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getSubmissionAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/submissions/{id}": {
         parameters: {
             query?: never;
@@ -417,6 +399,22 @@ export interface paths {
         };
         get?: never;
         put: operations["AdminController_unlockProject"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/projects/{id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getProjectTimeline"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1138,6 +1136,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/utils/check-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check if a URL is reachable */
+        get: operations["UrlCheckController_checkUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1176,36 +1191,6 @@ export interface components {
         RafflePosResponse: {
             rafflePos: string | null;
         };
-        ProjectResponse: {
-            /** @description Project ID */
-            projectId: number;
-            /** @description Project title */
-            projectTitle: string;
-            /** @description Project description */
-            description?: string;
-            /** @description Screenshot URL */
-            screenshotUrl?: string;
-            /** @description Playable URL */
-            playableUrl?: string;
-            /** @description Repository URL */
-            repoUrl?: string;
-            /** @description Approved hours */
-            approvedHours?: number;
-            /** @description Current tracked Hackatime hours */
-            nowHackatimeHours?: number;
-            /** @description Creation timestamp */
-            createdAt: string;
-            /** @description Last update timestamp */
-            updatedAt: string;
-        };
-        LeaderboardEntry: {
-            /** @description User first name */
-            firstName: string;
-            /** @description Total Hackatime hours */
-            hours: number;
-            /** @description Total approved hours */
-            approved: number;
-        };
         CreateProjectDto: {
             /** @description Project title */
             projectTitle: string;
@@ -1220,6 +1205,8 @@ export interface components {
             playableUrl?: string;
             /** @description Repository URL */
             repoUrl?: string;
+            /** @description README URL */
+            readmeUrl?: string;
             /** @description Screenshot URL */
             screenshotUrl?: string;
             /** @description Linked Hackatime project names */
@@ -1250,6 +1237,8 @@ export interface components {
             playableUrl?: string;
             /** @description Repository URL */
             repoUrl?: string;
+            /** @description README URL */
+            readmeUrl?: string;
             /** @description Approved hours */
             approvedHours?: number;
             /** @description Hackatime hours */
@@ -1288,6 +1277,8 @@ export interface components {
              * @description Repository URL
              */
             repoUrl?: string;
+            /** @description README URL */
+            readmeUrl?: string;
             /**
              * Format: uri
              * @description Screenshot URL
@@ -1312,8 +1303,14 @@ export interface components {
             projectId: number;
             /** @description Linked Hackatime project names */
             hackatimeProjects?: string[];
-            /** @description Total Hackatime hours */
-            hackatimeHours?: number;
+            /** @description Live Hackatime hours calculated on request */
+            currentHackatimeHours?: number;
+            /** @description Hours per linked Hackatime project, calculated live */
+            hackatimeProjectHours?: {
+                [key: string]: number;
+            };
+            /** @description Hours tallied at the time of the last submission; null if never submitted */
+            lastSubmittedHours?: number | null;
         };
         DeleteProjectResponse: {
             /** @description Whether the project was deleted */
@@ -1406,6 +1403,16 @@ export interface components {
             hackatimeAccountId?: string | null;
             /** @description Whether the stored access token is valid */
             tokenValid: boolean;
+        };
+        UrlCheckResponse: {
+            /** @description Whether the URL is reachable */
+            ok: boolean;
+            /** @description HTTP status code (0 if request failed) */
+            status: number;
+            /** @description Error message if URL is not reachable */
+            error?: string;
+            /** @description Favicon URL extracted from the page */
+            favicon?: string;
         };
     };
     responses: never;
@@ -1718,49 +1725,6 @@ export interface operations {
             };
         };
     };
-    ProjectsController_getApprovedProjects: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of approved projects */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProjectResponse"][];
-                };
-            };
-        };
-    };
-    ProjectsController_getLeaderboard: {
-        parameters: {
-            query?: {
-                /** @description Sort leaderboard by hours or approved hours */
-                sortBy?: "hours" | "approved";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Top 10 leaderboard entries */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LeaderboardEntry"][];
-                };
-            };
-        };
-    };
     ProjectsAuthController_getUserProjects: {
         parameters: {
             query?: never;
@@ -2000,6 +1964,25 @@ export interface operations {
             };
         };
     };
+    AdminController_getSubmissionAuditLogs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminController_updateSubmission: {
         parameters: {
             query?: never;
@@ -2064,6 +2047,25 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
+            };
+        };
+    };
+    AdminController_getProjectTimeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3004,6 +3006,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HackatimeAccountStatusResponse"];
+                };
+            };
+        };
+    };
+    UrlCheckController_checkUrl: {
+        parameters: {
+            query: {
+                /** @description URL to check */
+                url: string;
+                /** @description Check type: "url" (default) or "repo" (verify git repository) */
+                type?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description URL check result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UrlCheckResponse"];
                 };
             };
         };
