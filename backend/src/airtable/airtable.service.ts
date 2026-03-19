@@ -194,7 +194,7 @@ export class AirtableService {
     return record ? { id: record.id, fields: record.fields } : null;
   }
 
-  async syncUserEvent(email: string, event: 'signUp' | 'firstProjectCreated' | 'firstSubmit', dateOverride?: string): Promise<void> {
+  async syncUserEvent(email: string, userId: number, event: 'signUp' | 'firstProjectCreated' | 'firstSubmit', dateOverride?: string): Promise<void> {
     if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
       return;
     }
@@ -215,7 +215,15 @@ export class AirtableService {
       if (existingRecord) {
         recordId = existingRecord.id;
 
+        const fieldsToUpdate: Record<string, any> = {};
         if (!existingRecord.fields[fieldName]) {
+          fieldsToUpdate[fieldName] = now;
+        }
+        if (!existingRecord.fields['Horizons User ID']) {
+          fieldsToUpdate['Horizons User ID'] = userId;
+        }
+
+        if (Object.keys(fieldsToUpdate).length > 0) {
           await fetch(
             `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}/${existingRecord.id}`,
             {
@@ -225,7 +233,7 @@ export class AirtableService {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                fields: { [fieldName]: now },
+                fields: fieldsToUpdate,
               }),
             },
           );
@@ -244,6 +252,7 @@ export class AirtableService {
                 {
                   fields: {
                     Email: email,
+                    'Horizons User ID': userId,
                     [fieldName]: now,
                   },
                 },

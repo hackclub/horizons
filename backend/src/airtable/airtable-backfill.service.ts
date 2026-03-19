@@ -26,6 +26,7 @@ export class AirtableBackfillService implements OnModuleInit {
   private async run() {
     const users = await this.prisma.user.findMany({
       select: {
+        userId: true,
         email: true,
         createdAt: true,
         projects: {
@@ -50,11 +51,11 @@ export class AirtableBackfillService implements OnModuleInit {
 
     for (const user of users) {
       try {
-        await this.airtableService.syncUserEvent(user.email, 'signUp', this.toDateString(user.createdAt));
+        await this.airtableService.syncUserEvent(user.email, user.userId, 'signUp', this.toDateString(user.createdAt));
 
         const firstProject = user.projects[0];
         if (firstProject) {
-          await this.airtableService.syncUserEvent(user.email, 'firstProjectCreated', this.toDateString(firstProject.createdAt));
+          await this.airtableService.syncUserEvent(user.email, user.userId, 'firstProjectCreated', this.toDateString(firstProject.createdAt));
         }
 
         let earliestSubmission: Date | null = null;
@@ -67,7 +68,7 @@ export class AirtableBackfillService implements OnModuleInit {
           }
         }
         if (earliestSubmission) {
-          await this.airtableService.syncUserEvent(user.email, 'firstSubmit', this.toDateString(earliestSubmission));
+          await this.airtableService.syncUserEvent(user.email, user.userId, 'firstSubmit', this.toDateString(earliestSubmission));
         }
 
         synced++;

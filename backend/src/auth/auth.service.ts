@@ -299,7 +299,7 @@ export class AuthService {
         },
       });
 
-      this.airtableService.syncUserEvent(email, 'signUp').catch((err) =>
+      this.airtableService.syncUserEvent(email, existingUser.userId, 'signUp').catch((err) =>
         console.error('Error syncing signUp event to Airtable:', err),
       );
 

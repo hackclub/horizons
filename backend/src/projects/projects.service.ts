@@ -89,7 +89,7 @@ export class ProjectsService {
           },
         });
 
-        this.airtableService.syncUserEvent(project.user.email, 'firstProjectCreated').catch((err) =>
+        this.airtableService.syncUserEvent(project.user.email, userId, 'firstProjectCreated').catch((err) =>
           console.error('Error syncing firstProjectCreated event to Airtable:', err),
         );
       }
@@ -247,7 +247,7 @@ export class ProjectsService {
     });
 
     if (!isResubmission) {
-      this.airtableService.syncUserEvent(project.user.email, 'firstSubmit').catch((err) =>
+      this.airtableService.syncUserEvent(project.user.email, userId, 'firstSubmit').catch((err) =>
         console.error('Error syncing firstSubmit event to Airtable:', err),
       );
     }
