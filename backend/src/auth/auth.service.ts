@@ -189,7 +189,7 @@ export class AuthService {
 
     const { user, isNewUser } = await this.findOrCreateUser(claims, referralCode);
 
-    if (!isNewUser && claims.ysws_eligible === false) {
+    if (claims.ysws_eligible === false) {
       throw new ForbiddenException('You are not eligible for YSWS.');
     }
 
