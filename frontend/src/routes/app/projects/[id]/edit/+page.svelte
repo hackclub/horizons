@@ -64,9 +64,11 @@
 	let mediaPreview = $state<string | null>(null);
 	let selectedHackatimeNames = $state<Set<string>>(new Set());
 
-	// Populate form from cached data
+	// Populate form from cached data (only once)
+	let formPopulated = false;
 	$effect(() => {
-		if (editState.project) {
+		if (editState.project && !formPopulated) {
+			formPopulated = true;
 			const p = editState.project as any;
 			title = p.projectTitle ?? '';
 			projectType = p.projectType ?? 'web_playable';
