@@ -189,8 +189,8 @@ export class AuthService {
 
     const { user, isNewUser } = await this.findOrCreateUser(claims, referralCode);
 
-    if (!isNewUser && this.calculateAge(user.birthday) >= 19) {
-      throw new ForbiddenException('You must be under 19 to sign in.');
+    if (!isNewUser && claims.ysws_eligible === false) {
+      throw new ForbiddenException('You are not eligible for YSWS.');
     }
 
     const session = await this.prisma.userSession.create({
@@ -498,15 +498,5 @@ export class AuthService {
       console.error('Error checking Hackatime account:', error);
       return null;
     }
-  }
-
-  private calculateAge(birthday: Date) {
-    const today = new Date();
-    let age = today.getFullYear() - birthday.getFullYear();
-    const monthDiff = today.getMonth() - birthday.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
-      age -= 1;
-    }
-    return age;
   }
 }
