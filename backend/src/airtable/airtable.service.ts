@@ -1,10 +1,13 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class AirtableService {
+  constructor(private prisma: PrismaService) {}
   private readonly AIRTABLE_API_KEY = process.env.YSWS_AIRTABLE_API_KEY;
   private readonly YSWS_BASE_ID = process.env.YSWS_BASE_ID;
   private readonly APPROVED_PROJECTS_TABLE_ID = process.env.YSWS_APPROVED_PROJECTS_TABLE_ID;
+  private readonly USERS_TABLE_ID = process.env.YSWS_USERS_TABLE_ID;
 
   // async createYSWSSubmission(data: {
   //   user: {
@@ -166,6 +169,114 @@ export class AirtableService {
   //     );
   //   }
   // }
+
+  private async findUserRecord(email: string): Promise<{ id: string; fields: Record<string, any> } | null> {
+    if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
+      return null;
+    }
+
+    const formula = encodeURIComponent(`{Email} = "${email}"`);
+    const response = await fetch(
+      `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}?filterByFormula=${formula}&maxRecords=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const result = await response.json();
+    const record = result.records?.[0];
+    return record ? { id: record.id, fields: record.fields } : null;
+  }
+
+  async syncUserEvent(email: string, userId: number, event: 'signUp' | 'firstProjectCreated' | 'firstSubmit', dateOverride?: string): Promise<void> {
+    if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
+      return;
+    }
+
+    const fieldMap: Record<string, string> = {
+      signUp: 'Loops - horizonsSignUpAt',
+      firstProjectCreated: 'Loops - horizonsFirstProjectCreatedAt',
+      firstSubmit: 'Loops - horizonsFirstSubmitAt',
+    };
+
+    const fieldName = fieldMap[event];
+    const now = dateOverride || new Date().toISOString().split('T')[0];
+
+    try {
+      let recordId: string | null = null;
+      const existingRecord = await this.findUserRecord(email);
+
+      if (existingRecord) {
+        recordId = existingRecord.id;
+
+        const fieldsToUpdate: Record<string, any> = {};
+        if (!existingRecord.fields[fieldName]) {
+          fieldsToUpdate[fieldName] = now;
+        }
+        if (!existingRecord.fields['Horizons User ID']) {
+          fieldsToUpdate['Horizons User ID'] = userId;
+        }
+
+        if (Object.keys(fieldsToUpdate).length > 0) {
+          await fetch(
+            `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}/${existingRecord.id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                fields: fieldsToUpdate,
+              }),
+            },
+          );
+        }
+      } else {
+        const response = await fetch(
+          `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              records: [
+                {
+                  fields: {
+                    Email: email,
+                    'Horizons User ID': userId,
+                    [fieldName]: now,
+                  },
+                },
+              ],
+            }),
+          },
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          recordId = result.records?.[0]?.id ?? null;
+        }
+      }
+
+      if (recordId) {
+        await this.prisma.user.update({
+          where: { email },
+          data: { airtableRecId: recordId },
+        });
+      }
+    } catch (error) {
+      console.error(`Error syncing user event '${event}' to Airtable:`, error);
+    }
+  }
 
   async createApprovedProject(data: {
     user: {

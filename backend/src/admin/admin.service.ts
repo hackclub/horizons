@@ -215,13 +215,6 @@ export class AdminService {
             data: { airtableRecId: airtableResult.recordId },
           });
 
-          // Update user with Airtable record ID if not already set
-          if (!submission.project.user.airtableRecId) {
-            await this.prisma.user.update({
-              where: { userId: submission.project.userId },
-              data: { airtableRecId: airtableResult.recordId },
-            });
-          }
         } catch (error) {
           console.error('Error creating Approved Projects record in Airtable:', error);
         }
@@ -421,13 +414,6 @@ export class AdminService {
         };
 
         const airtableResult = await this.airtableService.createApprovedProject(approvedProjectData);
-
-        if (!submission.project.user.airtableRecId) {
-          await this.prisma.user.update({
-            where: { userId: submission.project.userId },
-            data: { airtableRecId: airtableResult.recordId },
-          });
-        }
 
         await this.prisma.project.update({
           where: { projectId: submission.projectId },

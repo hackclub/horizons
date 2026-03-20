@@ -26,4 +26,6 @@ PUBLIC_API_URL=http://localhost:3000
 
 ## Running locally
 
-Simply run `pnpm i` then `pnpm run dev`. This will install dependencies for both the frontend and backend & run them in parallel.
+Run `pnpm i` to install dependencies then `cd backend && pnpx prisma generate` to generate the prisma client.
+
+Once the dev environment is set up, run `pnpm run dev` and open the site at `localhost:3000`. Enjoy!
