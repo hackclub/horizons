@@ -36,6 +36,11 @@ export class UpdateProjectDto {
   @IsOptional()
   screenshotUrl?: string;
 
+  @ApiPropertyOptional({ description: 'Journal URL (for hardware projects)' })
+  @IsUrl()
+  @IsOptional()
+  journalUrl?: string;
+
   @ApiPropertyOptional({ description: 'Linked Hackatime project names', type: [String] })
   @IsArray()
   @IsOptional()

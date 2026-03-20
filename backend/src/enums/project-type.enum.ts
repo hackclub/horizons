@@ -4,5 +4,6 @@ export enum ProjectType {
   LinuxPlayable = 'linux_playable',
   WebPlayable = 'web_playable',
   CrossPlatformPlayable = 'cross_platform_playable',
+  Hardware = 'hardware',
 }
  

@@ -308,6 +308,9 @@ export class ProjectsService {
     if (updateProjectDto.screenshotUrl !== undefined) {
       updateData.screenshotUrl = updateProjectDto.screenshotUrl;
     }
+    if (updateProjectDto.journalUrl !== undefined) {
+      updateData.journalUrl = updateProjectDto.journalUrl;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return {
