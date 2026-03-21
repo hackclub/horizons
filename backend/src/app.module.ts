@@ -15,6 +15,7 @@ import { GiftCodesModule } from "./gift-codes/gift-codes.module";
 import { SlackModule } from "./slack/slack.module";
 import { HackatimeModule } from "./hackatime/hackatime.module";
 import { UtilsModule } from "./utils/utils.module";
+import { GitHubModule } from "./github/github.module";
 import { AuthGuard } from "./auth/auth.guard";
 import { PrismaService } from "./prisma.service";
 
@@ -38,6 +39,7 @@ import { PrismaService } from "./prisma.service";
     SlackModule,
     HackatimeModule,
     UtilsModule,
+    GitHubModule,
   ],
   providers: [
     PrismaService,
