@@ -281,6 +281,32 @@ model GiftCode {
   @@map("gift_codes")
 }
 
+model ReviewerNote {
+  id         Int      @id @default(autoincrement())
+  targetType String   @map("target_type") // 'project' or 'user'
+  targetId   Int      @map("target_id")
+  reviewerId Int      @map("reviewer_id")
+  content    String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([targetType, targetId, reviewerId])
+  @@index([reviewerId])
+  @@map("reviewer_notes")
+}
+
+model ReviewerChecklist {
+  id           Int      @id @default(autoincrement())
+  submissionId Int      @map("submission_id")
+  reviewerId   Int      @map("reviewer_id")
+  checkedItems Json     @default("[]") @map("checked_items") // array of checked item indices
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([submissionId, reviewerId])
+  @@map("reviewer_checklists")
+}
+
 model GlobalSettings {
   id                    String   @id @default("global")
   submissionsFrozen     Boolean  @default(false) @map("submissions_frozen")

@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horizons Project Review</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #1c1c1c;
+    --surface: #242424;
+    --surface2: #2e2e2e;
+    --border: #3a3a3a;
+    --text: #e0e0e0;
+    --text-dim: #8892a4;
+    --accent: #f5a623;
+    --green: #4caf50;
+    --green-bg: rgba(76,175,80,0.12);
+    --red: #ef5350;
+    --red-bg: rgba(239,83,80,0.12);
+    --blue: #42a5f5;
+    --tag-bg: rgba(245,166,35,0.15);
+    --divider: rgba(255,255,255,0.06);
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .topbar-logo {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--accent);
+  }
+  .topbar-logo span { color: var(--text); font-weight: 400; font-size: 13px; margin-left: 8px; }
+  .topbar-nav { display: flex; gap: 6px; }
+  .topbar-nav button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .topbar-nav button:hover { color: var(--text); border-color: var(--accent); }
+  .project-counter { font-size: 12px; color: var(--text-dim); }
+  .project-counter strong { color: var(--accent); }
+
+  .main {
+    display: grid;
+    grid-template-columns: 300px 1fr 320px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* LEFT */
+  .left {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+  .user-header { padding: 16px; }
+  .user-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+  .user-name { font-size: 18px; font-weight: 700; font-family: 'Space Mono', monospace; }
+  .user-email { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+  .user-email a {
+    color: var(--text-dim);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.15s;
+  }
+  .user-email a:hover { color: var(--accent); }
+  .user-email a svg { width: 12px; height: 12px; }
+  .user-links { display: flex; gap: 8px; margin-bottom: 14px; }
+  .user-links a {
+    display: flex; align-items: center; gap: 5px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  .user-links a:hover { color: var(--accent); border-color: var(--accent); }
+  .user-links a.demo-link {
+    background: rgba(239,83,80,0.15);
+    color: var(--red);
+    border-color: rgba(239,83,80,0.3);
+  }
+  .user-links a.demo-link:hover { background: rgba(239,83,80,0.25); }
+  .user-links a svg { width: 14px; height: 14px; }
+
+  .hours-total { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 2px; }
+  .hours-total svg { width: 14px; height: 14px; color: var(--text-dim); flex-shrink: 0; }
+  .hours-breakdown { padding-left: 22px; margin-bottom: 6px; }
+  .hours-breakdown-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); margin-bottom: 2px; }
+  .hours-input {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    width: 40px;
+    padding: 1px 4px;
+    transition: border-color 0.15s;
+  }
+  .hours-input:hover { border-color: var(--border); }
+  .hours-input:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+  .hours-breakdown-item .hb-project { color: var(--text-dim); }
+
+  .user-meta-line { font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .user-meta-line svg { width: 14px; height: 14px; color: var(--text-dim); flex-shrink: 0; }
+  .age-badge {
+    background: var(--green-bg);
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .section-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+  .inner-divider { border: none; border-top: 1px solid var(--divider); margin: 8px 16px; }
+
+  .section { padding: 14px 16px; }
+  .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  /* NOTES (collapsible, inline save) */
+  .notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+  }
+  .notes-header .section-title { margin: 0; }
+  .notes-toggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  .notes-toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .btn-save-notes {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-save-notes:hover { color: var(--text); border-color: var(--accent); }
+  .notes-saved {
+    font-size: 11px;
+    color: var(--green);
+    opacity: 0;
+    transition: opacity 0.3s;
+    margin-right: 6px;
+  }
+  .notes-saved.show { opacity: 1; }
+  .notes-body {
+    display: none;
+    padding: 0 16px 10px;
+  }
+  .notes-body.open { display: block; }
+  .notes-area {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 80px;
+  }
+  .notes-area:focus { outline: none; border-color: var(--accent); }
+
+  /* HAS NOTE INDICATOR */
+  .notes-header .note-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-left: 6px;
+    display: none;
+  }
+  .notes-header.has-note .note-indicator { display: inline-block; }
+
+  /* REVIEW HISTORY */
+  .feedback-item { padding: 0 0 10px; margin-bottom: 0; }
+  .feedback-item:last-child { padding-bottom: 0; }
+  .fb-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+  }
+  .fb-badge.approved { background: var(--green-bg); color: var(--green); }
+  .fb-badge.changes { background: var(--red-bg); color: var(--red); }
+  .feedback-item .fb-text { font-size: 13px; line-height: 1.5; margin-top: 4px; }
+  .feedback-item .fb-meta { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+  .feedback-item .fb-meta .ago { border-bottom: 1px dotted var(--text-dim); cursor: default; }
+
+  .timeline-event {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .timeline-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .timeline-dot.submit { background: var(--blue); }
+  .timeline-dot.resubmit { background: var(--accent); }
+  .timeline-text strong { color: var(--text); font-weight: 600; }
+  .timeline-text .ago { border-bottom: 1px dotted var(--text-dim); cursor: default; }
+
+  /* HOURS JUSTIFICATION in timeline */
+  .justification-block {
+    background: rgba(128,128,0,0.08);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 12px;
+    margin-top: 6px;
+  }
+  .justification-block .jb-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .justification-block .jb-text { font-size: 12px; line-height: 1.6; color: var(--text); }
+
+  /* CENTER */
+  .center { display: flex; flex-direction: column; overflow: hidden; }
+  .iframe-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .iframe-url {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--blue);
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+  }
+  .iframe-bar button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  .iframe-bar button:hover { border-color: var(--accent); color: var(--accent); }
+  .iframe-container {
+    flex: 1; background: #0d1117;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .iframe-container iframe { width: 100%; height: 100%; border: none; }
+  .iframe-placeholder { text-align: center; color: var(--text-dim); }
+  .iframe-placeholder svg { width: 64px; height: 64px; opacity: 0.3; margin-bottom: 12px; }
+  .iframe-placeholder p { font-size: 14px; }
+
+  /* README DRAWER */
+  .readme-drawer {
+    position: relative;
+    flex-shrink: 0;
+    height: 28px;
+    overflow: hidden;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+  }
+  .readme-drawer.open { height: 280px; }
+  .readme-handle {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 28px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 1;
+    transition: background 0.15s;
+  }
+  .readme-handle:hover { background: var(--surface2); }
+  .readme-handle span {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .readme-handle .chevron {
+    font-size: 10px;
+    color: var(--text-dim);
+    transition: transform 0.2s;
+  }
+  .readme-drawer.open .readme-handle .chevron { transform: rotate(180deg); }
+  .readme-content {
+    position: absolute;
+    top: 28px; left: 0; right: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 16px 24px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .readme-content h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .readme-content h2 { font-size: 16px; font-weight: 700; margin-top: 16px; margin-bottom: 6px; color: var(--text); }
+  .readme-content p { margin-bottom: 10px; }
+  .readme-content code {
+    background: var(--surface2); padding: 2px 6px; border-radius: 3px;
+    font-family: 'Space Mono', monospace; font-size: 12px;
+  }
+  .readme-content pre {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 12px; margin-bottom: 12px; overflow-x: auto;
+  }
+  .readme-content pre code { background: none; padding: 0; }
+  .readme-content ul { padding-left: 20px; margin-bottom: 10px; }
+  .readme-content li { margin-bottom: 4px; }
+
+  .action-bar {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    flex-shrink: 0;
+  }
+  .action-bar-buttons { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    padding: 10px 24px; border-radius: 8px; font-size: 14px;
+    font-weight: 600; font-family: inherit; cursor: pointer;
+    border: 2px solid transparent; transition: all 0.15s;
+  }
+  .btn-approve { background: var(--green); color: #fff; }
+  .btn-approve:hover { background: #66bb6a; }
+  .btn-changes { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+  .btn-changes:hover { background: rgba(239,83,80,0.2); }
+
+  .action-form {
+    display: none; margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .action-form.visible { display: block; }
+  .action-form h3 {
+    font-size: 14px; font-weight: 700; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .action-form h3 .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-green { background: var(--green); }
+  .dot-red { background: var(--red); }
+  .form-group { margin-bottom: 12px; }
+  .form-group label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--text-dim); margin-bottom: 4px;
+  }
+  .form-group label .hint { font-weight: 400; opacity: 0.7; font-style: italic; }
+  .form-group textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px; color: var(--text);
+    font-family: inherit; font-size: 13px; resize: vertical; min-height: 60px;
+  }
+  .form-group textarea:focus { outline: none; border-color: var(--accent); }
+  .form-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .btn-sm {
+    padding: 7px 18px; border-radius: 6px; font-size: 13px;
+    font-weight: 600; font-family: inherit; cursor: pointer;
+    border: 1px solid var(--border); transition: all 0.15s;
+  }
+  .btn-sm.cancel { background: transparent; color: var(--text-dim); }
+  .btn-sm.cancel:hover { color: var(--text); }
+  .btn-sm.submit-approve { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn-sm.submit-changes { background: var(--red); color: #fff; border-color: var(--red); }
+
+  /* RIGHT */
+  .right {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .right-top {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .right-bottom {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+  }
+  .gh-header {
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .gh-header-left { display: flex; align-items: center; gap: 8px; }
+  .gh-header-left svg { width: 16px; height: 16px; color: var(--text-dim); }
+  .gh-header-left span { font-size: 13px; color: var(--text-dim); }
+  .gh-repo-link {
+    font-family: 'Space Mono', monospace; font-size: 13px;
+    font-weight: 700; color: var(--blue); text-decoration: none;
+  }
+  .gh-repo-link:hover { text-decoration: underline; }
+
+  .gh-stats {
+    display: flex; justify-content: space-evenly;
+    padding: 14px 16px; font-size: 13px; color: var(--text-dim);
+  }
+  .gh-stat { display: flex; align-items: center; gap: 5px; }
+  .gh-stat svg { width: 14px; height: 14px; }
+  .gh-stat strong { color: var(--text); font-weight: 600; }
+
+  .gh-info-row { padding: 10px 16px; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .lang-badge {
+    background: rgba(176,114,25,0.2); color: #e8a732;
+    font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 4px;
+  }
+  .gh-times { padding: 8px 16px 12px; font-size: 12px; color: var(--text-dim); display: flex; gap: 16px; }
+
+  .gh-commits-header {
+    padding: 12px 16px 8px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .gh-commits-header span:first-child { font-size: 14px; font-weight: 700; }
+  .commit-count {
+    background: var(--red); color: #fff; font-size: 11px; font-weight: 700;
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .commit-list { padding: 0 0 10px; overflow-y: auto; flex: 1; min-height: 0; }
+  .commit-item {
+    display: block; text-decoration: none; color: inherit;
+    padding: 10px 16px; transition: background 0.1s; cursor: pointer;
+    border-bottom: 1px solid var(--divider);
+  }
+  .commit-item:last-child { border-bottom: none; }
+  .commit-item:hover { background: rgba(255,255,255,0.03); }
+  .commit-msg {
+    font-size: 14px; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;
+  }
+  .commit-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); }
+  .commit-meta .cm-avatar {
+    width: 18px; height: 18px; border-radius: 50%; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: var(--text-dim); flex-shrink: 0;
+  }
+  .commit-diff { display: flex; gap: 6px; margin-left: auto; }
+  .diff-add { color: var(--green); font-weight: 600; font-family: 'Space Mono', monospace; font-size: 11px; }
+  .diff-del { color: var(--red); font-weight: 600; font-family: 'Space Mono', monospace; font-size: 11px; }
+
+  /* CHECKLIST */
+  .checklist-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .checklist-progress {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+  }
+  .checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0;
+    cursor: pointer;
+    user-select: none;
+  }
+  .checklist-item:hover { opacity: 0.85; }
+  .checklist-item input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 1px;
+    position: relative;
+    transition: all 0.15s;
+  }
+  .checklist-item input[type="checkbox"]:checked {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .checklist-item input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: -1px;
+    left: 2px;
+    font-size: 11px;
+    color: #fff;
+    font-weight: 700;
+  }
+  .checklist-item label {
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  .checklist-item.checked label {
+    color: var(--text-dim);
+    text-decoration: line-through;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">HORIZONS <span>Project Review</span></div>
+  <div class="project-counter">Reviewing <strong>3</strong> of <strong>47</strong> pending</div>
+  <div class="topbar-nav">
+    <button>← Prev</button>
+    <button>Next →</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="left">
+    <div class="user-header">
+      <div class="user-name-row">
+        <span class="user-name">Bártfai Nándor</span>
+      </div>
+      <div class="user-email">
+        <a href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2a2.5 2.5 0 0 0 0 5H17V4.5A2.5 2.5 0 0 0 14.5 2z"/><path d="M7 8.5a2.5 2.5 0 0 0 5 0V6H9.5A2.5 2.5 0 0 0 7 8.5z"/><path d="M9.5 22a2.5 2.5 0 0 0 0-5H7v2.5A2.5 2.5 0 0 0 9.5 22z"/><path d="M17 15.5a2.5 2.5 0 0 0-5 0V18h2.5a2.5 2.5 0 0 0 2.5-2.5z"/></svg>
+          DM on Slack ↗
+        </a>
+      </div>
+
+      <div class="user-links" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+        <a href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Code ↗
+        </a>
+        <a href="#" class="demo-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Demo ↗
+        </a>
+        <a href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          README ↗
+        </a>
+        <!-- TODO: Implement Airlock link — opens project in sandboxed VM environment -->
+        <a href="#" style="border-color:var(--accent);color:var(--accent);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Airlock ↗
+        </a>
+      </div>
+
+      <!-- Hours: editable breakdown, computed total -->
+      <!-- If only 1 hackatime project is linked, hide .hours-breakdown -->
+      <div class="hours-total">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <strong id="hoursTotal">8.0h</strong> spent
+      </div>
+      <div class="hours-breakdown">
+        <div class="hours-breakdown-item">
+          <input class="hours-input hb-input" type="text" value="2.4" oninput="recalcHours()">
+          <span class="hb-project">CatCapes</span>
+        </div>
+        <div class="hours-breakdown-item">
+          <input class="hours-input hb-input" type="text" value="5.6" oninput="recalcHours()">
+          <span class="hb-project">cape-texture-editor</span>
+        </div>
+      </div>
+
+      <div class="user-meta-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="age-badge">13yo</span>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- INTERNAL NOTES — PROJECT (collapsed by default, + to expand) -->
+    <div class="notes-header" id="projectNotesHeader">
+      <div style="display:flex;align-items:center;">
+        <span class="section-title">Notes — Project</span>
+        <span class="note-indicator"></span>
+      </div>
+      <div style="display:flex;align-items:center;">
+        <span class="notes-saved" id="projectNotesSaved">✓ Saved</span>
+        <button class="btn-save-notes" id="projectSaveBtn" onclick="saveNote('projectNotesSaved')" style="display:none;margin-right:6px;">Save</button>
+        <button class="notes-toggle" onclick="toggleNotes('project')">+</button>
+      </div>
+    </div>
+    <div class="notes-body" id="projectNotesBody">
+      <textarea class="notes-area" id="projectNotesArea" placeholder="Notes about this project..." oninput="onNoteInput('project')"></textarea>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- INTERNAL NOTES — USER (collapsed by default, + to expand) -->
+    <div class="notes-header" id="userNotesHeader">
+      <div style="display:flex;align-items:center;">
+        <span class="section-title">Notes — User</span>
+        <span class="note-indicator"></span>
+      </div>
+      <div style="display:flex;align-items:center;">
+        <span class="notes-saved" id="userNotesSaved">✓ Saved</span>
+        <button class="btn-save-notes" id="userSaveBtn" onclick="saveNote('userNotesSaved')" style="display:none;margin-right:6px;">Save</button>
+        <button class="notes-toggle" onclick="toggleNotes('user')">+</button>
+      </div>
+    </div>
+    <div class="notes-body" id="userNotesBody">
+      <textarea class="notes-area" id="userNotesArea" placeholder="Notes about this user..." oninput="onNoteInput('user')"></textarea>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- REVIEW HISTORY (newest first) -->
+    <div class="section">
+      <div class="section-title" style="margin-bottom:10px;">Review History</div>
+
+      <div class="timeline-event">
+        <span class="timeline-dot resubmit"></span>
+        <span class="timeline-text">Re-submitted with <strong>8h</strong> <span class="ago" title="February 17, 2026 3:42 PM">1mo ago</span></span>
+      </div>
+
+      <hr class="inner-divider" style="margin: 6px 0;">
+
+      <div class="feedback-item">
+        <span class="fb-badge approved">✓ Approved</span>
+        <div class="fb-text">Looks great, nice work shipping to Modrinth! The cape system is clever.</div>
+        <div class="fb-meta">reviewed by @zrl · <span class="ago" title="February 17, 2026 11:20 AM">1mo ago</span></div>
+
+        <!-- Hours justification attached to this approval -->
+        <div class="justification-block">
+          <div class="jb-label">Hours Justification</div>
+          <div class="jb-text">
+            The billy looks good. Logged 8h 17m on Hackatime (reduced as started before Meow). The commits look good. Overall happy to approve 8h as it was shipped on Modrinth.
+          </div>
+        </div>
+      </div>
+
+      <hr class="inner-divider" style="margin: 6px 0;">
+
+      <div class="timeline-event">
+        <span class="timeline-dot resubmit"></span>
+        <span class="timeline-text">Re-submitted with <strong>8h</strong> <span class="ago" title="February 15, 2026 9:15 AM">1mo ago</span></span>
+      </div>
+
+      <hr class="inner-divider" style="margin: 6px 0;">
+
+      <div class="feedback-item">
+        <span class="fb-badge changes">↻ Changes Needed</span>
+        <div class="fb-text">Please add a README with setup instructions and screenshots of the capes in action.</div>
+        <div class="fb-meta">reviewed by @msw · <span class="ago" title="February 12, 2026 2:08 PM">1mo ago</span></div>
+      </div>
+
+      <hr class="inner-divider" style="margin: 6px 0;">
+
+      <div class="timeline-event">
+        <span class="timeline-dot submit"></span>
+        <span class="timeline-text">Submitted with <strong>6h</strong> <span class="ago" title="February 10, 2026 4:30 PM">1mo ago</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+    <div class="iframe-bar">
+      <div class="iframe-url">https://catcapes.jgj52.hu</div>
+      <button onclick="loadDemo()">↗ Open</button>
+      <button onclick="reloadDemo()">⟳ Reload</button>
+    </div>
+    <div class="iframe-container" id="iframeContainer">
+      <div class="iframe-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <p>Click <strong>Open</strong> to load demo in frame</p>
+        <p style="font-size:12px; opacity:0.5; margin-top:4px;">catcapes.jgj52.hu</p>
+      </div>
+    </div>
+
+    <!-- README TOGGLE BAR -->
+
+    <!--
+      README DRAWER
+      - Persist open/closed state across all reviews in the session
+      - If a reviewer opens the README, keep it open when navigating to next project
+      - If they close it, keep it closed
+      - Save preference so it carries across their entire review experience
+    -->
+    <div class="readme-drawer" id="readmeDrawer">
+      <div class="readme-handle" onclick="toggleReadme()">
+        <span class="chevron">▲</span>
+        <span>README</span>
+      </div>
+      <div class="readme-content">
+        <!-- README content rendered from repo markdown -->
+        <h1>CatCapes</h1>
+        <p>Change your in-game capes, visible to others using this mod.</p>
+
+        <h2>Installation</h2>
+        <p>Download from <a href="#" style="color:var(--blue);">Modrinth</a> and place in your Fabric mods folder. Requires Minecraft Java Edition 1.21.x.</p>
+
+        <h2>How to Use</h2>
+        <p><strong>Online mode:</strong> Log on to the <code>catcapes.jgj52.hu</code> Minecraft server, type <code>/token</code> and click the message to copy it. Go to ModMenu and set the token setting to what you just copied.</p>
+        <p><strong>Offline mode:</strong> In the config turn off online mode. Then set your cape as usual.</p>
+
+        <h2>Custom Textures</h2>
+        <p>Go to <code>catcapes.jgj52.hu</code> and upload your cape texture. You can make these textures using something like <a href="#" style="color:var(--blue);">skinmc.net/capes/editor</a>.</p>
+
+        <h2>License</h2>
+        <p>GPL-3.0</p>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <div class="action-bar-buttons">
+        <button class="btn btn-approve" onclick="showForm('approve')">✓ Approve</button>
+        <button class="btn btn-changes" onclick="showForm('changes')">✎ Changes Needed</button>
+      </div>
+
+      <div class="action-form" id="approveForm">
+        <h3><span class="dot dot-green"></span> Approve Project</h3>
+        <div class="form-group">
+          <label>Ship Justification <span class="hint">(not shown to user)</span></label>
+          <textarea placeholder="Why are you approving this? e.g. hours look right, project is complete, shipped publicly..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Comment for User <span class="hint">(optional — shown to user)</span></label>
+          <textarea placeholder="Nice work! Any feedback you want to share..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm cancel" onclick="hideForm()">Cancel</button>
+          <button class="btn-sm submit-approve">Submit Approval</button>
+        </div>
+      </div>
+
+      <div class="action-form" id="changesForm">
+        <h3><span class="dot dot-red"></span> Request Changes</h3>
+        <div class="form-group">
+          <label>What needs to change? <span class="hint">(shown to user)</span></label>
+          <textarea placeholder="Describe what the user needs to fix or improve..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm cancel" onclick="hideForm()">Cancel</button>
+          <button class="btn-sm submit-changes">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right">
+    <div class="right-top">
+    <div class="gh-header">
+      <div class="gh-header-left">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </div>
+      <a class="gh-repo-link" href="#">JGJ52/CatCapes ↗</a>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="gh-stats">
+      <div class="gh-stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <strong>0</strong>
+      </div>
+      <div class="gh-stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><line x1="12" y1="15" x2="12" y2="9"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9"/></svg>
+        <strong>0</strong>
+      </div>
+      <div class="gh-stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <strong>0</strong>
+      </div>
+      <div class="gh-stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+        <strong>0</strong>
+      </div>
+    </div>
+
+    <div class="gh-info-row">
+      <span class="lang-badge">Java</span>
+      <span>GPL-3.0</span>
+    </div>
+    <div class="gh-times">
+      <span>Created 4mo ago</span>
+      <span>Pushed 1mo ago</span>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="gh-commits-header">
+      <span>Commits</span>
+      <span class="commit-count">11</span>
+    </div>
+
+    <div class="commit-list">
+      <a class="commit-item" href="#"><div class="commit-msg">1.21.11</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>1mo ago</span><div class="commit-diff"><span class="diff-add">+27</span><span class="diff-del">-27</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">i did not commit</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>2mo ago</span><div class="commit-diff"><span class="diff-add">+146</span><span class="diff-del">-51</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">the release</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>2mo ago</span><div class="commit-diff"><span class="diff-add">+62</span><span class="diff-del">-24</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">change the version</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>2mo ago</span><div class="commit-diff"><span class="diff-add">+1</span><span class="diff-del">-1</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">its finally working as it should</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>2mo ago</span><div class="commit-diff"><span class="diff-add">+13</span><span class="diff-del">-4</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">animated capes almost done, just need ...</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>2mo ago</span><div class="commit-diff"><span class="diff-add">+48</span><span class="diff-del">-16</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">almost done animated capes</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>2mo ago</span><div class="commit-diff"><span class="diff-add">+95</span><span class="diff-del">-22</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">v2</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>2mo ago</span><div class="commit-diff"><span class="diff-add">+182</span><span class="diff-del">-936</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">v1.1</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>4mo ago</span><div class="commit-diff"><span class="diff-add">+199</span><span class="diff-del">-352</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">i forgot to rename this while trying to fi...</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>4mo ago</span><div class="commit-diff"><span class="diff-add">+6</span><span class="diff-del">-6</span></div></div></a>
+      <a class="commit-item" href="#"><div class="commit-msg">Initial commit</div><div class="commit-meta"><span class="cm-avatar">J</span><span>jgj52</span> · <span>4mo ago</span><div class="commit-diff"><span class="diff-add">+2636</span></div></div></a>
+    </div>
+    </div><!-- end right-top -->
+
+    <div class="right-bottom">
+      <!--
+        CHECKLIST BEHAVIOR:
+        - Checklist state should persist across re-reviews of the same project
+        - Checklist should be discarded/reset after a project is approved
+        - Checklist items may vary depending on the type of review
+          (e.g. first submission vs re-submission, game vs website vs library, etc.)
+      -->
+      <div class="checklist-title">
+        Review Checklist
+        <span class="checklist-progress" id="checkProgress">0/7</span>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <input type="checkbox"><label>README exists and has setup instructions</label>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <input type="checkbox"><label>Demo link works and is accessible</label>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <input type="checkbox"><label>Code is original (not a tutorial clone)</label>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <input type="checkbox"><label>Hours claimed match Hackatime logs</label>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <input type="checkbox"><label>Commits show meaningful progress over time</label>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <input type="checkbox"><label>Project is publicly shipped / deployed</label>
+      </div>
+      <div class="checklist-item" onclick="toggleCheck(this)">
+        <input type="checkbox"><label>No red flags in code or dependencies</label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function recalcHours() {
+    let t = 0;
+    document.querySelectorAll('.hb-input').forEach(i => { t += parseFloat(i.value) || 0; });
+    document.getElementById('hoursTotal').textContent = t.toFixed(1) + 'h';
+  }
+
+  function toggleNotes(type) {
+    const body = document.getElementById(type + 'NotesBody');
+    const btn = body.previousElementSibling.querySelector('.notes-toggle');
+    const saveBtn = document.getElementById(type + 'SaveBtn');
+    const isOpen = body.classList.toggle('open');
+    btn.textContent = isOpen ? '−' : '+';
+    saveBtn.style.display = isOpen ? 'inline-block' : 'none';
+    if (isOpen) document.getElementById(type + 'NotesArea').focus();
+  }
+
+  function onNoteInput(type) {
+    const header = document.getElementById(type + 'NotesHeader');
+    const area = document.getElementById(type + 'NotesArea');
+    if (area.value.trim()) header.classList.add('has-note');
+    else header.classList.remove('has-note');
+  }
+
+  function saveNote(id) {
+    const el = document.getElementById(id);
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2000);
+  }
+
+  function toggleCheck(el) {
+    const cb = el.querySelector('input');
+    cb.checked = !cb.checked;
+    el.classList.toggle('checked', cb.checked);
+    const total = document.querySelectorAll('.checklist-item').length;
+    const done = document.querySelectorAll('.checklist-item.checked').length;
+    document.getElementById('checkProgress').textContent = done + '/' + total;
+  }
+
+  function toggleReadme() {
+    const drawer = document.getElementById('readmeDrawer');
+    drawer.classList.toggle('open');
+  }
+
+  function showForm(type) {
+    document.getElementById('approveForm').classList.remove('visible');
+    document.getElementById('changesForm').classList.remove('visible');
+    if (type === 'approve') document.getElementById('approveForm').classList.add('visible');
+    else document.getElementById('changesForm').classList.add('visible');
+  }
+  function hideForm() {
+    document.getElementById('approveForm').classList.remove('visible');
+    document.getElementById('changesForm').classList.remove('visible');
+  }
+  function loadDemo() {
+    document.getElementById('iframeContainer').innerHTML = '<iframe src="about:blank"></iframe>';
+  }
+  function reloadDemo() {
+    const f = document.querySelector('#iframeContainer iframe');
+    if (f) f.src = f.src;
+  }
+</script>
+
+</body>
+</html>
