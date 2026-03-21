@@ -4,10 +4,11 @@
 	interface Props {
 		submissionId: number;
 		hackatimeHours: number | null;
+		editedHours?: number | null;
 		onReviewComplete: () => void;
 	}
 
-	let { submissionId, hackatimeHours, onReviewComplete }: Props = $props();
+	let { submissionId, hackatimeHours, editedHours = null, onReviewComplete }: Props = $props();
 
 	let activeForm: 'approve' | 'changes' | null = $state(null);
 	let submitting = $state(false);
@@ -16,6 +17,7 @@
 	let hoursJustification = $state('');
 	let approveComment = $state('');
 	let approvedHours = $state(hackatimeHours ?? 0);
+	let reviewerManuallyEditedHours = $state(false);
 
 	// Changes needed form fields
 	let changesComment = $state('');
@@ -27,7 +29,15 @@
 		hoursJustification = '';
 		approveComment = '';
 		approvedHours = hackatimeHours ?? 0;
+		reviewerManuallyEditedHours = false;
 		changesComment = '';
+	});
+
+	// Sync approved hours from the breakdown panel unless reviewer manually edited
+	$effect(() => {
+		if (editedHours != null && !reviewerManuallyEditedHours) {
+			approvedHours = Math.round(editedHours * 10) / 10;
+		}
 	});
 
 	function showForm(type: 'approve' | 'changes') {
@@ -98,6 +108,7 @@
 					step="0.5"
 					min="0"
 					bind:value={approvedHours}
+					oninput={() => { reviewerManuallyEditedHours = true; }}
 					class="hours-field"
 				/>
 			</div>

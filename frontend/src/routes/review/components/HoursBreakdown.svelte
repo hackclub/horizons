@@ -2,9 +2,10 @@
 	interface Props {
 		totalHours: number | null;
 		projects: string[];
+		onHoursChange?: (hours: number) => void;
 	}
 
-	let { totalHours, projects }: Props = $props();
+	let { totalHours, projects, onHoursChange }: Props = $props();
 
 	// Raw string values the user types — one per project, keyed by name
 	let inputValues = $state<Record<string, string>>({});
@@ -32,6 +33,11 @@
 	let computedTotal = $derived(
 		Object.values(inputValues).reduce((sum, v) => sum + (parseFloat(v) || 0), 0),
 	);
+
+	// Notify parent when reviewer edits the hours
+	$effect(() => {
+		onHoursChange?.(computedTotal);
+	});
 
 	let hasMultipleProjects = $derived(projects.length > 1);
 </script>

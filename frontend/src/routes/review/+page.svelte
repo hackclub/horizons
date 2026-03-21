@@ -28,12 +28,17 @@
 		navigatePrev,
 	} from './store';
 
+	let editedHours = $state<number | null>(null);
+
 	onMount(() => {
 		loadQueue();
 	});
 
+	function handleHoursChange(hours: number) {
+		editedHours = hours;
+	}
+
 	function handleReviewComplete() {
-		// After reviewing, reload queue and move to next project
 		loadQueue();
 	}
 </script>
@@ -80,6 +85,7 @@
 						readmeUrl={$currentSubmission.project.readmeUrl}
 						hackatimeHours={$currentSubmission.hackatimeHours}
 						hackatimeProjects={$currentSubmission.project.nowHackatimeProjects ?? []}
+						onHoursChange={handleHoursChange}
 					/>
 
 					<hr class="section-divider" />
@@ -120,6 +126,7 @@
 					<ActionBar
 						submissionId={$currentSubmission.submissionId}
 						hackatimeHours={$currentSubmission.hackatimeHours}
+						{editedHours}
 						onReviewComplete={handleReviewComplete}
 					/>
 				{:else if $submissionLoading}

@@ -9,9 +9,10 @@
 		readmeUrl: string | null;
 		hackatimeHours: number | null;
 		hackatimeProjects: string[];
+		onHoursChange?: (hours: number) => void;
 	}
 
-	let { user, repoUrl, playableUrl, readmeUrl, hackatimeHours, hackatimeProjects }: Props =
+	let { user, repoUrl, playableUrl, readmeUrl, hackatimeHours, hackatimeProjects, onHoursChange }: Props =
 		$props();
 
 	// Build Slack DM link from user's Slack ID
@@ -95,7 +96,7 @@
 		</a>
 	</div>
 
-	<HoursBreakdown totalHours={hackatimeHours} projects={hackatimeProjects} />
+	<HoursBreakdown totalHours={hackatimeHours} projects={hackatimeProjects} {onHoursChange} />
 
 	{#if user.age !== null}
 		<div class="user-meta-line">
