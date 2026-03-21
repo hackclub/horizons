@@ -34,4 +34,4 @@ COPY --from=builder /app/backend/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 3002
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "if [ \"$RUN_MIGRATIONS\" = \"true\" ]; then npx prisma migrate deploy; fi && node dist/main"]
