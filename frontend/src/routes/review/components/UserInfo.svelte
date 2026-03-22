@@ -34,11 +34,6 @@
 <div class="user-header">
 	<div class="user-name-row">
 		<span class="user-name">{user.firstName} {user.lastName}</span>
-		{#if user.isFraud}
-			<span class="fraud-badge">FRAUD</span>
-		{:else if user.isSus}
-			<span class="sus-badge">SUS</span>
-		{/if}
 	</div>
 
 	{#if slackDmUrl}
@@ -133,25 +128,7 @@
 		font-family: 'Space Mono', monospace;
 	}
 
-	.fraud-badge {
-		background: var(--red-bg);
-		color: var(--red);
-		font-size: 10px;
-		font-weight: 700;
-		padding: 2px 6px;
-		border-radius: 4px;
-	}
-
-	.sus-badge {
-		background: rgba(245, 166, 35, 0.15);
-		color: var(--accent);
-		font-size: 10px;
-		font-weight: 700;
-		padding: 2px 6px;
-		border-radius: 4px;
-	}
-
-	.user-email {
+.user-email {
 		font-size: 12px;
 		color: var(--text-dim);
 		margin-bottom: 14px;

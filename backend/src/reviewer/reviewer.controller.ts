@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Post, Body, Param, UseGuards, Req, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Put, Body, Param, UseGuards, Req, ParseIntPipe } from '@nestjs/common';
 import { Request } from 'express';
 import { ReviewerService } from './reviewer.service';
 import { ReviewSubmissionDto, SaveNoteDto, SaveChecklistDto } from './dto/review-submission.dto';
@@ -34,60 +34,48 @@ export class ReviewerController {
     return this.reviewerService.reviewSubmission(id, dto, req.user.userId);
   }
 
-  /** Get a reviewer's note for a project */
+  /** Get the shared note for a project */
   @Get('projects/:id/notes')
-  async getProjectNote(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-  ) {
-    return this.reviewerService.getNote('project', id, req.user.userId);
+  async getProjectNote(@Param('id', ParseIntPipe) id: number) {
+    return this.reviewerService.getNote('project', id);
   }
 
-  /** Save a reviewer's note for a project */
+  /** Save the shared note for a project */
   @Put('projects/:id/notes')
   async saveProjectNote(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SaveNoteDto,
-    @Req() req: Request,
   ) {
-    return this.reviewerService.saveNote('project', id, req.user.userId, dto);
+    return this.reviewerService.saveNote('project', id, dto);
   }
 
-  /** Get a reviewer's note for a user */
+  /** Get the shared note for a user */
   @Get('users/:id/notes')
-  async getUserNote(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-  ) {
-    return this.reviewerService.getNote('user', id, req.user.userId);
+  async getUserNote(@Param('id', ParseIntPipe) id: number) {
+    return this.reviewerService.getNote('user', id);
   }
 
-  /** Save a reviewer's note for a user */
+  /** Save the shared note for a user */
   @Put('users/:id/notes')
   async saveUserNote(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SaveNoteDto,
-    @Req() req: Request,
   ) {
-    return this.reviewerService.saveNote('user', id, req.user.userId, dto);
+    return this.reviewerService.saveNote('user', id, dto);
   }
 
-  /** Get checklist state for a submission */
+  /** Get shared checklist state for a submission */
   @Get('submissions/:id/checklist')
-  async getChecklist(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-  ) {
-    return this.reviewerService.getChecklist(id, req.user.userId);
+  async getChecklist(@Param('id', ParseIntPipe) id: number) {
+    return this.reviewerService.getChecklist(id);
   }
 
-  /** Save checklist state for a submission */
+  /** Save shared checklist state for a submission */
   @Put('submissions/:id/checklist')
   async saveChecklist(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SaveChecklistDto,
-    @Req() req: Request,
   ) {
-    return this.reviewerService.saveChecklist(id, req.user.userId, dto);
+    return this.reviewerService.saveChecklist(id, dto);
   }
 }

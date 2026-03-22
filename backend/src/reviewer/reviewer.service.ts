@@ -11,8 +11,6 @@ const SCOPED_USER_SELECT = {
   lastName: true,
   slackUserId: true,
   birthday: true, // used to compute age only, never sent raw
-  isFraud: true,
-  isSus: true,
 } as const;
 
 @Injectable()
@@ -281,63 +279,49 @@ export class ReviewerService {
     return { success: true, submissionId, status: dto.approvalStatus };
   }
 
-  async saveNote(targetType: 'project' | 'user', targetId: number, reviewerId: number, dto: SaveNoteDto) {
+  async saveNote(targetType: 'project' | 'user', targetId: number, dto: SaveNoteDto) {
     return this.prisma.reviewerNote.upsert({
       where: {
-        targetType_targetId_reviewerId: {
+        targetType_targetId: {
           targetType,
           targetId,
-          reviewerId,
         },
       },
       update: { content: dto.content },
       create: {
         targetType,
         targetId,
-        reviewerId,
         content: dto.content,
       },
     });
   }
 
-  async getNote(targetType: 'project' | 'user', targetId: number, reviewerId: number) {
+  async getNote(targetType: 'project' | 'user', targetId: number) {
     const note = await this.prisma.reviewerNote.findUnique({
       where: {
-        targetType_targetId_reviewerId: {
+        targetType_targetId: {
           targetType,
           targetId,
-          reviewerId,
         },
       },
     });
     return { content: note?.content ?? '' };
   }
 
-  async saveChecklist(submissionId: number, reviewerId: number, dto: SaveChecklistDto) {
+  async saveChecklist(submissionId: number, dto: SaveChecklistDto) {
     return this.prisma.reviewerChecklist.upsert({
-      where: {
-        submissionId_reviewerId: {
-          submissionId,
-          reviewerId,
-        },
-      },
+      where: { submissionId },
       update: { checkedItems: dto.checkedItems },
       create: {
         submissionId,
-        reviewerId,
         checkedItems: dto.checkedItems,
       },
     });
   }
 
-  async getChecklist(submissionId: number, reviewerId: number) {
+  async getChecklist(submissionId: number) {
     const checklist = await this.prisma.reviewerChecklist.findUnique({
-      where: {
-        submissionId_reviewerId: {
-          submissionId,
-          reviewerId,
-        },
-      },
+      where: { submissionId },
     });
     return { checkedItems: (checklist?.checkedItems as number[]) ?? [] };
   }
@@ -352,8 +336,6 @@ export class ReviewerService {
     lastName: string;
     slackUserId: string | null;
     birthday: Date | null;
-    isFraud: boolean;
-    isSus: boolean;
   }) {
     let age: number | null = null;
     if (user.birthday) {
@@ -372,8 +354,6 @@ export class ReviewerService {
       lastName: user.lastName,
       slackUserId: user.slackUserId,
       age,
-      isFraud: user.isFraud,
-      isSus: user.isSus,
     };
   }
 

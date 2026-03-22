@@ -25,8 +25,6 @@ export type ScopedUser = {
   lastName: string;
   slackUserId: string | null;
   age: number | null;
-  isFraud: boolean;
-  isSus: boolean;
 };
 
 export type QueueItem = {
