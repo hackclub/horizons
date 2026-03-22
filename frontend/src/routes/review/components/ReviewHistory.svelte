@@ -37,6 +37,11 @@
 		{:else if event.type === 'approved'}
 			<div class="feedback-item">
 				<span class="fb-badge approved">✓ Approved</span>
+				{#if event.approvedHours != null && event.submittedHours != null && event.approvedHours !== event.submittedHours}
+					<span class="fb-badge override">
+						{event.submittedHours}h → {event.approvedHours}h override
+					</span>
+				{/if}
 				{#if event.userFeedback}
 					<div class="fb-text">{event.userFeedback}</div>
 				{/if}
@@ -153,6 +158,12 @@
 	.fb-badge.changes {
 		background: var(--red-bg);
 		color: var(--red);
+	}
+
+	.fb-badge.override {
+		background: rgba(255, 152, 0, 0.15);
+		color: #ff9800;
+		font-weight: 700;
 	}
 
 	.fb-text {

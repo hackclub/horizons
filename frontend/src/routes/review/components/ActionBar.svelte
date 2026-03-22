@@ -5,12 +5,24 @@
 		submissionId: number;
 		hackatimeHours: number | null;
 		editedHours?: number | null;
+		projectTitle: string | null;
+		projectDescription: string | null;
+		screenshotUrl: string | null;
 		onReviewComplete: () => void;
 	}
 
-	let { submissionId, hackatimeHours, editedHours = null, onReviewComplete }: Props = $props();
+	let {
+		submissionId,
+		hackatimeHours,
+		editedHours = null,
+		projectTitle = null,
+		projectDescription = null,
+		screenshotUrl = null,
+		onReviewComplete,
+	}: Props = $props();
 
 	let activeForm: 'approve' | 'changes' | null = $state(null);
+	let showProjectCard = $state(false);
 	let submitting = $state(false);
 
 	// Approval form fields
@@ -26,6 +38,7 @@
 	$effect(() => {
 		submissionId; // track
 		activeForm = null;
+		showProjectCard = false;
 		hoursJustification = '';
 		approveComment = '';
 		approvedHours = hackatimeHours ?? 0;
@@ -92,7 +105,34 @@
 	<div class="action-bar-buttons">
 		<button class="btn btn-approve" onclick={() => showForm('approve')}>✓ Approve</button>
 		<button class="btn btn-changes" onclick={() => showForm('changes')}>✎ Changes Needed</button>
+		<button
+			class="btn btn-card"
+			class:btn-card-active={showProjectCard}
+			onclick={() => { showProjectCard = !showProjectCard; }}
+		>
+			⊞ Project Card
+		</button>
 	</div>
+
+	{#if showProjectCard}
+		<div class="project-card">
+			{#if screenshotUrl}
+				<img
+					class="project-card-thumb"
+					src={screenshotUrl}
+					alt="{projectTitle ?? 'Project'} screenshot"
+				/>
+			{:else}
+				<div class="project-card-thumb project-card-thumb-empty">No screenshot</div>
+			{/if}
+			<div class="project-card-body">
+				<h4 class="project-card-title">{projectTitle ?? 'Untitled Project'}</h4>
+				<p class="project-card-desc">
+					{projectDescription ?? 'No description provided.'}
+				</p>
+			</div>
+		</div>
+	{/if}
 
 	{#if activeForm === 'approve'}
 		<div class="action-form">
@@ -330,5 +370,65 @@
 	.btn-sm:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	/* Project Card button */
+	.btn-card {
+		background: transparent;
+		color: var(--text-dim);
+		border-color: var(--border);
+		margin-left: auto;
+	}
+
+	.btn-card:hover,
+	.btn-card-active {
+		color: var(--accent);
+		border-color: var(--accent);
+	}
+
+	/* Project Card preview */
+	.project-card {
+		margin-top: 12px;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		overflow: hidden;
+		background: var(--bg);
+	}
+
+	.project-card-thumb {
+		width: 100%;
+		max-height: 200px;
+		object-fit: cover;
+		display: block;
+		border-bottom: 1px solid var(--border);
+	}
+
+	.project-card-thumb-empty {
+		height: 100px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--text-dim);
+		font-size: 12px;
+		background: var(--surface2);
+	}
+
+	.project-card-body {
+		padding: 12px;
+	}
+
+	.project-card-title {
+		font-size: 15px;
+		font-weight: 700;
+		margin: 0 0 6px;
+		font-family: 'Space Mono', monospace;
+	}
+
+	.project-card-desc {
+		font-size: 13px;
+		color: var(--text-dim);
+		margin: 0;
+		line-height: 1.5;
+		white-space: pre-wrap;
 	}
 </style>

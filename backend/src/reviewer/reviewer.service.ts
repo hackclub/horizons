@@ -405,6 +405,8 @@ export class ReviewerService {
           reviewerName: string;
           userFeedback: string | null;
           hoursJustification: string | null;
+          approvedHours: number | null;
+          submittedHours: number | null;
           timestamp: Date;
         };
 
@@ -439,6 +441,8 @@ export class ReviewerService {
             reviewerName,
             userFeedback: (changes?.userFeedback as string) ?? null,
             hoursJustification: (changes?.hoursJustification as string) ?? null,
+            approvedHours: log.approvedHours,
+            submittedHours: sub.hackatimeHours,
             timestamp: log.createdAt,
           });
         }

@@ -127,6 +127,9 @@
 						submissionId={$currentSubmission.submissionId}
 						hackatimeHours={$currentSubmission.hackatimeHours}
 						{editedHours}
+						projectTitle={$currentSubmission.project.projectTitle}
+						projectDescription={$currentSubmission.project.description}
+						screenshotUrl={$currentSubmission.screenshotUrl}
 						onReviewComplete={handleReviewComplete}
 					/>
 				{:else if $submissionLoading}

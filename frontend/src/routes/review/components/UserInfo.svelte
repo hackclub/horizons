@@ -24,6 +24,11 @@
 	const resolvedReadmeUrl = $derived(
 		readmeUrl || (repoUrl ? `${repoUrl.replace(/\/$/, '')}/blob/main/README.md` : null),
 	);
+
+	// Build Airlock URL to open the repo in a sandboxed VM
+	const airlockUrl = $derived(
+		repoUrl ? `https://airlock.hackclub.com/?r=${encodeURIComponent(repoUrl)}` : null,
+	);
 </script>
 
 <div class="user-header">
@@ -85,15 +90,16 @@
 				README ↗
 			</a>
 		{/if}
-		<!-- TODO: Implement Airlock link — opens project in sandboxed VM environment -->
-		<a href="#" class="airlock-link" onclick={(e) => e.preventDefault()}>
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<rect x="2" y="3" width="20" height="14" rx="2" />
-				<line x1="8" y1="21" x2="16" y2="21" />
-				<line x1="12" y1="17" x2="12" y2="21" />
-			</svg>
-			Airlock ↗
-		</a>
+		{#if airlockUrl}
+			<a href={airlockUrl} target="_blank" rel="noopener noreferrer" class="airlock-link">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<rect x="2" y="3" width="20" height="14" rx="2" />
+					<line x1="8" y1="21" x2="16" y2="21" />
+					<line x1="12" y1="17" x2="12" y2="21" />
+				</svg>
+				Airlock ↗
+			</a>
+		{/if}
 	</div>
 
 	<HoursBreakdown totalHours={hackatimeHours} projects={hackatimeProjects} {onHoursChange} />
@@ -208,8 +214,10 @@
 	.user-links a.airlock-link {
 		border-color: var(--accent);
 		color: var(--accent);
-		opacity: 0.5;
-		cursor: not-allowed;
+	}
+
+	.user-links a.airlock-link:hover {
+		background: rgba(245, 166, 35, 0.15);
 	}
 
 	.user-links a svg {

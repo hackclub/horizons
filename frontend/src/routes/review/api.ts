@@ -53,6 +53,8 @@ export type TimelineEntry =
       reviewerName: string;
       userFeedback: string | null;
       hoursJustification: string | null;
+      approvedHours: number | null;
+      submittedHours: number | null;
       timestamp: string;
     };
 
