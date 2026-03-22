@@ -1,12 +1,19 @@
 <script lang="ts">
+	import { marked } from 'marked';
+	import DOMPurify from 'dompurify';
+
 	interface Props {
-		readmeHtml: string;
+		markdown: string;
 	}
 
-	let { readmeHtml }: Props = $props();
+	let { markdown }: Props = $props();
 
 	// Persist open/closed state across session via sessionStorage
 	let isOpen = $state(false);
+
+	let sanitizedHtml = $derived(
+		markdown ? DOMPurify.sanitize(marked.parse(markdown) as string) : '',
+	);
 
 	$effect(() => {
 		const stored = sessionStorage.getItem('reviewer-readme-open');
@@ -25,8 +32,8 @@
 		<span>README</span>
 	</button>
 	<div class="readme-content">
-		{#if readmeHtml}
-			{@html readmeHtml}
+		{#if sanitizedHtml}
+			{@html sanitizedHtml}
 		{:else}
 			<p class="no-readme">No README content available.</p>
 		{/if}
@@ -147,6 +154,10 @@
 
 	.readme-content :global(a) {
 		color: var(--blue);
+	}
+
+	.readme-content :global(img) {
+		max-width: 100%;
 	}
 
 	.no-readme {

@@ -18,7 +18,7 @@
 		submissionLoading,
 		githubRepo,
 		githubLoading,
-		readmeHtml,
+		readmeMarkdown,
 		projectNote,
 		userNote,
 		checkedItems,
@@ -121,7 +121,7 @@
 						demoUrl={$currentSubmission.playableUrl ?? $currentSubmission.project.playableUrl}
 					/>
 
-					<ReadmeDrawer readmeHtml={$readmeHtml} />
+					<ReadmeDrawer markdown={$readmeMarkdown} />
 
 					<ActionBar
 						submissionId={$currentSubmission.submissionId}

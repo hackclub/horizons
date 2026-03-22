@@ -25,8 +25,8 @@ export const submissionLoading = writable(false);
 export const githubRepo = writable<GitHubRepo | null>(null);
 export const githubLoading = writable(false);
 
-// --- README ---
-export const readmeHtml = writable('');
+// --- README (raw markdown, rendered + sanitized in ReadmeDrawer) ---
+export const readmeMarkdown = writable('');
 
 // --- Notes ---
 export const projectNote = writable('');
@@ -66,7 +66,7 @@ export async function loadSubmissionDetail(submissionId: number) {
   submissionLoading.set(true);
   currentSubmission.set(null);
   githubRepo.set(null);
-  readmeHtml.set('');
+  readmeMarkdown.set('');
 
   try {
     const detail = await fetchSubmissionDetail(submissionId);
@@ -94,12 +94,11 @@ export async function loadSubmissionDetail(submissionId: number) {
 
 async function loadReadme(repoUrl: string) {
   try {
-    const { parseMarkdown } = await import('./utils');
     const raw = await fetchReadmeContent(repoUrl);
-    readmeHtml.set(raw ? parseMarkdown(raw) : '');
+    readmeMarkdown.set(raw ?? '');
   } catch (error) {
     console.error('README fetch failed:', error);
-    readmeHtml.set('');
+    readmeMarkdown.set('');
   }
 }
 
