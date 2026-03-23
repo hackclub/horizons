@@ -24,6 +24,7 @@ export const submissionLoading = writable(false);
 // --- GitHub data for current project ---
 export const githubRepo = writable<GitHubRepo | null>(null);
 export const githubLoading = writable(false);
+export const githubError = writable<string | null>(null);
 
 // --- README (raw markdown, rendered + sanitized in ReadmeDrawer) ---
 export const readmeMarkdown = writable('');
@@ -104,11 +105,14 @@ async function loadReadme(repoUrl: string) {
 
 async function loadGitHubData(repoUrl: string) {
   githubLoading.set(true);
+  githubError.set(null);
   try {
-    const repo = await fetchGitHubRepo(repoUrl);
-    githubRepo.set(repo);
+    const result = await fetchGitHubRepo(repoUrl);
+    githubRepo.set(result.data);
+    if (result.error) githubError.set(result.error);
   } catch (error) {
     console.error('GitHub data fetch failed:', error);
+    githubError.set('Failed to load GitHub data');
   } finally {
     githubLoading.set(false);
   }

@@ -18,6 +18,7 @@
 		submissionLoading,
 		githubRepo,
 		githubLoading,
+		githubError,
 		readmeMarkdown,
 		projectNote,
 		userNote,
@@ -142,6 +143,7 @@
 				<GitHubPanel
 					repo={$githubRepo}
 					loading={$githubLoading}
+					error={$githubError}
 					repoUrl={$currentSubmission?.project.repoUrl ?? $currentSubmission?.repoUrl ?? null}
 				/>
 

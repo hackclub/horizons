@@ -6,10 +6,11 @@
 	interface Props {
 		repo: GitHubRepo | null;
 		loading: boolean;
+		error: string | null;
 		repoUrl: string | null;
 	}
 
-	let { repo, loading, repoUrl }: Props = $props();
+	let { repo, loading, error, repoUrl }: Props = $props();
 </script>
 
 <div class="right-top">
@@ -33,6 +34,8 @@
 
 	{#if loading}
 		<div class="gh-loading">Loading GitHub data...</div>
+	{:else if error}
+		<div class="gh-error">{error}</div>
 	{:else if !repo}
 		<div class="gh-loading">No GitHub data available.</div>
 	{:else}
@@ -149,6 +152,16 @@
 		padding: 20px 16px;
 		font-size: 13px;
 		color: var(--text-dim);
+		text-align: center;
+	}
+
+	.gh-error {
+		padding: 12px 16px;
+		font-size: 13px;
+		color: #e8a732;
+		background: rgba(176, 114, 25, 0.1);
+		border-radius: 4px;
+		margin: 8px 12px;
 		text-align: center;
 	}
 

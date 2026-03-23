@@ -12,7 +12,7 @@ interface GitHubCommit {
   deletions: number;
 }
 
-interface GitHubRepoInfo {
+export interface GitHubRepoInfo {
   name: string;
   fullName: string;
   description: string | null;
@@ -99,43 +99,79 @@ export class GitHubService implements OnModuleInit {
    * Fetch full repo info including stats, commits, and line diffs.
    * All GitHub API calls go through the token pool.
    */
-  async getRepoInfo(repoUrl: string): Promise<GitHubRepoInfo | null> {
+  async getRepoInfo(
+    repoUrl: string,
+  ): Promise<{ data: GitHubRepoInfo | null; error?: string }> {
     const parsed = this.parseRepoUrl(repoUrl);
-    if (!parsed) return null;
+    if (!parsed) return { data: null, error: 'Invalid GitHub URL' };
     const { owner, repo } = parsed;
 
     try {
+      const repoApiUrl = `https://api.github.com/repos/${owner}/${repo}`;
       const [repoRes, pullsRes] = await Promise.all([
-        this.githubFetch(`https://api.github.com/repos/${owner}/${repo}`),
-        this.githubFetch(`https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=1`),
+        this.githubFetch(repoApiUrl),
+        this.githubFetch(`${repoApiUrl}/pulls?state=open&per_page=1`),
       ]);
 
       const repoData = await repoRes.json();
-      if (repoData.message === 'Not Found') return null;
+      if (!repoRes.ok) {
+        const errorMsg = this.describeApiError(repoRes, repoData);
+        this.logger.error(
+          `GitHub repo API error (${repoRes.status}): ${JSON.stringify(repoData)}`,
+        );
+        return { data: null, error: errorMsg };
+      }
 
       const pullsData = await pullsRes.json();
+      if (!pullsRes.ok) {
+        this.logger.warn(
+          `GitHub pulls API error (${pullsRes.status}): ${JSON.stringify(pullsData)}`,
+        );
+      }
 
       const allCommitsRaw = await this.fetchAllCommits(owner, repo);
       const commits = await this.fetchCommitStats(owner, repo, allCommitsRaw);
 
       return {
-        name: repoData.name,
-        fullName: repoData.full_name,
-        description: repoData.description,
-        language: repoData.language,
-        license: repoData.license?.spdx_id ?? null,
-        stars: repoData.stargazers_count ?? 0,
-        forks: repoData.forks_count ?? 0,
-        openIssues: repoData.open_issues_count ?? 0,
-        pullRequests: Array.isArray(pullsData) ? pullsData.length : 0,
-        createdAt: repoData.created_at,
-        pushedAt: repoData.pushed_at,
-        commits,
+        data: {
+          name: repoData.name,
+          fullName: repoData.full_name,
+          description: repoData.description,
+          language: repoData.language,
+          license: repoData.license?.spdx_id ?? null,
+          stars: repoData.stargazers_count ?? 0,
+          forks: repoData.forks_count ?? 0,
+          openIssues: repoData.open_issues_count ?? 0,
+          pullRequests: Array.isArray(pullsData) ? pullsData.length : 0,
+          createdAt: repoData.created_at,
+          pushedAt: repoData.pushed_at,
+          commits,
+        },
       };
     } catch (error) {
       this.logger.error(`GitHub repo fetch failed for ${repoUrl}: ${error}`);
-      return null;
+      return { data: null, error: 'Failed to reach GitHub API' };
     }
+  }
+
+  /** Turn a GitHub API error response into a human-readable message */
+  private describeApiError(
+    response: Response,
+    body: { message?: string },
+  ): string {
+    if (response.status === 403) {
+      const resetHeader = response.headers.get('x-ratelimit-reset');
+      if (resetHeader) {
+        const resetDate = new Date(Number(resetHeader) * 1000);
+        return `GitHub rate limit exceeded — resets at ${resetDate.toLocaleTimeString()}`;
+      }
+      return 'GitHub rate limit exceeded';
+    }
+    if (response.status === 404) {
+      return 'Repository not found (404)';
+    }
+    const msg = typeof body.message === 'string' ? body.message : 'unknown';
+    return `GitHub API error ${response.status}: ${msg}`;
   }
 
   /** Paginate through all commits on the default branch */
@@ -148,7 +184,13 @@ export class GitHubService implements OnModuleInit {
       const response = await this.githubFetch(
         `https://api.github.com/repos/${owner}/${repo}/commits?per_page=${perPage}&page=${page}`,
       );
-      if (!response.ok) break;
+      if (!response.ok) {
+        const errorBody: unknown = await response.json().catch(() => null);
+        this.logger.error(
+          `GitHub commits API error (${response.status}) for ${owner}/${repo} page ${page}: ${JSON.stringify(errorBody)}`,
+        );
+        break;
+      }
 
       const pageData = await response.json();
       if (!Array.isArray(pageData) || pageData.length === 0) break;
@@ -162,16 +204,35 @@ export class GitHubService implements OnModuleInit {
   }
 
   /** Fetch per-commit additions/deletions in parallel batches */
-  private async fetchCommitStats(owner: string, repo: string, commits: any[]): Promise<GitHubCommit[]> {
+  private async fetchCommitStats(
+    owner: string,
+    repo: string,
+    commits: any[],
+  ): Promise<GitHubCommit[]> {
     const results: GitHubCommit[] = [];
 
     for (let batchStart = 0; batchStart < commits.length; batchStart += this.COMMIT_STATS_BATCH_SIZE) {
       const batch = commits.slice(batchStart, batchStart + this.COMMIT_STATS_BATCH_SIZE);
       const details = await Promise.all(
         batch.map((c: any) =>
-          this.githubFetch(`https://api.github.com/repos/${owner}/${repo}/commits/${c.sha}`)
-            .then((r) => (r.ok ? r.json() : null))
-            .catch(() => null),
+          this.githubFetch(
+            `https://api.github.com/repos/${owner}/${repo}/commits/${c.sha}`,
+          )
+            .then((r) => {
+              if (!r.ok) {
+                this.logger.warn(
+                  `GitHub commit stats error (${r.status}) for ${c.sha}`,
+                );
+                return null;
+              }
+              return r.json();
+            })
+            .catch((err: Error) => {
+              this.logger.warn(
+                `GitHub commit stats fetch failed: ${err.message}`,
+              );
+              return null;
+            }),
         ),
       );
 

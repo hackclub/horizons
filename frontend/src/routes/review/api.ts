@@ -171,12 +171,15 @@ export function saveChecklist(submissionId: number, checkedItems: number[]): Pro
 }
 
 /** Fetch GitHub repo info via the backend (which handles auth tokens) */
-export async function fetchGitHubRepo(repoUrl: string): Promise<GitHubRepo | null> {
+export async function fetchGitHubRepo(
+  repoUrl: string,
+): Promise<{ data: GitHubRepo | null; error?: string }> {
   try {
-    return await reviewerFetch<GitHubRepo | null>(
+    return await reviewerFetch<{ data: GitHubRepo | null; error?: string }>(
       `/api/github/repo?url=${encodeURIComponent(repoUrl)}`,
     );
-  } catch {
-    return null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return { data: null, error: message };
   }
 }
