@@ -14,6 +14,7 @@
 		{ label: 'Linux Playable', value: 'linux_playable' },
 		{ label: 'Web Playable', value: 'web_playable' },
 		{ label: 'Cross-Platform Playable', value: 'cross_platform_playable' },
+		{ label: 'Hardware', value: 'hardware' },
 	];
 
 	let title = $state('');

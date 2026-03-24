@@ -12,10 +12,10 @@
     import { EXIT_DURATION } from '$lib';
 
 	const phrases = [
-		"OH YEAH. IT'S ALL COMING TOGETHER",
-		"ITS! TIME! TO! COOK!",
+		"OH YEAH. IT'S ALL COMING TOGETHER.",
+		"IT'S! TIME! TO! COOK!",
 		"HACKCLUB HORIZONS 4EVER",
-		"IN EVERY CONTINENT(DON'T TELL ANTARCTICA)",
+		"IN EVERY CONTINENT (DON'T TELL ANTARCTICA)",
 	];
 	const headerText = phrases[Math.floor(Math.random() * phrases.length)];
 

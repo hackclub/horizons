@@ -69,6 +69,7 @@ model Project {
   projectTitle       String       @map("project_title") @db.VarChar(30)
   repoUrl            String?      @map("repo_url")
   readmeUrl          String?      @map("readme_url")
+  journalUrl         String?      @map("journal_url")
   screenshotUrl      String?      @map("screenshot_url")
   isLocked           Boolean      @default(false) @map("is_locked")
   isFraud             Boolean      @default(false) @map("is_fraud")
@@ -191,6 +192,7 @@ enum ProjectType {
   linux_playable
   web_playable
   cross_platform_playable
+  hardware
 }
 
 enum ApprovalStatus {

@@ -66,14 +66,20 @@
             return;
         }
 
-        let authURL = await api.GET('/api/user/auth/login', { 
+        const response = await api.GET('/api/user/auth/login', {
             params: {
                 query: {
                     email
                 }
             }
-         }).then(response => response.data?.url!);
-         
+         });
+        const authURL = response.data?.url;
+
+        if (!authURL) {
+            showSlideOut = false;
+            return;
+        }
+
         setTimeout(() => {
             window.location = authURL as string & Location;
         }, 1200)

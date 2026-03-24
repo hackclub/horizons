@@ -14,11 +14,12 @@
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
 
 	const projectTypes = [
-		{ label: 'Windows Playable', value: 'windows_plairtableayable' },
+		{ label: 'Windows Playable', value: 'windows_playable' },
 		{ label: 'Mac Playable', value: 'mac_playable' },
 		{ label: 'Linux Playable', value: 'linux_playable' },
 		{ label: 'Web Playable', value: 'web_playable' },
 		{ label: 'Cross-Platform Playable', value: 'cross_platform_playable' },
+		{ label: 'Hardware', value: 'hardware' },
 	];
 
 	const projectId = $derived(page.params.id!);
@@ -60,14 +61,19 @@
 	let demoUrl = $state('');
 	let codeUrl = $state('');
 	let readmeUrl = $state('');
+	let journalUrl = $state('');
 	let submitting = $state(false);
 	let mediaUrl = $state<string | null>(null);
 	let mediaPreview = $state<string | null>(null);
 	let selectedHackatimeNames = $state<Set<string>>(new Set());
 
-	// Populate form from cached data
+	let isHardware = $derived(projectType === 'hardware');
+
+	// Populate form from cached data (only once)
+	let formPopulated = false;
 	$effect(() => {
-		if (editState.project) {
+		if (editState.project && !formPopulated) {
+			formPopulated = true;
 			const p = editState.project as any;
 			title = p.projectTitle ?? '';
 			projectType = p.projectType ?? 'web_playable';
@@ -84,6 +90,10 @@
 				if (codeUrl) checkCodeUrl(codeUrl);
 				if (readmeUrl) checkReadmeUrl(readmeUrl);
 			});
+			journalUrl = p.journalUrl ?? '';
+			if (demoUrl) checkDemoUrl(demoUrl);
+			if (codeUrl) checkCodeUrl(codeUrl);
+			if (readmeUrl) checkReadmeUrl(readmeUrl);
 		}
 	});
 
@@ -374,6 +384,7 @@
 					repoUrl: codeUrl.trim() || undefined,
 					readmeUrl: readmeUrl.trim() || undefined,
 					screenshotUrl: mediaUrl || undefined,
+					...(isHardware && journalUrl.trim() ? { journalUrl: journalUrl.trim() } : {}),
 				},
 			}),
 			api.PUT('/api/projects/auth/{id}/hackatime-projects', {
@@ -549,6 +560,15 @@
 							{/if}
 						{/snippet}
 					</FormField>
+					{#if isHardware}
+						<FormField
+							label="JOURNAL.md URL"
+							id="journal-url"
+							type="url"
+							placeholder="https://github.com/username/repo/blob/main/JOURNAL.md"
+							bind:value={journalUrl}
+						/>
+					{/if}
 					<HackatimeSelect
 						projects={allHackatimeProjects}
 						selectedNames={selectedHackatimeNames}

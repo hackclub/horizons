@@ -1198,7 +1198,7 @@ export interface components {
              * @description Project type
              * @enum {string}
              */
-            projectType: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable";
+            projectType: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware";
             /** @description Project description */
             projectDescription: string;
             /** @description Playable URL for the project */
@@ -1239,6 +1239,8 @@ export interface components {
             repoUrl?: string;
             /** @description README URL */
             readmeUrl?: string;
+            /** @description Journal URL */
+            journalUrl?: string;
             /** @description Approved hours */
             approvedHours?: number;
             /** @description Hackatime hours */
@@ -1284,6 +1286,11 @@ export interface components {
              * @description Screenshot URL
              */
             screenshotUrl?: string;
+            /**
+             * Format: uri
+             * @description Journal URL (for hardware projects)
+             */
+            journalUrl?: string;
             /** @description Linked Hackatime project names */
             nowHackatimeProjects?: string[];
             airtableRecId?: string;

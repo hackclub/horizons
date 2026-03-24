@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { AirtableService } from '../airtable/airtable.service';
 
 import { createHmac } from 'crypto';
 import * as jose from 'jose';
@@ -81,7 +82,10 @@ export class AuthService {
     }
   }
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private airtableService: AirtableService,
+  ) {}
 
   getAuthUrl(email?: string, referralCode?: string, redirectPath?: string): { url: string } {
     const clientId = process.env.HACKCLUB_CLIENT_ID;
@@ -185,8 +189,8 @@ export class AuthService {
 
     const { user, isNewUser } = await this.findOrCreateUser(claims, referralCode);
 
-    if (!isNewUser && this.calculateAge(user.birthday) >= 19) {
-      throw new ForbiddenException('You must be under 19 to sign in.');
+    if (claims.ysws_eligible === false) {
+      throw new ForbiddenException('You are not eligible for YSWS.');
     }
 
     const session = await this.prisma.userSession.create({
@@ -294,6 +298,10 @@ export class AuthService {
           rafflePos,
         },
       });
+
+      this.airtableService.syncUserEvent(email, existingUser.userId, 'signUp').catch((err) =>
+        console.error('Error syncing signUp event to Airtable:', err),
+      );
 
       return { user: existingUser, isNewUser: true };
     }
@@ -490,15 +498,5 @@ export class AuthService {
       console.error('Error checking Hackatime account:', error);
       return null;
     }
-  }
-
-  private calculateAge(birthday: Date) {
-    const today = new Date();
-    let age = today.getFullYear() - birthday.getFullYear();
-    const monthDiff = today.getMonth() - birthday.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
-      age -= 1;
-    }
-    return age;
   }
 }
