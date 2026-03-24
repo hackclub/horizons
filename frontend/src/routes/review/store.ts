@@ -9,6 +9,9 @@ import {
   fetchChecklist,
 } from './api';
 
+// --- Gallery vs review mode ---
+export const galleryMode = writable(true);
+
 // --- Queue state ---
 export const queue = writable<QueueItem[]>([]);
 export const queueLoading = writable(true);
@@ -49,18 +52,34 @@ export const queueLength = derived(queue, ($queue) => $queue.length);
 export async function loadQueue() {
   queueLoading.set(true);
   queueError.set(null);
+  galleryMode.set(true);
   try {
     const items = await fetchQueue();
     queue.set(items);
     currentIndex.set(0);
-    if (items.length > 0) {
-      await loadSubmissionDetail(items[0].submissionId);
-    }
   } catch (error) {
     queueError.set(error instanceof Error ? error.message : 'Failed to load review queue');
   } finally {
     queueLoading.set(false);
   }
+}
+
+/** Select a project from the gallery and enter review mode */
+export async function selectFromGallery(index: number) {
+  let queueItems: QueueItem[] = [];
+  queue.subscribe((q) => (queueItems = q))();
+
+  if (index < 0 || index >= queueItems.length) return;
+
+  currentIndex.set(index);
+  galleryMode.set(false);
+  await loadSubmissionDetail(queueItems[index].submissionId);
+}
+
+/** Return to the project gallery */
+export function returnToGallery() {
+  galleryMode.set(true);
+  currentSubmission.set(null);
 }
 
 export async function loadSubmissionDetail(submissionId: number) {

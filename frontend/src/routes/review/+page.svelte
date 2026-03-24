@@ -9,6 +9,7 @@
 	import ActionBar from './components/ActionBar.svelte';
 	import GitHubPanel from './components/GitHubPanel.svelte';
 	import ReviewChecklist from './components/ReviewChecklist.svelte';
+	import ProjectGallery from './components/ProjectGallery.svelte';
 	import {
 		queue,
 		queueLoading,
@@ -24,7 +25,10 @@
 		userNote,
 		checkedItems,
 		queueLength,
+		galleryMode,
 		loadQueue,
+		selectFromGallery,
+		returnToGallery,
 		navigateNext,
 		navigatePrev,
 	} from './store';
@@ -67,12 +71,15 @@
 		<div class="loading-screen">
 			<p>No pending submissions to review.</p>
 		</div>
+	{:else if $galleryMode}
+		<ProjectGallery items={$queue} onSelect={selectFromGallery} />
 	{:else}
 		<TopBar
 			currentIndex={$currentIndex}
 			totalCount={$queueLength}
 			onPrev={navigatePrev}
 			onNext={navigateNext}
+			onBackToGallery={returnToGallery}
 		/>
 
 		<div class="main">

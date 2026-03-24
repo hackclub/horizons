@@ -4,13 +4,19 @@
 		totalCount: number;
 		onPrev: () => void;
 		onNext: () => void;
+		onBackToGallery?: () => void;
 	}
 
-	let { currentIndex, totalCount, onPrev, onNext }: Props = $props();
+	let { currentIndex, totalCount, onPrev, onNext, onBackToGallery }: Props = $props();
 </script>
 
 <div class="topbar">
-	<div class="topbar-logo">HORIZONS <span>Project Review</span></div>
+	<div class="topbar-left">
+		{#if onBackToGallery}
+			<button class="back-btn" onclick={onBackToGallery}>← Gallery</button>
+		{/if}
+		<div class="topbar-logo">HORIZONS <span>Project Review</span></div>
+	</div>
 	<div class="project-counter">
 		Reviewing <strong>{currentIndex + 1}</strong> of <strong>{totalCount}</strong> pending
 	</div>
@@ -29,6 +35,29 @@
 		background: var(--surface);
 		border-bottom: 1px solid var(--border);
 		flex-shrink: 0;
+	}
+
+	.topbar-left {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.back-btn {
+		background: var(--surface2);
+		border: 1px solid var(--border);
+		color: var(--text-dim);
+		padding: 6px 14px;
+		border-radius: 6px;
+		cursor: pointer;
+		font-size: 12px;
+		font-family: inherit;
+		transition: all 0.15s;
+	}
+
+	.back-btn:hover {
+		color: var(--text);
+		border-color: var(--accent);
 	}
 
 	.topbar-logo {
