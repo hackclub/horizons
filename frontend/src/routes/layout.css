@@ -2,15 +2,16 @@
 @import 'tailwindcss';
 
 @font-face {
-	font-family: 'Grotesqon';
-	src: url('$lib/fonts/Grotesqon.woff2') format('woff2');
+	font-family: 'Hypebuzz';
+	src: url('$lib/fonts/Hypebuzz.woff2') format('woff2');
 	font-weight: normal;
 	font-style: normal;
 	font-display: swap;
+	font-synthesis: none;
 }
 
 @theme {
-	--font-cook: 'Grotesqon', sans-serif;
+	--font-cook: 'Hypebuzz', sans-serif;
 	--font-bricolage: 'Bricolage Grotesque', sans-serif;
 }
 

@@ -8,11 +8,11 @@ export class UploadsController {
   constructor(private uploadsService: UploadsService) {}
 
   @Post()
-  @Throttle({ default: { limit: 5, ttl: 60 } })
+  @Throttle({ default: { limit: 2, ttl: 60 } })
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: 5 * 1024 * 1024,
+        fileSize: 100 * 1024 * 1024,
       },
     }),
   )

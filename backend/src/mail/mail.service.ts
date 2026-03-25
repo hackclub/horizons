@@ -3,6 +3,7 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import mjml2html from 'mjml';
+import { debugLog } from '../utils/debug-log';
 // import { SmimeUtil, SmimeCertificate } from './utils/smime.util';
 // import * as forge from 'node-forge';
 import { PrismaService } from '../prisma.service';
@@ -213,7 +214,7 @@ export class MailService {
 
   async sendRsvpEmail(email: string, rsvpNumber?: number, rafflePosition?: number, stickerToken?: string): Promise<{ success: boolean }> {
     console.log('=== MAIL SERVICE DEBUG ===');
-    console.log(`sendRsvpEmail called with: email=${email}, rsvpNumber=${rsvpNumber}, rafflePosition=${rafflePosition}, stickerToken=${stickerToken ? 'present' : 'null'}`);
+    debugLog(`sendRsvpEmail called with: email=${email}, rsvpNumber=${rsvpNumber}, rafflePosition=${rafflePosition}, stickerToken=${stickerToken ? 'present' : 'null'}`);
     console.log(`rafflePosition type: ${typeof rafflePosition}, value: ${rafflePosition}, isUndefined: ${rafflePosition === undefined}, isNull: ${rafflePosition === null}`);
     
     await this.sendImmediateEmail(email, this.emailTemplate, 'To my dear nibbling...', {
@@ -263,8 +264,8 @@ export class MailService {
   }
 
   async sendImmediateEmail(email: string, htmlContent: string, subject: string, metadata: any = {}): Promise<{ success: boolean }> {
-    console.log('[Mail DISABLED] === sendImmediateEmail CALLED ===');
-    console.log('[Mail DISABLED] To:', email);
+    debugLog('[Mail DISABLED] === sendImmediateEmail CALLED ===');
+    debugLog('[Mail DISABLED] To:', email);
     console.log('[Mail DISABLED] Subject:', subject);
     console.log('[Mail DISABLED] Metadata type:', metadata.type);
     console.log('[Mail DISABLED] HTML content length:', htmlContent.length);
@@ -285,8 +286,8 @@ export class MailService {
     });
 
     // Email sending is disabled - just log and mark as sent
-    console.log(`[Mail DISABLED] Would have sent email to: ${email}`);
-    console.log(`[Mail DISABLED] From: ${fromEmail}`);
+    debugLog(`[Mail DISABLED] Would have sent email to: ${email}`);
+    debugLog(`[Mail DISABLED] From: ${fromEmail}`);
     console.log(`[Mail DISABLED] Subject: ${subject}`);
     
     await this.prisma.emailJob.update({
@@ -424,7 +425,7 @@ export class MailService {
       },
     });
 
-    console.log(`Scheduled email for ${email} at ${scheduledFor.toISOString()}, job ID: ${emailJob.id}`);
+    debugLog(`Scheduled email for ${email} at ${scheduledFor.toISOString()}, job ID: ${emailJob.id}`);
 
     return { success: true, jobId: emailJob.id };
   }
@@ -456,8 +457,8 @@ export class MailService {
         // const from = `Midnight (Hack Club) <${fromEmail}>`;
 
         // Email sending is disabled - just log and mark as sent
-        console.log(`[Mail DISABLED] Would have sent scheduled email to: ${job.recipientEmail}`);
-        console.log(`[Mail DISABLED] From: ${fromEmail}`);
+        debugLog(`[Mail DISABLED] Would have sent scheduled email to: ${job.recipientEmail}`);
+        debugLog(`[Mail DISABLED] From: ${fromEmail}`);
         console.log(`[Mail DISABLED] Subject: ${job.subject}`);
 
         // if (this.smimeEnabled && this.smimeUtil) {
@@ -510,9 +511,9 @@ export class MailService {
         await this.jobLock.markJobSent(job.id);
         await this.jobLock.releaseJobLock(job.id);
 
-        console.log(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Logged (not sent) email to: ${job.recipientEmail}`);
+        debugLog(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Logged (not sent) email to: ${job.recipientEmail}`);
       } catch (error) {
-        console.error(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Error processing email to ${job.recipientEmail}:`, error);
+        console.error(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Error processing email job ${job.id}:`, error);
         
         await this.jobLock.markJobFailed(
           job.id,
@@ -578,7 +579,7 @@ export class MailService {
       approved: data.approved,
     });
 
-    console.log(`Sent submission review email to: ${email} (Project: ${data.projectTitle}, Approved: ${data.approved})`);
+    debugLog(`Sent submission review email to: ${email} (Project: ${data.projectTitle}, Approved: ${data.approved})`);
 
     return { success: true };
   }
@@ -607,7 +608,7 @@ export class MailService {
       type: 'gift-code-claim',
     });
 
-    console.log(`Sent gift code claim email to: ${email}`);
+    debugLog(`Sent gift code claim email to: ${email}`);
 
     return { success: true };
   }
@@ -638,7 +639,7 @@ export class MailService {
       transactionId: data.transactionId,
     });
 
-    console.log(`Sent order fulfilled email to: ${email} (Transaction: ${data.transactionId})`);
+    debugLog(`Sent order fulfilled email to: ${email} (Transaction: ${data.transactionId})`);
 
     return { success: true };
   }

@@ -56,16 +56,16 @@
 {#if isAdmin || isReview}
 	{@render children()}
 {:else if isSmallViewport}
-	<div class="content-area bg-[#f3e8d8] absolute inset-0 overflow-hidden">
+	<div class="content-area absolute inset-0 overflow-hidden" style="background-color: var(--layout-bg, #f3e8d8)">
 		{@render children()}
 	</div>
 {:else}
-	<div class="layout-wrapper bg-[#271c0c] relative min-h-screen w-full overflow-hidden overscroll-none">
+	<div class="layout-wrapper relative min-h-screen w-full overflow-hidden overscroll-none" style="background-color: var(--layout-dark, #271c0c)">
 		<div class="absolute inset-0 pointer-events-none">
 			<div class="w-full h-full bg-cover bg-center -rotate-90 scale-150" style="background-image: url({texture});"></div>
 		</div>
-		
-		<div class="content-area bg-[#f3e8d8] absolute inset-10 overflow-hidden">
+
+		<div class="content-area absolute inset-10 overflow-hidden" style="background-color: var(--layout-bg, #f3e8d8)">
 			{@render children()}
 		</div>
 	</div>

@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma.service';
 import { MailService } from '../mail/mail.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { debugLog } from '../utils/debug-log';
 
 @Injectable()
 export class ShopService {
@@ -186,7 +187,7 @@ export class ShopService {
       throw new BadRequestException('User email not found');
     }
 
-    console.log(`[Shop Purchase] Checking verification status for user: ${userId}, email: ${user.email}`);
+    debugLog(`[Shop Purchase] Checking verification status for user: ${userId}, email: ${user.email}`);
     const externalApiBaseUrl = this.configService.get<string>('EXTERNAL_VERIFICATION_API_URL', 'https://identity.hackclub.com/api/external');
     const checkUrl = `${externalApiBaseUrl}/check?email=${encodeURIComponent(user.email)}`;
     console.log(`[Shop Purchase] Verification API URL: ${checkUrl}`);
@@ -205,11 +206,11 @@ export class ShopService {
       console.log(`[Shop Purchase] Verification API response data:`, JSON.stringify(verificationData));
       
       if (verificationData.result !== 'verified_eligible') {
-        console.warn(`[Shop Purchase] User ${userId} (${user.email}) is not verified_eligible. Result: ${verificationData.result}`);
+        debugLog(`[Shop Purchase] User ${userId} (${user.email}) is not verified_eligible. Result: ${verificationData.result}`);
         throw new BadRequestException('You must be verified eligible to purchase items from the shop');
       }
       
-      console.log(`[Shop Purchase] User ${userId} (${user.email}) verification check passed`);
+      debugLog(`[Shop Purchase] User ${userId} (${user.email}) verification check passed`);
     } catch (error) {
       if (error instanceof BadRequestException) {
         console.log(`[Shop Purchase] Verification check failed for user ${userId}: ${error.message}`);
@@ -316,7 +317,7 @@ export class ShopService {
             where: { userId },
             select: { firstName: true, lastName: true, email: true },
           });
-          console.log('[Midnight Ticket] User found:', user?.email);
+          debugLog('[Midnight Ticket] User found:', user?.email);
 
           if (user && user.email) {
             console.log('[Midnight Ticket] Sending request to attend API...');
@@ -438,7 +439,7 @@ export class ShopService {
       ? `${transaction.item.name} (${transaction.variant.name})`
       : transaction.item.name;
 
-    console.log(`[Refund] Transaction ${transactionId} refunded: ${transaction.cost} hours returned to user ${transaction.user.email} for "${itemName}"`);
+    debugLog(`[Refund] Transaction ${transactionId} refunded: ${transaction.cost} hours returned to user ${transaction.user.email} for "${itemName}"`);
 
     return {
       refunded: true,
@@ -501,7 +502,7 @@ export class ShopService {
       ? `${transaction.item.name} (${transaction.variant.name})`
       : transaction.item.name;
 
-    console.log(`[Fulfillment] Transaction ${transactionId} marked as fulfilled for user ${transaction.user.email} - "${itemName}"`);
+    debugLog(`[Fulfillment] Transaction ${transactionId} marked as fulfilled for user ${transaction.user.email} - "${itemName}"`);
 
     try {
       await this.mailService.sendOrderFulfilledEmail(
@@ -512,7 +513,7 @@ export class ShopService {
           itemDescription: transaction.itemDescription,
         },
       );
-      console.log(`[Fulfillment] Email sent to ${transaction.user.email} for transaction ${transactionId}`);
+      debugLog(`[Fulfillment] Email sent to ${transaction.user.email} for transaction ${transactionId}`);
     } catch (error) {
       console.error(`[Fulfillment] Error sending email to ${transaction.user.email}:`, error);
     }
@@ -572,7 +573,7 @@ export class ShopService {
       ? `${transaction.item.name} (${transaction.variant.name})`
       : transaction.item.name;
 
-    console.log(`[Unfulfill] Transaction ${transactionId} marked as unfulfilled for user ${transaction.user.email} - "${itemName}"`);
+    debugLog(`[Unfulfill] Transaction ${transactionId} marked as unfulfilled for user ${transaction.user.email} - "${itemName}"`);
 
     return updatedTransaction;
   }

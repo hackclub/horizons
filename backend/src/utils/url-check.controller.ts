@@ -1,6 +1,7 @@
 import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiOkResponse, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
+import { resolveAndCheckPrivate } from './is-private-url';
 
 class UrlCheckResponse {
   @ApiProperty({ description: 'Whether the URL is reachable' })
@@ -38,6 +39,14 @@ export class UrlCheckController {
       parsed = new URL(url);
     } catch {
       return { ok: false, status: 0, error: 'Invalid URL format' };
+    }
+
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return { ok: false, status: 0, error: 'Only HTTP and HTTPS URLs are allowed' };
+    }
+
+    if (await resolveAndCheckPrivate(parsed)) {
+      return { ok: false, status: 0, error: 'URLs pointing to private/internal addresses are not allowed' };
     }
 
     // For repo checks on non-GitHub URLs, verify it's actually a git repository

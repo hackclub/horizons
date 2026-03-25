@@ -2,6 +2,7 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { MailService } from '../mail/mail.service';
 import { randomBytes } from 'crypto';
+import { debugLog } from '../utils/debug-log';
 
 @Injectable()
 export class UserService {
@@ -37,8 +38,8 @@ export class UserService {
 
   private async sendRsvpEmailInBackground(email: string, rafflePosition: number): Promise<void> {
     try {
-      console.log(`=== SENDING EMAIL IN BACKGROUND ===`);
-      console.log(`Email: ${email}, RafflePosition received: ${rafflePosition}`);
+      debugLog(`=== SENDING EMAIL IN BACKGROUND ===`);
+      debugLog(`Email: ${email}, RafflePosition received: ${rafflePosition}`);
       
       let stickerToken: string | null = null;
       
@@ -62,7 +63,7 @@ export class UserService {
         }
       }
       
-      console.log(`Calling mail service directly with:`, {
+      debugLog(`Calling mail service directly with:`, {
         email,
         rsvpNumber: rafflePosition,
         rafflePosition,
