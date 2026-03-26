@@ -334,7 +334,7 @@
             </div>
             {#if !isTransitioning}
                 <!-- <p class="text-black font-cook text-center text-4xl tracking-widest mt-2 mb-4" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}>300+ PERSON HACKATHON IN SF • DATE 6/19-6/21</p> -->
-                <p class="text-black font-cook text-center text-xl sm:text-4xl tracking-wide sm:tracking-widest mt-2 mb-6" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}><TextWave text="HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD" duration={2} disabled={disableAnimations} /></p>
+                <p class="text-black font-cook text-center text-lg sm:text-3xl tracking-wide sm:tracking-widest mt-2 mb-6" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}><TextWave text="HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD" duration={2} disabled={disableAnimations} /></p>
             {/if}
 
             <div out:captureStripesRect>
