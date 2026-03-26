@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { ReviewSubmissionDto, SaveNoteDto, SaveChecklistDto } from './dto/review-submission.dto';
+import { ReviewSubmissionDto, QuickApproveDto, SaveNoteDto, SaveChecklistDto } from './dto/review-submission.dto';
 import { AirtableService } from '../airtable/airtable.service';
 import { MailService } from '../mail/mail.service';
+import { SlackService } from '../slack/slack.service';
 
 // Scoped user fields — no PII like email, address, birthday
 const SCOPED_USER_SELECT = {
@@ -19,6 +20,7 @@ export class ReviewerService {
     private prisma: PrismaService,
     private airtableService: AirtableService,
     private mailService: MailService,
+    private slackService: SlackService,
   ) {}
 
   /**
@@ -124,7 +126,9 @@ export class ReviewerService {
   }
 
   /**
-   * Approve or reject a submission with feedback.
+   * Update a submission: change status, hours, feedback, etc.
+   * Supports re-review (changing a previously reviewed submission).
+   * Conditional email (only when sendEmail is explicitly true), always sends Slack on status change.
    */
   async reviewSubmission(submissionId: number, dto: ReviewSubmissionDto, reviewerId: number) {
     const submission = await this.prisma.submission.findUnique({
@@ -140,57 +144,173 @@ export class ReviewerService {
       throw new NotFoundException(`Submission ${submissionId} not found`);
     }
 
-    if (submission.approvalStatus !== 'pending') {
-      throw new BadRequestException('Submission has already been reviewed');
-    }
-
-    const updateData: Record<string, unknown> = {
-      approvalStatus: dto.approvalStatus,
-      reviewedBy: reviewerId.toString(),
-      reviewedAt: new Date(),
-    };
-
+    const updateData: Record<string, unknown> = {};
     if (dto.approvedHours !== undefined) {
       updateData.approvedHours = dto.approvedHours;
     }
-
-    // userFeedback is stored in hoursJustification on the submission
     if (dto.userFeedback !== undefined) {
       updateData.hoursJustification = dto.userFeedback;
+    }
+    if (dto.approvalStatus !== undefined) {
+      updateData.approvalStatus = dto.approvalStatus;
+      updateData.reviewedBy = reviewerId.toString();
+      updateData.reviewedAt = new Date();
     }
 
     const updatedSubmission = await this.prisma.submission.update({
       where: { submissionId },
       data: updateData,
+      include: {
+        project: {
+          include: {
+            user: {
+              select: { userId: true, firstName: true, lastName: true, email: true },
+            },
+          },
+        },
+      },
     });
 
-    // Create audit log
-    const auditChanges: Record<string, unknown> = {
-      previousStatus: submission.approvalStatus,
-    };
+    // Audit log — distinguish status-change reviews from field-only updates
+    const isReview = dto.approvalStatus !== undefined;
+    const auditChanges: Record<string, unknown> = {};
+    if (dto.approvalStatus !== undefined) auditChanges.previousStatus = submission.approvalStatus;
     if (dto.approvedHours !== undefined) auditChanges.approvedHours = dto.approvedHours;
     if (dto.userFeedback !== undefined) auditChanges.userFeedback = dto.userFeedback;
     if (dto.hoursJustification !== undefined) auditChanges.hoursJustification = dto.hoursJustification;
+    if (dto.adminComment !== undefined) auditChanges.adminComment = dto.adminComment;
+
+    await this.prisma.submissionAuditLog.create({
+      data: {
+        submissionId,
+        adminId: reviewerId,
+        action: isReview ? 'review' : 'update',
+        newStatus: dto.approvalStatus || null,
+        approvedHours: dto.approvedHours ?? null,
+        changes: auditChanges as any,
+      },
+    });
+
+    await this.syncProjectData(submission, dto);
+
+    if (dto.approvalStatus === 'approved') {
+      await this.syncAirtable(submission, dto);
+    }
+
+    // Notifications only fire on status changes
+    if (dto.approvalStatus !== undefined) {
+      await this.sendNotifications(updatedSubmission, dto);
+    }
+
+    return { success: true, submissionId, status: dto.approvalStatus ?? submission.approvalStatus };
+  }
+
+  /**
+   * Quick-approve: auto-fills hours from hackatime, always approves.
+   * Sends Slack notification, no email.
+   */
+  async quickApproveSubmission(
+    submissionId: number,
+    reviewerId: number,
+    dto: QuickApproveDto,
+  ) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      include: {
+        project: {
+          include: { user: true },
+        },
+      },
+    });
+
+    if (!submission) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+
+    const hackatimeHours = submission.project.nowHackatimeHours || 0;
+    const approvedHours = dto.approvedHours ?? hackatimeHours;
+    const autoJustification = `Quick approved with ${approvedHours.toFixed(1)} hours.`;
+    const hoursJustification = dto.hoursJustification || autoJustification;
+
+    const updatedSubmission = await this.prisma.submission.update({
+      where: { submissionId },
+      data: {
+        approvalStatus: 'approved',
+        approvedHours,
+        hoursJustification: dto.userFeedback || '',
+        reviewedBy: reviewerId.toString(),
+        reviewedAt: new Date(),
+      },
+      include: {
+        project: {
+          include: {
+            user: {
+              select: { userId: true, firstName: true, lastName: true, email: true },
+            },
+          },
+        },
+      },
+    });
 
     await this.prisma.submissionAuditLog.create({
       data: {
         submissionId,
         adminId: reviewerId,
         action: 'review',
-        newStatus: dto.approvalStatus,
-        approvedHours: dto.approvedHours ?? null,
-        changes: auditChanges as any,
+        newStatus: 'approved',
+        approvedHours,
+        changes: {
+          previousStatus: submission.approvalStatus,
+          quickApprove: true,
+          approvedHours,
+          hoursJustification,
+          userFeedback: dto.userFeedback || null,
+        },
       },
     });
 
-    // Sync approved hours and justification to project
+    await this.prisma.project.update({
+      where: { projectId: submission.projectId },
+      data: {
+        approvedHours,
+        hoursJustification,
+        playableUrl: submission.playableUrl,
+        repoUrl: submission.repoUrl,
+        screenshotUrl: submission.screenshotUrl,
+        description: submission.description,
+      },
+    });
+
+    await this.syncAirtable(submission, { approvedHours, hoursJustification });
+
+    // Slack notification only (no email for quick approve)
+    try {
+      await this.slackService.notifySubmissionReview(
+        updatedSubmission.project.user.email,
+        {
+          projectTitle: updatedSubmission.project.projectTitle,
+          projectId: updatedSubmission.project.projectId,
+          approved: true,
+          approvedHours,
+          feedback: dto.userFeedback,
+        },
+      );
+    } catch (error) {
+      console.error('Slack notification failed during quick approve:', error);
+    }
+
+    return { success: true, submissionId, status: 'approved' };
+  }
+
+  /** Sync approved hours, justification, adminComment, and submission data to the project table. */
+  private async syncProjectData(
+    submission: { projectId: number; playableUrl: string | null; repoUrl: string | null; screenshotUrl: string | null; description: string | null },
+    dto: ReviewSubmissionDto,
+  ) {
     const projectUpdateData: Record<string, unknown> = {};
-    if (dto.approvedHours !== undefined) {
-      projectUpdateData.approvedHours = dto.approvedHours;
-    }
-    if (dto.hoursJustification !== undefined) {
-      projectUpdateData.hoursJustification = dto.hoursJustification;
-    }
+    if (dto.approvedHours !== undefined) projectUpdateData.approvedHours = dto.approvedHours;
+    if (dto.hoursJustification !== undefined) projectUpdateData.hoursJustification = dto.hoursJustification;
+    if (dto.adminComment !== undefined) projectUpdateData.adminComment = dto.adminComment;
     if (dto.approvalStatus === 'approved') {
       projectUpdateData.playableUrl = submission.playableUrl;
       projectUpdateData.repoUrl = submission.repoUrl;
@@ -204,108 +324,136 @@ export class ReviewerService {
         data: projectUpdateData,
       });
     }
+  }
 
-    // Airtable sync on approval
-    if (dto.approvalStatus === 'approved') {
-      try {
-        const project = await this.prisma.project.findUnique({
-          where: { projectId: submission.projectId },
-          include: { user: true },
+  /** Create or update the Airtable record when a submission is approved. */
+  private async syncAirtable(
+    submission: { projectId: number; playableUrl: string | null; repoUrl: string | null; screenshotUrl: string | null; description: string | null; project: { airtableRecId: string | null; playableUrl: string | null; repoUrl: string | null; screenshotUrl: string | null; description: string | null; user: any } },
+    dto: { approvedHours?: number; hoursJustification?: string },
+  ) {
+    try {
+      const project = await this.prisma.project.findUnique({
+        where: { projectId: submission.projectId },
+        include: { user: true },
+      });
+      if (!project) return;
+
+      const isResubmission = !!project.airtableRecId;
+      if (isResubmission) {
+        await this.airtableService.updateApprovedProject(project.airtableRecId, {
+          playableUrl: submission.playableUrl || undefined,
+          repoUrl: submission.repoUrl || undefined,
+          screenshotUrl: submission.screenshotUrl || undefined,
+          description: submission.description || undefined,
+          approvedHours: dto.approvedHours,
+          hoursJustification: project.hoursJustification || dto.hoursJustification,
         });
+      } else {
+        const approvedProjectData = {
+          user: {
+            firstName: project.user.firstName,
+            lastName: project.user.lastName,
+            email: project.user.email,
+            birthday: project.user.birthday,
+            addressLine1: project.user.addressLine1,
+            addressLine2: project.user.addressLine2,
+            city: project.user.city,
+            state: project.user.state,
+            country: project.user.country,
+            zipCode: project.user.zipCode,
+          },
+          project: {
+            playableUrl: submission.playableUrl || submission.project.playableUrl || '',
+            repoUrl: submission.repoUrl || submission.project.repoUrl || '',
+            screenshotUrl: submission.screenshotUrl || submission.project.screenshotUrl || '',
+            approvedHours: dto.approvedHours || 0,
+            hoursJustification: project.hoursJustification || dto.hoursJustification || '',
+            description: submission.description || submission.project.description || undefined,
+          },
+        };
 
-        if (project) {
-          const isResubmission = !!project.airtableRecId;
-          const approvedProjectData = {
-            user: {
-              firstName: project.user.firstName,
-              lastName: project.user.lastName,
-              email: project.user.email,
-              birthday: project.user.birthday,
-              addressLine1: project.user.addressLine1,
-              addressLine2: project.user.addressLine2,
-              city: project.user.city,
-              state: project.user.state,
-              country: project.user.country,
-              zipCode: project.user.zipCode,
-              airtableRecId: project.user.airtableRecId,
-            },
-            project: {
-              projectTitle: project.projectTitle,
-              projectType: project.projectType,
-              description: project.description,
-              playableUrl: project.playableUrl,
-              repoUrl: project.repoUrl,
-              screenshotUrl: project.screenshotUrl,
-              approvedHours: project.approvedHours,
-              hoursJustification: project.hoursJustification,
-              airtableRecId: project.airtableRecId,
-            },
-          };
-
-          if (isResubmission) {
-            await this.airtableService.updateApprovedProject(project.airtableRecId, approvedProjectData.project);
-          } else {
-            const { recordId: airtableRecId } = await this.airtableService.createApprovedProject(approvedProjectData);
-            if (airtableRecId) {
-              await this.prisma.project.update({
-                where: { projectId: project.projectId },
-                data: { airtableRecId },
-              });
-            }
-          }
+        const airtableResult = await this.airtableService.createApprovedProject(approvedProjectData);
+        if (airtableResult.recordId) {
+          await this.prisma.project.update({
+            where: { projectId: project.projectId },
+            data: { airtableRecId: airtableResult.recordId },
+          });
         }
+      }
+    } catch (error) {
+      // Airtable sync failure shouldn't block the review
+      console.error('Airtable sync failed:', error);
+    }
+  }
+
+  /** Send email (if explicitly requested) and Slack notification on status change. */
+  private async sendNotifications(
+    updatedSubmission: { project: { projectTitle: string; projectId: number; user: { email: string } }; hoursJustification: string | null },
+    dto: ReviewSubmissionDto,
+  ) {
+    if (dto.sendEmail === true) {
+      try {
+        await this.mailService.sendSubmissionReviewEmail(
+          updatedSubmission.project.user.email,
+          {
+            projectTitle: updatedSubmission.project.projectTitle,
+            projectId: updatedSubmission.project.projectId,
+            approved: dto.approvalStatus === 'approved',
+            approvedHours: dto.approvedHours,
+            feedback: updatedSubmission.hoursJustification,
+          },
+        );
       } catch (error) {
-        // Airtable sync failure shouldn't block the review
-        console.error('Airtable sync failed during reviewer approval:', error);
+        console.error('Email notification failed:', error);
       }
     }
 
-    // Send email notification to the user
     try {
-      await this.mailService.sendSubmissionReviewEmail(
-        submission.project.user.email,
+      await this.slackService.notifySubmissionReview(
+        updatedSubmission.project.user.email,
         {
-          projectTitle: submission.project.projectTitle,
-          projectId: submission.projectId,
+          projectTitle: updatedSubmission.project.projectTitle,
+          projectId: updatedSubmission.project.projectId,
           approved: dto.approvalStatus === 'approved',
           approvedHours: dto.approvedHours,
-          feedback: dto.userFeedback || undefined,
+          feedback: updatedSubmission.hoursJustification,
         },
       );
     } catch (error) {
-      console.error('Email notification failed during reviewer approval:', error);
+      console.error('Slack notification failed:', error);
     }
-
-    return { success: true, submissionId, status: dto.approvalStatus };
   }
 
+  /** Save the adminComment field on a project or user. */
   async saveNote(targetType: 'project' | 'user', targetId: number, dto: SaveNoteDto) {
-    return this.prisma.reviewerNote.upsert({
-      where: {
-        targetType_targetId: {
-          targetType,
-          targetId,
-        },
-      },
-      update: { content: dto.content },
-      create: {
-        targetType,
-        targetId,
-        content: dto.content,
-      },
-    });
+    if (targetType === 'project') {
+      await this.prisma.project.update({
+        where: { projectId: targetId },
+        data: { adminComment: dto.content },
+      });
+    } else {
+      await this.prisma.user.update({
+        where: { userId: targetId },
+        data: { adminComment: dto.content },
+      });
+    }
+    return { content: dto.content };
   }
 
+  /** Read the adminComment field from a project or user. */
   async getNote(targetType: 'project' | 'user', targetId: number) {
-    const note = await this.prisma.reviewerNote.findUnique({
-      where: {
-        targetType_targetId: {
-          targetType,
-          targetId,
-        },
-      },
+    if (targetType === 'project') {
+      const project = await this.prisma.project.findUnique({
+        where: { projectId: targetId },
+        select: { adminComment: true },
+      });
+      return { content: project?.adminComment ?? '' };
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { userId: targetId },
+      select: { adminComment: true },
     });
-    return { content: note?.content ?? '' };
+    return { content: user?.adminComment ?? '' };
   }
 
   async saveChecklist(submissionId: number, dto: SaveChecklistDto) {

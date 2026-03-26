@@ -41,6 +41,7 @@ model User {
 
   isFraud         Boolean       @default(false) @map("is_fraud")
   isSus           Boolean       @default(false) @map("is_sus")
+  adminComment    String?       @map("admin_comment") @db.VarChar(1000)
 
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
@@ -97,6 +98,7 @@ model Submission {
   updatedAt        DateTime       @updatedAt @map("updated_at")
   project          Project        @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
   auditLogs        SubmissionAuditLog[]
+  checklist        ReviewerChecklist?
 
   @@index([projectId])
   @@map("submissions")
@@ -283,24 +285,13 @@ model GiftCode {
   @@map("gift_codes")
 }
 
-model ReviewerNote {
-  id         Int      @id @default(autoincrement())
-  targetType String   @map("target_type") // 'project' or 'user'
-  targetId   Int      @map("target_id")
-  content    String   @db.Text
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  @@unique([targetType, targetId])
-  @@map("reviewer_notes")
-}
-
 model ReviewerChecklist {
-  id           Int      @id @default(autoincrement())
-  submissionId Int      @unique @map("submission_id")
-  checkedItems Json     @default("[]") @map("checked_items") // array of checked item indices
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id           Int        @id @default(autoincrement())
+  submissionId Int        @unique @map("submission_id")
+  checkedItems Json       @default("[]") @map("checked_items") // array of checked item indices
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  submission   Submission @relation(fields: [submissionId], references: [submissionId], onDelete: Cascade)
 
   @@map("reviewer_checklists")
 }

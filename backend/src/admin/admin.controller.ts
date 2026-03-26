@@ -1,7 +1,6 @@
 import { Controller, Get, Put, Body, Param, UseGuards, Req, ParseIntPipe, Delete, Post } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
-import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -22,28 +21,6 @@ export class AdminController {
   @Roles(Role.Admin)
   async getSubmissionAuditLogs(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.getSubmissionAuditLogs(id);
-  }
-
-  @Put('submissions/:id')
-  @UseGuards(RolesGuard)
-  @Roles(Role.Admin)
-  async updateSubmission(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateSubmissionDto: UpdateSubmissionDto,
-    @Req() req: Request,
-  ) {
-    return this.adminService.updateSubmission(id, updateSubmissionDto, req.user.userId);
-  }
-
-  @Post('submissions/:id/quick-approve')
-  @UseGuards(RolesGuard)
-  @Roles(Role.Admin)
-  async quickApproveSubmission(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() body: { userFeedback?: string; hoursJustification?: string; approvedHours?: number },
-    @Req() req: Request,
-  ) {
-    return this.adminService.quickApproveSubmission(id, req.user.userId, body.hoursJustification, body.userFeedback, body.approvedHours);
   }
 
   @Put('projects/:id/unlock')

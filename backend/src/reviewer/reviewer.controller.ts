@@ -1,8 +1,8 @@
-import { Controller, Get, Put, Body, Param, UseGuards, Req, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, Param, UseGuards, Req, ParseIntPipe } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ReviewerService } from './reviewer.service';
-import { ReviewSubmissionDto, SaveNoteDto, SaveChecklistDto } from './dto/review-submission.dto';
+import { ReviewSubmissionDto, QuickApproveDto, SaveNoteDto, SaveChecklistDto } from './dto/review-submission.dto';
 import {
   QueueItemResponse,
   SubmissionDetailResponse,
@@ -34,7 +34,7 @@ export class ReviewerController {
     return this.reviewerService.getSubmissionDetail(id);
   }
 
-  /** Approve or reject a submission */
+  /** Update a submission: change status, hours, feedback, comments */
   @Put('submissions/:id/review')
   @ApiOkResponse({ type: ReviewResultResponse })
   async reviewSubmission(
@@ -43,6 +43,17 @@ export class ReviewerController {
     @Req() req: Request,
   ) {
     return this.reviewerService.reviewSubmission(id, dto, req.user.userId);
+  }
+
+  /** Quick-approve a submission using hackatime hours */
+  @Post('submissions/:id/quick-approve')
+  @ApiOkResponse({ type: ReviewResultResponse })
+  async quickApproveSubmission(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: QuickApproveDto,
+    @Req() req: Request,
+  ) {
+    return this.reviewerService.quickApproveSubmission(id, req.user.userId, dto);
   }
 
   /** Get the shared note for a project */

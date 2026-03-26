@@ -1304,7 +1304,7 @@
 
         try {
             const response = await fetch(
-                `${apiUrl}/api/admin/submissions/${submissionId}`,
+                `${apiUrl}/api/reviewer/submissions/${submissionId}/review`,
                 {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
@@ -1377,7 +1377,7 @@
 
         try {
             const response = await fetch(
-                `${apiUrl}/api/admin/submissions/${submission.submissionId}/quick-approve`,
+                `${apiUrl}/api/reviewer/submissions/${submission.submissionId}/quick-approve`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
