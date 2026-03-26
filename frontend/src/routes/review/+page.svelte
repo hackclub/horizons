@@ -299,8 +299,8 @@
 </div>
 
 <style>
-	/* CSS custom properties scoped to the review UI — dark theme */
-	:global(:root) {
+	/* Dark theme tokens scoped to this page — won't leak to other routes */
+	.review-root {
 		--bg: #1c1c1c;
 		--surface: #242424;
 		--surface2: #2e2e2e;
@@ -315,9 +315,7 @@
 		--blue: #42a5f5;
 		--tag-bg: rgba(245, 166, 35, 0.15);
 		--divider: rgba(255, 255, 255, 0.06);
-	}
 
-	.review-root {
 		font-family: 'Inter', sans-serif;
 		background: var(--bg);
 		color: var(--text);
