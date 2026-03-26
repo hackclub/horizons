@@ -1,173 +1,106 @@
-import { env } from '$env/dynamic/public';
+import { api, type components } from '$lib/api';
 
-const BASE_URL = env.PUBLIC_API_URL || 'http://localhost:3002';
+// Re-export schema types so components can import from this file
+export type ScopedUser = components['schemas']['ScopedUserResponse'];
+export type QueueItem = components['schemas']['QueueItemResponse'];
+export type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
+export type TimelineEntry = components['schemas']['TimelineEntryResponse'];
+export type GitHubRepo = components['schemas']['GitHubRepoResponse'];
+export type GitHubCommit = components['schemas']['GitHubCommitResponse'];
 
-async function reviewerFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
+export async function fetchQueue(): Promise<QueueItem[]> {
+  const { data, error } = await api.GET('/api/reviewer/queue');
+  if (error) throw new Error('Failed to fetch review queue');
+  return data ?? [];
+}
+
+export async function fetchSubmissionDetail(submissionId: number): Promise<SubmissionDetail> {
+  const { data, error } = await api.GET('/api/reviewer/submissions/{id}', {
+    params: { path: { id: submissionId } },
   });
-
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => '');
-    throw new Error(`Reviewer API error ${response.status}: ${errorBody || response.statusText}`);
-  }
-
-  return response.json();
+  if (error || !data) throw new Error(`Failed to fetch submission ${submissionId}`);
+  return data;
 }
 
-// --- Types matching the scoped backend responses ---
-
-export type ScopedUser = {
-  userId: number;
-  firstName: string;
-  lastName: string;
-  slackUserId: string | null;
-  age: number | null;
-};
-
-export type QueueItem = {
-  submissionId: number;
-  projectId: number;
-  hackatimeHours: number | null;
-  createdAt: string;
-  project: {
-    projectId: number;
-    projectTitle: string;
-    projectType: string;
-    repoUrl: string | null;
-    playableUrl: string | null;
-    nowHackatimeHours: number | null;
-    nowHackatimeProjects: string[];
-    user: ScopedUser;
-  };
-};
-
-export type TimelineEntry =
-  | { type: 'submitted' | 'resubmitted'; hours: number | null; timestamp: string }
-  | {
-      type: 'approved' | 'rejected';
-      reviewerName: string;
-      userFeedback: string | null;
-      hoursJustification: string | null;
-      approvedHours: number | null;
-      submittedHours: number | null;
-      timestamp: string;
-    };
-
-export type SubmissionDetail = {
-  submissionId: number;
-  projectId: number;
-  approvalStatus: string;
-  hackatimeHours: number | null;
-  description: string | null;
-  playableUrl: string | null;
-  repoUrl: string | null;
-  screenshotUrl: string | null;
-  createdAt: string;
-  project: {
-    projectId: number;
-    projectTitle: string;
-    projectType: string;
-    description: string | null;
-    playableUrl: string | null;
-    repoUrl: string | null;
-    readmeUrl: string | null;
-    nowHackatimeHours: number | null;
-    nowHackatimeProjects: string[];
-    user: ScopedUser;
-  };
-  timeline: TimelineEntry[];
-};
-
-export type GitHubRepo = {
-  name: string;
-  fullName: string;
-  description: string | null;
-  language: string | null;
-  license: string | null;
-  stars: number;
-  forks: number;
-  openIssues: number;
-  pullRequests: number;
-  createdAt: string;
-  pushedAt: string;
-  commits: GitHubCommit[];
-};
-
-export type GitHubCommit = {
-  sha: string;
-  message: string;
-  authorName: string;
-  authorLogin: string;
-  date: string;
-  url: string;
-  additions: number;
-  deletions: number;
-};
-
-// --- API functions ---
-
-/** Fetch raw README markdown via the backend (which handles auth tokens) */
-export async function fetchReadmeContent(repoUrl: string): Promise<string | null> {
-  try {
-    const result = await reviewerFetch<{ content: string | null }>(
-      `/api/github/readme?url=${encodeURIComponent(repoUrl)}`,
-    );
-    return result.content;
-  } catch {
-    return null;
-  }
-}
-
-export function fetchQueue(): Promise<QueueItem[]> {
-  return reviewerFetch('/api/reviewer/queue');
-}
-
-export function fetchSubmissionDetail(submissionId: number): Promise<SubmissionDetail> {
-  return reviewerFetch(`/api/reviewer/submissions/${submissionId}`);
-}
-
-export function reviewSubmission(
+export async function reviewSubmission(
   submissionId: number,
-  data: {
+  body: {
     approvalStatus: 'approved' | 'rejected';
     approvedHours?: number;
     userFeedback?: string;
     hoursJustification?: string;
   },
 ): Promise<{ success: boolean }> {
-  return reviewerFetch(`/api/reviewer/submissions/${submissionId}/review`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
+  const { data, error } = await api.PUT('/api/reviewer/submissions/{id}/review', {
+    params: { path: { id: submissionId } },
+    body,
   });
+  if (error) throw new Error(`Failed to review submission ${submissionId}`);
+  return data ?? { success: true };
 }
 
-export function fetchNote(targetType: 'project' | 'user', targetId: number): Promise<{ content: string }> {
-  return reviewerFetch(`/api/reviewer/${targetType}s/${targetId}/notes`);
+export async function fetchNote(
+  targetType: 'project' | 'user',
+  targetId: number,
+): Promise<{ content: string }> {
+  const path = targetType === 'project'
+    ? '/api/reviewer/projects/{id}/notes' as const
+    : '/api/reviewer/users/{id}/notes' as const;
+
+  const { data, error } = await api.GET(path, {
+    params: { path: { id: targetId } },
+  });
+  if (error || !data) throw new Error(`Failed to fetch ${targetType} note`);
+  return data;
 }
 
-export function saveNote(
+export async function saveNote(
   targetType: 'project' | 'user',
   targetId: number,
   content: string,
 ): Promise<void> {
-  return reviewerFetch(`/api/reviewer/${targetType}s/${targetId}/notes`, {
-    method: 'PUT',
-    body: JSON.stringify({ content }),
+  const path = targetType === 'project'
+    ? '/api/reviewer/projects/{id}/notes' as const
+    : '/api/reviewer/users/{id}/notes' as const;
+
+  const { error } = await api.PUT(path, {
+    params: { path: { id: targetId } },
+    body: { content },
   });
+  if (error) throw new Error(`Failed to save ${targetType} note`);
 }
 
-export function fetchChecklist(submissionId: number): Promise<{ checkedItems: number[] }> {
-  return reviewerFetch(`/api/reviewer/submissions/${submissionId}/checklist`);
+export async function fetchChecklist(
+  submissionId: number,
+): Promise<{ checkedItems: number[] }> {
+  const { data, error } = await api.GET('/api/reviewer/submissions/{id}/checklist', {
+    params: { path: { id: submissionId } },
+  });
+  if (error || !data) throw new Error(`Failed to fetch checklist for submission ${submissionId}`);
+  return data;
 }
 
-export function saveChecklist(submissionId: number, checkedItems: number[]): Promise<void> {
-  return reviewerFetch(`/api/reviewer/submissions/${submissionId}/checklist`, {
-    method: 'PUT',
-    body: JSON.stringify({ checkedItems }),
+export async function saveChecklist(
+  submissionId: number,
+  checkedItems: number[],
+): Promise<void> {
+  const { error } = await api.PUT('/api/reviewer/submissions/{id}/checklist', {
+    params: { path: { id: submissionId } },
+    body: { checkedItems },
   });
+  if (error) throw new Error(`Failed to save checklist for submission ${submissionId}`);
+}
+
+/** Fetch raw README markdown via the backend (which handles auth tokens) */
+export async function fetchReadmeContent(repoUrl: string): Promise<string | null> {
+  try {
+    const { data } = await api.GET('/api/github/readme', {
+      params: { query: { url: repoUrl } },
+    });
+    return data?.content ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Fetch GitHub repo info via the backend (which handles auth tokens) */
@@ -175,9 +108,11 @@ export async function fetchGitHubRepo(
   repoUrl: string,
 ): Promise<{ data: GitHubRepo | null; error?: string }> {
   try {
-    return await reviewerFetch<{ data: GitHubRepo | null; error?: string }>(
-      `/api/github/repo?url=${encodeURIComponent(repoUrl)}`,
-    );
+    const { data, error } = await api.GET('/api/github/repo', {
+      params: { query: { url: repoUrl } },
+    });
+    if (error || !data) return { data: null, error: 'Failed to fetch GitHub repo info' };
+    return { data: data.data ?? null, error: data.error };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return { data: null, error: message };

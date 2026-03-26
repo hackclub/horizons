@@ -10,34 +10,167 @@
 	import GitHubPanel from './components/GitHubPanel.svelte';
 	import ReviewChecklist from './components/ReviewChecklist.svelte';
 	import ProjectGallery from './components/ProjectGallery.svelte';
+	import type { QueueItem, SubmissionDetail, GitHubRepo } from './api';
 	import {
-		queue,
-		queueLoading,
-		queueError,
-		currentIndex,
-		currentSubmission,
-		submissionLoading,
-		githubRepo,
-		githubLoading,
-		githubError,
-		readmeMarkdown,
-		projectNote,
-		userNote,
-		checkedItems,
-		queueLength,
-		galleryMode,
-		loadQueue,
-		selectFromGallery,
-		returnToGallery,
-		navigateNext,
-		navigatePrev,
-	} from './store';
+		fetchQueue,
+		fetchSubmissionDetail,
+		fetchGitHubRepo,
+		fetchReadmeContent,
+		fetchNote,
+		fetchChecklist,
+	} from './api';
 
+	// Queue state
+	let queue = $state<QueueItem[]>([]);
+	let queueLoading = $state(true);
+	let queueError = $state<string | null>(null);
+
+	// Navigation
+	let galleryMode = $state(true);
+	let currentIndex = $state(0);
+	let queueLength = $derived(queue.length);
+
+	// Current submission detail + loading
+	let currentSubmission = $state<SubmissionDetail | null>(null);
+	let submissionLoading = $state(false);
+
+	// GitHub data
+	let githubRepo = $state<GitHubRepo | null>(null);
+	let githubLoading = $state(false);
+	let githubError = $state<string | null>(null);
+
+	// Sidebar data
+	let readmeMarkdown = $state('');
+	let projectNote = $state('');
+	let userNote = $state('');
+	let checkedItems = $state<number[]>([]);
 	let editedHours = $state<number | null>(null);
 
 	onMount(() => {
 		loadQueue();
 	});
+
+	async function loadQueue() {
+		queueLoading = true;
+		queueError = null;
+		galleryMode = true;
+		try {
+			queue = await fetchQueue();
+			currentIndex = 0;
+		} catch (error) {
+			queueError = error instanceof Error ? error.message : 'Failed to load review queue';
+		} finally {
+			queueLoading = false;
+		}
+	}
+
+	async function loadSubmissionDetail(submissionId: number) {
+		submissionLoading = true;
+		currentSubmission = null;
+		githubRepo = null;
+		readmeMarkdown = '';
+
+		try {
+			const detail = await fetchSubmissionDetail(submissionId);
+			currentSubmission = detail;
+
+			const repoUrl = detail.project.repoUrl || detail.repoUrl;
+			const promises: Promise<void>[] = [];
+
+			if (repoUrl) {
+				promises.push(loadGitHubData(repoUrl));
+				promises.push(loadReadme(repoUrl));
+			}
+
+			promises.push(loadNotes(detail.project.projectId, detail.project.user.userId));
+			promises.push(loadChecklist(submissionId));
+
+			await Promise.all(promises);
+		} catch (error) {
+			console.error('Failed to load submission detail:', error);
+		} finally {
+			submissionLoading = false;
+		}
+	}
+
+	async function loadGitHubData(repoUrl: string) {
+		githubLoading = true;
+		githubError = null;
+		try {
+			const result = await fetchGitHubRepo(repoUrl);
+			githubRepo = result.data;
+			if (result.error) githubError = result.error;
+		} catch (error) {
+			console.error('GitHub data fetch failed:', error);
+			githubError = 'Failed to load GitHub data';
+		} finally {
+			githubLoading = false;
+		}
+	}
+
+	async function loadReadme(repoUrl: string) {
+		try {
+			readmeMarkdown = (await fetchReadmeContent(repoUrl)) ?? '';
+		} catch (error) {
+			console.error('README fetch failed:', error);
+			readmeMarkdown = '';
+		}
+	}
+
+	async function loadNotes(projectId: number, userId: number) {
+		try {
+			const [projNote, usrNote] = await Promise.all([
+				fetchNote('project', projectId),
+				fetchNote('user', userId),
+			]);
+			projectNote = projNote.content;
+			userNote = usrNote.content;
+		} catch (error) {
+			console.error('Notes fetch failed:', error);
+			projectNote = '';
+			userNote = '';
+		}
+	}
+
+	async function loadChecklist(submissionId: number) {
+		try {
+			const result = await fetchChecklist(submissionId);
+			checkedItems = result.checkedItems;
+		} catch (error) {
+			console.error('Checklist fetch failed:', error);
+			checkedItems = [];
+		}
+	}
+
+	async function selectFromGallery(index: number) {
+		if (index < 0 || index >= queue.length) return;
+		currentIndex = index;
+		galleryMode = false;
+		await loadSubmissionDetail(queue[index].submissionId);
+	}
+
+	function returnToGallery() {
+		galleryMode = true;
+		currentSubmission = null;
+	}
+
+	async function navigateTo(index: number) {
+		if (index < 0 || index >= queue.length) return;
+		currentIndex = index;
+		await loadSubmissionDetail(queue[index].submissionId);
+	}
+
+	async function navigateNext() {
+		if (currentIndex < queueLength - 1) {
+			await navigateTo(currentIndex + 1);
+		}
+	}
+
+	async function navigatePrev() {
+		if (currentIndex > 0) {
+			await navigateTo(currentIndex - 1);
+		}
+	}
 
 	function handleHoursChange(hours: number) {
 		editedHours = hours;
@@ -57,26 +190,26 @@
 </svelte:head>
 
 <div class="review-root">
-	{#if $queueLoading}
+	{#if queueLoading}
 		<div class="loading-screen">
 			<p>Loading review queue...</p>
 		</div>
-	{:else if $queueError}
+	{:else if queueError}
 		<div class="loading-screen error">
 			<p>Failed to load review queue</p>
-			<p class="error-detail">{$queueError}</p>
+			<p class="error-detail">{queueError}</p>
 			<button onclick={() => loadQueue()}>Retry</button>
 		</div>
-	{:else if $queueLength === 0}
+	{:else if queueLength === 0}
 		<div class="loading-screen">
 			<p>No pending submissions to review.</p>
 		</div>
-	{:else if $galleryMode}
-		<ProjectGallery items={$queue} onSelect={selectFromGallery} />
+	{:else if galleryMode}
+		<ProjectGallery items={queue} onSelect={selectFromGallery} />
 	{:else}
 		<TopBar
-			currentIndex={$currentIndex}
-			totalCount={$queueLength}
+			{currentIndex}
+			totalCount={queueLength}
 			onPrev={navigatePrev}
 			onNext={navigateNext}
 			onBackToGallery={returnToGallery}
@@ -85,14 +218,14 @@
 		<div class="main">
 			<!-- LEFT PANEL -->
 			<div class="left">
-				{#if $currentSubmission}
+				{#if currentSubmission}
 					<UserInfo
-						user={$currentSubmission.project.user}
-						repoUrl={$currentSubmission.project.repoUrl ?? $currentSubmission.repoUrl}
-						playableUrl={$currentSubmission.project.playableUrl ?? $currentSubmission.playableUrl}
-						readmeUrl={$currentSubmission.project.readmeUrl}
-						hackatimeHours={$currentSubmission.hackatimeHours}
-						hackatimeProjects={$currentSubmission.project.nowHackatimeProjects ?? []}
+						user={currentSubmission.project.user}
+						repoUrl={currentSubmission.project.repoUrl ?? currentSubmission.repoUrl}
+						playableUrl={currentSubmission.project.playableUrl ?? currentSubmission.playableUrl}
+						readmeUrl={currentSubmission.project.readmeUrl}
+						hackatimeHours={currentSubmission.hackatimeHours}
+						hackatimeProjects={currentSubmission.project.nowHackatimeProjects ?? []}
 						onHoursChange={handleHoursChange}
 					/>
 
@@ -101,8 +234,8 @@
 					<NotesSection
 						title="Notes — Project"
 						targetType="project"
-						targetId={$currentSubmission.project.projectId}
-						bind:content={$projectNote}
+						targetId={currentSubmission.project.projectId}
+						bind:content={projectNote}
 					/>
 
 					<hr class="section-divider" />
@@ -110,37 +243,37 @@
 					<NotesSection
 						title="Notes — User"
 						targetType="user"
-						targetId={$currentSubmission.project.user.userId}
-						bind:content={$userNote}
+						targetId={currentSubmission.project.user.userId}
+						bind:content={userNote}
 					/>
 
 					<hr class="section-divider" />
 
-					<ReviewHistory timeline={$currentSubmission.timeline} />
-				{:else if $submissionLoading}
+					<ReviewHistory timeline={currentSubmission.timeline} />
+				{:else if submissionLoading}
 					<div class="panel-loading">Loading...</div>
 				{/if}
 			</div>
 
 			<!-- CENTER PANEL -->
 			<div class="center">
-				{#if $currentSubmission}
+				{#if currentSubmission}
 					<DemoIframe
-						demoUrl={$currentSubmission.playableUrl ?? $currentSubmission.project.playableUrl}
+						demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
 					/>
 
-					<ReadmeDrawer markdown={$readmeMarkdown} />
+					<ReadmeDrawer markdown={readmeMarkdown} />
 
 					<ActionBar
-						submissionId={$currentSubmission.submissionId}
-						hackatimeHours={$currentSubmission.hackatimeHours}
+						submissionId={currentSubmission.submissionId}
+						hackatimeHours={currentSubmission.hackatimeHours}
 						{editedHours}
-						projectTitle={$currentSubmission.project.projectTitle}
-						projectDescription={$currentSubmission.project.description}
-						screenshotUrl={$currentSubmission.screenshotUrl}
+						projectTitle={currentSubmission.project.projectTitle}
+						projectDescription={currentSubmission.project.description}
+						screenshotUrl={currentSubmission.screenshotUrl}
 						onReviewComplete={handleReviewComplete}
 					/>
-				{:else if $submissionLoading}
+				{:else if submissionLoading}
 					<div class="panel-loading">Loading submission...</div>
 				{/if}
 			</div>
@@ -148,16 +281,16 @@
 			<!-- RIGHT PANEL -->
 			<div class="right">
 				<GitHubPanel
-					repo={$githubRepo}
-					loading={$githubLoading}
-					error={$githubError}
-					repoUrl={$currentSubmission?.project.repoUrl ?? $currentSubmission?.repoUrl ?? null}
+					repo={githubRepo}
+					loading={githubLoading}
+					error={githubError}
+					repoUrl={currentSubmission?.project.repoUrl ?? currentSubmission?.repoUrl ?? null}
 				/>
 
-				{#if $currentSubmission}
+				{#if currentSubmission}
 					<ReviewChecklist
-						submissionId={$currentSubmission.submissionId}
-						bind:checkedItems={$checkedItems}
+						submissionId={currentSubmission.submissionId}
+						bind:checkedItems
 					/>
 				{/if}
 			</div>

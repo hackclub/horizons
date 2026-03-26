@@ -1,6 +1,8 @@
 import { IsOptional, IsString, IsNumber, IsEnum, IsArray, IsInt, MaxLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ReviewSubmissionDto {
+  @ApiProperty({ enum: ['approved', 'rejected'] })
   @IsEnum(['approved', 'rejected'])
   approvalStatus: 'approved' | 'rejected';
 

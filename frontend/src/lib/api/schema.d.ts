@@ -678,6 +678,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/submissions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getSubmissionDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/submissions/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["ReviewerController_reviewSubmission"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/projects/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getProjectNote"];
+        put: operations["ReviewerController_saveProjectNote"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/users/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getUserNote"];
+        put: operations["ReviewerController_saveUserNote"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/submissions/{id}/checklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getChecklist"];
+        put: operations["ReviewerController_saveChecklist"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/healthcheck": {
         parameters: {
             query?: never;
@@ -1153,6 +1249,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/github/repo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GitHubController_getRepoInfo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/github/readme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GitHubController_getReadme"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1286,10 +1414,7 @@ export interface components {
              * @description Screenshot URL
              */
             screenshotUrl?: string;
-            /**
-             * Format: uri
-             * @description Journal URL (for hardware projects)
-             */
+            /** @description Journal URL (for hardware projects) */
             journalUrl?: string;
             /** @description Linked Hackatime project names */
             nowHackatimeProjects?: string[];
@@ -1331,6 +1456,93 @@ export interface components {
             hoursJustification?: string;
             approvalStatus?: Record<string, never>;
             sendEmail?: boolean;
+        };
+        ScopedUserResponse: {
+            userId: number;
+            firstName: string;
+            lastName: string;
+            slackUserId: string | null;
+            age: number | null;
+        };
+        QueueProjectResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            repoUrl: string | null;
+            playableUrl: string | null;
+            nowHackatimeHours: number | null;
+            nowHackatimeProjects: string[];
+            user: components["schemas"]["ScopedUserResponse"];
+        };
+        QueueItemResponse: {
+            submissionId: number;
+            projectId: number;
+            hackatimeHours: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            project: components["schemas"]["QueueProjectResponse"];
+        };
+        SubmissionProjectResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            description: string | null;
+            playableUrl: string | null;
+            repoUrl: string | null;
+            readmeUrl: string | null;
+            nowHackatimeHours: number | null;
+            nowHackatimeProjects: string[];
+            user: components["schemas"]["ScopedUserResponse"];
+        };
+        TimelineEntryResponse: {
+            /** @enum {string} */
+            type: "submitted" | "resubmitted" | "approved" | "rejected";
+            hours?: number | null;
+            reviewerName?: string;
+            userFeedback?: string | null;
+            hoursJustification?: string | null;
+            approvedHours?: number | null;
+            submittedHours?: number | null;
+            /** Format: date-time */
+            timestamp: string;
+        };
+        SubmissionDetailResponse: {
+            submissionId: number;
+            projectId: number;
+            approvalStatus: string;
+            hackatimeHours: number | null;
+            description: string | null;
+            playableUrl: string | null;
+            repoUrl: string | null;
+            screenshotUrl: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            project: components["schemas"]["SubmissionProjectResponse"];
+            timeline: components["schemas"]["TimelineEntryResponse"][];
+        };
+        ReviewSubmissionDto: {
+            /** @enum {string} */
+            approvalStatus: "approved" | "rejected";
+            approvedHours?: number;
+            userFeedback?: string;
+            hoursJustification?: string;
+        };
+        ReviewResultResponse: {
+            success: boolean;
+            submissionId: number;
+            status: string;
+        };
+        NoteResponse: {
+            content: string;
+        };
+        SaveNoteDto: {
+            content: string;
+        };
+        ChecklistResponse: {
+            checkedItems: number[];
+        };
+        SaveChecklistDto: {
+            checkedItems: number[];
         };
         PurchaseItemDto: {
             itemId: number;
@@ -1420,6 +1632,37 @@ export interface components {
             error?: string;
             /** @description Favicon URL extracted from the page */
             favicon?: string;
+        };
+        GitHubCommitResponse: {
+            sha: string;
+            message: string;
+            authorName: string;
+            authorLogin: string;
+            date: string;
+            url: string;
+            additions: number;
+            deletions: number;
+        };
+        GitHubRepoResponse: {
+            name: string;
+            fullName: string;
+            description?: string | null;
+            language?: string | null;
+            license?: string | null;
+            stars: number;
+            forks: number;
+            openIssues: number;
+            pullRequests: number;
+            createdAt: string;
+            pushedAt: string;
+            commits: components["schemas"]["GitHubCommitResponse"][];
+        };
+        GitHubRepoInfoResponse: {
+            data?: components["schemas"]["GitHubRepoResponse"] | null;
+            error?: string;
+        };
+        ReadmeResponse: {
+            content?: string | null;
         };
     };
     responses: never;
@@ -2370,6 +2613,209 @@ export interface operations {
             };
         };
     };
+    ReviewerController_getQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItemResponse"][];
+                };
+            };
+        };
+    };
+    ReviewerController_getSubmissionDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionDetailResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_reviewSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewSubmissionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResultResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_getProjectNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_saveProjectNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveNoteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_getUserNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_saveUserNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveNoteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_getChecklist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_saveChecklist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveChecklistDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistResponse"];
+                };
+            };
+        };
+    };
     HealthController_healthCheck: {
         parameters: {
             query?: never;
@@ -3038,6 +3484,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UrlCheckResponse"];
+                };
+            };
+        };
+    };
+    GitHubController_getRepoInfo: {
+        parameters: {
+            query: {
+                url: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GitHubRepoInfoResponse"];
+                };
+            };
+        };
+    };
+    GitHubController_getReadme: {
+        parameters: {
+            query: {
+                url: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadmeResponse"];
                 };
             };
         };
