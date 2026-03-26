@@ -10,15 +10,11 @@
 	import GitHubPanel from './components/GitHubPanel.svelte';
 	import ReviewChecklist from './components/ReviewChecklist.svelte';
 	import ProjectGallery from './components/ProjectGallery.svelte';
-	import type { QueueItem, SubmissionDetail, GitHubRepo } from './api';
-	import {
-		fetchQueue,
-		fetchSubmissionDetail,
-		fetchGitHubRepo,
-		fetchReadmeContent,
-		fetchNote,
-		fetchChecklist,
-	} from './api';
+	import { api, type components } from '$lib/api';
+
+	type QueueItem = components['schemas']['QueueItemResponse'];
+	type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
+	type GitHubRepo = components['schemas']['GitHubRepoResponse'];
 
 	// Queue state
 	let queue = $state<QueueItem[]>([]);
@@ -55,7 +51,9 @@
 		queueError = null;
 		galleryMode = true;
 		try {
-			queue = await fetchQueue();
+			const { data, error } = await api.GET('/api/reviewer/queue');
+			if (error) throw new Error('Failed to fetch review queue');
+			queue = data ?? [];
 			currentIndex = 0;
 		} catch (error) {
 			queueError = error instanceof Error ? error.message : 'Failed to load review queue';
@@ -71,10 +69,13 @@
 		readmeMarkdown = '';
 
 		try {
-			const detail = await fetchSubmissionDetail(submissionId);
-			currentSubmission = detail;
+			const { data, error } = await api.GET('/api/reviewer/submissions/{id}', {
+				params: { path: { id: submissionId } },
+			});
+			if (error || !data) throw new Error(`Failed to fetch submission ${submissionId}`);
+			currentSubmission = data;
 
-			const repoUrl = detail.project.repoUrl || detail.repoUrl;
+			const repoUrl = data.project.repoUrl || data.repoUrl;
 			const promises: Promise<void>[] = [];
 
 			if (repoUrl) {
@@ -82,7 +83,7 @@
 				promises.push(loadReadme(repoUrl));
 			}
 
-			promises.push(loadNotes(detail.project.projectId, detail.project.user.userId));
+			promises.push(loadNotes(data.project.projectId, data.project.user.userId));
 			promises.push(loadChecklist(submissionId));
 
 			await Promise.all(promises);
@@ -97,9 +98,15 @@
 		githubLoading = true;
 		githubError = null;
 		try {
-			const result = await fetchGitHubRepo(repoUrl);
-			githubRepo = result.data;
-			if (result.error) githubError = result.error;
+			const { data, error } = await api.GET('/api/github/repo', {
+				params: { query: { url: repoUrl } },
+			});
+			if (error || !data) {
+				githubError = 'Failed to load GitHub data';
+				return;
+			}
+			githubRepo = data.data ?? null;
+			if (data.error) githubError = data.error;
 		} catch (error) {
 			console.error('GitHub data fetch failed:', error);
 			githubError = 'Failed to load GitHub data';
@@ -110,23 +117,24 @@
 
 	async function loadReadme(repoUrl: string) {
 		try {
-			readmeMarkdown = (await fetchReadmeContent(repoUrl)) ?? '';
-		} catch (error) {
-			console.error('README fetch failed:', error);
+			const { data } = await api.GET('/api/github/readme', {
+				params: { query: { url: repoUrl } },
+			});
+			readmeMarkdown = data?.content ?? '';
+		} catch {
 			readmeMarkdown = '';
 		}
 	}
 
 	async function loadNotes(projectId: number, userId: number) {
 		try {
-			const [projNote, usrNote] = await Promise.all([
-				fetchNote('project', projectId),
-				fetchNote('user', userId),
+			const [projRes, userRes] = await Promise.all([
+				api.GET('/api/reviewer/projects/{id}/notes', { params: { path: { id: projectId } } }),
+				api.GET('/api/reviewer/users/{id}/notes', { params: { path: { id: userId } } }),
 			]);
-			projectNote = projNote.content;
-			userNote = usrNote.content;
-		} catch (error) {
-			console.error('Notes fetch failed:', error);
+			projectNote = projRes.data?.content ?? '';
+			userNote = userRes.data?.content ?? '';
+		} catch {
 			projectNote = '';
 			userNote = '';
 		}
@@ -134,10 +142,11 @@
 
 	async function loadChecklist(submissionId: number) {
 		try {
-			const result = await fetchChecklist(submissionId);
-			checkedItems = result.checkedItems;
-		} catch (error) {
-			console.error('Checklist fetch failed:', error);
+			const { data } = await api.GET('/api/reviewer/submissions/{id}/checklist', {
+				params: { path: { id: submissionId } },
+			});
+			checkedItems = data?.checkedItems ?? [];
+		} catch {
 			checkedItems = [];
 		}
 	}

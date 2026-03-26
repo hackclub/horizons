@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { TimelineEntry } from '../api';
+	import type { components } from '$lib/api';
+	type TimelineEntry = components['schemas']['TimelineEntryResponse'];
 	import { timeAgo, formatDate } from '../utils';
 
 	interface Props {

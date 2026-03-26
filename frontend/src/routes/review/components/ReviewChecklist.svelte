@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { saveChecklist } from '../api';
+	import { api } from '$lib/api';
 
 	interface Props {
 		submissionId: number;
@@ -29,10 +29,17 @@
 		}
 
 		saveError = null;
-		saveChecklist(submissionId, checkedItems).catch((error) => {
+		api.PUT('/api/reviewer/submissions/{id}/checklist', {
+			params: { path: { id: submissionId } },
+			body: { checkedItems },
+		}).then(({ error }) => {
+			if (error) {
+				saveError = 'Failed to save';
+				setTimeout(() => (saveError = null), 4000);
+			}
+		}).catch(() => {
 			saveError = 'Failed to save';
 			setTimeout(() => (saveError = null), 4000);
-			console.error('Failed to save checklist:', error);
 		});
 	}
 </script>

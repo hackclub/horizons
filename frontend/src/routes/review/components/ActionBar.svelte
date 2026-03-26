@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { reviewSubmission } from '../api';
+	import { api } from '$lib/api';
 
 	interface Props {
 		submissionId: number;
@@ -68,13 +68,17 @@
 	async function submitApproval() {
 		submitting = true;
 		try {
-			await reviewSubmission(submissionId, {
-				approvalStatus: 'approved',
-				approvedHours,
-				hoursJustification: hoursJustification || undefined,
-				userFeedback: approveComment || undefined,
-				sendEmail,
+			const { error } = await api.PUT('/api/reviewer/submissions/{id}/review', {
+				params: { path: { id: submissionId } },
+				body: {
+					approvalStatus: 'approved',
+					approvedHours,
+					hoursJustification: hoursJustification || undefined,
+					userFeedback: approveComment || undefined,
+					sendEmail,
+				},
 			});
+			if (error) throw new Error(`Failed to approve submission ${submissionId}`);
 			onReviewComplete();
 		} catch (error) {
 			console.error('Approval failed:', error);
@@ -92,11 +96,15 @@
 
 		submitting = true;
 		try {
-			await reviewSubmission(submissionId, {
-				approvalStatus: 'rejected',
-				userFeedback: changesComment,
-				sendEmail: rejectSendEmail,
+			const { error } = await api.PUT('/api/reviewer/submissions/{id}/review', {
+				params: { path: { id: submissionId } },
+				body: {
+					approvalStatus: 'rejected',
+					userFeedback: changesComment,
+					sendEmail: rejectSendEmail,
+				},
 			});
+			if (error) throw new Error(`Failed to reject submission ${submissionId}`);
 			onReviewComplete();
 		} catch (error) {
 			console.error('Review failed:', error);

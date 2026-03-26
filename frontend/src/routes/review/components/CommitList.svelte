@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { GitHubCommit } from '../api';
+	import type { components } from '$lib/api';
+	type GitHubCommit = components['schemas']['GitHubCommitResponse'];
 	import { timeAgo } from '../utils';
 
 	interface Props {

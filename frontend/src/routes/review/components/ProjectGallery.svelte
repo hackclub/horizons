@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { QueueItem } from '../api';
+	import type { components } from '$lib/api';
+	type QueueItem = components['schemas']['QueueItemResponse'];
 
 	interface Props {
 		items: QueueItem[];

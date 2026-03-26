@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { ScopedUser } from '../api';
+	import type { components } from '$lib/api';
+	type ScopedUser = components['schemas']['ScopedUserResponse'];
 	import HoursBreakdown from './HoursBreakdown.svelte';
 
 	interface Props {

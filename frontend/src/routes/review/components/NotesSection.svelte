@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { saveNote } from '../api';
+	import { api } from '$lib/api';
 
 	interface Props {
 		title: string;
@@ -25,7 +25,15 @@
 		saving = true;
 		saveError = null;
 		try {
-			await saveNote(targetType, targetId, content);
+			const path = targetType === 'project'
+				? '/api/reviewer/projects/{id}/notes' as const
+				: '/api/reviewer/users/{id}/notes' as const;
+
+			const { error } = await api.PUT(path, {
+				params: { path: { id: targetId } },
+				body: { content },
+			});
+			if (error) throw new Error(`Failed to save ${targetType} note`);
 			savedFlash = true;
 			setTimeout(() => (savedFlash = false), 2000);
 		} catch (error) {

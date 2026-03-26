@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { GitHubRepo } from '../api';
+	import type { components } from '$lib/api';
+	type GitHubRepo = components['schemas']['GitHubRepoResponse'];
 	import { timeAgo } from '../utils';
 	import CommitList from './CommitList.svelte';
 
