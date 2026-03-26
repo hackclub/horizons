@@ -68,6 +68,7 @@
 		<textarea
 			class="notes-area"
 			bind:value={content}
+			maxlength={1000}
 			placeholder="Notes about this {targetType}..."
 		></textarea>
 	</div>

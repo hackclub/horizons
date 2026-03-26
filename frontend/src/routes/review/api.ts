@@ -25,10 +25,12 @@ export async function fetchSubmissionDetail(submissionId: number): Promise<Submi
 export async function reviewSubmission(
   submissionId: number,
   body: {
-    approvalStatus: 'approved' | 'rejected';
+    approvalStatus?: 'pending' | 'approved' | 'rejected';
     approvedHours?: number;
     userFeedback?: string;
     hoursJustification?: string;
+    adminComment?: string;
+    sendEmail?: boolean;
   },
 ): Promise<{ success: boolean }> {
   const { data, error } = await api.PUT('/api/reviewer/submissions/{id}/review', {
@@ -36,6 +38,22 @@ export async function reviewSubmission(
     body,
   });
   if (error) throw new Error(`Failed to review submission ${submissionId}`);
+  return data ?? { success: true };
+}
+
+export async function quickApproveSubmission(
+  submissionId: number,
+  body: {
+    userFeedback?: string;
+    hoursJustification?: string;
+    approvedHours?: number;
+  },
+): Promise<{ success: boolean }> {
+  const { data, error } = await api.POST('/api/reviewer/submissions/{id}/quick-approve', {
+    params: { path: { id: submissionId } },
+    body,
+  });
+  if (error) throw new Error(`Failed to quick-approve submission ${submissionId}`);
   return data ?? { success: true };
 }
 

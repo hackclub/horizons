@@ -30,9 +30,11 @@
 	let approveComment = $state('');
 	let approvedHours = $state(hackatimeHours ?? 0);
 	let reviewerManuallyEditedHours = $state(false);
+	let sendEmail = $state(false);
 
 	// Changes needed form fields
 	let changesComment = $state('');
+	let rejectSendEmail = $state(false);
 
 	// Reset fields when submission changes
 	$effect(() => {
@@ -43,7 +45,9 @@
 		approveComment = '';
 		approvedHours = hackatimeHours ?? 0;
 		reviewerManuallyEditedHours = false;
+		sendEmail = false;
 		changesComment = '';
+		rejectSendEmail = false;
 	});
 
 	// Sync approved hours from the breakdown panel unless reviewer manually edited
@@ -69,6 +73,7 @@
 				approvedHours,
 				hoursJustification: hoursJustification || undefined,
 				userFeedback: approveComment || undefined,
+				sendEmail,
 			});
 			onReviewComplete();
 		} catch (error) {
@@ -90,6 +95,7 @@
 			await reviewSubmission(submissionId, {
 				approvalStatus: 'rejected',
 				userFeedback: changesComment,
+				sendEmail: rejectSendEmail,
 			});
 			onReviewComplete();
 		} catch (error) {
@@ -103,14 +109,14 @@
 
 <div class="action-bar">
 	<div class="action-bar-buttons">
-		<button class="btn btn-approve" onclick={() => showForm('approve')}>✓ Approve</button>
-		<button class="btn btn-changes" onclick={() => showForm('changes')}>✎ Changes Needed</button>
+		<button class="btn btn-approve" onclick={() => showForm('approve')}>Approve</button>
+		<button class="btn btn-changes" onclick={() => showForm('changes')}>Changes Needed</button>
 		<button
 			class="btn btn-card"
 			class:btn-card-active={showProjectCard}
 			onclick={() => { showProjectCard = !showProjectCard; }}
 		>
-			⊞ Project Card
+			Project Card
 		</button>
 	</div>
 
@@ -155,11 +161,12 @@
 			<div class="form-group">
 				<label for="justify">
 					Ship Justification
-					<span class="hint">(not shown to user)</span>
+					<span class="hint">(internal — synced to Airtable)</span>
 				</label>
 				<textarea
 					id="justify"
 					bind:value={hoursJustification}
+					maxlength={500}
 					placeholder="Why are you approving this? e.g. hours look right, project is complete, shipped publicly..."
 				></textarea>
 			</div>
@@ -171,8 +178,15 @@
 				<textarea
 					id="approve-comment"
 					bind:value={approveComment}
+					maxlength={500}
 					placeholder="Nice work! Any feedback you want to share..."
 				></textarea>
+			</div>
+			<div class="form-row">
+				<label class="checkbox-label">
+					<input type="checkbox" bind:checked={sendEmail} />
+					Send email notification to user
+				</label>
 			</div>
 			<div class="form-actions">
 				<button class="btn-sm cancel" onclick={hideForm}>Cancel</button>
@@ -194,8 +208,15 @@
 				<textarea
 					id="changes-comment"
 					bind:value={changesComment}
+					maxlength={500}
 					placeholder="Describe what the user needs to fix or improve..."
 				></textarea>
+			</div>
+			<div class="form-row">
+				<label class="checkbox-label">
+					<input type="checkbox" bind:checked={rejectSendEmail} />
+					Send email notification to user
+				</label>
 			</div>
 			<div class="form-actions">
 				<button class="btn-sm cancel" onclick={hideForm}>Cancel</button>
@@ -370,6 +391,23 @@
 	.btn-sm:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	.form-row {
+		margin-bottom: 12px;
+	}
+
+	.checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 12px;
+		color: var(--text-dim);
+		cursor: pointer;
+	}
+
+	.checkbox-label input[type='checkbox'] {
+		accent-color: var(--accent);
 	}
 
 	/* Project Card button */

@@ -358,38 +358,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/submissions/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["AdminController_updateSubmission"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/submissions/{id}/quick-approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AdminController_quickApproveSubmission"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/admin/projects/{id}/unlock": {
         parameters: {
             query?: never;
@@ -720,6 +688,22 @@ export interface paths {
         get?: never;
         put: operations["ReviewerController_reviewSubmission"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/submissions/{id}/quick-approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewerController_quickApproveSubmission"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1450,13 +1434,6 @@ export interface components {
             /** @description Deleted project ID */
             projectId: number;
         };
-        UpdateSubmissionDto: {
-            approvedHours?: number;
-            userFeedback?: string;
-            hoursJustification?: string;
-            approvalStatus?: Record<string, never>;
-            sendEmail?: boolean;
-        };
         ScopedUserResponse: {
             userId: number;
             firstName: string;
@@ -1522,15 +1499,22 @@ export interface components {
         };
         ReviewSubmissionDto: {
             /** @enum {string} */
-            approvalStatus: "approved" | "rejected";
+            approvalStatus?: "pending" | "approved" | "rejected";
             approvedHours?: number;
             userFeedback?: string;
             hoursJustification?: string;
+            adminComment?: string;
+            sendEmail?: boolean;
         };
         ReviewResultResponse: {
             success: boolean;
             submissionId: number;
             status: string;
+        };
+        QuickApproveDto: {
+            userFeedback?: string;
+            hoursJustification?: string;
+            approvedHours?: number;
         };
         NoteResponse: {
             content: string;
@@ -2233,52 +2217,6 @@ export interface operations {
             };
         };
     };
-    AdminController_updateSubmission: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateSubmissionDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
-    AdminController_quickApproveSubmission: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
     AdminController_unlockProject: {
         parameters: {
             query?: never;
@@ -2675,6 +2613,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReviewResultResponse"];
                 };
+            };
+        };
+    };
+    ReviewerController_quickApproveSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuickApproveDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResultResponse"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
