@@ -471,7 +471,7 @@
 
     .tagline {
         font-family: var(--font-cook);
-        font-size: clamp(16px, 2.5vw, 32px);
+        font-size: clamp(14px, 2vw, 24px);
         font-weight: 600;
         color: black;
         margin: 0;
