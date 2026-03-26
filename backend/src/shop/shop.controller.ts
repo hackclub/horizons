@@ -60,6 +60,21 @@ export class ShopAuthController {
   async getTransactions(@Req() req: Request) {
     return this.shopService.getUserTransactions(req.user.userId);
   }
+
+  @Get('pinned-item')
+  async getPinnedItem(@Req() req: Request) {
+    return this.shopService.getPinnedItem(req.user.userId);
+  }
+
+  @Post('pinned-item')
+  async setPinnedItem(@Body('itemId', ParseIntPipe) itemId: number, @Req() req: Request) {
+    return this.shopService.setPinnedItem(req.user.userId, itemId);
+  }
+
+  @Delete('pinned-item')
+  async removePinnedItem(@Req() req: Request) {
+    return this.shopService.removePinnedItem(req.user.userId);
+  }
 }
 
 @Controller('api/shop/admin')

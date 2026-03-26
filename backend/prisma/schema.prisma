@@ -50,6 +50,7 @@ model User {
   sessions        UserSession[]
   hackatimeLinkOtps HackatimeLinkOtp[]
   transactions    Transaction[]
+  pinnedItem      PinnedItem?
 
   @@map("users")
 }
@@ -241,6 +242,7 @@ model ShopItem {
   shop         Shop              @relation(fields: [shopId], references: [shopId], onDelete: Cascade)
   transactions Transaction[]
   variants     ShopItemVariant[]
+  pinnedBy     PinnedItem[]
 
   @@index([shopId])
   @@map("shop_items")
@@ -310,6 +312,18 @@ model ReviewerChecklist {
   submission   Submission @relation(fields: [submissionId], references: [submissionId], onDelete: Cascade)
 
   @@map("reviewer_checklists")
+}
+
+model PinnedItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  itemId    Int      @map("item_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  item      ShopItem @relation(fields: [itemId], references: [itemId], onDelete: Cascade)
+
+  @@index([itemId])
+  @@map("pinned_items")
 }
 
 model GlobalSettings {

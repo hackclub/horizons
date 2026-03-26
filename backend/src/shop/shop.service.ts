@@ -420,6 +420,59 @@ export class ShopService {
     };
   }
 
+  async getPinnedItem(userId: number) {
+    return this.prisma.pinnedItem.findUnique({
+      where: { userId },
+      include: {
+        item: {
+          select: {
+            itemId: true,
+            name: true,
+            description: true,
+            imageUrl: true,
+            cost: true,
+            isActive: true,
+          },
+        },
+      },
+    });
+  }
+
+  async setPinnedItem(userId: number, itemId: number) {
+    const item = await this.prisma.shopItem.findUnique({ where: { itemId } });
+    if (!item) {
+      throw new NotFoundException('Item not found');
+    }
+
+    return this.prisma.pinnedItem.upsert({
+      where: { userId },
+      create: { userId, itemId },
+      update: { itemId },
+      include: {
+        item: {
+          select: {
+            itemId: true,
+            name: true,
+            description: true,
+            imageUrl: true,
+            cost: true,
+            isActive: true,
+          },
+        },
+      },
+    });
+  }
+
+  async removePinnedItem(userId: number) {
+    const pinned = await this.prisma.pinnedItem.findUnique({ where: { userId } });
+    if (!pinned) {
+      throw new NotFoundException('No pinned item found');
+    }
+
+    await this.prisma.pinnedItem.delete({ where: { userId } });
+    return { removed: true };
+  }
+
   async getUserTransactions(userId: number) {
     return this.prisma.transaction.findMany({
       where: { userId },
