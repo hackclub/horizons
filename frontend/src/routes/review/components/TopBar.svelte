@@ -10,103 +10,18 @@
 	let { currentIndex, totalCount, onPrev, onNext, onBackToGallery }: Props = $props();
 </script>
 
-<div class="topbar">
-	<div class="topbar-left">
+<div class="flex items-center justify-between px-5 py-2.5 bg-rv-surface border-b border-rv-border shrink-0">
+	<div class="flex items-center gap-3">
 		{#if onBackToGallery}
-			<button class="back-btn" onclick={onBackToGallery}>← Gallery</button>
+			<button class="bg-rv-surface2 border border-rv-border text-rv-dim px-3.5 py-1.5 rounded-md cursor-pointer text-[12px] font-inherit transition-all duration-150 hover:text-rv-text hover:border-rv-accent" onclick={onBackToGallery}>← Gallery</button>
 		{/if}
-		<div class="topbar-logo">HORIZONS <span>Project Review</span></div>
+		<div class="font-[Space_Mono,monospace] font-bold text-[18px] text-rv-accent">HORIZONS <span class="text-rv-text font-normal text-[13px] ml-2">Project Review</span></div>
 	</div>
-	<div class="project-counter">
-		Reviewing <strong>{currentIndex + 1}</strong> of <strong>{totalCount}</strong> pending
+	<div class="text-[12px] text-rv-dim">
+		Reviewing <strong class="text-rv-accent">{currentIndex + 1}</strong> of <strong class="text-rv-accent">{totalCount}</strong> pending
 	</div>
-	<div class="topbar-nav">
-		<button onclick={onPrev} disabled={currentIndex <= 0}>← Prev</button>
-		<button onclick={onNext} disabled={currentIndex >= totalCount - 1}>Next →</button>
+	<div class="flex gap-1.5">
+		<button class="bg-rv-surface2 border border-rv-border text-rv-dim px-3.5 py-1.5 rounded-md cursor-pointer text-[12px] font-inherit transition-all duration-150 hover:not-disabled:text-rv-text hover:not-disabled:border-rv-accent disabled:opacity-40 disabled:cursor-not-allowed" onclick={onPrev} disabled={currentIndex <= 0}>← Prev</button>
+		<button class="bg-rv-surface2 border border-rv-border text-rv-dim px-3.5 py-1.5 rounded-md cursor-pointer text-[12px] font-inherit transition-all duration-150 hover:not-disabled:text-rv-text hover:not-disabled:border-rv-accent disabled:opacity-40 disabled:cursor-not-allowed" onclick={onNext} disabled={currentIndex >= totalCount - 1}>Next →</button>
 	</div>
 </div>
-
-<style>
-	.topbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 10px 20px;
-		background: var(--surface);
-		border-bottom: 1px solid var(--border);
-		flex-shrink: 0;
-	}
-
-	.topbar-left {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-	}
-
-	.back-btn {
-		background: var(--surface2);
-		border: 1px solid var(--border);
-		color: var(--text-dim);
-		padding: 6px 14px;
-		border-radius: 6px;
-		cursor: pointer;
-		font-size: 12px;
-		font-family: inherit;
-		transition: all 0.15s;
-	}
-
-	.back-btn:hover {
-		color: var(--text);
-		border-color: var(--accent);
-	}
-
-	.topbar-logo {
-		font-family: 'Space Mono', monospace;
-		font-weight: 700;
-		font-size: 18px;
-		color: var(--accent);
-	}
-
-	.topbar-logo span {
-		color: var(--text);
-		font-weight: 400;
-		font-size: 13px;
-		margin-left: 8px;
-	}
-
-	.project-counter {
-		font-size: 12px;
-		color: var(--text-dim);
-	}
-
-	.project-counter strong {
-		color: var(--accent);
-	}
-
-	.topbar-nav {
-		display: flex;
-		gap: 6px;
-	}
-
-	.topbar-nav button {
-		background: var(--surface2);
-		border: 1px solid var(--border);
-		color: var(--text-dim);
-		padding: 6px 14px;
-		border-radius: 6px;
-		cursor: pointer;
-		font-size: 12px;
-		font-family: inherit;
-		transition: all 0.15s;
-	}
-
-	.topbar-nav button:hover:not(:disabled) {
-		color: var(--text);
-		border-color: var(--accent);
-	}
-
-	.topbar-nav button:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-</style>

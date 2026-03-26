@@ -47,149 +47,44 @@
 	}
 </script>
 
-<div class="notes-header" class:has-note={hasContent}>
-	<div class="header-left">
-		<span class="section-title">{title}</span>
+<div class="flex items-center justify-between px-4 py-2.5">
+	<div class="flex items-center">
+		<span class="text-[11px] uppercase tracking-[0.8px] text-rv-dim font-semibold">{title}</span>
 		{#if hasContent}
-			<span class="note-indicator"></span>
+			<span class="w-1.5 h-1.5 rounded-full bg-rv-accent ml-1.5"></span>
 		{/if}
 	</div>
-	<div class="header-right">
+	<div class="flex items-center gap-1.5">
 		{#if saveError}
-			<span class="notes-error">{saveError}</span>
+			<span class="text-[11px] text-rv-red max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">{saveError}</span>
 		{:else if savedFlash}
-			<span class="notes-saved">Saved</span>
+			<span class="text-[11px] text-rv-green">Saved</span>
 		{/if}
 		{#if isOpen}
-			<button class="btn-save-notes" onclick={handleSave} disabled={saving}>
+			<button
+				class="bg-rv-surface2 border border-rv-border text-rv-dim px-2.5 py-[3px] rounded text-[11px] font-inherit font-medium cursor-pointer transition-all duration-150 hover:text-rv-text hover:border-rv-accent"
+				onclick={handleSave}
+				disabled={saving}
+			>
 				{saving ? 'Saving...' : 'Save'}
 			</button>
 		{/if}
-		<button class="notes-toggle" onclick={toggle}>
+		<button
+			class="bg-transparent border border-rv-border text-rv-dim w-[22px] h-[22px] rounded text-sm cursor-pointer flex items-center justify-center transition-all duration-150 leading-none hover:text-rv-accent hover:border-rv-accent"
+			onclick={toggle}
+		>
 			{isOpen ? '−' : '+'}
 		</button>
 	</div>
 </div>
 
 {#if isOpen}
-	<div class="notes-body">
+	<div class="px-4 pb-2.5">
 		<textarea
-			class="notes-area"
+			class="w-full bg-rv-bg border border-rv-border rounded-[6px] p-2.5 text-rv-text font-inherit text-[13px] leading-[1.6] resize-y min-h-[80px] focus:outline-none focus:border-rv-accent"
 			bind:value={content}
 			maxlength={1000}
 			placeholder="Notes about this {targetType}..."
 		></textarea>
 	</div>
 {/if}
-
-<style>
-	.notes-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 10px 16px;
-	}
-
-	.header-left {
-		display: flex;
-		align-items: center;
-	}
-
-	.section-title {
-		font-size: 11px;
-		text-transform: uppercase;
-		letter-spacing: 0.8px;
-		color: var(--text-dim);
-		font-weight: 600;
-	}
-
-	.note-indicator {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--accent);
-		margin-left: 6px;
-	}
-
-	.header-right {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	}
-
-	.notes-saved {
-		font-size: 11px;
-		color: var(--green);
-	}
-
-	.notes-error {
-		font-size: 11px;
-		color: var(--red);
-		max-width: 120px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.btn-save-notes {
-		background: var(--surface2);
-		border: 1px solid var(--border);
-		color: var(--text-dim);
-		padding: 3px 10px;
-		border-radius: 4px;
-		font-size: 11px;
-		font-family: inherit;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.15s;
-	}
-
-	.btn-save-notes:hover {
-		color: var(--text);
-		border-color: var(--accent);
-	}
-
-	.notes-toggle {
-		background: transparent;
-		border: 1px solid var(--border);
-		color: var(--text-dim);
-		width: 22px;
-		height: 22px;
-		border-radius: 4px;
-		font-size: 14px;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: all 0.15s;
-		line-height: 1;
-	}
-
-	.notes-toggle:hover {
-		color: var(--accent);
-		border-color: var(--accent);
-	}
-
-	.notes-body {
-		padding: 0 16px 10px;
-	}
-
-	.notes-area {
-		width: 100%;
-		background: var(--bg);
-		border: 1px solid var(--border);
-		border-radius: 6px;
-		padding: 10px;
-		color: var(--text);
-		font-family: inherit;
-		font-size: 13px;
-		line-height: 1.6;
-		resize: vertical;
-		min-height: 80px;
-	}
-
-	.notes-area:focus {
-		outline: none;
-		border-color: var(--accent);
-	}
-</style>

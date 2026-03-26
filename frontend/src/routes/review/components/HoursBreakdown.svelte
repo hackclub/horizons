@@ -42,8 +42,8 @@
 	let hasMultipleProjects = $derived(projects.length > 1);
 </script>
 
-<div class="hours-total">
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<div class="flex items-center gap-1.5 text-[13px] mb-0.5">
+	<svg class="w-3.5 h-3.5 text-rv-dim shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 		<circle cx="12" cy="12" r="10" />
 		<polyline points="12 6 12 12 16 14" />
 	</svg>
@@ -51,7 +51,7 @@
 		<strong>{computedTotal.toFixed(1)}h</strong> spent
 	{:else if projects.length > 0}
 		<input
-			class="hours-input total-input"
+			class="bg-transparent border border-transparent rounded text-rv-text font-[Space_Mono,monospace] text-[13px] font-bold w-12 px-1 py-px transition-all duration-150 hover:border-rv-border focus:outline-none focus:border-rv-accent focus:bg-rv-bg"
 			type="text"
 			bind:value={inputValues[projects[0]]}
 		/>
@@ -62,91 +62,20 @@
 </div>
 
 {#if hasMultipleProjects}
-	<div class="hours-breakdown">
+	<div class="pl-5.5 mb-1.5">
 		{#each projects as project}
-			<div class="hours-breakdown-item">
+			<div class="flex items-center gap-1.5 text-[12px] text-rv-dim mb-0.5">
 				<input
-					class="hours-input"
+					class="bg-transparent border border-transparent rounded text-rv-text font-[Space_Mono,monospace] text-[11px] font-semibold w-10 px-1 py-px transition-all duration-150 hover:border-rv-border focus:outline-none focus:border-rv-accent focus:bg-rv-bg"
 					type="text"
 					bind:value={inputValues[project]}
 				/>
-				<span class="hb-project">{project}</span>
+				<span class="text-rv-dim">{project}</span>
 			</div>
 		{/each}
 	</div>
 {:else if projects.length > 0}
-	<div class="hours-breakdown single">
-		<span class="hb-project">{projects[0]}</span>
+	<div class="pl-5.5 text-[12px] text-rv-dim mb-1.5">
+		<span class="text-rv-dim">{projects[0]}</span>
 	</div>
 {/if}
-
-<style>
-	.hours-total {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 13px;
-		margin-bottom: 2px;
-	}
-
-	.hours-total svg {
-		width: 14px;
-		height: 14px;
-		color: var(--text-dim);
-		flex-shrink: 0;
-	}
-
-	.hours-breakdown {
-		padding-left: 22px;
-		margin-bottom: 6px;
-	}
-
-	.hours-breakdown.single {
-		padding-left: 22px;
-		font-size: 12px;
-		color: var(--text-dim);
-		margin-bottom: 6px;
-	}
-
-	.hours-breakdown-item {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 12px;
-		color: var(--text-dim);
-		margin-bottom: 2px;
-	}
-
-	.hours-input {
-		background: transparent;
-		border: 1px solid transparent;
-		border-radius: 4px;
-		color: var(--text);
-		font-family: 'Space Mono', monospace;
-		font-size: 11px;
-		font-weight: 600;
-		width: 40px;
-		padding: 1px 4px;
-		transition: border-color 0.15s;
-	}
-
-	.hours-input.total-input {
-		font-size: 13px;
-		font-weight: 700;
-		width: 48px;
-	}
-
-	.hours-input:hover {
-		border-color: var(--border);
-	}
-
-	.hours-input:focus {
-		outline: none;
-		border-color: var(--accent);
-		background: var(--bg);
-	}
-
-	.hb-project {
-		color: var(--text-dim);
-	}
-</style>

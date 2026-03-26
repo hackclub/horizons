@@ -54,25 +54,24 @@
 	}
 </script>
 
-<div class="gallery-root">
-	<div class="gallery-header">
-		<div class="gallery-logo">HORIZONS <span>Project Review</span></div>
-		<p class="gallery-count">{filteredItems.length} of {items.length} projects</p>
+<div class="flex flex-col h-screen overflow-hidden">
+	<div class="flex items-center justify-between px-6 py-4 bg-rv-surface border-b border-rv-border shrink-0">
+		<div class="font-[Space_Mono,monospace] font-bold text-[18px] text-rv-accent">HORIZONS <span class="text-rv-text font-normal text-[13px] ml-2">Project Review</span></div>
+		<p class="text-[13px] text-rv-dim m-0">{filteredItems.length} of {items.length} projects</p>
 	</div>
 
-	<div class="gallery-filters">
+	<div class="flex flex-col gap-3 px-6 py-4 bg-rv-surface border-b border-rv-border shrink-0">
 		<input
 			type="text"
-			class="search-input"
+			class="w-full py-2.5 px-3.5 bg-rv-bg border border-rv-border rounded-lg text-rv-text text-sm font-inherit outline-none transition-all duration-150 placeholder:text-rv-dim focus:border-rv-accent"
 			placeholder="Search by project or author name..."
 			bind:value={searchQuery}
 		/>
 
-		<div class="type-filters">
+		<div class="flex flex-wrap gap-2 items-center">
 			{#each PROJECT_TYPES as type}
 				<button
-					class="type-chip"
-					class:active={selectedTypes.has(type)}
+					class="py-1.5 px-3.5 rounded-[20px] border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text {selectedTypes.has(type) ? 'bg-rv-tag-bg border-rv-accent! text-rv-accent!' : ''}"
 					onclick={() => toggleType(type)}
 				>
 					{formatTypeName(type)}
@@ -80,202 +79,24 @@
 			{/each}
 
 			{#if selectedTypes.size > 0}
-				<button class="clear-filters" onclick={() => (selectedTypes = new Set())}>
+				<button class="py-1.5 px-3.5 rounded-[20px] border border-rv-border bg-transparent text-rv-dim text-[12px] font-inherit cursor-pointer underline hover:text-rv-text" onclick={() => (selectedTypes = new Set())}>
 					Clear filters
 				</button>
 			{/if}
 		</div>
 	</div>
 
-	<div class="gallery-grid">
+	<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4 p-6 overflow-y-auto flex-1">
 		{#each filteredItems as { item, index } (item.submissionId)}
-			<button class="project-card" onclick={() => onSelect(index)}>
-				<p class="project-title">{item.project.projectTitle}</p>
-				<p class="project-author">
+			<button class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] cursor-pointer transition-all duration-150 text-left font-inherit color-inherit hover:border-rv-accent hover:bg-rv-surface2" onclick={() => onSelect(index)}>
+				<p class="text-[15px] font-semibold text-rv-text m-0">{item.project.projectTitle}</p>
+				<p class="text-[13px] text-rv-dim m-0">
 					{item.project.user.firstName} {item.project.user.lastName}
 				</p>
-				<span class="project-type-badge">{formatTypeName(item.project.projectType)}</span>
+				<span class="inline-block mt-1 py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px] self-start">{formatTypeName(item.project.projectType)}</span>
 			</button>
 		{:else}
-			<p class="no-results">No projects match your filters.</p>
+			<p class="col-span-full text-center text-rv-dim py-10 text-sm">No projects match your filters.</p>
 		{/each}
 	</div>
 </div>
-
-<style>
-	.gallery-root {
-		display: flex;
-		flex-direction: column;
-		height: 100vh;
-		overflow: hidden;
-	}
-
-	.gallery-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 16px 24px;
-		background: var(--surface);
-		border-bottom: 1px solid var(--border);
-		flex-shrink: 0;
-	}
-
-	.gallery-logo {
-		font-family: 'Space Mono', monospace;
-		font-weight: 700;
-		font-size: 18px;
-		color: var(--accent);
-	}
-
-	.gallery-logo span {
-		color: var(--text);
-		font-weight: 400;
-		font-size: 13px;
-		margin-left: 8px;
-	}
-
-	.gallery-count {
-		font-size: 13px;
-		color: var(--text-dim);
-		margin: 0;
-	}
-
-	.gallery-filters {
-		padding: 16px 24px;
-		background: var(--surface);
-		border-bottom: 1px solid var(--border);
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-		flex-shrink: 0;
-	}
-
-	.search-input {
-		width: 100%;
-		padding: 10px 14px;
-		background: var(--bg);
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		color: var(--text);
-		font-size: 14px;
-		font-family: inherit;
-		outline: none;
-		transition: border-color 0.15s;
-	}
-
-	.search-input::placeholder {
-		color: var(--text-dim);
-	}
-
-	.search-input:focus {
-		border-color: var(--accent);
-	}
-
-	.type-filters {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		align-items: center;
-	}
-
-	.type-chip {
-		padding: 6px 14px;
-		border-radius: 20px;
-		border: 1px solid var(--border);
-		background: var(--surface2);
-		color: var(--text-dim);
-		font-size: 12px;
-		font-family: inherit;
-		cursor: pointer;
-		transition: all 0.15s;
-	}
-
-	.type-chip:hover {
-		border-color: var(--accent);
-		color: var(--text);
-	}
-
-	.type-chip.active {
-		background: var(--tag-bg);
-		border-color: var(--accent);
-		color: var(--accent);
-	}
-
-	.clear-filters {
-		padding: 6px 14px;
-		border-radius: 20px;
-		border: 1px solid var(--border);
-		background: transparent;
-		color: var(--text-dim);
-		font-size: 12px;
-		font-family: inherit;
-		cursor: pointer;
-		text-decoration: underline;
-	}
-
-	.clear-filters:hover {
-		color: var(--text);
-	}
-
-	.gallery-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-		align-content: start;
-		gap: 16px;
-		padding: 24px;
-		overflow-y: auto;
-		flex: 1;
-	}
-
-	.project-card {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		padding: 20px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-		border-radius: 10px;
-		cursor: pointer;
-		transition: all 0.15s;
-		text-align: left;
-		font-family: inherit;
-		color: inherit;
-	}
-
-	.project-card:hover {
-		border-color: var(--accent);
-		background: var(--surface2);
-	}
-
-	.project-title {
-		font-size: 15px;
-		font-weight: 600;
-		color: var(--text);
-		margin: 0;
-	}
-
-	.project-author {
-		font-size: 13px;
-		color: var(--text-dim);
-		margin: 0;
-	}
-
-	.project-type-badge {
-		display: inline-block;
-		margin-top: 4px;
-		padding: 3px 10px;
-		background: var(--tag-bg);
-		color: var(--accent);
-		border-radius: 12px;
-		font-size: 11px;
-		align-self: flex-start;
-	}
-
-	.no-results {
-		grid-column: 1 / -1;
-		text-align: center;
-		color: var(--text-dim);
-		padding: 40px;
-		font-size: 14px;
-	}
-</style>

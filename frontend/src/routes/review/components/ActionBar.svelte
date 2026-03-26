@@ -115,13 +115,22 @@
 	}
 </script>
 
-<div class="action-bar">
-	<div class="action-bar-buttons">
-		<button class="btn btn-approve" onclick={() => showForm('approve')}>Approve</button>
-		<button class="btn btn-changes" onclick={() => showForm('changes')}>Changes Needed</button>
+<div class="bg-rv-surface border-t border-rv-border px-5 py-3 shrink-0">
+	<div class="flex gap-2.5 items-center">
 		<button
-			class="btn btn-card"
-			class:btn-card-active={showProjectCard}
+			class="px-6 py-2.5 rounded-lg text-sm font-semibold font-inherit cursor-pointer border-2 border-transparent transition-all duration-150 bg-rv-green text-white hover:bg-[#66bb6a]"
+			onclick={() => showForm('approve')}
+		>
+			Approve
+		</button>
+		<button
+			class="px-6 py-2.5 rounded-lg text-sm font-semibold font-inherit cursor-pointer border-2 transition-all duration-150 bg-rv-red-bg text-rv-red border-rv-red hover:bg-[rgba(239,83,80,0.2)]"
+			onclick={() => showForm('changes')}
+		>
+			Changes Needed
+		</button>
+		<button
+			class="px-6 py-2.5 rounded-lg text-sm font-semibold font-inherit cursor-pointer border-2 transition-all duration-150 bg-transparent text-rv-dim border-rv-border ml-auto hover:text-rv-accent hover:border-rv-accent {showProjectCard ? 'text-rv-accent border-rv-accent' : ''}"
 			onclick={() => { showProjectCard = !showProjectCard; }}
 		>
 			Project Card
@@ -129,19 +138,19 @@
 	</div>
 
 	{#if showProjectCard}
-		<div class="project-card">
+		<div class="mt-3 border border-rv-border rounded-lg overflow-hidden bg-rv-bg">
 			{#if screenshotUrl}
 				<img
-					class="project-card-thumb"
+					class="w-full max-h-[200px] object-cover block border-b border-rv-border"
 					src={screenshotUrl}
 					alt="{projectTitle ?? 'Project'} screenshot"
 				/>
 			{:else}
-				<div class="project-card-thumb project-card-thumb-empty">No screenshot</div>
+				<div class="w-full h-[100px] flex items-center justify-center text-rv-dim text-xs bg-rv-surface2 border-b border-rv-border">No screenshot</div>
 			{/if}
-			<div class="project-card-body">
-				<h4 class="project-card-title">{projectTitle ?? 'Untitled Project'}</h4>
-				<p class="project-card-desc">
+			<div class="p-3">
+				<h4 class="text-[15px] font-bold m-0 mb-1.5 font-[Space_Mono,monospace]">{projectTitle ?? 'Untitled Project'}</h4>
+				<p class="text-[13px] text-rv-dim m-0 leading-relaxed whitespace-pre-wrap">
 					{projectDescription ?? 'No description provided.'}
 				</p>
 			</div>
@@ -149,12 +158,12 @@
 	{/if}
 
 	{#if activeForm === 'approve'}
-		<div class="action-form">
-			<h3><span class="dot dot-green"></span> Approve Project</h3>
-			<div class="form-group">
-				<label for="approved-hours">
+		<div class="mt-3 pt-3 border-t border-rv-border">
+			<h3 class="text-sm font-bold mb-3 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rv-green"></span> Approve Project</h3>
+			<div class="mb-3">
+				<label for="approved-hours" class="block text-xs font-semibold text-rv-dim mb-1">
 					Approved Hours
-					<span class="hint">(defaults to Hackatime hours)</span>
+					<span class="font-normal opacity-70 italic">(defaults to Hackatime hours)</span>
 				</label>
 				<input
 					id="approved-hours"
@@ -163,42 +172,44 @@
 					min="0"
 					bind:value={approvedHours}
 					oninput={() => { reviewerManuallyEditedHours = true; }}
-					class="hours-field"
+					class="w-[100px] bg-rv-bg border border-rv-border rounded-md p-2.5 text-rv-text font-[Space_Mono,monospace] text-[13px] font-semibold resize-vertical focus:outline-none focus:border-rv-accent"
 				/>
 			</div>
-			<div class="form-group">
-				<label for="justify">
+			<div class="mb-3">
+				<label for="justify" class="block text-xs font-semibold text-rv-dim mb-1">
 					Ship Justification
-					<span class="hint">(internal — synced to Airtable)</span>
+					<span class="font-normal opacity-70 italic">(internal — synced to Airtable)</span>
 				</label>
 				<textarea
 					id="justify"
 					bind:value={hoursJustification}
 					maxlength={500}
 					placeholder="Why are you approving this? e.g. hours look right, project is complete, shipped publicly..."
+					class="w-full bg-rv-bg border border-rv-border rounded-md p-2.5 text-rv-text font-inherit text-[13px] resize-vertical min-h-[60px] focus:outline-none focus:border-rv-accent"
 				></textarea>
 			</div>
-			<div class="form-group">
-				<label for="approve-comment">
+			<div class="mb-3">
+				<label for="approve-comment" class="block text-xs font-semibold text-rv-dim mb-1">
 					Comment for User
-					<span class="hint">(optional — shown to user)</span>
+					<span class="font-normal opacity-70 italic">(optional — shown to user)</span>
 				</label>
 				<textarea
 					id="approve-comment"
 					bind:value={approveComment}
 					maxlength={500}
 					placeholder="Nice work! Any feedback you want to share..."
+					class="w-full bg-rv-bg border border-rv-border rounded-md p-2.5 text-rv-text font-inherit text-[13px] resize-vertical min-h-[60px] focus:outline-none focus:border-rv-accent"
 				></textarea>
 			</div>
-			<div class="form-row">
-				<label class="checkbox-label">
-					<input type="checkbox" bind:checked={sendEmail} />
+			<div class="mb-3">
+				<label class="flex items-center gap-1.5 text-xs text-rv-dim cursor-pointer">
+					<input type="checkbox" bind:checked={sendEmail} class="accent-rv-accent" />
 					Send email notification to user
 				</label>
 			</div>
-			<div class="form-actions">
-				<button class="btn-sm cancel" onclick={hideForm}>Cancel</button>
-				<button class="btn-sm submit-approve" onclick={submitApproval} disabled={submitting}>
+			<div class="flex gap-2 justify-end">
+				<button class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text disabled:opacity-50 disabled:cursor-not-allowed" onclick={hideForm}>Cancel</button>
+				<button class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-green text-white border-rv-green disabled:opacity-50 disabled:cursor-not-allowed" onclick={submitApproval} disabled={submitting}>
 					{submitting ? 'Submitting...' : 'Submit Approval'}
 				</button>
 			</div>
@@ -206,30 +217,31 @@
 	{/if}
 
 	{#if activeForm === 'changes'}
-		<div class="action-form">
-			<h3><span class="dot dot-red"></span> Request Changes</h3>
-			<div class="form-group">
-				<label for="changes-comment">
+		<div class="mt-3 pt-3 border-t border-rv-border">
+			<h3 class="text-sm font-bold mb-3 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rv-red"></span> Request Changes</h3>
+			<div class="mb-3">
+				<label for="changes-comment" class="block text-xs font-semibold text-rv-dim mb-1">
 					What needs to change?
-					<span class="hint">(shown to user)</span>
+					<span class="font-normal opacity-70 italic">(shown to user)</span>
 				</label>
 				<textarea
 					id="changes-comment"
 					bind:value={changesComment}
 					maxlength={500}
 					placeholder="Describe what the user needs to fix or improve..."
+					class="w-full bg-rv-bg border border-rv-border rounded-md p-2.5 text-rv-text font-inherit text-[13px] resize-vertical min-h-[60px] focus:outline-none focus:border-rv-accent"
 				></textarea>
 			</div>
-			<div class="form-row">
-				<label class="checkbox-label">
-					<input type="checkbox" bind:checked={rejectSendEmail} />
+			<div class="mb-3">
+				<label class="flex items-center gap-1.5 text-xs text-rv-dim cursor-pointer">
+					<input type="checkbox" bind:checked={rejectSendEmail} class="accent-rv-accent" />
 					Send email notification to user
 				</label>
 			</div>
-			<div class="form-actions">
-				<button class="btn-sm cancel" onclick={hideForm}>Cancel</button>
+			<div class="flex gap-2 justify-end">
+				<button class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text disabled:opacity-50 disabled:cursor-not-allowed" onclick={hideForm}>Cancel</button>
 				<button
-					class="btn-sm submit-changes"
+					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-red text-white border-rv-red disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitChangesNeeded}
 					disabled={submitting}
 				>
@@ -239,242 +251,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.action-bar {
-		background: var(--surface);
-		border-top: 1px solid var(--border);
-		padding: 12px 20px;
-		flex-shrink: 0;
-	}
-
-	.action-bar-buttons {
-		display: flex;
-		gap: 10px;
-		align-items: center;
-	}
-
-	.btn {
-		padding: 10px 24px;
-		border-radius: 8px;
-		font-size: 14px;
-		font-weight: 600;
-		font-family: inherit;
-		cursor: pointer;
-		border: 2px solid transparent;
-		transition: all 0.15s;
-	}
-
-	.btn-approve {
-		background: var(--green);
-		color: #fff;
-	}
-
-	.btn-approve:hover {
-		background: #66bb6a;
-	}
-
-	.btn-changes {
-		background: var(--red-bg);
-		color: var(--red);
-		border-color: var(--red);
-	}
-
-	.btn-changes:hover {
-		background: rgba(239, 83, 80, 0.2);
-	}
-
-	.action-form {
-		margin-top: 12px;
-		padding-top: 12px;
-		border-top: 1px solid var(--border);
-	}
-
-	.action-form h3 {
-		font-size: 14px;
-		font-weight: 700;
-		margin-bottom: 12px;
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	}
-
-	.dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-	}
-
-	.dot-green {
-		background: var(--green);
-	}
-
-	.dot-red {
-		background: var(--red);
-	}
-
-	.form-group {
-		margin-bottom: 12px;
-	}
-
-	.form-group label {
-		display: block;
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--text-dim);
-		margin-bottom: 4px;
-	}
-
-	.hint {
-		font-weight: 400;
-		opacity: 0.7;
-		font-style: italic;
-	}
-
-	.form-group textarea,
-	.hours-field {
-		width: 100%;
-		background: var(--bg);
-		border: 1px solid var(--border);
-		border-radius: 6px;
-		padding: 10px;
-		color: var(--text);
-		font-family: inherit;
-		font-size: 13px;
-		resize: vertical;
-		min-height: 60px;
-	}
-
-	.hours-field {
-		min-height: unset;
-		width: 100px;
-		font-family: 'Space Mono', monospace;
-		font-weight: 600;
-	}
-
-	.form-group textarea:focus,
-	.hours-field:focus {
-		outline: none;
-		border-color: var(--accent);
-	}
-
-	.form-actions {
-		display: flex;
-		gap: 8px;
-		justify-content: flex-end;
-	}
-
-	.btn-sm {
-		padding: 7px 18px;
-		border-radius: 6px;
-		font-size: 13px;
-		font-weight: 600;
-		font-family: inherit;
-		cursor: pointer;
-		border: 1px solid var(--border);
-		transition: all 0.15s;
-	}
-
-	.btn-sm.cancel {
-		background: transparent;
-		color: var(--text-dim);
-	}
-
-	.btn-sm.cancel:hover {
-		color: var(--text);
-	}
-
-	.btn-sm.submit-approve {
-		background: var(--green);
-		color: #fff;
-		border-color: var(--green);
-	}
-
-	.btn-sm.submit-changes {
-		background: var(--red);
-		color: #fff;
-		border-color: var(--red);
-	}
-
-	.btn-sm:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.form-row {
-		margin-bottom: 12px;
-	}
-
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 12px;
-		color: var(--text-dim);
-		cursor: pointer;
-	}
-
-	.checkbox-label input[type='checkbox'] {
-		accent-color: var(--accent);
-	}
-
-	/* Project Card button */
-	.btn-card {
-		background: transparent;
-		color: var(--text-dim);
-		border-color: var(--border);
-		margin-left: auto;
-	}
-
-	.btn-card:hover,
-	.btn-card-active {
-		color: var(--accent);
-		border-color: var(--accent);
-	}
-
-	/* Project Card preview */
-	.project-card {
-		margin-top: 12px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		overflow: hidden;
-		background: var(--bg);
-	}
-
-	.project-card-thumb {
-		width: 100%;
-		max-height: 200px;
-		object-fit: cover;
-		display: block;
-		border-bottom: 1px solid var(--border);
-	}
-
-	.project-card-thumb-empty {
-		height: 100px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--text-dim);
-		font-size: 12px;
-		background: var(--surface2);
-	}
-
-	.project-card-body {
-		padding: 12px;
-	}
-
-	.project-card-title {
-		font-size: 15px;
-		font-weight: 700;
-		margin: 0 0 6px;
-		font-family: 'Space Mono', monospace;
-	}
-
-	.project-card-desc {
-		font-size: 13px;
-		color: var(--text-dim);
-		margin: 0;
-		line-height: 1.5;
-		white-space: pre-wrap;
-	}
-</style>

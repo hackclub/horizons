@@ -32,15 +32,15 @@
 	);
 </script>
 
-<div class="user-header">
-	<div class="user-name-row">
-		<span class="user-name">{user.firstName} {user.lastName}</span>
+<div class="p-4">
+	<div class="flex items-center gap-2 mb-0.5">
+		<span class="text-[18px] font-bold font-[Space_Mono,monospace]">{user.firstName} {user.lastName}</span>
 	</div>
 
 	{#if slackDmUrl}
-		<div class="user-email">
-			<a href={slackDmUrl} target="_blank" rel="noopener noreferrer">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+		<div class="text-[12px] text-rv-dim mb-3.5">
+			<a href={slackDmUrl} target="_blank" rel="noopener noreferrer" class="text-rv-dim no-underline inline-flex items-center gap-1 transition-all duration-150 hover:text-rv-accent">
+				<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path
 						d="M14.5 2a2.5 2.5 0 0 0 0 5H17V4.5A2.5 2.5 0 0 0 14.5 2z"
 					/>
@@ -57,7 +57,7 @@
 		</div>
 	{/if}
 
-	<div class="user-links">
+	<div class="grid grid-cols-2 gap-2 mb-3.5 [&_a]:flex [&_a]:items-center [&_a]:gap-1.25 [&_a]:text-rv-dim [&_a]:no-underline [&_a]:text-[13px] [&_a]:font-medium [&_a]:py-1.5 [&_a]:px-3.5 [&_a]:border [&_a]:border-rv-border [&_a]:rounded-md [&_a]:transition-all [&_a]:duration-150 [&_a:hover]:text-rv-accent [&_a:hover]:border-rv-accent [&_a_svg]:w-3.5 [&_a_svg]:h-3.5">
 		{#if repoUrl}
 			<a href={repoUrl} target="_blank" rel="noopener noreferrer">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -68,7 +68,7 @@
 			</a>
 		{/if}
 		{#if playableUrl}
-			<a href={playableUrl} target="_blank" rel="noopener noreferrer" class="demo-link">
+			<a href={playableUrl} target="_blank" rel="noopener noreferrer" class="bg-[rgba(239,83,80,0.15)]! text-rv-red! border-[rgba(239,83,80,0.3)]! hover:bg-[rgba(239,83,80,0.25)]!">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<polygon points="5 3 19 12 5 21 5 3" />
 				</svg>
@@ -87,7 +87,7 @@
 			</a>
 		{/if}
 		{#if airlockUrl}
-			<a href={airlockUrl} target="_blank" rel="noopener noreferrer" class="airlock-link">
+			<a href={airlockUrl} target="_blank" rel="noopener noreferrer" class="border-rv-accent! text-rv-accent! hover:bg-rv-tag-bg!">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<rect x="2" y="3" width="20" height="14" rx="2" />
 					<line x1="8" y1="21" x2="16" y2="21" />
@@ -101,130 +101,12 @@
 	<HoursBreakdown totalHours={hackatimeHours} projects={hackatimeProjects} {onHoursChange} />
 
 	{#if user.age !== null}
-		<div class="user-meta-line">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+		<div class="text-[13px] text-rv-text flex items-center gap-1.5 mb-1">
+			<svg class="w-3.5 h-3.5 text-rv-dim shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
 				<circle cx="12" cy="7" r="4" />
 			</svg>
-			<span class="age-badge">{user.age}yo</span>
+			<span class="bg-rv-green-bg text-rv-green text-[11px] font-bold py-0.5 px-2 rounded-sm">{user.age}yo</span>
 		</div>
 	{/if}
 </div>
-
-<style>
-	.user-header {
-		padding: 16px;
-	}
-
-	.user-name-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin-bottom: 2px;
-	}
-
-	.user-name {
-		font-size: 18px;
-		font-weight: 700;
-		font-family: 'Space Mono', monospace;
-	}
-
-.user-email {
-		font-size: 12px;
-		color: var(--text-dim);
-		margin-bottom: 14px;
-	}
-
-	.user-email a {
-		color: var(--text-dim);
-		text-decoration: none;
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		transition: color 0.15s;
-	}
-
-	.user-email a:hover {
-		color: var(--accent);
-	}
-
-	.user-email a svg {
-		width: 12px;
-		height: 12px;
-	}
-
-	.user-links {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 8px;
-		margin-bottom: 14px;
-	}
-
-	.user-links a {
-		display: flex;
-		align-items: center;
-		gap: 5px;
-		color: var(--text-dim);
-		text-decoration: none;
-		font-size: 13px;
-		font-weight: 500;
-		padding: 6px 14px;
-		border: 1px solid var(--border);
-		border-radius: 6px;
-		transition: all 0.15s;
-	}
-
-	.user-links a:hover {
-		color: var(--accent);
-		border-color: var(--accent);
-	}
-
-	.user-links a.demo-link {
-		background: rgba(239, 83, 80, 0.15);
-		color: var(--red);
-		border-color: rgba(239, 83, 80, 0.3);
-	}
-
-	.user-links a.demo-link:hover {
-		background: rgba(239, 83, 80, 0.25);
-	}
-
-	.user-links a.airlock-link {
-		border-color: var(--accent);
-		color: var(--accent);
-	}
-
-	.user-links a.airlock-link:hover {
-		background: rgba(245, 166, 35, 0.15);
-	}
-
-	.user-links a svg {
-		width: 14px;
-		height: 14px;
-	}
-
-	.user-meta-line {
-		font-size: 13px;
-		color: var(--text);
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		margin-bottom: 4px;
-	}
-
-	.user-meta-line svg {
-		width: 14px;
-		height: 14px;
-		color: var(--text-dim);
-		flex-shrink: 0;
-	}
-
-	.age-badge {
-		background: var(--green-bg);
-		color: var(--green);
-		font-size: 11px;
-		font-weight: 700;
-		padding: 2px 8px;
-		border-radius: 4px;
-	}
-</style>

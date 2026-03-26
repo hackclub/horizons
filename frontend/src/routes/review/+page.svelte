@@ -198,19 +198,19 @@
 	<title>Horizons — Project Review</title>
 </svelte:head>
 
-<div class="review-root">
+<div class="font-[Inter,sans-serif] bg-rv-bg text-rv-text h-screen flex flex-col overflow-hidden">
 	{#if queueLoading}
-		<div class="loading-screen">
+		<div class="flex flex-col items-center justify-center h-screen gap-2 font-[Inter,sans-serif] text-rv-dim bg-rv-bg">
 			<p>Loading review queue...</p>
 		</div>
 	{:else if queueError}
-		<div class="loading-screen error">
+		<div class="flex flex-col items-center justify-center h-screen gap-2 font-[Inter,sans-serif] text-rv-red bg-rv-bg">
 			<p>Failed to load review queue</p>
-			<p class="error-detail">{queueError}</p>
-			<button onclick={() => loadQueue()}>Retry</button>
+			<p class="text-xs text-rv-dim max-w-[400px] text-center">{queueError}</p>
+			<button class="mt-3 bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit" onclick={() => loadQueue()}>Retry</button>
 		</div>
 	{:else if queueLength === 0}
-		<div class="loading-screen">
+		<div class="flex flex-col items-center justify-center h-screen gap-2 font-[Inter,sans-serif] text-rv-dim bg-rv-bg">
 			<p>No pending submissions to review.</p>
 		</div>
 	{:else if galleryMode}
@@ -224,9 +224,9 @@
 			onBackToGallery={returnToGallery}
 		/>
 
-		<div class="main">
+		<div class="grid grid-cols-[300px_1fr_320px] flex-1 overflow-hidden">
 			<!-- LEFT PANEL -->
-			<div class="left">
+			<div class="bg-rv-surface border-r border-rv-border overflow-y-auto">
 				{#if currentSubmission}
 					<UserInfo
 						user={currentSubmission.project.user}
@@ -238,7 +238,7 @@
 						onHoursChange={handleHoursChange}
 					/>
 
-					<hr class="section-divider" />
+					<hr class="border-none border-t border-rv-border m-0" />
 
 					<NotesSection
 						title="Notes — Project"
@@ -247,7 +247,7 @@
 						bind:content={projectNote}
 					/>
 
-					<hr class="section-divider" />
+					<hr class="border-none border-t border-rv-border m-0" />
 
 					<NotesSection
 						title="Notes — User"
@@ -256,16 +256,16 @@
 						bind:content={userNote}
 					/>
 
-					<hr class="section-divider" />
+					<hr class="border-none border-t border-rv-border m-0" />
 
 					<ReviewHistory timeline={currentSubmission.timeline} />
 				{:else if submissionLoading}
-					<div class="panel-loading">Loading...</div>
+					<div class="flex items-center justify-center p-10 text-rv-dim text-[13px]">Loading...</div>
 				{/if}
 			</div>
 
 			<!-- CENTER PANEL -->
-			<div class="center">
+			<div class="flex flex-col overflow-hidden">
 				{#if currentSubmission}
 					<DemoIframe
 						demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
@@ -283,12 +283,12 @@
 						onReviewComplete={handleReviewComplete}
 					/>
 				{:else if submissionLoading}
-					<div class="panel-loading">Loading submission...</div>
+					<div class="flex items-center justify-center p-10 text-rv-dim text-[13px]">Loading submission...</div>
 				{/if}
 			</div>
 
 			<!-- RIGHT PANEL -->
-			<div class="right">
+			<div class="bg-rv-surface border-l border-rv-border flex flex-col overflow-hidden">
 				<GitHubPanel
 					repo={githubRepo}
 					loading={githubLoading}
@@ -306,107 +306,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	/* Dark theme tokens scoped to this page — won't leak to other routes */
-	.review-root {
-		--bg: #1c1c1c;
-		--surface: #242424;
-		--surface2: #2e2e2e;
-		--border: #3a3a3a;
-		--text: #e0e0e0;
-		--text-dim: #8892a4;
-		--accent: #f5a623;
-		--green: #4caf50;
-		--green-bg: rgba(76, 175, 80, 0.12);
-		--red: #ef5350;
-		--red-bg: rgba(239, 83, 80, 0.12);
-		--blue: #42a5f5;
-		--tag-bg: rgba(245, 166, 35, 0.15);
-		--divider: rgba(255, 255, 255, 0.06);
-
-		font-family: 'Inter', sans-serif;
-		background: var(--bg);
-		color: var(--text);
-		height: 100vh;
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-	}
-
-	.main {
-		display: grid;
-		grid-template-columns: 300px 1fr 320px;
-		flex: 1;
-		overflow: hidden;
-	}
-
-	.left {
-		background: var(--surface);
-		border-right: 1px solid var(--border);
-		overflow-y: auto;
-	}
-
-	.center {
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-	}
-
-	.right {
-		background: var(--surface);
-		border-left: 1px solid var(--border);
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-	}
-
-	.section-divider {
-		border: none;
-		border-top: 1px solid var(--border);
-		margin: 0;
-	}
-
-	.loading-screen {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		height: 100vh;
-		gap: 8px;
-		font-family: 'Inter', sans-serif;
-		color: var(--text-dim);
-		background: var(--bg);
-	}
-
-	.loading-screen.error {
-		color: var(--red);
-	}
-
-	.error-detail {
-		font-size: 12px;
-		color: var(--text-dim);
-		max-width: 400px;
-		text-align: center;
-	}
-
-	.loading-screen button {
-		margin-top: 12px;
-		background: var(--surface2);
-		border: 1px solid var(--border);
-		color: var(--text);
-		padding: 8px 20px;
-		border-radius: 6px;
-		cursor: pointer;
-		font-family: inherit;
-	}
-
-	.panel-loading {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 40px;
-		color: var(--text-dim);
-		font-size: 13px;
-	}
-</style>

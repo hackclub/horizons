@@ -26,84 +26,29 @@
 	}
 </script>
 
-<div class="readme-drawer" class:open={isOpen}>
-	<button class="readme-handle" onclick={toggle}>
-		<span class="chevron">{isOpen ? '▼' : '▲'}</span>
-		<span>README</span>
+<div
+	class="readme-content relative shrink-0 overflow-hidden bg-rv-bg border-t border-rv-border transition-[height] duration-200 ease-in-out"
+	class:h-[280px]={isOpen}
+	class:h-7={!isOpen}
+>
+	<button
+		class="absolute top-0 left-0 right-0 h-7 bg-rv-surface border-none border-b border-rv-border flex items-center justify-center gap-2 cursor-pointer select-none z-1 transition-all duration-150 hover:bg-rv-surface2"
+		onclick={toggle}
+	>
+		<span class="text-[10px] font-semibold text-rv-dim uppercase tracking-[0.5px] transition-transform duration-200">{isOpen ? '▼' : '▲'}</span>
+		<span class="text-[11px] font-semibold text-rv-dim uppercase tracking-[0.5px]">README</span>
 	</button>
-	<div class="readme-content">
+	<div class="absolute top-7 left-0 right-0 bottom-0 overflow-y-auto px-6 py-4 text-sm leading-[1.7] text-rv-text">
 		{#if sanitizedHtml}
 			{@html sanitizedHtml}
 		{:else}
-			<p class="no-readme">No README content available.</p>
+			<p class="text-rv-dim italic">No README content available.</p>
 		{/if}
 	</div>
 </div>
 
 <style>
-	.readme-drawer {
-		position: relative;
-		flex-shrink: 0;
-		height: 28px;
-		overflow: hidden;
-		background: var(--bg);
-		border-top: 1px solid var(--border);
-		transition: height 0.2s ease;
-	}
-
-	.readme-drawer.open {
-		height: 280px;
-	}
-
-	.readme-handle {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: 28px;
-		background: var(--surface);
-		border: none;
-		border-bottom: 1px solid var(--border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 8px;
-		cursor: pointer;
-		user-select: none;
-		z-index: 1;
-		transition: background 0.15s;
-	}
-
-	.readme-handle:hover {
-		background: var(--surface2);
-	}
-
-	.readme-handle span {
-		font-size: 11px;
-		font-weight: 600;
-		color: var(--text-dim);
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-	}
-
-	.chevron {
-		font-size: 10px;
-		transition: transform 0.2s;
-	}
-
-	.readme-content {
-		position: absolute;
-		top: 28px;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		overflow-y: auto;
-		padding: 16px 24px;
-		font-size: 14px;
-		line-height: 1.7;
-		color: var(--text);
-	}
-
+	/* Global styles for rendered markdown content — can't be done with Tailwind utilities */
 	.readme-content :global(h1) {
 		font-size: 22px;
 		font-weight: 700;
@@ -122,7 +67,7 @@
 	}
 
 	.readme-content :global(code) {
-		background: var(--surface2);
+		background: var(--rv-surface2);
 		padding: 2px 6px;
 		border-radius: 3px;
 		font-family: 'Space Mono', monospace;
@@ -130,8 +75,8 @@
 	}
 
 	.readme-content :global(pre) {
-		background: var(--surface);
-		border: 1px solid var(--border);
+		background: var(--rv-surface);
+		border: 1px solid var(--rv-border);
 		border-radius: 6px;
 		padding: 12px;
 		margin-bottom: 12px;
@@ -153,15 +98,10 @@
 	}
 
 	.readme-content :global(a) {
-		color: var(--blue);
+		color: var(--rv-blue);
 	}
 
 	.readme-content :global(img) {
 		max-width: 100%;
-	}
-
-	.no-readme {
-		color: var(--text-dim);
-		font-style: italic;
 	}
 </style>
