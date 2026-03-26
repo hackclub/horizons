@@ -65,6 +65,8 @@ interface ListNavOptions {
 	wheel?: boolean | number;
 	/** Starting index (default 0). */
 	initial?: number;
+	/** Use left/right (A/D) instead of up/down (W/S) and invert wheel axis. */
+	horizontal?: boolean;
 }
 
 /**
@@ -82,6 +84,9 @@ export function createListNav(options: ListNavOptions) {
 		options.onChange?.(selectedIndex);
 	}
 
+	const prevDir = options.horizontal ? 'left' : 'up';
+	const nextDir = options.horizontal ? 'right' : 'down';
+
 	function handleKeydown(e: KeyboardEvent) {
 		const dir = parseNavKey(e.key);
 
@@ -89,10 +94,10 @@ export function createListNav(options: ListNavOptions) {
 			navMode = 'keyboard';
 		}
 
-		if (dir === 'up') {
+		if (dir === prevDir) {
 			e.preventDefault();
 			move(-1);
-		} else if (dir === 'down') {
+		} else if (dir === nextDir) {
 			e.preventDefault();
 			move(1);
 		} else if (e.key === 'Enter') {
@@ -105,7 +110,8 @@ export function createListNav(options: ListNavOptions) {
 	function handleWheel(e: WheelEvent) {
 		if (!options.wheel) return;
 		e.preventDefault();
-		wheelAccumulator += e.deltaY;
+		const delta = options.horizontal ? (e.deltaX || -e.deltaY) : e.deltaY;
+		wheelAccumulator += delta;
 
 		if (wheelAccumulator > wheelThreshold) {
 			wheelAccumulator = 0;

@@ -20,7 +20,7 @@ export class ShopService {
 
   async getPublicShops() {
     return this.prisma.shop.findMany({
-      where: { isActive: true, isPublic: true },
+      where: { isPublic: true },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -64,11 +64,10 @@ export class ShopService {
 
   async getItems(shopId: number) {
     return this.prisma.shopItem.findMany({
-      where: { shopId, isActive: true },
+      where: { shopId },
       orderBy: [{ isActive: 'desc' }, { cost: 'asc' }],
       include: {
         variants: {
-          where: { isActive: true },
           orderBy: { cost: 'asc' },
         },
       },

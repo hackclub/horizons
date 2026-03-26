@@ -23,13 +23,13 @@
 	let hideCirc = $state(page.url.searchParams.has('noanimate') || disableAnimations);
 
 	const hrefs = [
-		['/app/projects?back', '/app/events'],
+		['/app/projects?back', '/app/shop?back'],
 		['/app/explore', '/app/settings', '/faq?from=app'],
 	];
 
-	// Only projects (0,0) is enabled
+	// Projects (0,0) and Shop (0,1) and FAQ (1,2) are enabled
 	function isDisabled(col: number, row: number) {
-		return !(col === 0 && row === 0) && !(col === 1 && row === 2);
+		return !(col === 0 && row === 0) && !(col === 0 && row === 1) && !(col === 1 && row === 2);
 	}
 
 	let shakingKey = $state<string | null>(null);
@@ -107,18 +107,18 @@
 				</a>
 				</div>
 
-				<!-- Events (disabled; was: selected #f86d95) -->
+				<!-- Shop -->
 				<div class="exit-left enter-left" class:exiting={navigating} style:--exit-delay="175ms" style:--enter-delay="175ms">
-				<a href="/app/events" class="card relative block h-[276px] w-[634px] bg-[#F3E8D8]" class:selected={nav.isSelected(0, 1)} class:disabled={true} class:shaking={isShaking(0, 1)} style:background-color={nav.isSelected(0, 1) ? '#C4C4C4' : ''} onmouseenter={() => nav.select(0, 1)} onclick={(e) => { e.preventDefault(); triggerShake(0, 1); }} onanimationend={() => { shakingKey = null; }}>
+				<a href="/app/shop" class="card relative block h-[276px] w-[634px] bg-[#F3E8D8]" class:selected={nav.isSelected(0, 1)} style:background-color={nav.isSelected(0, 1) ? '#ffa936' : ''} onmouseenter={() => nav.select(0, 1)} onclick={(e) => { e.preventDefault(); navigateTo('/app/shop?back'); }}>
 					<div class="absolute inset-[-29.35%_9.03%_-36.08%_6.31%] flex items-center justify-center text-black opacity-8 transition-all icon">
 						<svg class="flex-none w-[462.19px] h-[348.83px] -rotate-15" viewBox="0 0 462.191 348.83" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path d="M462.191 174.415L368.982 196.212L415.83 279.962L329.164 236.143L327.669 333.165L265.904 257.94L231.095 348.83L196.287 257.94L134.522 333.165L133.027 236.143L46.3612 279.962L93.2084 196.212L0 174.415L93.2084 152.618L46.3612 68.8687L133.027 112.688L134.522 15.6656L196.287 90.8903L231.095 0L265.904 90.8903L327.669 15.6656L329.164 112.688L415.83 68.8687L368.982 152.618L462.191 174.415Z" fill="currentColor"/>
 						</svg>
 					</div>
 					<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-center w-[450px] z-10">
-						<p class="font-cook text-[64px] font-semibold text-black m-0">EVENTS</p>
+						<p class="font-cook text-[64px] font-semibold text-black m-0">SHOP</p>
 						<p class="font-['Bricolage_Grotesque',sans-serif] text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-							JOIN US AT OUR NEXT EVENT
+							SPEND YOUR HOURS ON PRIZES
 						</p>
 					</div>
 				</a>

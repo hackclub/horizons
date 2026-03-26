@@ -790,7 +790,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/shop/items": {
+    "/api/shop/shops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ShopController_getShops"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shop/{slug}/items": {
         parameters: {
             query?: never;
             header?: never;
@@ -806,7 +822,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/shop/items/{id}": {
+    "/api/shop/{slug}/items/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -870,7 +886,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/shop/admin/items": {
+    "/api/shop/admin/shops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ShopAdminController_getShops"];
+        put?: never;
+        post: operations["ShopAdminController_createShop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shop/admin/shops/{shopId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["ShopAdminController_updateShop"];
+        post?: never;
+        delete: operations["ShopAdminController_deleteShop"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shop/admin/shops/{shopId}/items": {
         parameters: {
             query?: never;
             header?: never;
@@ -1531,6 +1579,18 @@ export interface components {
         PurchaseItemDto: {
             itemId: number;
             variantId?: number;
+        };
+        CreateShopDto: {
+            slug: string;
+            description?: string;
+            isActive?: boolean;
+            isPublic?: boolean;
+        };
+        UpdateShopDto: {
+            slug?: string;
+            description?: string;
+            isActive?: boolean;
+            isPublic?: boolean;
         };
         CreateItemDto: {
             name: string;
@@ -2819,11 +2879,30 @@ export interface operations {
             };
         };
     };
-    ShopController_getItems: {
+    ShopController_getShops: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ShopController_getItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -2843,6 +2922,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -2916,11 +2996,93 @@ export interface operations {
             };
         };
     };
-    ShopAdminController_getAllItems: {
+    ShopAdminController_getShops: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ShopAdminController_createShop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateShopDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ShopAdminController_updateShop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shopId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateShopDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ShopAdminController_deleteShop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shopId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ShopAdminController_getAllItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shopId: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -2939,7 +3101,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                shopId: number;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -3069,7 +3233,9 @@ export interface operations {
     };
     ShopAdminController_getAllTransactions: {
         parameters: {
-            query?: never;
+            query: {
+                shopId: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

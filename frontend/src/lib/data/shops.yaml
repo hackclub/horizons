@@ -1,0 +1,24 @@
+# Shop branding configuration
+# Each shop is keyed by its slug and declares logos, images, and accent colors.
+# The /shop/[slug] page pulls from this file to render per-shop branding.
+
+nexus:
+  displayName: "Horizons Nexus"
+  tagline: "Purchase your ticket to Horizons Nexus, a 250+ person hacker summit in SF"
+  logo: https://cdn.hackclub.com/019d2bb4-5cfd-79d1-b914-49406e769f15/image.png
+  cardImage: https://cdn.hackclub.com/019d2bb4-bd96-7e10-976f-e2f1927d65c5/image.png
+  accentColor: "#fac393"
+
+the-shop:
+  displayName: "Horizons Nexus"
+  tagline: "Purchase your ticket to Horizons Nexus, a 250+ person hacker summit in SF"
+  logo: https://cdn.hackclub.com/019d2bb4-5cfd-79d1-b914-49406e769f15/image.png
+  cardImage: https://cdn.hackclub.com/019d2bb4-bd96-7e10-976f-e2f1927d65c5/image.png
+  accentColor: "#fac393"
+
+open-sauce:
+  displayName: "Horizons Nexus"
+  tagline: "Purchase your ticket to Horizons Nexus, a 250+ person hacker summit in SF"
+  logo: https://cdn.hackclub.com/019d2bb4-5cfd-79d1-b914-49406e769f15/image.png
+  cardImage: https://cdn.hackclub.com/019d2bb4-bd96-7e10-976f-e2f1927d65c5/image.png
+  accentColor: "#fac393"
