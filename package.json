@@ -12,7 +12,7 @@
     "concurrently": "^8.2.2"
   },
   "dependencies": {
-    "prisma": "^6.18.0"
+    "prisma": "^7.0.0"
   },  
   "keywords": [],
   "author": "",

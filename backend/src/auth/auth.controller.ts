@@ -65,7 +65,11 @@ export class AuthController {
       });
     }
 
-    const destination = result.redirectPath ?? '/app';
+    const redirectPath = result.redirectPath ?? '/app';
+    // Prevent open redirect: only allow relative paths starting with /
+    const destination = (typeof redirectPath === 'string' && redirectPath.startsWith('/') && !redirectPath.startsWith('//'))
+      ? redirectPath
+      : '/app';
     res.redirect(destination);
   }
 

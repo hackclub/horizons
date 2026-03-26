@@ -68,7 +68,14 @@
 
 	// Hackatime derived
 	let currentHours = $derived(hackatimeInfo?.currentHackatimeHours ?? 0);
-	let submittedHours = $derived((isPending || isApproved) ? (latestSubmission?.hackatimeHours ?? null) : null);
+	// Show approved hours (set by reviewer) when approved, otherwise show the original submitted hours
+	let submittedHours = $derived(
+		isApproved
+			? (latestSubmission?.approvedHours ?? latestSubmission?.hackatimeHours ?? null)
+			: isPending
+				? (latestSubmission?.hackatimeHours ?? null)
+				: null
+	);
 	let hoursLabel = $derived(isApproved ? 'approved' : 'submitted');
 
 	const nav = createGridNav({

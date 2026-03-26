@@ -7,6 +7,7 @@ import { UserModule } from "./user/user.module";
 import { AuthModule } from "./auth/auth.module";
 import { ProjectsModule } from "./projects/projects.module";
 import { AdminModule } from "./admin/admin.module";
+import { ReviewerModule } from "./reviewer/reviewer.module";
 import { HealthModule } from "./health/health.module";
 import { UploadsModule } from "./uploads/uploads.module";
 import { ShopModule } from "./shop/shop.module";
@@ -14,6 +15,7 @@ import { GiftCodesModule } from "./gift-codes/gift-codes.module";
 import { SlackModule } from "./slack/slack.module";
 import { HackatimeModule } from "./hackatime/hackatime.module";
 import { UtilsModule } from "./utils/utils.module";
+import { GitHubModule } from "./github/github.module";
 import { AuthGuard } from "./auth/auth.guard";
 import { PrismaService } from "./prisma.service";
 
@@ -29,6 +31,7 @@ import { PrismaService } from "./prisma.service";
     AuthModule,
     ProjectsModule,
     AdminModule,
+    ReviewerModule,
     HealthModule,
     UploadsModule,
     ShopModule,
@@ -36,6 +39,7 @@ import { PrismaService } from "./prisma.service";
     SlackModule,
     HackatimeModule,
     UtilsModule,
+    GitHubModule,
   ],
   providers: [
     PrismaService,

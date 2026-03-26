@@ -27,7 +27,9 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
+		"dompurify": "^3.3.3",
 		"gsap": "^3.14.2",
+		"marked": "^17.0.5",
 		"js-yaml": "^4.1.1",
 		"openapi-fetch": "^0.15.0",
 		"superjson": "^2.2.6"

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { untrack } from 'svelte';
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { api, type components } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
@@ -82,6 +83,13 @@
 			readmeUrl = p.readmeUrl ?? '';
 			mediaUrl = p.screenshotUrl ?? null;
 			mediaPreview = p.screenshotUrl ?? null;
+			// untrack to avoid making URL fields reactive dependencies of this effect
+			// (otherwise typing in a URL field re-triggers this effect and resets all fields)
+			untrack(() => {
+				if (demoUrl) checkDemoUrl(demoUrl);
+				if (codeUrl) checkCodeUrl(codeUrl);
+				if (readmeUrl) checkReadmeUrl(readmeUrl);
+			});
 			journalUrl = p.journalUrl ?? '';
 			if (demoUrl) checkDemoUrl(demoUrl);
 			if (codeUrl) checkCodeUrl(codeUrl);
