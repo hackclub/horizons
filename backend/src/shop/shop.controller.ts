@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Req, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Req, ParseIntPipe, NotFoundException } from '@nestjs/common';
 import { Request } from 'express';
 import { ShopService } from './shop.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -6,6 +6,8 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { PurchaseItemDto } from './dto/purchase-item.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
+import { CreateShopDto } from './dto/create-shop.dto';
+import { UpdateShopDto } from './dto/update-shop.dto';
 import { Public } from '../auth/public.decorator';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -16,13 +18,26 @@ import { Role } from '../enums/role.enum';
 export class ShopController {
   constructor(private shopService: ShopService) {}
 
-  @Get('items')
-  async getItems() {
-    return this.shopService.getItems();
+  @Get('shops')
+  async getShops() {
+    return this.shopService.getPublicShops();
   }
 
-  @Get('items/:id')
-  async getItem(@Param('id', ParseIntPipe) id: number) {
+  @Get(':slug/items')
+  async getItems(@Param('slug') slug: string) {
+    const shop = await this.shopService.getShopBySlug(slug);
+    if (!shop.isActive || !shop.isPublic) {
+      throw new NotFoundException('Shop not found');
+    }
+    return this.shopService.getItems(shop.shopId);
+  }
+
+  @Get(':slug/items/:id')
+  async getItem(@Param('slug') slug: string, @Param('id', ParseIntPipe) id: number) {
+    const shop = await this.shopService.getShopBySlug(slug);
+    if (!shop.isActive || !shop.isPublic) {
+      throw new NotFoundException('Shop not found');
+    }
     return this.shopService.getItem(id);
   }
 }
@@ -53,14 +68,44 @@ export class ShopAuthController {
 export class ShopAdminController {
   constructor(private shopService: ShopService) {}
 
-  @Get('items')
-  async getAllItems() {
-    return this.shopService.getAllItems();
+  // ── Shop CRUD ──
+
+  @Get('shops')
+  async getShops() {
+    return this.shopService.getShops();
   }
 
-  @Post('items')
-  async createItem(@Body() createItemDto: CreateItemDto) {
-    return this.shopService.createItem(createItemDto);
+  @Post('shops')
+  async createShop(@Body() createShopDto: CreateShopDto) {
+    return this.shopService.createShop(createShopDto);
+  }
+
+  @Put('shops/:shopId')
+  async updateShop(
+    @Param('shopId', ParseIntPipe) shopId: number,
+    @Body() updateShopDto: UpdateShopDto,
+  ) {
+    return this.shopService.updateShop(shopId, updateShopDto);
+  }
+
+  @Delete('shops/:shopId')
+  async deleteShop(@Param('shopId', ParseIntPipe) shopId: number) {
+    return this.shopService.deleteShop(shopId);
+  }
+
+  // ── Items (scoped to shop) ──
+
+  @Get('shops/:shopId/items')
+  async getAllItems(@Param('shopId', ParseIntPipe) shopId: number) {
+    return this.shopService.getAllItems(shopId);
+  }
+
+  @Post('shops/:shopId/items')
+  async createItem(
+    @Param('shopId', ParseIntPipe) shopId: number,
+    @Body() createItemDto: CreateItemDto,
+  ) {
+    return this.shopService.createItem(shopId, createItemDto);
   }
 
   @Put('items/:id')
@@ -75,6 +120,8 @@ export class ShopAdminController {
   async deleteItem(@Param('id', ParseIntPipe) id: number) {
     return this.shopService.deleteItem(id);
   }
+
+  // ── Variants ──
 
   @Post('items/:id/variants')
   async createVariant(
@@ -97,9 +144,12 @@ export class ShopAdminController {
     return this.shopService.deleteVariant(variantId);
   }
 
+  // ── Transactions ──
+
   @Get('transactions')
-  async getAllTransactions() {
-    return this.shopService.getAllTransactions();
+  async getAllTransactions(@Query('shopId') shopId?: string) {
+    const parsedShopId = shopId ? parseInt(shopId, 10) : undefined;
+    return this.shopService.getAllTransactions(parsedShopId);
   }
 
   @Delete('transactions/:id')

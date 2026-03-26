@@ -214,8 +214,22 @@ model UsersAirtable {
   @@map("users_airtable")
 }
 
+model Shop {
+  shopId      Int        @id @default(autoincrement()) @map("shop_id")
+  slug        String     @unique @db.VarChar(50)
+  description String?    @db.VarChar(500)
+  isActive    Boolean    @default(true) @map("is_active")
+  isPublic    Boolean    @default(true) @map("is_public")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  items       ShopItem[]
+
+  @@map("shops")
+}
+
 model ShopItem {
   itemId       Int               @id @default(autoincrement()) @map("item_id")
+  shopId       Int               @map("shop_id")
   name         String            @db.VarChar(100)
   description  String?           @db.VarChar(500)
   imageUrl     String?           @map("image_url")
@@ -224,9 +238,11 @@ model ShopItem {
   isActive     Boolean           @default(true) @map("is_active")
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
+  shop         Shop              @relation(fields: [shopId], references: [shopId], onDelete: Cascade)
   transactions Transaction[]
   variants     ShopItemVariant[]
 
+  @@index([shopId])
   @@map("shop_items")
 }
 

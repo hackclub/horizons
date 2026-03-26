@@ -112,6 +112,16 @@
         | "approvedHours";
     type SortDirection = "asc" | "desc";
 
+    type Shop = {
+        shopId: number;
+        slug: string;
+        description: string | null;
+        isActive: boolean;
+        isPublic: boolean;
+        createdAt: string;
+        updatedAt: string;
+    };
+
     type ShopItemVariant = {
         variantId: number;
         itemId: number;
@@ -243,6 +253,8 @@
             totalSubmittedHackatimeHours: 0,
         },
     );
+    let shops = $state<Shop[]>([]);
+    let selectedShopId = $state<number | null>(null);
     let shopItems = $state<ShopItem[]>(data.shopItems ?? []);
     let shopTransactions = $state<ShopTransaction[]>(
         data.shopTransactions ?? [],
@@ -332,6 +344,18 @@
     let usersLoading = $state(false);
     let metricsLoading = $state(false);
     let shopLoading = $state(false);
+
+    let showShopManager = $state(false);
+    let shopForm = $state<{ slug: string; description: string; isActive: boolean; isPublic: boolean }>({
+        slug: "",
+        description: "",
+        isActive: true,
+        isPublic: true,
+    });
+    let editingShopId = $state<number | null>(null);
+    let shopFormSaving = $state(false);
+    let shopFormError = $state("");
+    let shopFormSuccess = $state("");
 
     let shopItemForm = $state<{
         name: string;
@@ -817,11 +841,29 @@
         }
     }
 
-    async function loadShopItems() {
+    async function loadShops() {
         try {
-            const response = await fetch(`${apiUrl}/api/shop/admin/items`, {
+            const response = await fetch(`${apiUrl}/api/shop/admin/shops`, {
                 credentials: "include",
             });
+            if (response.ok) {
+                shops = await response.json();
+                if (shops.length > 0 && !selectedShopId) {
+                    selectedShopId = shops[0].shopId;
+                }
+            }
+        } catch (err) {
+            console.error("Failed to load shops:", err);
+        }
+    }
+
+    async function loadShopItems() {
+        if (!selectedShopId) return;
+        try {
+            const response = await fetch(
+                `${apiUrl}/api/shop/admin/shops/${selectedShopId}/items`,
+                { credentials: "include" },
+            );
             if (response.ok) {
                 shopItems = await response.json();
             }
@@ -832,12 +874,10 @@
 
     async function loadShopTransactions() {
         try {
-            const response = await fetch(
-                `${apiUrl}/api/shop/admin/transactions`,
-                {
-                    credentials: "include",
-                },
-            );
+            const url = selectedShopId
+                ? `${apiUrl}/api/shop/admin/transactions?shopId=${selectedShopId}`
+                : `${apiUrl}/api/shop/admin/transactions`;
+            const response = await fetch(url, { credentials: "include" });
             if (response.ok) {
                 shopTransactions = await response.json();
             }
@@ -849,10 +889,127 @@
     async function loadShopData() {
         shopLoading = true;
         try {
-            await Promise.all([loadShopItems(), loadShopTransactions()]);
+            await loadShops();
+            if (selectedShopId) {
+                await Promise.all([loadShopItems(), loadShopTransactions()]);
+            }
             shopLoaded = true;
         } finally {
             shopLoading = false;
+        }
+    }
+
+    async function onShopSelected(shopId: number) {
+        selectedShopId = shopId;
+        shopItems = [];
+        shopTransactions = [];
+        await Promise.all([loadShopItems(), loadShopTransactions()]);
+    }
+
+    function resetShopForm() {
+        shopForm = { slug: "", description: "", isActive: true, isPublic: true };
+        editingShopId = null;
+        shopFormError = "";
+        shopFormSuccess = "";
+    }
+
+    function startEditShop(shop: Shop) {
+        editingShopId = shop.shopId;
+        shopForm = {
+            slug: shop.slug,
+            description: shop.description || "",
+            isActive: shop.isActive,
+            isPublic: shop.isPublic,
+        };
+        shopFormError = "";
+        shopFormSuccess = "";
+    }
+
+    async function saveShop() {
+        shopFormSaving = true;
+        shopFormError = "";
+        shopFormSuccess = "";
+
+        const payload = {
+            slug: shopForm.slug,
+            description: shopForm.description || undefined,
+            isActive: shopForm.isActive,
+            isPublic: shopForm.isPublic,
+        };
+
+        try {
+            let response;
+            if (editingShopId) {
+                response = await fetch(
+                    `${apiUrl}/api/shop/admin/shops/${editingShopId}`,
+                    {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify(payload),
+                    },
+                );
+            } else {
+                response = await fetch(`${apiUrl}/api/shop/admin/shops`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(payload),
+                });
+            }
+
+            if (!response.ok) {
+                const { message } = await response
+                    .json()
+                    .catch(() => ({ message: "Failed to save shop" }));
+                shopFormError = message ?? "Failed to save shop";
+                return;
+            }
+
+            shopFormSuccess = editingShopId
+                ? "Shop updated successfully"
+                : "Shop created successfully";
+            resetShopForm();
+            await loadShops();
+        } catch (err) {
+            shopFormError =
+                err instanceof Error ? err.message : "Failed to save shop";
+        } finally {
+            shopFormSaving = false;
+        }
+    }
+
+    async function deleteShop(shopId: number) {
+        const confirmDelete =
+            typeof window !== "undefined"
+                ? window.confirm(
+                      "Delete this shop and ALL its items? This cannot be undone.",
+                  )
+                : true;
+        if (!confirmDelete) return;
+
+        try {
+            const response = await fetch(
+                `${apiUrl}/api/shop/admin/shops/${shopId}`,
+                { method: "DELETE", credentials: "include" },
+            );
+            if (response.ok) {
+                if (selectedShopId === shopId) {
+                    selectedShopId = null;
+                    shopItems = [];
+                    shopTransactions = [];
+                }
+                await loadShops();
+                if (shops.length > 0 && !selectedShopId) {
+                    selectedShopId = shops[0].shopId;
+                    await Promise.all([
+                        loadShopItems(),
+                        loadShopTransactions(),
+                    ]);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to delete shop:", err);
         }
     }
 
@@ -910,12 +1067,15 @@
                     },
                 );
             } else {
-                response = await fetch(`${apiUrl}/api/shop/admin/items`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify(payload),
-                });
+                response = await fetch(
+                    `${apiUrl}/api/shop/admin/shops/${selectedShopId}/items`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify(payload),
+                    },
+                );
             }
 
             if (!response.ok) {
@@ -4340,33 +4500,170 @@
                     class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
                 >
                     <h2 class="text-2xl font-semibold">Shop Management</h2>
-                    <div class="flex gap-2">
+                    <div class="flex items-center gap-2">
+                        {#if shops.length > 0}
+                            <select
+                                class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                value={selectedShopId}
+                                onchange={(e) => {
+                                    const val = parseInt((e.target as HTMLSelectElement).value, 10);
+                                    if (val) onShopSelected(val);
+                                }}
+                            >
+                                {#each shops as shop (shop.shopId)}
+                                    <option value={shop.shopId}>
+                                        {shop.slug}
+                                        {!shop.isActive ? " (inactive)" : ""}
+                                        {!shop.isPublic ? " (hidden)" : ""}
+                                    </option>
+                                {/each}
+                            </select>
+                        {/if}
                         <button
-                            class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === "items" ? "bg-purple-600 border-purple-400" : "bg-gray-800 border-gray-700 hover:bg-gray-700"}`}
-                            onclick={() => (shopSubTab = "items")}
+                            class={`px-4 py-2 rounded-lg border transition-colors ${showShopManager ? "bg-yellow-600 border-yellow-400" : "bg-gray-800 border-gray-700 hover:bg-gray-700"}`}
+                            onclick={() => (showShopManager = !showShopManager)}
                         >
-                            Items ({shopItems.length})
-                        </button>
-                        <button
-                            class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === "transactions" ? "bg-purple-600 border-purple-400" : "bg-gray-800 border-gray-700 hover:bg-gray-700"}`}
-                            onclick={() => (shopSubTab = "transactions")}
-                        >
-                            Transactions ({shopTransactions.length})
-                        </button>
-                        <button
-                            class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === "transactions-by-user" ? "bg-purple-600 border-purple-400" : "bg-gray-800 border-gray-700 hover:bg-gray-700"}`}
-                            onclick={() =>
-                                (shopSubTab = "transactions-by-user")}
-                        >
-                            By User
-                        </button>
-                        <button
-                            class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
-                            onclick={loadShopData}
-                        >
-                            Refresh
+                            Manage Shops
                         </button>
                     </div>
+                </div>
+
+                {#if showShopManager}
+                    <div class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-6">
+                        <h3 class="text-lg font-semibold">
+                            {editingShopId ? "Edit Shop" : "Create New Shop"}
+                        </h3>
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-gray-300" for="shop-slug">Slug *</label>
+                                <input
+                                    id="shop-slug"
+                                    type="text"
+                                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    placeholder="my-shop"
+                                    bind:value={shopForm.slug}
+                                />
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-gray-300" for="shop-description">Description</label>
+                                <input
+                                    id="shop-description"
+                                    type="text"
+                                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    placeholder="Shop description..."
+                                    bind:value={shopForm.description}
+                                />
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-2 text-sm text-gray-300">
+                                    <input type="checkbox" bind:checked={shopForm.isActive} class="rounded" />
+                                    Active
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-300">
+                                    <input type="checkbox" bind:checked={shopForm.isPublic} class="rounded" />
+                                    Public
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-3 items-center">
+                            <button
+                                class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                onclick={saveShop}
+                                disabled={shopFormSaving || !shopForm.slug}
+                            >
+                                {shopFormSaving ? "Saving..." : editingShopId ? "Update Shop" : "Create Shop"}
+                            </button>
+                            {#if editingShopId}
+                                <button
+                                    class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                                    onclick={resetShopForm}
+                                >
+                                    Cancel Edit
+                                </button>
+                            {/if}
+                            {#if shopFormError}
+                                <span class="text-red-400 text-sm">{shopFormError}</span>
+                            {/if}
+                            {#if shopFormSuccess}
+                                <span class="text-green-400 text-sm">{shopFormSuccess}</span>
+                            {/if}
+                        </div>
+
+                        {#if shops.length > 0}
+                            <div class="space-y-2">
+                                {#each shops as shop (shop.shopId)}
+                                    <div class="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-4 py-3">
+                                        <div class="flex items-center gap-3">
+                                            <span class="font-medium">{shop.slug}</span>
+                                            {#if shop.description}
+                                                <span class="text-sm text-gray-400">{shop.description}</span>
+                                            {/if}
+                                            {#if !shop.isActive}
+                                                <span class="px-2 py-0.5 text-xs bg-red-900/50 text-red-400 rounded">Inactive</span>
+                                            {/if}
+                                            {#if !shop.isPublic}
+                                                <span class="px-2 py-0.5 text-xs bg-yellow-900/50 text-yellow-400 rounded">Hidden</span>
+                                            {/if}
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button
+                                                class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+                                                onclick={() => startEditShop(shop)}
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                class="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 rounded transition-colors"
+                                                onclick={() => deleteShop(shop.shopId)}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
+
+                {#if !selectedShopId && shops.length === 0}
+                    <div class="py-12 text-center text-gray-300">
+                        No shops yet. Create one using "Manage Shops" above.
+                    </div>
+                {:else if !selectedShopId}
+                    <div class="py-12 text-center text-gray-300">
+                        Select a shop above to manage its items and transactions.
+                    </div>
+                {:else}
+                <div
+                    class="flex gap-2"
+                >
+                    <button
+                        class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === "items" ? "bg-purple-600 border-purple-400" : "bg-gray-800 border-gray-700 hover:bg-gray-700"}`}
+                        onclick={() => (shopSubTab = "items")}
+                    >
+                        Items ({shopItems.length})
+                    </button>
+                    <button
+                        class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === "transactions" ? "bg-purple-600 border-purple-400" : "bg-gray-800 border-gray-700 hover:bg-gray-700"}`}
+                        onclick={() => (shopSubTab = "transactions")}
+                    >
+                        Transactions ({shopTransactions.length})
+                    </button>
+                    <button
+                        class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === "transactions-by-user" ? "bg-purple-600 border-purple-400" : "bg-gray-800 border-gray-700 hover:bg-gray-700"}`}
+                        onclick={() =>
+                            (shopSubTab = "transactions-by-user")}
+                    >
+                        By User
+                    </button>
+                    <button
+                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
+                        onclick={loadShopData}
+                    >
+                        Refresh
+                    </button>
                 </div>
 
                 {#if shopLoading}
@@ -5317,6 +5614,7 @@
                             {/each}
                         </div>
                     {/if}
+                {/if}
                 {/if}
             </section>
         {:else if activeTab === "giftcodes"}
