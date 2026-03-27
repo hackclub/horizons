@@ -7,6 +7,7 @@
 		mediaPreview?: string | null;
 		onupload?: (url: string, preview: string) => void;
 		onerror?: (msg: string) => void;
+		hideHint?: boolean;
 	}
 
 	let {
@@ -15,6 +16,7 @@
 		mediaPreview = $bindable(null),
 		onupload,
 		onerror,
+		hideHint = false,
 	}: Props = $props();
 
 	let fileInput: HTMLInputElement;
@@ -85,9 +87,11 @@
 			<span class="font-bricolage text-base font-semibold text-black/50 text-center block">+ Upload {label}</span>
 		</button>
 	{/if}
-	<p class="font-bricolage text-xs font-semibold text-black/60 m-0 leading-normal">
-		If your project is difficult to experience, we recommend uploading a video
-	</p>
+	{#if !hideHint}
+		<p class="font-bricolage text-xs font-semibold text-black/60 m-0 leading-normal">
+			If your project is difficult to experience, we recommend uploading a video
+		</p>
+	{/if}
 </div>
 
 <style>
