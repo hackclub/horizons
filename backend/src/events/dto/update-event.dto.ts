@@ -23,6 +23,11 @@ export class UpdateEventDto {
   @IsOptional()
   imageUrl?: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(300)
+  location?: string;
+
   @IsDateString()
   @IsOptional()
   startDate?: string;

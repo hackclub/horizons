@@ -109,6 +109,7 @@
         title: string;
         description: string | null;
         imageUrl: string | null;
+        location: string | null;
         startDate: string;
         endDate: string;
         hourCost: number;
@@ -367,6 +368,7 @@
         title: string;
         description: string;
         imageUrl: string;
+        location: string;
         startDate: string;
         endDate: string;
         hourCost: string;
@@ -376,6 +378,7 @@
         title: "",
         description: "",
         imageUrl: "",
+        location: "",
         startDate: "",
         endDate: "",
         hourCost: "",
@@ -2069,7 +2072,7 @@
     }
 
     function resetEventForm() {
-        eventForm = { slug: "", title: "", description: "", imageUrl: "", startDate: "", endDate: "", hourCost: "", isActive: true };
+        eventForm = { slug: "", title: "", description: "", imageUrl: "", location: "", startDate: "", endDate: "", hourCost: "", isActive: true };
         editingEventSlug = null;
         eventFormError = "";
         eventFormSuccess = "";
@@ -2082,6 +2085,7 @@
             title: event.title,
             description: event.description || "",
             imageUrl: event.imageUrl || "",
+            location: event.location || "",
             startDate: event.startDate ? new Date(event.startDate).toISOString().slice(0, 10) : "",
             endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 10) : "",
             hourCost: String(event.hourCost),
@@ -2101,6 +2105,7 @@
             title: eventForm.title,
             description: eventForm.description || undefined,
             imageUrl: eventForm.imageUrl || undefined,
+            location: eventForm.location || undefined,
             startDate: eventForm.startDate || undefined,
             endDate: eventForm.endDate || undefined,
             hourCost: parseFloat(eventForm.hourCost),
@@ -6116,6 +6121,16 @@
                             />
                         </div>
                         <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-location">Location</label>
+                            <input
+                                id="event-location"
+                                type="text"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="San Francisco, CA"
+                                bind:value={eventForm.location}
+                            />
+                        </div>
+                        <div class="space-y-2">
                             <label class="text-sm font-medium text-gray-300" for="event-start-date">Start Date *</label>
                             <input
                                 id="event-start-date"
@@ -6196,6 +6211,9 @@
                                     <span class="text-sm text-gray-400">
                                         {new Date(event.startDate).toLocaleDateString()} – {new Date(event.endDate).toLocaleDateString()}
                                     </span>
+                                    {#if event.location}
+                                        <span class="text-sm text-gray-400">{event.location}</span>
+                                    {/if}
                                     <span class="text-sm text-gray-400">{event.hourCost}h</span>
                                     {#if event._count}
                                         <span class="px-2 py-0.5 text-xs bg-purple-900/50 text-purple-400 rounded">

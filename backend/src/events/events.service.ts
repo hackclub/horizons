@@ -34,6 +34,7 @@ export class EventsService {
         title: dto.title,
         description: dto.description,
         imageUrl: dto.imageUrl,
+        location: dto.location,
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         hourCost: dto.hourCost,

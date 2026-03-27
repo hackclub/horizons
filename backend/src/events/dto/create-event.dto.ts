@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsDateString, MaxLength, Matches, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsBoolean, IsDateString, MaxLength, Matches, Min } from 'class-validator';
 
 export class CreateEventDto {
   @IsString()
@@ -21,6 +21,11 @@ export class CreateEventDto {
   @IsOptional()
   imageUrl?: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(300)
+  location?: string;
+
   @IsDateString()
   startDate: string;
 
@@ -30,4 +35,8 @@ export class CreateEventDto {
   @IsNumber()
   @Min(0)
   hourCost: number;
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
