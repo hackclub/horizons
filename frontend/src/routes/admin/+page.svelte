@@ -109,7 +109,8 @@
         title: string;
         description: string | null;
         imageUrl: string | null;
-        date: string;
+        startDate: string;
+        endDate: string;
         hourCost: number;
         isActive: boolean;
         createdAt: string;
@@ -366,7 +367,8 @@
         title: string;
         description: string;
         imageUrl: string;
-        date: string;
+        startDate: string;
+        endDate: string;
         hourCost: string;
         isActive: boolean;
     }>({
@@ -374,7 +376,8 @@
         title: "",
         description: "",
         imageUrl: "",
-        date: "",
+        startDate: "",
+        endDate: "",
         hourCost: "",
         isActive: true,
     });
@@ -2066,7 +2069,7 @@
     }
 
     function resetEventForm() {
-        eventForm = { slug: "", title: "", description: "", imageUrl: "", date: "", hourCost: "", isActive: true };
+        eventForm = { slug: "", title: "", description: "", imageUrl: "", startDate: "", endDate: "", hourCost: "", isActive: true };
         editingEventSlug = null;
         eventFormError = "";
         eventFormSuccess = "";
@@ -2079,7 +2082,8 @@
             title: event.title,
             description: event.description || "",
             imageUrl: event.imageUrl || "",
-            date: event.date ? new Date(event.date).toISOString().slice(0, 16) : "",
+            startDate: event.startDate ? new Date(event.startDate).toISOString().slice(0, 10) : "",
+            endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 10) : "",
             hourCost: String(event.hourCost),
             isActive: event.isActive,
         };
@@ -2097,7 +2101,8 @@
             title: eventForm.title,
             description: eventForm.description || undefined,
             imageUrl: eventForm.imageUrl || undefined,
-            date: eventForm.date ? new Date(eventForm.date).toISOString() : undefined,
+            startDate: eventForm.startDate || undefined,
+            endDate: eventForm.endDate || undefined,
             hourCost: parseFloat(eventForm.hourCost),
             isActive: eventForm.isActive,
         };
@@ -6111,12 +6116,21 @@
                             />
                         </div>
                         <div class="space-y-2">
-                            <label class="text-sm font-medium text-gray-300" for="event-date">Date *</label>
+                            <label class="text-sm font-medium text-gray-300" for="event-start-date">Start Date *</label>
                             <input
-                                id="event-date"
-                                type="datetime-local"
+                                id="event-start-date"
+                                type="date"
                                 class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                bind:value={eventForm.date}
+                                bind:value={eventForm.startDate}
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-end-date">End Date *</label>
+                            <input
+                                id="event-end-date"
+                                type="date"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                bind:value={eventForm.endDate}
                             />
                         </div>
                         <div class="space-y-2">
@@ -6143,7 +6157,7 @@
                         <button
                             class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
                             onclick={saveEvent}
-                            disabled={eventFormSaving || !eventForm.slug || !eventForm.title || !eventForm.date || !eventForm.hourCost}
+                            disabled={eventFormSaving || !eventForm.slug || !eventForm.title || !eventForm.startDate || !eventForm.endDate || !eventForm.hourCost}
                         >
                             {eventFormSaving ? "Saving..." : editingEventSlug ? "Update Event" : "Create Event"}
                         </button>
@@ -6180,7 +6194,7 @@
                                     <span class="font-medium">{event.title}</span>
                                     <span class="text-sm text-gray-400">{event.slug}</span>
                                     <span class="text-sm text-gray-400">
-                                        {new Date(event.date).toLocaleDateString()} {new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(event.startDate).toLocaleDateString()} – {new Date(event.endDate).toLocaleDateString()}
                                     </span>
                                     <span class="text-sm text-gray-400">{event.hourCost}h</span>
                                     {#if event._count}

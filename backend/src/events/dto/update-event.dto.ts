@@ -25,7 +25,11 @@ export class UpdateEventDto {
 
   @IsDateString()
   @IsOptional()
-  date?: string;
+  startDate?: string;
+
+  @IsDateString()
+  @IsOptional()
+  endDate?: string;
 
   @IsNumber()
   @Min(0)

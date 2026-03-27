@@ -22,7 +22,10 @@ export class CreateEventDto {
   imageUrl?: string;
 
   @IsDateString()
-  date: string;
+  startDate: string;
+
+  @IsDateString()
+  endDate: string;
 
   @IsNumber()
   @Min(0)

@@ -11,7 +11,7 @@ export class EventsService {
 
   async getEvents() {
     return this.prisma.event.findMany({
-      orderBy: { date: 'asc' },
+      orderBy: { startDate: 'asc' },
       include: { _count: { select: { pinnedBy: true } } },
     });
   }
@@ -34,7 +34,8 @@ export class EventsService {
         title: dto.title,
         description: dto.description,
         imageUrl: dto.imageUrl,
-        date: new Date(dto.date),
+        startDate: new Date(dto.startDate),
+        endDate: new Date(dto.endDate),
         hourCost: dto.hourCost,
       },
     });
@@ -47,8 +48,11 @@ export class EventsService {
     }
 
     const data: any = { ...dto };
-    if (dto.date) {
-      data.date = new Date(dto.date);
+    if (dto.startDate) {
+      data.startDate = new Date(dto.startDate);
+    }
+    if (dto.endDate) {
+      data.endDate = new Date(dto.endDate);
     }
 
     return this.prisma.event.update({
@@ -71,7 +75,7 @@ export class EventsService {
   async getActiveEvents() {
     return this.prisma.event.findMany({
       where: { isActive: true },
-      orderBy: { date: 'asc' },
+      orderBy: { startDate: 'asc' },
     });
   }
 
@@ -86,7 +90,8 @@ export class EventsService {
             title: true,
             description: true,
             imageUrl: true,
-            date: true,
+            startDate: true,
+            endDate: true,
             hourCost: true,
             isActive: true,
           },
@@ -116,7 +121,8 @@ export class EventsService {
             title: true,
             description: true,
             imageUrl: true,
-            date: true,
+            startDate: true,
+            endDate: true,
             hourCost: true,
             isActive: true,
           },

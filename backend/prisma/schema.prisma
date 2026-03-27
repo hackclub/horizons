@@ -333,7 +333,8 @@ model Event {
   title       String        @db.VarChar(200)
   description String?       @db.VarChar(1000)
   imageUrl    String?       @map("image_url")
-  date        DateTime
+  startDate   DateTime      @db.Date @map("start_date")
+  endDate     DateTime      @db.Date @map("end_date")
   hourCost    Float         @map("hour_cost")
   isActive    Boolean       @default(true) @map("is_active")
   createdAt   DateTime      @default(now()) @map("created_at")
