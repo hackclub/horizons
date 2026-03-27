@@ -1,0 +1,30 @@
+import { IsString, IsNumber, IsOptional, IsDateString, MaxLength, Matches, Min } from 'class-validator';
+
+export class CreateEventDto {
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/, {
+    message: 'Slug must be lowercase alphanumeric with hyphens (e.g. "my-event")',
+  })
+  slug: string;
+
+  @IsString()
+  @MaxLength(200)
+  title: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
+
+  @IsDateString()
+  date: string;
+
+  @IsNumber()
+  @Min(0)
+  hourCost: number;
+}
