@@ -10,8 +10,10 @@
 
 	interface ApiEvent {
 		slug: string;
+		location?: string;
 		startDate: string;
 		endDate: string;
+		description?: string;
 	}
 
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
@@ -20,7 +22,7 @@
 	const events = $derived(
 		Object.entries(eventsMap).map(([slug, config]) => {
 			const apiEvent = apiEvents.find((e) => e.slug === slug);
-			return { slug, ...config, startDate: apiEvent?.startDate, endDate: apiEvent?.endDate };
+			return { slug, ...config, location: apiEvent?.location, startDate: apiEvent?.startDate, endDate: apiEvent?.endDate };
 		})
 	);
 
@@ -117,9 +119,9 @@
 					<div class="event-logo">
 						<img src={event.logo} alt={event.name} />
 					</div>
-					{#if event.startDate && event.endDate}
+					{#if event.location || (event.startDate && event.endDate)}
 						<p class="event-info font-bricolage">
-							{formatDateRange(event.startDate, event.endDate)}
+							{[event.location, event.startDate && event.endDate ? formatDateRange(event.startDate, event.endDate) : null].filter(Boolean).join(' - ')}
 						</p>
 					{/if}
 				</button>
@@ -321,6 +323,7 @@
 		background: none;
 		border: none;
 		cursor: pointer;
+		text-decoration: underline;
 		transition: opacity 0.15s ease;
 	}
 
