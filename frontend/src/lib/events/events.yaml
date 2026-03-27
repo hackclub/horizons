@@ -34,6 +34,42 @@ nexus:
       href: /faq
       icon: huh
 
+sol:
+  name: Horizons Sol
+  tagline: "70+ PERSON HACKATHON IN SÃO PAULO! \u2022 JUNE 12-14"
+  headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
+  logo: /logos/horizons-nexus.svg
+  logoMaxWidth: 600px   # max width of the logo on the splash screen
+  buttonText: "> CLICK  OR  PRESS  ENTER"
+  buttonTextMobile: "> TAP  TO  START"
+  footerHint: "USE  WASD  OR  YOUR  MOUSE"
+  background:
+    image: null        # URL or path to a custom background image (replaces default pattern)
+    pattern: true      # use the default rotating pattern (ignored if image is set)
+    opacity: 0.5       # background pattern/image opacity
+  colors:
+    background: "#f3e8d8"
+    dark: "#271c0c"
+    text: "#000000"
+    primary: "#ffa936"
+    secondary: "#f86d95"
+    tertiary: "#46467c"
+    cardBg: "#f3e8d8"
+  stripes:
+    - "#ffa936"
+    - "#f86d95"
+    - "#46467c"
+  menu:
+    - title: JOIN NOW
+      subtitle: START WORKING ON YOUR PROJECTS!
+      action: signup
+      icon: h
+    - title: "WHAT'S SOL?"
+      subtitle: LEARN MORE ABOUT THE EVENT!
+      action: link
+      href: /faq-sol
+      icon: huh
+
 europa:
   name: Horizons Europa
   tagline: "50+ PERSON HACKATHON IN CENTRAL EUROPE \u2022 JULY 24-26"
