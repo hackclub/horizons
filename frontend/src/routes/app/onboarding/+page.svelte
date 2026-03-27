@@ -1,9 +1,35 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { api } from '$lib/api';
+	import yaml from 'js-yaml';
+	import type { EventConfig } from '$lib/events/types';
+	import eventsRaw from '$lib/events/events.yaml?raw';
 	import beanSiblings from '$lib/assets/onboarding/bean-siblings.png';
 	import beanSiblingsSide from '$lib/assets/onboarding/bean-siblings-side.png';
-	import nexusLogo from '$lib/assets/onboarding/nexus-logo.png';
-	import polarisLogo from '$lib/assets/onboarding/polaris-logo.png';
+
+	interface ApiEvent {
+		slug: string;
+		startDate: string;
+		endDate: string;
+	}
+
+	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
+	let apiEvents = $state<ApiEvent[]>([]);
+
+	const events = $derived(
+		Object.entries(eventsMap).map(([slug, config]) => {
+			const apiEvent = apiEvents.find((e) => e.slug === slug);
+			return { slug, ...config, startDate: apiEvent?.startDate, endDate: apiEvent?.endDate };
+		})
+	);
+
+	onMount(async () => {
+		const { data } = await api.GET('/api/events' as any);
+		if (data && Array.isArray(data)) {
+			apiEvents = data;
+		}
+	});
 
 	let step = $state(0);
 	let selectedEvent = $state<string | null>(null);
@@ -34,7 +60,16 @@
 		}
 	];
 
-	const currentStep = $derived(steps[step]);
+	const selectedApiEvent = $derived(
+		selectedEvent ? apiEvents.find((e) => e.slug === selectedEvent) : null
+	);
+
+	const currentStep = $derived({
+		...steps[step],
+		...(step === 2 && selectedApiEvent?.description
+			? { text: selectedApiEvent.description }
+			: {})
+	});
 
 	function advance() {
 		if (step < steps.length - 1) {
@@ -42,36 +77,25 @@
 		}
 	}
 
-	function handleEventSelect(eventId: string) {
+	function handleEventSelect(slug: string) {
 		if (step !== 2) return;
-		selectedEvent = selectedEvent === eventId ? null : eventId;
+		selectedEvent = selectedEvent === slug ? null : slug;
 	}
 
-	function handleContinue() {
-		// TODO: API call to save selected event
+	function formatDateRange(start: string, end: string) {
+		const s = new Date(start);
+		const e = new Date(end);
+		const month = s.getMonth() + 1;
+		return `${month}/${s.getDate()}-${e.getDate()}`;
+	}
+
+	async function handleContinue() {
+		if (!selectedEvent) return;
+		await api.POST('/api/events/auth/pinned-event' as any, {
+			body: { slug: selectedEvent }
+		});
 		goto('/app');
 	}
-
-	const events = [
-		{
-			id: 'nexus',
-			name: 'Nexus',
-			logo: nexusLogo,
-			location: 'Seattle, WA',
-			dates: '6/19-21',
-			bgColor: '#fac393',
-			textColor: 'black'
-		},
-		{
-			id: 'polaris',
-			name: 'Polaris',
-			logo: polarisLogo,
-			location: 'Toronto, CA',
-			dates: '6/19-21',
-			bgColor: '#303d83',
-			textColor: 'white'
-		}
-	];
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -86,17 +110,18 @@
 			{#each events as event}
 				<button
 					class="event-card"
-					class:selected={selectedEvent === event.id}
-					style="background-color: {event.bgColor}; color: {event.textColor};"
-					onclick={(e) => { e.stopPropagation(); handleEventSelect(event.id); }}
+					class:selected={selectedEvent === event.slug}
+					onclick={(e) => { e.stopPropagation(); handleEventSelect(event.slug); }}
 					disabled={step !== 2}
 				>
 					<div class="event-logo">
 						<img src={event.logo} alt={event.name} />
 					</div>
-					<p class="event-info font-bricolage">
-						{event.location} - {event.dates}
-					</p>
+					{#if event.startDate && event.endDate}
+						<p class="event-info font-bricolage">
+							{formatDateRange(event.startDate, event.endDate)}
+						</p>
+					{/if}
 				</button>
 			{/each}
 		</div>
@@ -126,10 +151,17 @@
 			<p class="click-hint font-bricolage">Click anywhere to continue</p>
 		{/if}
 
-		{#if step === 2 && selectedEvent}
-			<button class="continue-btn font-bricolage" onclick={(e) => { e.stopPropagation(); handleContinue(); }}>
-				Continue
-			</button>
+		{#if step === 2}
+			<div class="dialog-actions">
+				<button class="skip-btn font-bricolage" onclick={(e) => { e.stopPropagation(); goto('/app'); }}>
+					Skip
+				</button>
+				{#if selectedEvent}
+					<button class="continue-btn font-bricolage" onclick={(e) => { e.stopPropagation(); handleContinue(); }}>
+						Continue
+					</button>
+				{/if}
+			</div>
 		{/if}
 		</div>
 	</div>
@@ -161,6 +193,7 @@
 	.event-card {
 		width: 298px;
 		height: 159px;
+		background-color: #f3e8d8;
 		border: 4px solid black;
 		border-radius: 20px;
 		box-shadow: 4px 4px 0px 0px black;
@@ -171,21 +204,15 @@
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		transition:
-			transform 0.2s ease,
-			box-shadow 0.2s ease;
+		transition: transform var(--juice-duration) var(--juice-easing);
 	}
 
-	.event-card:not(:disabled):hover {
-		transform: translateY(-4px);
-		box-shadow: 4px 8px 0px 0px black;
+.event-card:not(:disabled):not(.selected):hover {
+		transform: scale(var(--juice-scale));
 	}
 
 	.event-card.selected {
-		outline: 4px solid #ffa936;
-		outline-offset: 2px;
-		transform: translateY(-4px);
-		box-shadow: 4px 8px 0px 0px black;
+		transform: scale(1.08);
 	}
 
 	.event-card:disabled {
@@ -201,7 +228,7 @@
 	}
 
 	.event-logo img {
-		max-width: 240px;
+		width: 240px;
 		max-height: 80px;
 		object-fit: contain;
 	}
@@ -280,8 +307,28 @@
 		line-height: normal;
 	}
 
+	.dialog-actions {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.skip-btn {
+		font-size: 16px;
+		font-weight: 600;
+		color: black;
+		opacity: 0.4;
+		background: none;
+		border: none;
+		cursor: pointer;
+		transition: opacity 0.15s ease;
+	}
+
+	.skip-btn:hover {
+		opacity: 0.7;
+	}
+
 	.continue-btn {
-		align-self: flex-end;
 		background-color: black;
 		color: #f3e8d8;
 		font-size: 18px;
@@ -290,14 +337,11 @@
 		border-radius: 12px;
 		border: none;
 		cursor: pointer;
-		transition:
-			transform 0.15s ease,
-			opacity 0.15s ease;
+		transition: transform var(--juice-duration) var(--juice-easing);
 	}
 
 	.continue-btn:hover {
-		transform: translateY(-2px);
-		opacity: 0.9;
+		transform: scale(var(--juice-scale));
 	}
 
 	.click-hint {
