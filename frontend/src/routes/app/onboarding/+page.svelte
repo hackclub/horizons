@@ -151,6 +151,10 @@
 		return `${month}/${s.getDate()}-${e.getDate()}`;
 	}
 
+	async function completeOnboarding() {
+		await api.POST('/api/user/auth/complete-onboarding');
+	}
+
 	async function handleEventContinue() {
 		if (!selectedEvent) return;
 		await api.POST('/api/events/auth/pinned-event' as any, {
@@ -159,6 +163,7 @@
 		if (!hasProjects) {
 			step++;
 		} else {
+			await completeOnboarding();
 			goto('/app');
 		}
 	}
@@ -308,7 +313,7 @@
 
 			{#if isEventSelectStep}
 				<div class="dialog-actions">
-					<button class="skip-btn font-bricolage" onclick={(e) => { e.stopPropagation(); !hasProjects ? step++ : goto('/app'); }}>
+					<button class="skip-btn font-bricolage" onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app'); } }}>
 						Skip
 					</button>
 					{#if selectedEvent}
