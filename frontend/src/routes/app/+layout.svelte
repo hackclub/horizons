@@ -5,6 +5,7 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { preloadProjects } from '$lib/store/projectCache';
 	import { requireAuth } from '$lib/auth';
+	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
 
 	let authed = $state(false);

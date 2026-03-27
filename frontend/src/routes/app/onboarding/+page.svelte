@@ -247,8 +247,7 @@
 					<div class="card-body">
 						<div class="flex flex-col gap-6 w-full">
 							<div class="flex flex-col gap-2">
-								<h1 class="font-cook text-2xl text-black leading-normal">SET UP HACKATIME</h1>
-								<p class="font-bricolage text-2xl font-medium text-black leading-normal">We need to link your Hackatime account to Horizons so we can keep track of the time you spend on your projects.</p>
+								<p class="font-bricolage text-2xl font-medium text-black leading-normal">Make sure to set up the Hackatime extension.</p>
 							</div>
 							<HackatimeLinkButton bind:linked={hackatimeLinked} variant="card" />
 						</div>
@@ -629,19 +628,20 @@
 	}
 
 	.continue-btn {
-		background-color: black;
-		color: #f3e8d8;
-		font-size: 18px;
+		padding: 8px 16px;
+		border: 2px solid black;
+		border-radius: 8px;
+		background: none;
+		font-size: 16px;
 		font-weight: 600;
-		padding: 10px 32px;
-		border-radius: 12px;
-		border: none;
+		color: black;
 		cursor: pointer;
-		transition: transform var(--juice-duration) var(--juice-easing);
+		transition: transform var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease;
 	}
 
 	.continue-btn:hover {
 		transform: scale(var(--juice-scale));
+		background-color: #ffa936;
 	}
 
 	.click-hint {
