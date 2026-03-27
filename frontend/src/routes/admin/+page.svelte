@@ -2104,7 +2104,7 @@
             startDate: eventForm.startDate || undefined,
             endDate: eventForm.endDate || undefined,
             hourCost: parseFloat(eventForm.hourCost),
-            isActive: eventForm.isActive,
+            ...(editingEventSlug ? { isActive: eventForm.isActive } : {}),
         };
 
         try {
