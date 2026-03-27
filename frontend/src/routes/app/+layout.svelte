@@ -20,7 +20,18 @@
 	onMount(async () => {
 		// Check auth — redirect to landing if not logged in
 		const isAuthed = await requireAuth();
-		if (isAuthed) authed = true;
+		if (!isAuthed) return;
+
+		// Redirect to onboarding if not completed (skip if already on onboarding page)
+		if (!page.url.pathname.startsWith('/app/onboarding')) {
+			const { data } = await api.GET('/api/user/auth/onboarding-status');
+			if (data && !data.onboardComplete) {
+				goto('/app/onboarding');
+				return;
+			}
+		}
+
+		authed = true;
 
 		// Prefetch projects data in background
 		preloadProjects();

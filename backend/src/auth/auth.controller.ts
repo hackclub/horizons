@@ -65,7 +65,8 @@ export class AuthController {
       });
     }
 
-    const redirectPath = result.redirectPath ?? '/app';
+    const defaultPath = result.isNewUser ? '/app/onboarding' : '/app';
+    const redirectPath = result.redirectPath ?? defaultPath;
     // Prevent open redirect: only allow relative paths starting with /
     const destination = (typeof redirectPath === 'string' && redirectPath.startsWith('/') && !redirectPath.startsWith('//'))
       ? redirectPath
