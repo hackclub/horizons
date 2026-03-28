@@ -12,11 +12,16 @@
     "concurrently": "^8.2.2"
   },
   "dependencies": {
+    "pnpm": "^10.33.0",
     "prisma": "^7.0.0"
-  },  
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.19.0",
-  "workspaces": ["frontend", "backend", "gateway"]
+  "workspaces": [
+    "frontend",
+    "backend",
+    "gateway"
+  ]
 }
