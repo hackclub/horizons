@@ -141,3 +141,39 @@ sol:
       action: link
       href: /faq-sol
       icon: huh
+
+crux:
+  name: Horizons Crux
+  tagline: "100+ PERSON HACKATHON IN SYDNEY \u2022 JULY 10-12"
+  headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
+  logo: /logos/crux.png
+  logoMaxWidth: 600px
+  buttonText: "> CLICK  OR  PRESS  ENTER"
+  buttonTextMobile: "> TAP  TO  START"
+  footerHint: "USE  WASD  OR  YOUR  MOUSE"
+  background:
+    image: null
+    pattern: true
+    opacity: 0.5
+  colors:
+    background: "#1e1e2e"
+    dark: "#1e1e2e"
+    text: "#cdd6f4"
+    primary: "#fab387"
+    secondary: "#b4befe"
+    tertiary: "#f38ba8"
+    cardBg: "#585b70"
+  stripes:
+    - "#ffa936"
+    - "#f86d95"
+    - "#46467c"
+  menu:
+    - title: JOIN NOW
+      subtitle: START WORKING ON YOUR PROJECTS!
+      action: signup
+      icon: h
+    - title: "WHAT'S CRUX?"
+      subtitle: LEARN MORE ABOUT THE EVENT!
+      action: link
+      href: /crux-faq
+      icon: huh
