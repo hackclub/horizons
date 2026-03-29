@@ -109,8 +109,8 @@ europa:
 sol:
   name: Horizons Sol
   tagline: "70+ PERSON HACKATHON IN SÃO PAULO! \u2022 JUNE 12-14"
-  headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
-  logo: /logos/horizons-nexus.svg
+  headline: A HORIZONS EVENT IN SAO PAULO, BRASIL!
+  logo: /logos/horizons-sol.png
   logoMaxWidth: 600px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
@@ -120,17 +120,17 @@ sol:
     pattern: true
     opacity: 0.5
   colors:
-    background: "#f3e8d8"
-    dark: "#271c0c"
+    background: "#e8f3f8"
+    dark: "#0f2233"
     text: "#000000"
-    primary: "#ffa936"
-    secondary: "#f86d95"
-    tertiary: "#46467c"
-    cardBg: "#f3e8d8"
+    primary: "#F9F035"
+    secondary: "#2A53BE"
+    tertiary: "#8AD05F"
+    cardBg: "#0f2233"
   stripes:
-    - "#ffa936"
-    - "#f86d95"
-    - "#46467c"
+    - "#2A53BE"
+    - "#F9F035"
+    - "#8AD05F"
   menu:
     - title: JOIN NOW
       subtitle: START WORKING ON YOUR PROJECTS!
