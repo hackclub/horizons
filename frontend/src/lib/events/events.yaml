@@ -180,7 +180,7 @@ crux:
 
 arcana:
   name: Horizons Arcana
-  tagline: "100+ PERSON HACKATHON IN Singapore \u2022 JULY 31-AUGUST 2"
+  tagline: "100+ PERSON HACKATHON IN SINGAPORE \u2022 JULY 31-AUGUST 2"
   headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
   logo: /logos/arcana.png
   logoMaxWidth: 600px   # max width of the logo on the splash screen
@@ -208,7 +208,7 @@ arcana:
       subtitle: START WORKING ON YOUR PROJECTS!
       action: signup
       icon: h
-    - title: "WHAT'S NEXUS?"
+    - title: "WHAT'S ARCANA?"
       subtitle: LEARN MORE ABOUT THE EVENT!
       action: link
       href: /arcana-faq
