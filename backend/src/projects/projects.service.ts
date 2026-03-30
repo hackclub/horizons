@@ -92,6 +92,10 @@ export class ProjectsService {
         this.airtableService.syncUserEvent(project.user.email, userId, 'firstProjectCreated').catch((err) =>
           console.error('Error syncing firstProjectCreated event to Airtable:', err),
         );
+
+        this.airtableService.syncUserEvent(project.user.email, userId, 'onboardingCompleted').catch((err) =>
+          console.error('Error syncing onboardingCompleted event to Airtable:', err),
+        );
       }
 
       return this.excludeAdminFields(project);
