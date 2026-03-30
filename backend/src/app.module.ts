@@ -11,6 +11,7 @@ import { ReviewerModule } from "./reviewer/reviewer.module";
 import { HealthModule } from "./health/health.module";
 import { UploadsModule } from "./uploads/uploads.module";
 import { ShopModule } from "./shop/shop.module";
+import { EventsModule } from "./events/events.module";
 import { GiftCodesModule } from "./gift-codes/gift-codes.module";
 import { SlackModule } from "./slack/slack.module";
 import { HackatimeModule } from "./hackatime/hackatime.module";
@@ -35,6 +36,7 @@ import { PrismaService } from "./prisma.service";
     HealthModule,
     UploadsModule,
     ShopModule,
+    EventsModule,
     GiftCodesModule,
     SlackModule,
     HackatimeModule,

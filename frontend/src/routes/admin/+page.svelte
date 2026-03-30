@@ -101,7 +101,23 @@
         lastReviewedAt: string | null;
     };
 
-    type Tab = "submissions" | "projects" | "users" | "shop" | "giftcodes";
+    type Tab = "submissions" | "projects" | "users" | "shop" | "giftcodes" | "events";
+
+    type Event = {
+        eventId: number;
+        slug: string;
+        title: string;
+        description: string | null;
+        imageUrl: string | null;
+        location: string | null;
+        startDate: string;
+        endDate: string;
+        hourCost: number;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt: string;
+        _count?: { pinnedBy: number };
+    };
     type StatusFilter = "all" | "pending" | "approved" | "rejected";
     type SortField =
         | "createdAt"
@@ -344,6 +360,34 @@
     let usersLoading = $state(false);
     let metricsLoading = $state(false);
     let shopLoading = $state(false);
+    let eventsLoaded = $state(false);
+    let eventsLoading = $state(false);
+    let events = $state<Event[]>([]);
+    let eventForm = $state<{
+        slug: string;
+        title: string;
+        description: string;
+        imageUrl: string;
+        location: string;
+        startDate: string;
+        endDate: string;
+        hourCost: string;
+        isActive: boolean;
+    }>({
+        slug: "",
+        title: "",
+        description: "",
+        imageUrl: "",
+        location: "",
+        startDate: "",
+        endDate: "",
+        hourCost: "",
+        isActive: true,
+    });
+    let editingEventSlug = $state<string | null>(null);
+    let eventFormSaving = $state(false);
+    let eventFormError = $state("");
+    let eventFormSuccess = $state("");
 
     let showShopManager = $state(false);
     let shopForm = $state<{ slug: string; description: string; isActive: boolean; isPublic: boolean }>({
@@ -2003,6 +2047,127 @@
         }
     }
 
+    async function showEventsTab() {
+        activeTab = "events";
+        if (!eventsLoaded && !eventsLoading) {
+            await loadEvents();
+        }
+    }
+
+    async function loadEvents() {
+        eventsLoading = true;
+        try {
+            const response = await fetch(`${apiUrl}/api/events/admin`, {
+                credentials: "include",
+            });
+            if (response.ok) {
+                events = await response.json();
+                eventsLoaded = true;
+            }
+        } catch (err) {
+            console.error("Failed to load events:", err);
+        } finally {
+            eventsLoading = false;
+        }
+    }
+
+    function resetEventForm() {
+        eventForm = { slug: "", title: "", description: "", imageUrl: "", location: "", startDate: "", endDate: "", hourCost: "", isActive: true };
+        editingEventSlug = null;
+        eventFormError = "";
+        eventFormSuccess = "";
+    }
+
+    function startEditEvent(event: Event) {
+        editingEventSlug = event.slug;
+        eventForm = {
+            slug: event.slug,
+            title: event.title,
+            description: event.description || "",
+            imageUrl: event.imageUrl || "",
+            location: event.location || "",
+            startDate: event.startDate ? new Date(event.startDate).toISOString().slice(0, 10) : "",
+            endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 10) : "",
+            hourCost: String(event.hourCost),
+            isActive: event.isActive,
+        };
+        eventFormError = "";
+        eventFormSuccess = "";
+    }
+
+    async function saveEvent() {
+        eventFormSaving = true;
+        eventFormError = "";
+        eventFormSuccess = "";
+
+        const payload: Record<string, unknown> = {
+            slug: eventForm.slug,
+            title: eventForm.title,
+            description: eventForm.description || undefined,
+            imageUrl: eventForm.imageUrl || undefined,
+            location: eventForm.location || undefined,
+            startDate: eventForm.startDate || undefined,
+            endDate: eventForm.endDate || undefined,
+            hourCost: parseFloat(eventForm.hourCost),
+            ...(editingEventSlug ? { isActive: eventForm.isActive } : {}),
+        };
+
+        try {
+            let response;
+            if (editingEventSlug) {
+                response = await fetch(
+                    `${apiUrl}/api/events/admin/${editingEventSlug}`,
+                    {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify(payload),
+                    },
+                );
+            } else {
+                response = await fetch(`${apiUrl}/api/events/admin`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(payload),
+                });
+            }
+
+            if (!response.ok) {
+                const { message } = await response.json().catch(() => ({
+                    message: "Failed to save event",
+                }));
+                eventFormError = message ?? "Failed to save event";
+                return;
+            }
+
+            eventFormSuccess = editingEventSlug ? "Event updated successfully" : "Event created successfully";
+            resetEventForm();
+            await loadEvents();
+        } catch (err) {
+            eventFormError = err instanceof Error ? err.message : "Failed to save event";
+        } finally {
+            eventFormSaving = false;
+        }
+    }
+
+    async function deleteEvent(slug: string) {
+        const confirmDelete = window.confirm("Delete this event? This cannot be undone.");
+        if (!confirmDelete) return;
+
+        try {
+            const response = await fetch(
+                `${apiUrl}/api/events/admin/${slug}`,
+                { method: "DELETE", credentials: "include" },
+            );
+            if (response.ok) {
+                await loadEvents();
+            }
+        } catch (err) {
+            console.error("Failed to delete event:", err);
+        }
+    }
+
     function resetGiftCodeForm() {
         giftCodeForm = {
             emails: "",
@@ -2404,6 +2569,12 @@
                     onclick={showGiftCodesTab}
                 >
                     Gift Codes
+                </button>
+                <button
+                    class={`px-4 py-2 rounded-lg border transition-colors ${activeTab === "events" ? "bg-purple-600 border-purple-400" : "bg-gray-800 border-gray-700 hover:bg-gray-700"}`}
+                    onclick={showEventsTab}
+                >
+                    Events
                 </button>
             </div>
         </header>
@@ -5889,6 +6060,186 @@
                                 {/each}
                             </tbody>
                         </table>
+                    </div>
+                {/if}
+            </section>
+        {:else if activeTab === "events"}
+            <section class="space-y-4">
+                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <h2 class="text-2xl font-semibold">Events Management</h2>
+                    <button
+                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
+                        onclick={loadEvents}
+                    >
+                        Refresh
+                    </button>
+                </div>
+
+                <div class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-6">
+                    <h3 class="text-lg font-semibold">
+                        {editingEventSlug ? "Edit Event" : "Create New Event"}
+                    </h3>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-slug">Slug *</label>
+                            <input
+                                id="event-slug"
+                                type="text"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="my-event"
+                                bind:value={eventForm.slug}
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-title">Title *</label>
+                            <input
+                                id="event-title"
+                                type="text"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="Event title"
+                                bind:value={eventForm.title}
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-description">Description</label>
+                            <input
+                                id="event-description"
+                                type="text"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="Event description..."
+                                bind:value={eventForm.description}
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-image">Image URL</label>
+                            <input
+                                id="event-image"
+                                type="text"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="https://..."
+                                bind:value={eventForm.imageUrl}
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-location">Location</label>
+                            <input
+                                id="event-location"
+                                type="text"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="San Francisco, CA"
+                                bind:value={eventForm.location}
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-start-date">Start Date *</label>
+                            <input
+                                id="event-start-date"
+                                type="date"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                bind:value={eventForm.startDate}
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-end-date">End Date *</label>
+                            <input
+                                id="event-end-date"
+                                type="date"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                bind:value={eventForm.endDate}
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-300" for="event-cost">Hour Cost *</label>
+                            <input
+                                id="event-cost"
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="0"
+                                bind:value={eventForm.hourCost}
+                            />
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 text-sm text-gray-300">
+                                <input type="checkbox" bind:checked={eventForm.isActive} class="rounded" />
+                                Active
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 items-center">
+                        <button
+                            class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                            onclick={saveEvent}
+                            disabled={eventFormSaving || !eventForm.slug || !eventForm.title || !eventForm.startDate || !eventForm.endDate || !eventForm.hourCost}
+                        >
+                            {eventFormSaving ? "Saving..." : editingEventSlug ? "Update Event" : "Create Event"}
+                        </button>
+                        {#if editingEventSlug}
+                            <button
+                                class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                                onclick={resetEventForm}
+                            >
+                                Cancel Edit
+                            </button>
+                        {/if}
+                        {#if eventFormError}
+                            <span class="text-red-400 text-sm">{eventFormError}</span>
+                        {/if}
+                        {#if eventFormSuccess}
+                            <span class="text-green-400 text-sm">{eventFormSuccess}</span>
+                        {/if}
+                    </div>
+                </div>
+
+                {#if eventsLoading}
+                    <div class="py-12 text-center text-gray-300">
+                        Loading events...
+                    </div>
+                {:else if events.length === 0}
+                    <div class="py-12 text-center text-gray-300">
+                        No events yet. Create one above.
+                    </div>
+                {:else}
+                    <div class="space-y-2">
+                        {#each events as event (event.eventId)}
+                            <div class="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-4 py-3">
+                                <div class="flex items-center gap-3 flex-wrap">
+                                    <span class="font-medium">{event.title}</span>
+                                    <span class="text-sm text-gray-400">{event.slug}</span>
+                                    <span class="text-sm text-gray-400">
+                                        {new Date(event.startDate).toLocaleDateString()} – {new Date(event.endDate).toLocaleDateString()}
+                                    </span>
+                                    {#if event.location}
+                                        <span class="text-sm text-gray-400">{event.location}</span>
+                                    {/if}
+                                    <span class="text-sm text-gray-400">{event.hourCost}h</span>
+                                    {#if event._count}
+                                        <span class="px-2 py-0.5 text-xs bg-purple-900/50 text-purple-400 rounded">
+                                            {event._count.pinnedBy} pinned
+                                        </span>
+                                    {/if}
+                                    {#if !event.isActive}
+                                        <span class="px-2 py-0.5 text-xs bg-red-900/50 text-red-400 rounded">Inactive</span>
+                                    {/if}
+                                </div>
+                                <div class="flex gap-2">
+                                    <button
+                                        class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+                                        onclick={() => startEditEvent(event)}
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        class="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 rounded transition-colors"
+                                        onclick={() => deleteEvent(event.slug)}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        {/each}
                     </div>
                 {/if}
             </section>

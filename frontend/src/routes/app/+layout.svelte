@@ -5,6 +5,8 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { preloadProjects } from '$lib/store/projectCache';
 	import { requireAuth } from '$lib/auth';
+	import { api } from '$lib/api';
+	import { env } from '$env/dynamic/public';
 	import { onMount } from 'svelte';
 
 	let authed = $state(false);
@@ -20,7 +22,18 @@
 	onMount(async () => {
 		// Check auth — redirect to landing if not logged in
 		const isAuthed = await requireAuth();
-		if (isAuthed) authed = true;
+		if (!isAuthed) return;
+
+		// Redirect to onboarding if not completed (skip if already on onboarding page)
+		if (env.PUBLIC_ENABLE_ONBOARDING === 'true' && !page.url.pathname.startsWith('/app/onboarding')) {
+			const { data } = await api.GET('/api/user/auth/onboarding-status');
+			if (data && !data.onboardComplete) {
+				goto('/app/onboarding');
+				return;
+			}
+		}
+
+		authed = true;
 
 		// Prefetch projects data in background
 		preloadProjects();

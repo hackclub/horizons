@@ -430,6 +430,10 @@ export class AuthService {
       data: { onboardComplete: true },
     });
 
+    this.airtableService.syncUserEvent(user.email, userId, 'onboardingCompleted').catch((err) =>
+      console.error('Error syncing onboardingCompleted event to Airtable:', err),
+    );
+
     return {
       message: 'Onboarding completed successfully',
       user: {

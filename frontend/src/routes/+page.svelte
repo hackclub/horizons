@@ -42,10 +42,14 @@
         }
         animationsReady = true;
 
-        api.GET('/api/user/auth/me').then(response => {
+        api.GET('/api/user/auth/me').then(async response => {
             if (response.data && response.data.hcaId) {
-                // isAuthed = true
-                window.location.href = '/app';
+                const { data } = await api.GET('/api/user/auth/onboarding-status');
+                if (data && !data.onboardComplete) {
+                    window.location.href = '/app/onboarding';
+                } else {
+                    window.location.href = '/app';
+                }
             }
         })
     });
@@ -60,8 +64,13 @@
         showSlideOut = true;
 
         if (isAuthed) {
-            setTimeout(() => {
-                goto('/app');
+            setTimeout(async () => {
+                const { data } = await api.GET('/api/user/auth/onboarding-status');
+                if (data && !data.onboardComplete) {
+                    goto('/app/onboarding');
+                } else {
+                    goto('/app');
+                }
             }, 1200)
             return;
         }
