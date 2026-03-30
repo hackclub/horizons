@@ -194,7 +194,7 @@ export class AirtableService {
     return record ? { id: record.id, fields: record.fields } : null;
   }
 
-  async syncUserEvent(email: string, userId: number, event: 'signUp' | 'firstProjectCreated' | 'firstSubmit', dateOverride?: string): Promise<void> {
+  async syncUserEvent(email: string, userId: number, event: 'signUp' | 'firstProjectCreated' | 'firstSubmit' | 'onboardingCompleted', dateOverride?: string): Promise<void> {
     if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
       return;
     }
@@ -203,6 +203,7 @@ export class AirtableService {
       signUp: 'Loops - horizonsSignUpAt',
       firstProjectCreated: 'Loops - horizonsFirstProjectCreatedAt',
       firstSubmit: 'Loops - horizonsFirstSubmitAt',
+      onboardingCompleted: 'Loops - horizonsOnboardingCompletedAt',
     };
 
     const fieldName = fieldMap[event];
