@@ -128,28 +128,47 @@
 								<p class="font-bricolage text-2xl font-medium text-black leading-normal">Pick a project you want to work on!</p>
 							</div>
 
-							<div class="flex flex-col gap-2 w-full">
+							<div class="flex flex-col gap-4 w-full">
 								<p class="font-bricolage text-2xl font-bold text-black leading-normal">Recommended Tutorials</p>
-								<a href="https://kaplayjs.com/" target="_blank" rel="noopener" class="resource-card">
-									<div class="resource-icon">
-										<img src="https://kaplayjs.com/_astro/kaplay-logo-sm-og.DN-EC99e_Z1kkjtN.png" alt="Kaplay" class="w-16 h-16 object-contain" />
-									</div>
+								<a href="https://guides.horizons.hackclub.com/guides/website-guide/" target="_blank" rel="noopener" class="resource-card">
 									<div class="flex flex-col gap-1">
 										<div class="flex items-center gap-1">
-											<span class="font-bricolage text-2xl font-semibold text-black">Kaplay Guide</span>
+											<span class="font-bricolage text-2xl font-semibold text-black">Make your first personal website</span>
 											<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 												<path d="M4.7943 1.01921C4.7943 0.456645 5.25095 0 5.81351 0L14.9808 0.000703475C15.5434 0.000703733 15.9993 0.456645 15.9993 1.01921L16 10.1865C16 10.7491 15.5434 11.2057 14.9808 11.2057C14.4185 11.2056 13.9626 10.7495 13.9623 10.1872V3.47826L1.44054 16L0 14.5595L12.5217 2.03772H5.81281C5.25053 2.03742 4.79437 1.58154 4.7943 1.01921Z" fill="black"/>
 											</svg>
 										</div>
-										<span class="font-bricolage text-base font-semibold text-black/60">Build your first game with Kaplay!</span>
+										<span class="font-bricolage text-base font-semibold text-black/60">Build and deploy your own personal website!</span>
+									</div>
+								</a>
+								<a href="https://guides.horizons.hackclub.com/guides/godot-platformer/" target="_blank" rel="noopener" class="resource-card">
+									<div class="flex flex-col gap-1">
+										<div class="flex items-center gap-1">
+											<span class="font-bricolage text-2xl font-semibold text-black">Create your first platformer game</span>
+											<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+												<path d="M4.7943 1.01921C4.7943 0.456645 5.25095 0 5.81351 0L14.9808 0.000703475C15.5434 0.000703733 15.9993 0.456645 15.9993 1.01921L16 10.1865C16 10.7491 15.5434 11.2057 14.9808 11.2057C14.4185 11.2056 13.9626 10.7495 13.9623 10.1872V3.47826L1.44054 16L0 14.5595L12.5217 2.03772H5.81281C5.25053 2.03742 4.79437 1.58154 4.7943 1.01921Z" fill="black"/>
+											</svg>
+										</div>
+										<span class="font-bricolage text-base font-semibold text-black/60">Build a platformer game with Godot!</span>
+									</div>
+								</a>
+								<a href="https://guides.horizons.hackclub.com/guides/git-guide/" target="_blank" rel="noopener" class="resource-card">
+									<div class="flex flex-col gap-1">
+										<div class="flex items-center gap-1">
+											<span class="font-bricolage text-2xl font-semibold text-black">Learn how to set up git</span>
+											<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+												<path d="M4.7943 1.01921C4.7943 0.456645 5.25095 0 5.81351 0L14.9808 0.000703475C15.5434 0.000703733 15.9993 0.456645 15.9993 1.01921L16 10.1865C16 10.7491 15.5434 11.2057 14.9808 11.2057C14.4185 11.2056 13.9626 10.7495 13.9623 10.1872V3.47826L1.44054 16L0 14.5595L12.5217 2.03772H5.81281C5.25053 2.03742 4.79437 1.58154 4.7943 1.01921Z" fill="black"/>
+											</svg>
+										</div>
+										<span class="font-bricolage text-base font-semibold text-black/60">Set up git for your project!</span>
 									</div>
 								</a>
 							</div>
 
-							<p class="font-bricolage text-2xl font-medium text-black leading-normal">Once you've figured out what type of project you want to make, hit continue!</p>
+							<p class="font-bricolage text-lg font-medium text-black leading-normal text-center">Once you've figured out what type of project you want to make, hit continue!</p>
 						</div>
 					</div>
-					<button class="card-continue-btn font-bricolage" onclick={() => step++}>
+					<button class="card-continue-btn font-bricolage mt-1" onclick={() => step++}>
 						Continue
 					</button>
 				{/if}
@@ -279,7 +298,7 @@
 		position: relative;
 		z-index: 1;
 		width: 727px;
-		height: 662px;
+		min-height: 662px;
 		background-color: #f3e8d8;
 		border: 4px solid black;
 		border-radius: 20px;
@@ -289,7 +308,7 @@
 		flex-direction: column;
 		justify-content: space-between;
 		align-items: center;
-		overflow-y: auto;
+		overflow: hidden;
 	}
 
 	.card-body {
