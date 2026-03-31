@@ -224,11 +224,11 @@
 					onclick={(e) => { e.stopPropagation(); handleEventSelect(event.slug); }}
 					disabled={!isEventSelectStep}
 				>
-					<div class="flex items-center justify-center flex-1 p-3">
-						<img src={event.logo} alt={event.name} class="max-w-65 max-h-27.5 object-contain" />
+					<div class="flex items-center justify-center flex-1 p-3 min-h-0">
+						<img src={event.logo} alt={event.name} class="max-w-65 max-h-full object-contain" />
 					</div>
 					{#if event.location || (event.startDate && event.endDate)}
-						<p class="font-bricolage text-base font-semibold absolute bottom-3 whitespace-nowrap">
+						<p class="font-bricolage text-base font-semibold pb-3 whitespace-nowrap shrink-0">
 							{[event.location, event.startDate && event.endDate ? formatDateRange(event.startDate, event.endDate) : null].filter(Boolean).join(' - ')}
 						</p>
 					{/if}
