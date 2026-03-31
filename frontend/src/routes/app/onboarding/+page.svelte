@@ -216,6 +216,7 @@
 			class="events-row"
 			style="opacity: {currentStep.eventsOpacity}; pointer-events: {isEventSelectStep ? 'auto' : 'none'};"
 		>
+			<div class="events-spacer"></div>
 			{#each events as event}
 				<button
 					class="event-card"
@@ -233,6 +234,7 @@
 					{/if}
 				</button>
 			{/each}
+			<div class="events-spacer-bottom"></div>
 		</div>
 	{/if}
 
@@ -457,11 +459,29 @@
 
 	.events-row {
 		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		align-content: start;
 		gap: 32px;
-		align-items: center;
+		max-width: calc(298px * 4 + 32px * 3);
 		position: absolute;
-		top: 80px;
+		top: 0;
+		bottom: 0;
+		overflow-y: auto;
+		padding: 8px;
 		transition: opacity 0.4s ease;
+	}
+
+	.events-spacer {
+		width: 100%;
+		height: 40px;
+		flex-shrink: 0;
+	}
+
+	.events-spacer-bottom {
+		width: 100%;
+		height: 300px;
+		flex-shrink: 0;
 	}
 
 	.experience-buttons {
@@ -526,8 +546,8 @@
 	}
 
 	.event-logo img {
-		width: 240px;
-		max-height: 80px;
+		max-width: 260px;
+		max-height: 110px;
 		object-fit: contain;
 	}
 

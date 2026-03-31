@@ -2,7 +2,7 @@ nexus:
   name: Horizons Nexus
   tagline: "300+ PERSON HACKATHON IN SF \u2022 JUNE 19-21"
   headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
-  logo: /logos/horizons-nexus.svg
+  logo: /logos/nexus-logo-constrained.svg
   logoMaxWidth: 600px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
