@@ -245,7 +245,7 @@
 								<div class="card-text z-10">
 									<p class="font-cook text-[40px] font-semibold text-black m-0">EVENTS</p>
 									<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-										Check out Horizons events!
+										CHECK OUT HORIZONS EVENTS!
 									</p>
 								</div>
 							</a>
@@ -292,6 +292,13 @@
 			{#if userName}
 				<div class="card user-card">
 					<p class="font-cook text-[24px] font-semibold text-black m-0">{userName}</p>
+					<button class="logout-btn" onclick={async () => { await api.POST('/api/user/auth/logout'); window.location.href = '/'; }} aria-label="Logout">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+							<path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+							<path d="M21 12H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</button>
 				</div>
 			{/if}
 		</div>
@@ -493,10 +500,25 @@
 	.user-card {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 12px;
 		padding: 20px;
 		background-color: #f3e8d8;
 		cursor: default;
+	}
+
+	.logout-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: black;
+		opacity: 0.4;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		transition: opacity 0.2s ease;
+	}
+	.logout-btn:hover {
+		opacity: 1;
 	}
 
 	/* Entry / exit animations */
