@@ -24,6 +24,12 @@
 		const isAuthed = await requireAuth();
 		if (!isAuthed) return;
 
+		// If onboarding is disabled, redirect away from onboarding pages
+		if (env.PUBLIC_ENABLE_ONBOARDING !== 'true' && page.url.pathname.startsWith('/app/onboarding')) {
+			goto('/app');
+			return;
+		}
+
 		// Redirect to onboarding if not completed (skip if already on onboarding page)
 		if (env.PUBLIC_ENABLE_ONBOARDING === 'true' && !page.url.pathname.startsWith('/app/onboarding')) {
 			const { data } = await api.GET('/api/user/auth/onboarding-status');

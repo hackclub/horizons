@@ -16,6 +16,7 @@
     import CircleOut from '$lib/components/anim/CircleOut.svelte';
     import { api } from '$lib/api';
     import { goto } from '$app/navigation';
+    import { env } from '$env/dynamic/public';
     import { createListNav, parseNavKey, isNavKey, clampIndex, navState } from '$lib/nav/wasd.svelte';
 
     let activated = $state(false);
@@ -44,12 +45,14 @@
 
         api.GET('/api/user/auth/me').then(async response => {
             if (response.data && response.data.hcaId) {
-                const { data } = await api.GET('/api/user/auth/onboarding-status');
-                if (data && !data.onboardComplete) {
-                    window.location.href = '/app/onboarding';
-                } else {
-                    window.location.href = '/app';
+                if (env.PUBLIC_ENABLE_ONBOARDING === 'true') {
+                    const { data } = await api.GET('/api/user/auth/onboarding-status');
+                    if (data && !data.onboardComplete) {
+                        window.location.href = '/app/onboarding';
+                        return;
+                    }
                 }
+                window.location.href = '/app';
             }
         })
     });
