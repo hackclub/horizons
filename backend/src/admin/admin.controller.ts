@@ -1,9 +1,35 @@
 import { Controller, Get, Put, Body, Param, UseGuards, Req, ParseIntPipe, Delete, Post } from '@nestjs/common';
+import { ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
+import {
+  AdminSubmissionResponse,
+  SubmissionAuditLogResponse,
+  AdminProjectResponse,
+  ProjectTimelineResponse,
+  RecalculateProjectResponse,
+  RecalculateAllResponse,
+  DeleteProjectResponse,
+  AdminUserResponse,
+  AdminMetricsResponse,
+  ReviewerLeaderboardEntry,
+  AdminFraudFlagResponse,
+  AdminUserFlagResponse,
+  AdminUserSusFlagResponse,
+  AdminUserSlackResponse,
+  SlackLookupResponse,
+  PriorityUserResponse,
+  GlobalSettingsResponse,
+} from './dto/admin-response.dto';
+import {
+  ToggleFraudFlagDto,
+  ToggleSusFlagDto,
+  UpdateSlackIdDto,
+  ToggleSubmissionsFrozenDto,
+} from './dto/admin-request.dto';
 
 @Controller('api/admin')
 export class AdminController {
@@ -12,6 +38,7 @@ export class AdminController {
   @Get('submissions')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: [AdminSubmissionResponse] })
   async getAllSubmissions() {
     return this.adminService.getAllSubmissions();
   }
@@ -19,6 +46,7 @@ export class AdminController {
   @Get('submissions/:id/audit-logs')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: [SubmissionAuditLogResponse] })
   async getSubmissionAuditLogs(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.getSubmissionAuditLogs(id);
   }
@@ -26,6 +54,7 @@ export class AdminController {
   @Put('projects/:id/unlock')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminProjectResponse })
   async unlockProject(
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
@@ -36,6 +65,7 @@ export class AdminController {
   @Get('projects/:id/timeline')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: ProjectTimelineResponse })
   async getProjectTimeline(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.getProjectTimeline(id);
   }
@@ -43,6 +73,7 @@ export class AdminController {
   @Get('projects')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: [AdminProjectResponse] })
   async getAllProjects() {
     return this.adminService.getAllProjects();
   }
@@ -50,6 +81,7 @@ export class AdminController {
   @Post('projects/:id/recalculate')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiCreatedResponse({ type: RecalculateProjectResponse })
   async recalculateProjectHours(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.recalculateProjectHours(id);
   }
@@ -57,6 +89,7 @@ export class AdminController {
   @Post('projects/recalculate-all')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiCreatedResponse({ type: RecalculateAllResponse })
   async recalculateAllProjects() {
     return this.adminService.recalculateAllProjects();
   }
@@ -64,6 +97,7 @@ export class AdminController {
   @Delete('projects/:id')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: DeleteProjectResponse })
   async deleteProject(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.deleteProject(id);
   }
@@ -71,6 +105,7 @@ export class AdminController {
   @Get('users')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: [AdminUserResponse] })
   async getAllUsers() {
     return this.adminService.getAllUsers();
   }
@@ -78,6 +113,7 @@ export class AdminController {
   @Get('metrics')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminMetricsResponse })
   async getTotals() {
     return this.adminService.getTotals();
   }
@@ -85,6 +121,7 @@ export class AdminController {
   @Get('reviewer-leaderboard')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: [ReviewerLeaderboardEntry] })
   async getReviewerLeaderboard() {
     return this.adminService.getReviewerLeaderboard();
   }
@@ -92,9 +129,10 @@ export class AdminController {
   @Put('projects/:id/fraud-flag')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminFraudFlagResponse })
   async toggleFraudFlag(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { isFraud: boolean },
+    @Body() body: ToggleFraudFlagDto,
   ) {
     return this.adminService.toggleFraudFlag(id, body.isFraud);
   }
@@ -102,9 +140,10 @@ export class AdminController {
   @Put('users/:id/fraud-flag')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminUserFlagResponse })
   async toggleUserFraudFlag(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { isFraud: boolean },
+    @Body() body: ToggleFraudFlagDto,
   ) {
     return this.adminService.toggleUserFraudFlag(id, body.isFraud);
   }
@@ -112,9 +151,10 @@ export class AdminController {
   @Put('users/:id/sus-flag')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminUserSusFlagResponse })
   async toggleUserSusFlag(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { isSus: boolean },
+    @Body() body: ToggleSusFlagDto,
   ) {
     return this.adminService.toggleUserSusFlag(id, body.isSus);
   }
@@ -122,9 +162,10 @@ export class AdminController {
   @Put('users/:id/slack')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminUserSlackResponse })
   async updateUserSlackId(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { slackUserId: string | null },
+    @Body() body: UpdateSlackIdDto,
   ) {
     return this.adminService.updateUserSlackId(id, body.slackUserId);
   }
@@ -132,6 +173,7 @@ export class AdminController {
   @Get('slack/lookup-by-email')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: SlackLookupResponse })
   async lookupSlackByEmail(@Req() req: Request) {
     const email = req.query.email as string;
     if (!email) {
@@ -143,6 +185,7 @@ export class AdminController {
   @Get('slack/user-info')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: SlackLookupResponse })
   async getSlackInfo(@Req() req: Request) {
     const slackUserId = req.query.slackUserId as string;
     if (!slackUserId) {
@@ -154,6 +197,7 @@ export class AdminController {
   @Get('priority-users')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: [PriorityUserResponse] })
   async getPriorityUsers() {
     return this.adminService.getPriorityUsers();
   }
@@ -161,6 +205,7 @@ export class AdminController {
   @Get('settings')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: GlobalSettingsResponse })
   async getGlobalSettings() {
     return this.adminService.getGlobalSettings();
   }
@@ -168,8 +213,9 @@ export class AdminController {
   @Put('settings/submissions-frozen')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiOkResponse({ type: GlobalSettingsResponse })
   async toggleSubmissionsFrozen(
-    @Body() body: { submissionsFrozen: boolean },
+    @Body() body: ToggleSubmissionsFrozenDto,
     @Req() req: Request,
   ) {
     return this.adminService.toggleSubmissionsFrozen(body.submissionsFrozen, req.user.userId);
