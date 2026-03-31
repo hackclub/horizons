@@ -47,8 +47,8 @@
 
 	const baseSteps = [
 		{
-			speaker: 'THE BEAN SIBLINGS',
-			text: "Hiiii! *ferret noises* We are the bean siblings! We're here to introduce you to Hack Club's Horizons!",
+			speaker: 'THE FERRETLINGS',
+			text: "Hiiii! *ferret noises* We are the ferretlings! We're here to introduce you to Hack Club's Horizons!",
 			image: beanSiblings,
 			imageStyle: 'bottom' as const,
 			showEvents: false,
@@ -57,7 +57,7 @@
 			showHackatimeSetup: false
 		},
 		{
-			speaker: 'BEANUT',
+			speaker: 'BEAN',
 			text: "We're running 7 hackathons across the world, and <u>you're invited!</u>",
 			image: beanSiblingsSide,
 			imageStyle: 'side' as const,
@@ -209,44 +209,44 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="onboarding" style="cursor: {step < eventSelectStep ? 'pointer' : 'default'};" onclick={step < eventSelectStep ? advance : undefined}>
+<div class="absolute inset-0 flex flex-col items-center justify-center overflow-hidden" style="cursor: {step < eventSelectStep ? 'pointer' : 'default'};" onclick={step < eventSelectStep ? advance : undefined}>
 	<!-- Event cards -->
 	{#if currentStep.showEvents}
 		<div
-			class="events-row"
+			class="flex flex-wrap justify-center content-start gap-8 max-w-[calc(298px*4+32px*3)] absolute top-0 bottom-0 overflow-y-auto p-2 transition-opacity duration-400 ease-in-out"
 			style="opacity: {currentStep.eventsOpacity}; pointer-events: {isEventSelectStep ? 'auto' : 'none'};"
 		>
-			<div class="events-spacer"></div>
+			<div class="w-full h-10 shrink-0"></div>
 			{#each events as event}
 				<button
-					class="event-card"
+					class="event-card w-74.5 h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing)"
 					class:selected={selectedEvent === event.slug}
 					onclick={(e) => { e.stopPropagation(); handleEventSelect(event.slug); }}
 					disabled={!isEventSelectStep}
 				>
-					<div class="event-logo">
-						<img src={event.logo} alt={event.name} />
+					<div class="flex items-center justify-center flex-1 p-3">
+						<img src={event.logo} alt={event.name} class="max-w-65 max-h-27.5 object-contain" />
 					</div>
 					{#if event.location || (event.startDate && event.endDate)}
-						<p class="event-info font-bricolage">
+						<p class="font-bricolage text-base font-semibold absolute bottom-3 whitespace-nowrap">
 							{[event.location, event.startDate && event.endDate ? formatDateRange(event.startDate, event.endDate) : null].filter(Boolean).join(' - ')}
 						</p>
 					{/if}
 				</button>
 			{/each}
-			<div class="events-spacer-bottom"></div>
+			<div class="w-full h-75 shrink-0"></div>
 		</div>
 	{/if}
 
 	<!-- Card steps (Hackatime setup / Project form) -->
 	{#if isCardStep}
-		<div class="card-step-wrapper">
-			<div class="character-card-corner">
-				<img src={beanSiblingsSide} alt="Bean siblings" class="character-img-side" />
+		<div class="absolute inset-0 flex items-center justify-center">
+			<div class="absolute top-[calc(50%-331px-30px)] left-[calc(50%-363px-90px)] z-0">
+				<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
 			</div>
-			<div class="centered-card">
+			<div class="relative z-1 w-181.75 h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-clip">
 				{#if isHackatimeStep}
-					<div class="card-body">
+					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
 							<div class="flex flex-col gap-2">
 								<p class="font-bricolage text-2xl font-medium text-black leading-normal">Make sure to set up the Hackatime extension.</p>
@@ -254,13 +254,18 @@
 							<HackatimeLinkButton bind:linked={hackatimeLinked} variant="card" />
 						</div>
 					</div>
-					<button class="card-continue-btn font-bricolage" class:card-continue-ready={hackatimeLinked} onclick={() => step++} disabled={!hackatimeLinked}>
+					<button
+						class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
+						class:card-continue-ready={hackatimeLinked}
+						onclick={() => step++}
+						disabled={!hackatimeLinked}
+					>
 						Continue
 					</button>
 				{/if}
 
 				{#if isProjectStep}
-					<div class="card-body">
+					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
 							<div class="flex flex-col gap-2">
 								<h1 class="font-cook text-2xl text-black leading-normal">CREATE YOUR PROJECT</h1>
@@ -278,7 +283,12 @@
 					</div>
 					<div class="flex flex-col gap-2 w-full">
 						<FormError message={projectError} />
-						<button class="card-submit-btn font-bricolage" class:card-submit-ready={projectFormReady} onclick={handleProjectSubmit} disabled={projectSubmitting}>
+						<button
+							class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
+							class:card-submit-ready={projectFormReady}
+							onclick={handleProjectSubmit}
+							disabled={projectSubmitting}
+						>
 							{projectSubmitting ? 'Creating...' : 'Create Project'}
 						</button>
 					</div>
@@ -289,36 +299,36 @@
 
 	<!-- Character image (centered, step 1 only) -->
 	{#if currentStep.imageStyle === 'bottom'}
-		<div class="character-center">
-			<img src={currentStep.image} alt="Bean siblings" class="character-img-center" />
+		<div class="absolute bottom-50 flex justify-center">
+			<img src={currentStep.image} alt="Bean siblings" class="h-62.5 object-contain -mb-5" />
 		</div>
 	{/if}
 
 	<!-- Dialog box (for dialog-based steps) -->
 	{#if !isCardStep}
-		<div class="dialog-wrapper">
+		<div class="absolute bottom-20 left-1/2 -translate-x-[calc(50%-30px)] w-181.75">
 			{#if currentStep.imageStyle === 'side'}
-				<div class="character-side">
-					<img src={currentStep.image} alt="Bean siblings" class="character-img-side" />
+				<div class="absolute bottom-5 -left-20 -z-1">
+					<img src={currentStep.image} alt="Bean siblings" class="h-45 object-contain" />
 				</div>
 			{/if}
-			<div class="dialog-box">
-			<div class="dialog-content">
-				<p class="speaker-name font-cook">{currentStep.speaker}</p>
-				<p class="speaker-text font-bricolage">{@html currentStep.text}</p>
+			<div class="relative w-full min-h-45 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] p-7.5 flex flex-col gap-4">
+			<div class="flex flex-col gap-2">
+				<p class="font-cook text-2xl text-black whitespace-nowrap">{currentStep.speaker}</p>
+				<p class="font-bricolage text-2xl font-semibold text-black leading-normal">{@html currentStep.text}</p>
 			</div>
 
 			{#if step < eventSelectStep}
-				<p class="click-hint font-bricolage">Click anywhere to continue</p>
+				<p class="font-bricolage text-sm font-semibold text-black mt-2 animate-blink">Click anywhere to continue</p>
 			{/if}
 
 			{#if isEventSelectStep}
-				<div class="dialog-actions">
-					<button class="skip-btn font-bricolage" onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app'); } }}>
+				<div class="flex justify-between items-center">
+					<button class="font-bricolage text-base font-semibold text-black opacity-40 bg-transparent border-none cursor-pointer underline hover:opacity-70 transition-opacity duration-150 ease-in-out" onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app'); } }}>
 						Skip
 					</button>
 					{#if selectedEvent}
-						<button class="continue-btn font-bricolage" onclick={(e) => { e.stopPropagation(); handleEventContinue(); }}>
+						<button class="py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); handleEventContinue(); }}>
 							Continue
 						</button>
 					{/if}
@@ -326,11 +336,11 @@
 			{/if}
 
 			{#if isExperienceStep}
-				<div class="experience-buttons">
-					<button class="experience-btn font-bricolage" onclick={(e) => { e.stopPropagation(); step++; }}>
+				<div class="flex gap-2.5 w-full">
+					<button class="flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); step++; }}>
 						Yes!
 					</button>
-					<button class="experience-btn font-bricolage" onclick={(e) => { e.stopPropagation(); goto('/app/onboarding/tutorial'); }}>
+					<button class="flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); goto('/app/onboarding/tutorial'); }}>
 						No, this is my first time.
 					</button>
 				</div>
@@ -341,191 +351,7 @@
 </div>
 
 <style>
-	.onboarding {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		overflow: hidden;
-	}
-
-	.sublabel {
-		font-size: 13px;
-		font-weight: 500;
-		color: rgba(0, 0, 0, 0.5);
-		line-height: normal;
-	}
-
-	.card-step-wrapper {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.character-card-corner {
-		position: absolute;
-		top: calc(50% - 331px - 30px);
-		left: calc(50% - 363px - 90px);
-		z-index: 0;
-	}
-
-	.centered-card {
-		position: relative;
-		z-index: 1;
-		width: 727px;
-		height: 662px;
-		background-color: #f3e8d8;
-		border: 4px solid black;
-		border-radius: 20px;
-		padding: 30px;
-		box-shadow: 4px 4px 0px 0px black;
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-		align-items: center;
-		overflow: clip;
-	}
-
-	.card-body {
-		width: 100%;
-		flex: 1;
-	}
-
-	.card-continue-btn {
-		width: 415px;
-		padding: 8px 16px;
-		border: 2px solid black;
-		border-radius: 8px;
-		background: none;
-		font-size: 16px;
-		font-weight: 600;
-		color: black;
-		cursor: pointer;
-		transition: transform var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease;
-	}
-
-	.card-continue-btn:hover:not(:disabled) {
-		transform: scale(var(--juice-scale));
-		background-color: #ffa936;
-	}
-
-	.card-continue-btn:disabled {
-		opacity: 0.4;
-		cursor: default;
-	}
-
-	.card-continue-ready {
-		background-color: #fdd9a8;
-		animation: white-blink 1.5s ease-in-out infinite;
-	}
-
-	@keyframes white-blink {
-		0%, 100% { background-color: #fdd9a8; }
-		50% { background-color: #fba74d; }
-	}
-
-	.card-submit-btn {
-		width: 415px;
-		padding: 8px 16px;
-		border: 2px solid black;
-		border-radius: 8px;
-		background: none;
-		font-size: 16px;
-		font-weight: 600;
-		color: black;
-		cursor: pointer;
-		align-self: center;
-		transition: transform var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease;
-	}
-
-	.card-submit-btn:hover {
-		transform: scale(var(--juice-scale));
-		background-color: #ffa936;
-	}
-
-	.card-submit-ready {
-		background-color: #fdd9a8;
-		animation: white-blink 1.5s ease-in-out infinite;
-	}
-
-	.card-submit-btn:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-
-	.events-row {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		align-content: start;
-		gap: 32px;
-		max-width: calc(298px * 4 + 32px * 3);
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		overflow-y: auto;
-		padding: 8px;
-		transition: opacity 0.4s ease;
-	}
-
-	.events-spacer {
-		width: 100%;
-		height: 40px;
-		flex-shrink: 0;
-	}
-
-	.events-spacer-bottom {
-		width: 100%;
-		height: 300px;
-		flex-shrink: 0;
-	}
-
-	.experience-buttons {
-		display: flex;
-		gap: 10px;
-		width: 100%;
-	}
-
-	.experience-btn {
-		flex: 1;
-		padding: 8px 16px;
-		border: 2px solid black;
-		border-radius: 8px;
-		background: none;
-		font-size: 16px;
-		font-weight: 600;
-		color: black;
-		cursor: pointer;
-		transition: transform var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease;
-	}
-
-	.experience-btn:hover {
-		transform: scale(var(--juice-scale));
-		background-color: #ffa936;
-	}
-
-	.event-card {
-		width: 298px;
-		height: 159px;
-		background-color: #f3e8d8;
-		border: 4px solid black;
-		border-radius: 20px;
-		box-shadow: 4px 4px 0px 0px black;
-		overflow: hidden;
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		transition: transform var(--juice-duration) var(--juice-easing);
-	}
-
-.event-card:not(:disabled):not(.selected):hover {
+	.event-card:not(:disabled):not(.selected):hover {
 		transform: scale(var(--juice-scale));
 	}
 
@@ -537,147 +363,23 @@
 		cursor: default;
 	}
 
-	.event-logo {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex: 1;
-		padding: 12px;
+	.card-continue-ready {
+		background-color: #fdd9a8;
+		animation: white-blink 1.5s ease-in-out infinite;
 	}
 
-	.event-logo img {
-		max-width: 260px;
-		max-height: 110px;
-		object-fit: contain;
+	.card-submit-ready {
+		background-color: #fdd9a8;
+		animation: white-blink 1.5s ease-in-out infinite;
 	}
 
-	.event-info {
-		font-size: 16px;
-		font-weight: 600;
-		position: absolute;
-		bottom: 12px;
-		white-space: nowrap;
-	}
-
-	.character-center {
-		position: absolute;
-		bottom: 200px;
-		display: flex;
-		justify-content: center;
-	}
-
-	.character-img-center {
-		height: 250px;
-		object-fit: contain;
-		margin-bottom: -20px;
-	}
-
-	.dialog-wrapper {
-		position: absolute;
-		bottom: 80px;
-		left: 50%;
-		transform: translateX(calc(-50% + 30px));
-		width: 727px;
-	}
-
-	.character-side {
-		position: absolute;
-		bottom: 20px;
-		left: -80px;
-		z-index: -1;
-	}
-
-	.character-img-side {
-		height: 180px;
-		object-fit: contain;
-	}
-
-	.dialog-box {
-		position: relative;
-		width: 100%;
-		min-height: 180px;
-		background-color: #f3e8d8;
-		border: 4px solid black;
-		border-radius: 20px;
-		box-shadow: 4px 4px 0px 0px black;
-		padding: 30px;
-		display: flex;
-		flex-direction: column;
-		gap: 16px;
-	}
-
-	.dialog-content {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-
-	.speaker-name {
-		font-size: 24px;
-		color: black;
-		white-space: nowrap;
-	}
-
-	.speaker-text {
-		font-size: 24px;
-		font-weight: 600;
-		color: black;
-		line-height: normal;
-	}
-
-	.dialog-actions {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-
-	.skip-btn {
-		font-size: 16px;
-		font-weight: 600;
-		color: black;
-		opacity: 0.4;
-		background: none;
-		border: none;
-		cursor: pointer;
-		text-decoration: underline;
-		transition: opacity 0.15s ease;
-	}
-
-	.skip-btn:hover {
-		opacity: 0.7;
-	}
-
-	.continue-btn {
-		padding: 8px 16px;
-		border: 2px solid black;
-		border-radius: 8px;
-		background: none;
-		font-size: 16px;
-		font-weight: 600;
-		color: black;
-		cursor: pointer;
-		transition: transform var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease;
-	}
-
-	.continue-btn:hover {
-		transform: scale(var(--juice-scale));
-		background-color: #ffa936;
-	}
-
-	.click-hint {
-		font-size: 14px;
-		font-weight: 600;
-		color: black;
-		margin-top: 8px;
-		animation: blink 1s ease-in-out infinite;
+	@keyframes white-blink {
+		0%, 100% { background-color: #fdd9a8; }
+		50% { background-color: #fba74d; }
 	}
 
 	@keyframes blink {
-		0%, 100% {
-			opacity: 0.6;
-		}
-		50% {
-			opacity: 0.2;
-		}
+		0%, 100% { opacity: 0.6; }
+		50% { opacity: 0.2; }
 	}
 </style>
