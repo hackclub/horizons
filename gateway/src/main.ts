@@ -12,6 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SERVICE_URL = process.env.SERVICE_URL || 'http://localhost:3002';
 const UI_SERVICE_URL = process.env.UI_SERVICE_URL || 'http://localhost:5173';
+const ADMIN_UI_SERVICE_URL = process.env.ADMIN_UI_SERVICE_URL || 'http://localhost:5174';
 
 app.use(cors());
 app.use(express.json());
@@ -57,6 +58,20 @@ const createServiceProxy = (serviceName: string, targetUrl: string) => {
 
 app.use('/api', express.json(), createServiceProxy('unified', SERVICE_URL));
 
+app.use('/admin', createProxyMiddleware({
+  target: ADMIN_UI_SERVICE_URL,
+  changeOrigin: true,
+  ws: true,
+  logLevel: 'silent',
+  onError: (err, req, res) => {
+    console.error('[ADMIN UI PROXY ERROR]', err);
+    res.writeHead(500, {
+      'Content-Type': 'text/html',
+    });
+    res.end('<h1>Admin UI service unavailable</h1>');
+  },
+}));
+
 app.use('/', createProxyMiddleware({
   target: UI_SERVICE_URL,
   changeOrigin: true,
@@ -74,6 +89,7 @@ app.use('/', createProxyMiddleware({
 app.listen(PORT, () => {
   console.log(`🌙 Gateway ready at http://localhost:${PORT}`);
   console.log(`   /           → UI (${UI_SERVICE_URL})`);
-  console.log(`   /api/* → Unified Service (${SERVICE_URL})`);
+  console.log(`   /admin/*    → Admin UI (${ADMIN_UI_SERVICE_URL})`);
+  console.log(`   /api/*      → Unified Service (${SERVICE_URL})`);
 });
 

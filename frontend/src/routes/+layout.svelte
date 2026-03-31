@@ -1,12 +1,8 @@
 <script lang="ts">
 	import texture from '$lib/assets/texture.png'
 	import './layout.css';
-	import { page } from '$app/state';
 
 	let { children } = $props();
-
-	let isAdmin = $derived(page.url.pathname.includes('admin'));
-	let isReview = $derived(page.url.pathname.startsWith('/review'));
 
 	let windowWidth = $state(0);
 	let windowHeight = $state(0);
@@ -53,9 +49,7 @@
 
 <svelte:window bind:innerWidth={windowWidth} bind:innerHeight={windowHeight} />
 
-{#if isAdmin || isReview}
-	{@render children()}
-{:else if isSmallViewport}
+{#if isSmallViewport}
 	<div class="content-area absolute inset-0 overflow-hidden" style="background-color: var(--layout-bg, #f3e8d8)">
 		{@render children()}
 	</div>

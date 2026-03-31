@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -n \"GATEWAY,UNIFIED-API,UI\" -c \"cyan,magenta,yellow\" \"pnpm --filter gateway dev\" \"pnpm --filter backend dev\" \"pnpm --filter frontend dev\"",
+    "dev": "concurrently -n \"GATEWAY,UNIFIED-API,UI,ADMIN\" -c \"cyan,magenta,yellow,green\" \"pnpm --filter gateway dev\" \"pnpm --filter backend dev\" \"pnpm --filter frontend dev\" \"pnpm --filter admin dev\"",
     "build": "pnpm -r build",
     "clean": "pnpm -r clean"
   },
