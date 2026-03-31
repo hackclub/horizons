@@ -24,11 +24,29 @@
 	let hideCirc = $state(page.url.searchParams.has('noanimate') || disableAnimations);
 
 	let userName = $state('');
+	let approvedHours = $state(0);
+	let completedHours = $state(0);
+	const TARGET_HOURS = 30;
+
+	let remainingHours = $derived(Math.max(0, TARGET_HOURS - completedHours));
+	let approvedPct = $derived(TARGET_HOURS > 0 ? Math.min(100, (approvedHours / TARGET_HOURS) * 100) : 0);
+	let completedPct = $derived(TARGET_HOURS > 0 ? Math.min(100, ((completedHours - approvedHours) / TARGET_HOURS) * 100) : 0);
 
 	onMount(async () => {
-		const { data } = await api.GET('/api/user/auth/me') as { data?: Record<string, any> };
-		if (data?.firstName) {
-			userName = (data.firstName as string).toLowerCase();
+		const [userRes, totalRes, approvedRes] = await Promise.all([
+			api.GET('/api/user/auth/me') as Promise<{ data?: Record<string, any> }>,
+			api.GET('/api/hackatime/hours/total'),
+			api.GET('/api/hackatime/hours/approved'),
+		]);
+
+		if (userRes.data?.firstName) {
+			userName = (userRes.data.firstName as string).toLowerCase();
+		}
+		if (totalRes.data) {
+			completedHours = Math.round(((totalRes.data as any).totalNowHackatimeHours ?? 0) * 10) / 10;
+		}
+		if (approvedRes.data) {
+			approvedHours = Math.round(((approvedRes.data as any).totalApprovedHours ?? 0) * 10) / 10;
 		}
 	});
 
@@ -162,15 +180,25 @@
 								<img src={nexusLogo} alt="Horizon Nexus" class="h-[68px] w-auto object-contain object-left" />
 								<div class="card progress-card">
 									<div class="progress-bar">
-										<div class="progress-segment bg-[#ffa936]" style="width: 21%;">
-											<span class="progress-label">8 HOURS APPROVED</span>
-										</div>
-										<div class="progress-segment bg-[#f86d95]" style="width: 43%;">
-											<span class="progress-label">19 HOURS COMPLETED</span>
-										</div>
+										{#if approvedPct > 0}
+											<div class="progress-segment bg-[#ffa936]" style="width: {approvedPct}%;">
+												<span class="progress-label">{approvedHours} HOURS APPROVED</span>
+											</div>
+										{/if}
+										{#if completedPct > 0}
+											<div class="progress-segment bg-[#f86d95]" style="width: {completedPct}%;">
+												<span class="progress-label">{completedHours - approvedHours} HOURS COMPLETED</span>
+											</div>
+										{/if}
 										<div class="bg-[#46467c] flex-1"></div>
 									</div>
-									<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-right">11 HOURS TO GO!</p>
+									<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
+										{#if remainingHours > 0}
+											{remainingHours} HOURS TO GO!
+										{:else}
+											GOAL REACHED!
+										{/if}
+									</p>
 								</div>
 							</div>
 						</div>
@@ -406,7 +434,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
-		align-items: flex-end;
+		align-items: flex-start;
 		justify-content: flex-end;
 		padding: 16px;
 		height: 108px;
