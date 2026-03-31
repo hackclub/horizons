@@ -54,33 +54,33 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="onboarding" style="cursor: {isDialogStep ? 'pointer' : 'default'};" onclick={isDialogStep ? () => step++ : undefined}>
+<div class="absolute inset-0 flex flex-col items-center justify-center overflow-hidden" style="cursor: {isDialogStep ? 'pointer' : 'default'};" onclick={isDialogStep ? () => step++ : undefined}>
 
 	<!-- Dialog step: Jelly excited -->
 	{#if isDialogStep}
-		<div class="dialog-wrapper">
-			<div class="character-side">
-				<img src={beanSiblingsSide} alt="Bean siblings" class="character-img-side" />
+		<div class="absolute bottom-20 left-1/2 -translate-x-[calc(50%-30px)] w-181.75">
+			<div class="absolute bottom-5 -left-20 -z-1">
+				<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
 			</div>
-			<div class="dialog-box">
-				<div class="dialog-content">
-					<p class="speaker-name font-cook">JELLY</p>
-					<p class="speaker-text font-bricolage">WOOOOO!! I'm so excited for you to build your first project!</p>
+			<div class="relative w-full min-h-45 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] p-7.5 flex flex-col gap-4">
+				<div class="flex flex-col gap-2">
+					<p class="font-cook text-2xl text-black">BEAN</p>
+					<p class="font-bricolage text-2xl font-semibold text-black leading-normal">YAYAYA!! I'm so excited for you to build your first project!</p>
 				</div>
-				<p class="click-hint font-bricolage">Click anywhere to continue</p>
+				<p class="font-bricolage text-sm font-semibold text-black mt-2 animate-blink">Click anywhere to continue</p>
 			</div>
 		</div>
 	{/if}
 
 	<!-- Card steps -->
 	{#if !isDialogStep}
-		<div class="card-step-wrapper">
-			<div class="character-card-corner">
-				<img src={beanSiblingsSide} alt="Bean siblings" class="character-img-side" />
+		<div class="absolute inset-0 flex items-center justify-center">
+			<div class="absolute top-[calc(50%-331px-30px)] left-[calc(50%-363px-90px)] z-0">
+				<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
 			</div>
-			<div class="centered-card">
+			<div class="relative z-1 w-181.75 min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-hidden">
 				{#if isStep1}
-					<div class="card-body">
+					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
 							<div class="flex flex-col gap-2">
 								<h1 class="font-cook text-2xl text-black leading-normal">STEP 1</h1>
@@ -92,8 +92,8 @@
 								<p class="font-bricolage text-2xl font-bold text-black leading-normal">
 									Install an IDE <span class="opacity-40">(Recommended)</span>
 								</p>
-								<a href="https://code.visualstudio.com/docs/setup/setup-overview" target="_blank" rel="noopener" class="resource-card">
-									<div class="resource-icon">
+								<a href="https://code.visualstudio.com/docs/setup/setup-overview" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale)">
+									<div class="bg-black/5 p-2 rounded-lg flex items-center shrink-0">
 										<img src="https://code.visualstudio.com/favicon.ico" alt="VS Code" class="w-16 h-16 object-contain" />
 									</div>
 									<div class="flex flex-col gap-1">
@@ -115,13 +115,18 @@
 							</div>
 						</div>
 					</div>
-					<button class="card-continue-btn font-bricolage" class:card-continue-ready={hackatimeLinked} onclick={() => step++} disabled={!hackatimeLinked}>
+					<button
+						class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
+						class:card-continue-ready={hackatimeLinked}
+						onclick={() => step++}
+						disabled={!hackatimeLinked}
+					>
 						Continue
 					</button>
 				{/if}
 
 				{#if isStep2}
-					<div class="card-body">
+					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
 							<div class="flex flex-col gap-2">
 								<h1 class="font-cook text-2xl text-black leading-normal">STEP 2</h1>
@@ -130,7 +135,7 @@
 
 							<div class="flex flex-col gap-4 w-full">
 								<p class="font-bricolage text-2xl font-bold text-black leading-normal">Recommended Tutorials</p>
-								<a href="https://guides.horizons.hackclub.com/guides/website-guide/" target="_blank" rel="noopener" class="resource-card">
+								<a href="https://guides.horizons.hackclub.com/guides/website-guide/" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale)">
 									<div class="flex flex-col gap-1">
 										<div class="flex items-center gap-1">
 											<span class="font-bricolage text-2xl font-semibold text-black">Make your first personal website</span>
@@ -141,7 +146,7 @@
 										<span class="font-bricolage text-base font-semibold text-black/60">Build and deploy your own personal website!</span>
 									</div>
 								</a>
-								<a href="https://guides.horizons.hackclub.com/guides/godot-platformer/" target="_blank" rel="noopener" class="resource-card">
+								<a href="https://guides.horizons.hackclub.com/guides/godot-platformer/" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-easing) hover:scale-(--juice-scale)">
 									<div class="flex flex-col gap-1">
 										<div class="flex items-center gap-1">
 											<span class="font-bricolage text-2xl font-semibold text-black">Create your first platformer game</span>
@@ -152,7 +157,7 @@
 										<span class="font-bricolage text-base font-semibold text-black/60">Build a platformer game with Godot!</span>
 									</div>
 								</a>
-								<a href="https://guides.horizons.hackclub.com/guides/git-guide/" target="_blank" rel="noopener" class="resource-card">
+								<a href="https://guides.horizons.hackclub.com/guides/git-guide/" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale)">
 									<div class="flex flex-col gap-1">
 										<div class="flex items-center gap-1">
 											<span class="font-bricolage text-2xl font-semibold text-black">Learn how to set up git</span>
@@ -168,13 +173,13 @@
 							<p class="font-bricolage text-lg font-medium text-black leading-normal text-center">Once you've figured out what type of project you want to make, hit continue!</p>
 						</div>
 					</div>
-					<button class="card-continue-btn font-bricolage mt-1" onclick={() => step++}>
+					<button class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer mt-1 transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={() => step++}>
 						Continue
 					</button>
 				{/if}
 
 				{#if isStep3}
-					<div class="card-body">
+					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
 							<div class="flex flex-col gap-2">
 								<h1 class="font-cook text-2xl text-black leading-normal">STEP 3</h1>
@@ -193,7 +198,12 @@
 					</div>
 					<div class="flex flex-col gap-2 w-full">
 						<FormError message={projectError} />
-						<button class="card-submit-btn font-bricolage" class:card-submit-ready={projectFormReady} onclick={handleProjectSubmit} disabled={projectSubmitting}>
+						<button
+							class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
+							class:card-submit-ready={projectFormReady}
+							onclick={handleProjectSubmit}
+							disabled={projectSubmitting}
+						>
 							{projectSubmitting ? 'Creating...' : 'Create Project'}
 						</button>
 					</div>
@@ -204,169 +214,12 @@
 </div>
 
 <style>
-	.onboarding {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		overflow: hidden;
-	}
-
-	.dialog-wrapper {
-		position: absolute;
-		bottom: 80px;
-		left: 50%;
-		transform: translateX(calc(-50% + 30px));
-		width: 727px;
-	}
-
-	.character-side {
-		position: absolute;
-		bottom: 20px;
-		left: -80px;
-		z-index: -1;
-	}
-
-	.character-img-side {
-		height: 180px;
-		object-fit: contain;
-	}
-
-	.dialog-box {
-		position: relative;
-		width: 100%;
-		min-height: 180px;
-		background-color: #f3e8d8;
-		border: 4px solid black;
-		border-radius: 20px;
-		box-shadow: 4px 4px 0px 0px black;
-		padding: 30px;
-		display: flex;
-		flex-direction: column;
-		gap: 16px;
-	}
-
-	.dialog-content {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-
-	.speaker-name {
-		font-size: 24px;
-		color: black;
-	}
-
-	.speaker-text {
-		font-size: 24px;
-		font-weight: 600;
-		color: black;
-		line-height: normal;
-	}
-
-	.click-hint {
-		font-size: 14px;
-		font-weight: 600;
-		color: black;
-		margin-top: 8px;
-		animation: blink 1s ease-in-out infinite;
-	}
-
-	@keyframes blink {
-		0%, 100% { opacity: 0.6; }
-		50% { opacity: 0.2; }
-	}
-
-	.card-step-wrapper {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.character-card-corner {
-		position: absolute;
-		top: calc(50% - 331px - 30px);
-		left: calc(50% - 363px - 90px);
-		z-index: 0;
-	}
-
-	.centered-card {
-		position: relative;
-		z-index: 1;
-		width: 727px;
-		min-height: 662px;
-		background-color: #f3e8d8;
-		border: 4px solid black;
-		border-radius: 20px;
-		padding: 30px;
-		box-shadow: 4px 4px 0px 0px black;
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-		align-items: center;
-		overflow: hidden;
-	}
-
-	.card-body {
-		width: 100%;
-		flex: 1;
-	}
-
-	.resource-card {
-		display: flex;
-		gap: 11px;
-		align-items: center;
-		padding: 16px;
-		border: 4px solid black;
-		border-radius: 16px;
-		box-shadow: 4px 4px 0px 0px black;
-		background-color: #f3e8d8;
-		text-decoration: none;
-		color: inherit;
-		transition: transform var(--juice-duration) var(--juice-easing);
-	}
-
-	.resource-card:hover {
-		transform: scale(var(--juice-scale));
-	}
-
-	.resource-icon {
-		background-color: rgba(0, 0, 0, 0.05);
-		padding: 8px;
-		border-radius: 8px;
-		display: flex;
-		align-items: center;
-		flex-shrink: 0;
-	}
-
-	.card-continue-btn {
-		width: 415px;
-		padding: 8px 16px;
-		border: 2px solid black;
-		border-radius: 8px;
-		background: none;
-		font-size: 16px;
-		font-weight: 600;
-		color: black;
-		cursor: pointer;
-		transition: transform var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease;
-	}
-
-	.card-continue-btn:hover:not(:disabled) {
-		transform: scale(var(--juice-scale));
-		background-color: #ffa936;
-	}
-
-	.card-continue-btn:disabled {
-		opacity: 0.4;
-		cursor: default;
-	}
-
 	.card-continue-ready {
+		background-color: #fdd9a8;
+		animation: white-blink 1.5s ease-in-out infinite;
+	}
+
+	.card-submit-ready {
 		background-color: #fdd9a8;
 		animation: white-blink 1.5s ease-in-out infinite;
 	}
@@ -376,32 +229,8 @@
 		50% { background-color: #fba74d; }
 	}
 
-	.card-submit-btn {
-		width: 415px;
-		padding: 8px 16px;
-		border: 2px solid black;
-		border-radius: 8px;
-		background: none;
-		font-size: 16px;
-		font-weight: 600;
-		color: black;
-		cursor: pointer;
-		align-self: center;
-		transition: transform var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease;
-	}
-
-	.card-submit-btn:hover {
-		transform: scale(var(--juice-scale));
-		background-color: #ffa936;
-	}
-
-	.card-submit-ready {
-		background-color: #fdd9a8;
-		animation: white-blink 1.5s ease-in-out infinite;
-	}
-
-	.card-submit-btn:disabled {
-		opacity: 0.6;
-		cursor: default;
+	@keyframes blink {
+		0%, 100% { opacity: 0.6; }
+		50% { opacity: 0.2; }
 	}
 </style>
