@@ -7,6 +7,8 @@ export interface ShopBranding {
 	logo: string;
 	cardImage: string | null;
 	accentColor: string;
+	textColor?: string;
+	navHintColor?: 'black' | 'white';
 	/** If set, shop renders as disabled/inaccessible */
 	tag?: {
 		text: string;

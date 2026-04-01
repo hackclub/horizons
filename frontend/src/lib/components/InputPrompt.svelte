@@ -10,13 +10,14 @@
 	import type { InputPromptType } from '$lib/input';
 
     type InputPromptProps = {
-        type: InputPromptType
+        type: InputPromptType;
+        color?: 'black' | 'white';
     };
 
-    const { type }: InputPromptProps = $props();
+    const { type, color = 'black' }: InputPromptProps = $props();
 </script>
 
-<div class="h-12 shrink-0">
+<div class="h-12 shrink-0" style={color === 'white' ? 'filter: invert(1);' : ''}>
 	{#if type == 'WASD'}
 		<img src={wasdSvg} alt="WASD keys" class="h-full" />
 	{:else if type == 'WS'}

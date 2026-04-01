@@ -2,23 +2,25 @@
 # Each shop is keyed by its slug and declares logos, images, and accent colors.
 # The /shop/[slug] page pulls from this file to render per-shop branding.
 
-nexus:
-  displayName: "Horizons Nexus"
-  tagline: "Purchase your ticket to Horizons Nexus, a 250+ person hacker summit in SF"
-  logo: https://cdn.hackclub.com/019d2bb4-5cfd-79d1-b914-49406e769f15/image.png
-  cardImage: https://cdn.hackclub.com/019d2bb4-bd96-7e10-976f-e2f1927d65c5/image.png
-  accentColor: "#fac393"
-
 the-shop:
-  displayName: "Horizons Nexus"
-  tagline: "Purchase your ticket to Horizons Nexus, a 250+ person hacker summit in SF"
-  logo: https://cdn.hackclub.com/019d2bb4-5cfd-79d1-b914-49406e769f15/image.png
-  cardImage: https://cdn.hackclub.com/019d2bb4-bd96-7e10-976f-e2f1927d65c5/image.png
-  accentColor: "#fac393"
+  displayName: "The Shop"
+  tagline: "Everything the daily hacker needs."
+  logo: https://cdn.hackclub.com/019d49fd-17d7-761a-a0df-4475b0f4934e/image.png
+  cardImage: https://cdn.hackclub.com/019d4a01-79ca-71da-9a12-1653deea21ba/image.png
+  accentColor: "#FB5942"
+  textColor: "FFFFFF"
+  navHintColor: "white"
+  tag:
+    text: Items on display
+    color: "#6BF570"
 
-open-sauce:
-  displayName: "Horizons Nexus"
-  tagline: "Purchase your ticket to Horizons Nexus, a 250+ person hacker summit in SF"
-  logo: https://cdn.hackclub.com/019d2bb4-5cfd-79d1-b914-49406e769f15/image.png
-  cardImage: https://cdn.hackclub.com/019d2bb4-bd96-7e10-976f-e2f1927d65c5/image.png
-  accentColor: "#fac393"
+pajamas:
+  displayName: "pajamas"
+  tagline: "Yes you can buy the pants here"
+  logo: https://cdn.hackclub.com/019d4a13-e031-70c5-a114-bfeea50fe45d/image.png
+  cardImage: https://cdn.hackclub.com/019d4a0f-257f-731d-944f-0b6c46b962ae/image.png
+  accentColor: "#FACFC9"
+  textColor: "black"
+  navHintColor: "black"
+  tag:
+    text: Closed - Opens Soon

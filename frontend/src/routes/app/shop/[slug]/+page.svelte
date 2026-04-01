@@ -155,11 +155,11 @@
 					class="max-h-[75px] max-w-[264px] object-contain mb-1"
 				/>
 			{:else}
-				<p class="font-cook font-semibold text-black text-[48px] m-0 leading-[1.1]">
+				<p class="font-cook font-semibold text-[48px] m-0 leading-[1.1]" style="color: #{branding?.textColor ?? '000000'};">
 					{branding?.displayName ?? slug}
 				</p>
 			{/if}
-			<p class="font-bricolage font-semibold text-[32px] text-black m-0 leading-normal w-full">
+			<p class="font-bricolage font-semibold text-[32px] m-0 leading-normal w-full" style="color: #{branding?.textColor ?? '000000'};">
 				{branding?.tagline ?? ''}
 			</p>
 		</div>

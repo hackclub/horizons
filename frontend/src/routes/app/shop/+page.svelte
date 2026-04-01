@@ -166,7 +166,7 @@
 						{/if}
 
 						<!-- Details -->
-						<div class="flex flex-col gap-3 items-start relative z-1 w-full transition-colors" style="color: {inactive ? 'white' : 'black'}; transition-duration: var(--shop-duration); transition-timing-function: var(--juice-easing);">
+						<div class="flex flex-col gap-3 items-start relative z-1 w-full transition-colors" style="color: {inactive ? 'white' : branding?.textColor ? `#${branding.textColor}` : 'black'}; transition-duration: var(--shop-duration); transition-timing-function: var(--juice-easing);">
 							{#if branding?.logo}
 								<img
 									src={branding.logo}
@@ -190,10 +190,10 @@
 						<!-- Input prompt (selected + active only) -->
 						{#if selected && !inactive}
 							<div class="flex items-center gap-2 z-1 mt-3">
-								<InputPrompt type="Enter" />
-								<span class="font-bricolage text-2xl font-bold text-black">OR</span>
-								<InputPrompt type="click" />
-								<span class="font-bricolage text-2xl font-bold text-black">TO VIEW</span>
+								<InputPrompt type="Enter" color={branding?.navHintColor ?? 'black'} />
+								<span class="font-bricolage text-2xl font-bold" style="color: {branding?.navHintColor ?? 'black'};">OR</span>
+								<InputPrompt type="click" color={branding?.navHintColor ?? 'black'} />
+								<span class="font-bricolage text-2xl font-bold" style="color: {branding?.navHintColor ?? 'black'};">TO VIEW</span>
 							</div>
 						{/if}
 					</button>
