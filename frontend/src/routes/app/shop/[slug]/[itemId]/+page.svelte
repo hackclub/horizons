@@ -23,18 +23,11 @@
 	let balance = $state<number | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let purchasing = $state(false);
-	let purchaseError = $state<string | null>(null);
-	let purchaseSuccess = $state(false);
-
 	let selectedVariantId = $state<number | null>(null);
 
-	let entered = $state(false);
 	let navigating = $state(false);
-	let backExiting = $state(false);
 
 	onMount(async () => {
-		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
 
 		try {
 			const [itemRes, balanceRes] = await Promise.all([
@@ -63,46 +56,44 @@
 		}
 	});
 
-	async function navigateTo(href: string, opts: { exitBack?: boolean } = {}) {
+	async function navigateTo(href: string) {
 		navigating = true;
-		if (opts.exitBack) backExiting = true;
 		await new Promise(resolve => setTimeout(resolve, EXIT_DURATION + 350));
 		goto(href);
 	}
 
 	function goBack() {
-		navigateTo(`/app/shop/${slug}?back`, { exitBack: true });
+		navigateTo(`/app/shop/${slug}?back`);
 	}
 
-	async function handlePurchase() {
-		if (!item || purchasing) return;
-		purchasing = true;
-		purchaseError = null;
-
-		try {
-			const body: { itemId: number; variantId?: number } = { itemId: item.itemId };
-			if (selectedVariantId !== null) {
-				body.variantId = selectedVariantId;
-			}
-
-			const { error: apiError } = await api.POST('/api/shop/auth/purchase', { body });
-
-			if (apiError) {
-				purchaseError = 'Purchase failed';
-			} else {
-				purchaseSuccess = true;
-				// Refresh balance
-				const balanceRes = await api.GET('/api/shop/auth/balance');
-				if (!balanceRes.error) {
-					balance = (balanceRes.data as unknown as { balance: number })?.balance ?? null;
-				}
-			}
-		} catch {
-			purchaseError = 'Purchase failed';
-		} finally {
-			purchasing = false;
-		}
-	}
+	// async function handlePurchase() {
+	// 	if (!item || purchasing) return;
+	// 	purchasing = true;
+	// 	purchaseError = null;
+	//
+	// 	try {
+	// 		const body: { itemId: number; variantId?: number } = { itemId: item.itemId };
+	// 		if (selectedVariantId !== null) {
+	// 			body.variantId = selectedVariantId;
+	// 		}
+	//
+	// 		const { error: apiError } = await api.POST('/api/shop/auth/purchase', { body });
+	//
+	// 		if (apiError) {
+	// 			purchaseError = 'Purchase failed';
+	// 		} else {
+	// 			purchaseSuccess = true;
+	// 			const balanceRes = await api.GET('/api/shop/auth/balance');
+	// 			if (!balanceRes.error) {
+	// 				balance = (balanceRes.data as unknown as { balance: number })?.balance ?? null;
+	// 			}
+	// 		}
+	// 	} catch {
+	// 		purchaseError = 'Purchase failed';
+	// 	} finally {
+	// 		purchasing = false;
+	// 	}
+	// }
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
@@ -115,18 +106,18 @@
 
 <div class="detail-page relative size-full overflow-hidden flex items-center justify-center gap-16">
 	<!-- Product image on left -->
-	{#if item?.imageUrl}
-		<div class="image-area w-[488px] h-[389px] flex items-center justify-center shrink-0 opacity-0" class:entered class:exiting={navigating}>
+	<div class="image-area w-[488px] h-[389px] flex items-center justify-center shrink-0" class:exiting={navigating}>
+		{#if item?.imageUrl}
 			<img
 				src={item.imageUrl}
 				alt={item.name}
 				class="max-w-full max-h-full object-contain"
 			/>
-		</div>
-	{/if}
+		{/if}
+	</div>
 
 	<!-- Detail card on right -->
-	<div class="detail-card shrink-0 opacity-0" class:entered class:exiting={navigating}>
+	<div class="detail-card shrink-0" class:exiting={navigating}>
 		<div
 			class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden bg-[#f3e8d8] w-[480px] h-[569px] flex items-center justify-center"
 		>
@@ -163,26 +154,12 @@
 						</div>
 					{/if}
 
-					{#if purchaseSuccess}
-						<div class="border-2 border-black rounded-[8px] px-4 py-2 bg-green-100">
-							<p class="font-bricolage font-semibold text-[16px] text-black leading-normal m-0">Purchased!</p>
-						</div>
-					{:else}
-						<button
-							class="border-2 border-black rounded-[8px] px-4 py-2 bg-transparent cursor-pointer font-bricolage font-semibold text-[16px] text-black leading-normal hover:bg-black/10"
-							style="transition: background-color var(--selected-duration) ease, transform var(--juice-duration) var(--juice-easing);"
-							onmouseenter={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(var(--juice-scale))'}
-							onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
-							onclick={handlePurchase}
-							disabled={purchasing}
-						>
-							{purchasing ? 'Purchasing...' : 'Purchase'}
-						</button>
-					{/if}
-
-					{#if purchaseError}
-						<p class="font-bricolage text-sm text-red-700 m-0">{purchaseError}</p>
-					{/if}
+					<button
+						class="border-2 border-black rounded-[8px] px-4 py-2 bg-transparent font-bricolage font-semibold text-[16px] text-black/50 leading-normal cursor-not-allowed"
+						disabled
+					>
+						Purchase
+					</button>
 				</div>
 			{/if}
 		</div>
@@ -192,41 +169,37 @@
 <!-- Fixed UI -->
 <BackButton
 	onclick={goBack}
-	exiting={backExiting}
-	flyIn={page.url.searchParams.has('back')}
+	exiting={false}
+	flyIn={false}
 />
 
 <style>
-	@keyframes image-enter {
-		from { transform: translateX(-100px); opacity: 0; }
-		to   { transform: translateX(0); opacity: 1; }
+	@keyframes fly-left-enter {
+		from { transform: translateX(-120vw); }
+		to   { transform: translateX(0); }
 	}
-	@keyframes image-exit {
-		from { transform: translateX(0); opacity: 1; }
-		to   { transform: translateX(-100px); opacity: 0; }
+	@keyframes fly-left-exit {
+		from { transform: translateX(0); }
+		to   { transform: translateX(-120vw); }
 	}
-	.image-area.entered {
-		animation: image-enter var(--enter-duration) var(--enter-easing) both;
-		animation-delay: 100ms;
+	@keyframes fly-right-enter {
+		from { transform: translateX(120vw); }
+		to   { transform: translateX(0); }
+	}
+	@keyframes fly-right-exit {
+		from { transform: translateX(0); }
+		to   { transform: translateX(120vw); }
+	}
+	.image-area {
+		animation: fly-left-enter var(--enter-duration) var(--enter-easing) both;
 	}
 	.image-area.exiting {
-		animation: image-exit var(--exit-duration) var(--exit-easing) both;
+		animation: fly-left-exit var(--exit-duration) var(--exit-easing) both;
 	}
-
-	@keyframes card-enter {
-		from { transform: translateX(100px); opacity: 0; }
-		to   { transform: translateX(0); opacity: 1; }
-	}
-	@keyframes card-exit {
-		from { transform: translateX(0); opacity: 1; }
-		to   { transform: translateX(100px); opacity: 0; }
-	}
-	.detail-card.entered {
-		animation: card-enter var(--enter-duration) var(--enter-easing) both;
-		animation-delay: 200ms;
+	.detail-card {
+		animation: fly-right-enter var(--enter-duration) var(--enter-easing) both;
 	}
 	.detail-card.exiting {
-		animation: card-exit var(--exit-duration) var(--exit-easing) both;
+		animation: fly-right-exit var(--exit-duration) var(--exit-easing) both;
 	}
-
 </style>
