@@ -1174,6 +1174,9 @@
                 {@const projectId = Number(projectIdStr)}
                 {@const selectedSubmissionId = selectedSubmissionByProject[projectId] ?? projectSubmissions[0].submissionId}
                 {@const selectedSubmission = projectSubmissions.find((s: AdminSubmission) => s.submissionId === selectedSubmissionId) ?? projectSubmissions[0]}
+                {@const selectedIndex = projectSubmissions.indexOf(selectedSubmission)}
+                {@const previousSubmission = selectedIndex < projectSubmissions.length - 1 ? projectSubmissions[selectedIndex + 1] : null}
+                {@const deltaHours = selectedSubmission.approvedHours != null && previousSubmission?.approvedHours != null ? selectedSubmission.approvedHours - previousSubmission.approvedHours : null}
                 <div
                     id="submission-card-{projectId}"
                     class={`rounded-2xl border bg-gray-900/70 backdrop-blur p-4 md:p-6 space-y-4 min-w-0 max-w-full overflow-hidden ${
@@ -1386,7 +1389,12 @@
                                     {/if}
                                     {#if selectedSubmission.project.approvedHours !== null}
                                         <p class="text-sm text-green-300">
-                                            Approved hours: <span class="font-semibold">{formatHours(selectedSubmission.project.approvedHours)}</span>
+                                            Approved hours (total): <span class="font-semibold">{formatHours(selectedSubmission.project.approvedHours)}</span>
+                                        </p>
+                                    {/if}
+                                    {#if deltaHours != null}
+                                        <p class="text-sm text-blue-300">
+                                            Additional hours (this submission): <span class="font-semibold">+{formatHours(deltaHours)}</span>
                                         </p>
                                     {/if}
                                 </div>
