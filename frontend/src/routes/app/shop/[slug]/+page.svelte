@@ -95,7 +95,11 @@
 		columns: () => getColumnsLayout(),
 		onEscape: () => navigateTo('/app/shop?back', { exitBack: true }),
 		onSelect: () => {
-			// Future: open item detail or purchase flow
+			const idx = getSelectedIndex();
+			const item = items[idx];
+			if (item && item.isActive) {
+				navigateTo(`/app/shop/${slug}/${item.itemId}`);
+			}
 		},
 	});
 
@@ -134,9 +138,9 @@
 		});
 	});
 
-	function formatCost(cost: number): string {
-		return `${cost} hours`;
-	}
+	// function formatCost(cost: number): string {
+	// 	return `${cost} hours`;
+	// }
 </script>
 
 <svelte:window onkeydown={(e) => { nav.handleKeydown(e); interacted = true; }} onclick={() => { interacted = true; }} />
@@ -155,11 +159,11 @@
 					class="max-h-[75px] max-w-[264px] object-contain mb-1"
 				/>
 			{:else}
-				<p class="font-cook font-semibold text-black text-[48px] m-0 leading-[1.1]">
+				<p class="font-cook font-semibold text-[48px] m-0 leading-[1.1]" style="color: #{branding?.textColor ?? '000000'};">
 					{branding?.displayName ?? slug}
 				</p>
 			{/if}
-			<p class="font-bricolage font-semibold text-[32px] text-black m-0 leading-normal w-full">
+			<p class="font-bricolage font-semibold text-[32px] m-0 leading-normal w-full" style="color: #{branding?.textColor ?? '000000'};">
 				{branding?.tagline ?? ''}
 			</p>
 		</div>
@@ -187,7 +191,7 @@
 						style="--card-index: {i}; width: 300px; height: 300px; background-color: {inactive ? '#d5d0c9' : selected ? 'var(--selected-color)' : '#f3e8d8'}; transition: background-color var(--selected-duration) ease; cursor: {inactive ? 'default' : 'pointer'}; opacity: {inactive ? 0.5 : 1};"
 						onpointerdown={() => { clickWasSelected = getSelectedIndex() === i; }}
 						onfocus={() => { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); }}
-						onclick={() => { if (clickWasSelected) { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); } }}
+						onclick={() => { if (clickWasSelected && item.isActive) { navigateTo(`/app/shop/${slug}/${item.itemId}`); } else { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); } }}
 						onmouseenter={(e) => { if (!inactive) (e.currentTarget as HTMLElement).style.transform = 'scale(var(--juice-scale))'; }}
 						onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
 					>
@@ -207,14 +211,14 @@
 						<div class="absolute left-3 bottom-3.5 w-[263px] flex flex-col gap-1.75">
 							<div class="font-bricolage font-semibold text-[24px] text-black leading-normal">
 								<p class="m-0">{item.name}</p>
-								<p class="m-0">{formatCost(item.cost)}</p>
+								<!-- <p class="m-0">{formatCost(item.cost)}</p> -->
 							</div>
 
 							{#if selected && item.variants.length > 0}
 								<div class="flex flex-wrap gap-1 mt-1">
 									{#each item.variants as variant (variant.variantId)}
 										<span class="font-bricolage text-sm font-semibold text-black bg-[#f3e8d8] border-2 border-black rounded-lg px-2 py-0.5">
-											{variant.name} ({variant.cost}h)
+											{variant.name}<!-- ({variant.cost}h) -->
 										</span>
 									{/each}
 								</div>
