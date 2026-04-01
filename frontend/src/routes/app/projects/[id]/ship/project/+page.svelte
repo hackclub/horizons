@@ -499,13 +499,14 @@
 					</div>
 					<FormSelect label="Project Type" id="project-type" options={projectTypes} bind:value={projectType} />
 					<div class={missingFields.has('description') ? 'error-wrapper' : ''}>
-						<FormTextarea 
-							label="Description" 
-							id="description" 
-							placeholder="Describe what your project does..." 
+						<FormTextarea
+							label="Description"
+							id="description"
+							placeholder="Describe what your project does..."
 							bind:value={description}
 							onblur={() => handleFieldBlur('description')}
 						/>
+						<p class="text-black/50 text-xs font-semibold mt-1 m-0">If this is a resubmission, please note what was updated from your previous submission.</p>
 						{#if missingFields.has('description')}
 							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
 						{/if}

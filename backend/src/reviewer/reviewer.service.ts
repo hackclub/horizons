@@ -191,11 +191,14 @@ export class ReviewerService {
       },
     });
 
-    await this.syncProjectData(submission, dto);
-
-    if (dto.approvalStatus === 'approved') {
+    const isNewApproval = dto.approvalStatus === 'approved' && submission.approvalStatus !== 'approved';
+    if (isNewApproval) {
       await this.syncAirtable(submission, dto);
+    } else if (submission.approvalStatus === 'approved' && submission.airtableRecId) {
+      await this.updateAirtableRecord(submission, dto);
     }
+
+    await this.syncProjectData(submission, dto);
 
     // Notifications only fire on status changes
     if (dto.approvalStatus !== undefined) {
@@ -269,6 +272,8 @@ export class ReviewerService {
       },
     });
 
+    await this.syncAirtable(submission, { approvedHours, hoursJustification });
+
     await this.prisma.project.update({
       where: { projectId: submission.projectId },
       data: {
@@ -280,8 +285,6 @@ export class ReviewerService {
         description: submission.description,
       },
     });
-
-    await this.syncAirtable(submission, { approvedHours, hoursJustification });
 
     // Slack notification only (no email for quick approve)
     try {
@@ -326,9 +329,9 @@ export class ReviewerService {
     }
   }
 
-  /** Create or update the Airtable record when a submission is approved. */
+  /** Create a new Airtable record when a submission is approved. For resubmissions, hours are the delta since last approval. */
   private async syncAirtable(
-    submission: { projectId: number; playableUrl: string | null; repoUrl: string | null; screenshotUrl: string | null; description: string | null; project: { airtableRecId: string | null; playableUrl: string | null; repoUrl: string | null; screenshotUrl: string | null; description: string | null; user: any } },
+    submission: { submissionId: number; projectId: number; createdAt: Date; playableUrl: string | null; repoUrl: string | null; screenshotUrl: string | null; description: string | null; project: { playableUrl: string | null; repoUrl: string | null; screenshotUrl: string | null; description: string | null; user: any } },
     dto: { approvedHours?: number; hoursJustification?: string },
   ) {
     try {
@@ -338,51 +341,91 @@ export class ReviewerService {
       });
       if (!project) return;
 
-      const isResubmission = !!project.airtableRecId;
-      if (isResubmission) {
-        await this.airtableService.updateApprovedProject(project.airtableRecId, {
-          playableUrl: submission.playableUrl || undefined,
-          repoUrl: submission.repoUrl || undefined,
-          screenshotUrl: submission.screenshotUrl || undefined,
-          description: submission.description || undefined,
-          approvedHours: dto.approvedHours,
-          hoursJustification: project.hoursJustification || dto.hoursJustification,
-        });
-      } else {
-        const approvedProjectData = {
-          user: {
-            firstName: project.user.firstName,
-            lastName: project.user.lastName,
-            email: project.user.email,
-            birthday: project.user.birthday,
-            addressLine1: project.user.addressLine1,
-            addressLine2: project.user.addressLine2,
-            city: project.user.city,
-            state: project.user.state,
-            country: project.user.country,
-            zipCode: project.user.zipCode,
-          },
-          project: {
-            playableUrl: submission.playableUrl || submission.project.playableUrl || '',
-            repoUrl: submission.repoUrl || submission.project.repoUrl || '',
-            screenshotUrl: submission.screenshotUrl || submission.project.screenshotUrl || '',
-            approvedHours: dto.approvedHours || 0,
-            hoursJustification: project.hoursJustification || dto.hoursJustification || '',
-            description: submission.description || submission.project.description || undefined,
-          },
-        };
+      const totalApprovedHours = dto.approvedHours || 0;
 
-        const airtableResult = await this.airtableService.createApprovedProject(approvedProjectData);
-        if (airtableResult.recordId) {
-          await this.prisma.project.update({
-            where: { projectId: project.projectId },
-            data: { airtableRecId: airtableResult.recordId },
-          });
-        }
+      // Find the most recent prior approved submission — its approvedHours is the cumulative total up to that point
+      const lastApprovedSubmission = await this.prisma.submission.findFirst({
+        where: {
+          projectId: submission.projectId,
+          approvalStatus: 'approved',
+          createdAt: { lt: submission.createdAt },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { approvedHours: true },
+      });
+      const previouslyApprovedHours = lastApprovedSubmission?.approvedHours || 0;
+      const deltaHours = Math.max(0, totalApprovedHours - previouslyApprovedHours);
+
+      const approvedProjectData = {
+        user: {
+          firstName: project.user.firstName,
+          lastName: project.user.lastName,
+          email: project.user.email,
+          birthday: project.user.birthday,
+          addressLine1: project.user.addressLine1,
+          addressLine2: project.user.addressLine2,
+          city: project.user.city,
+          state: project.user.state,
+          country: project.user.country,
+          zipCode: project.user.zipCode,
+        },
+        project: {
+          playableUrl: submission.playableUrl || submission.project.playableUrl || '',
+          repoUrl: submission.repoUrl || submission.project.repoUrl || '',
+          screenshotUrl: submission.screenshotUrl || submission.project.screenshotUrl || '',
+          approvedHours: deltaHours,
+          hoursJustification: project.hoursJustification || dto.hoursJustification || '',
+          description: submission.description || submission.project.description || undefined,
+        },
+      };
+
+      const airtableResult = await this.airtableService.createApprovedProject(approvedProjectData);
+      if (airtableResult.recordId) {
+        await this.prisma.submission.update({
+          where: { submissionId: submission.submissionId },
+          data: { airtableRecId: airtableResult.recordId },
+        });
       }
     } catch (error) {
       // Airtable sync failure shouldn't block the review
       console.error('Airtable sync failed:', error);
+    }
+  }
+
+  /** Update an existing Airtable record when editing an already-approved submission. */
+  private async updateAirtableRecord(
+    submission: { submissionId: number; projectId: number; createdAt: Date; airtableRecId: string | null; playableUrl: string | null; repoUrl: string | null; screenshotUrl: string | null; description: string | null },
+    dto: { approvedHours?: number; hoursJustification?: string },
+  ) {
+    if (!submission.airtableRecId) return;
+    try {
+      let approvedHours = dto.approvedHours;
+
+      if (approvedHours !== undefined) {
+        // Find the most recent prior approved submission — its approvedHours is the cumulative total up to that point
+        const lastApprovedSubmission = await this.prisma.submission.findFirst({
+          where: {
+            projectId: submission.projectId,
+            approvalStatus: 'approved',
+            createdAt: { lt: submission.createdAt },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { approvedHours: true },
+        });
+        const previouslyApprovedHours = lastApprovedSubmission?.approvedHours || 0;
+        approvedHours = Math.max(0, approvedHours - previouslyApprovedHours);
+      }
+
+      await this.airtableService.updateApprovedProject(submission.airtableRecId, {
+        playableUrl: submission.playableUrl || undefined,
+        repoUrl: submission.repoUrl || undefined,
+        screenshotUrl: submission.screenshotUrl || undefined,
+        description: submission.description || undefined,
+        approvedHours,
+        hoursJustification: dto.hoursJustification,
+      });
+    } catch (error) {
+      console.error('Airtable update failed:', error);
     }
   }
 
