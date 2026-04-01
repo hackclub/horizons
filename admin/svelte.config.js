@@ -9,9 +9,6 @@ const config = {
 		adapter: adapter(),
 		paths: {
 			base: '/admin'
-		},
-		alias: {
-			'@backend': '../backend/src'
 		}
 	}
 };

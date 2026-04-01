@@ -5,11 +5,11 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY frontend/package.json ./frontend/
-RUN pnpm install --frozen-lockfile --filter frontend
+COPY admin/package.json ./admin/
+RUN pnpm install --frozen-lockfile --filter admin
 
-COPY frontend ./frontend
-RUN pnpm --filter frontend run build
+COPY admin ./admin
+RUN pnpm --filter admin run build
 
 FROM node:20-alpine
 
@@ -17,14 +17,14 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-COPY --from=builder /app/frontend/package.json ./frontend/
+COPY --from=builder /app/admin/package.json ./admin/
 COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 
-RUN pnpm install --prod --frozen-lockfile --filter frontend
+RUN pnpm install --prod --frozen-lockfile --filter admin
 
-COPY --from=builder /app/frontend/build ./frontend/build
+COPY --from=builder /app/admin/build ./admin/build
 
-WORKDIR /app/frontend
+WORKDIR /app/admin
 
 ENV NODE_ENV=production
 ENV PORT=3000
