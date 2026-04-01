@@ -1,4 +1,5 @@
 packages:
   - frontend
+  - admin
   - backend
   - gateway

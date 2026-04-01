@@ -1,7 +1,7 @@
 import { error, redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import type { LayoutServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ fetch }) => {
+export const load: LayoutServerLoad = async ({ fetch }) => {
   const apiUrl = process.env.PUBLIC_API_URL || 'http://localhost:3000';
 
   const userResponse = await fetch(`${apiUrl}/api/user/auth/me`, {
@@ -41,14 +41,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
   return {
     user,
-    submissions: [],
-    projects: [],
-    users: [],
     metrics,
-    shopItems: [],
-    shopTransactions: [],
     apiUrl,
   };
 };
-
-
