@@ -95,7 +95,11 @@
 		columns: () => getColumnsLayout(),
 		onEscape: () => navigateTo('/app/shop?back', { exitBack: true }),
 		onSelect: () => {
-			// Future: open item detail or purchase flow
+			const idx = getSelectedIndex();
+			const item = items[idx];
+			if (item && item.isActive) {
+				navigateTo(`/app/shop/${slug}/${item.itemId}`);
+			}
 		},
 	});
 
@@ -187,7 +191,7 @@
 						style="--card-index: {i}; width: 300px; height: 300px; background-color: {inactive ? '#d5d0c9' : selected ? 'var(--selected-color)' : '#f3e8d8'}; transition: background-color var(--selected-duration) ease; cursor: {inactive ? 'default' : 'pointer'}; opacity: {inactive ? 0.5 : 1};"
 						onpointerdown={() => { clickWasSelected = getSelectedIndex() === i; }}
 						onfocus={() => { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); }}
-						onclick={() => { if (clickWasSelected) { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); } }}
+						onclick={() => { if (clickWasSelected && item.isActive) { navigateTo(`/app/shop/${slug}/${item.itemId}`); } else { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); } }}
 						onmouseenter={(e) => { if (!inactive) (e.currentTarget as HTMLElement).style.transform = 'scale(var(--juice-scale))'; }}
 						onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
 					>
