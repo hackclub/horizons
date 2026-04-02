@@ -84,4 +84,7 @@ The admin app is mounted at `/admin` via `svelte.config.js` `paths.base`. All ad
 - **Prisma client not generated** — run `pnpx prisma generate` in `backend/` before first run or after schema changes.
 - **Admin base path** — admin routes must account for the `/admin` base path. Use SvelteKit's `base` import from `$app/paths`.
 - **Gateway must be running** — frontend and admin call `/api/*` which routes through the gateway. All 4 services need to be up for full functionality.
-- **Hackatime cutoff date** — hours are only counted after `PUBLIC_HACKATIME_CUTOFF_DATE`. This is configured in `.env` files.
+
+## Documentation
+
+When making changes, update the relevant documentation: `README.md`, `frontend/FRONTEND.md`, `admin/ADMIN.md`, `backend/BACKEND.md`, and files in `docs/`. Create new docs in `docs/` when a feature, flow, or integration is complex enough to warrant its own explanation.
