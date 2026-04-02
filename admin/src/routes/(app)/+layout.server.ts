@@ -13,6 +13,8 @@ export const load: LayoutServerLoad = async ({ fetch, request }) => {
   }
 
   if (!userResponse.ok) {
+    const body = await userResponse.text();
+    console.error(`[auth] ${userResponse.status} ${userResponse.statusText} from ${apiUrl}/api/user/auth/me — body: ${body}`);
     throw error(500, 'Failed to verify session');
   }
 
