@@ -32,7 +32,7 @@
 		projectSubmitting = true;
 		projectError = null;
 
-		const { data } = await api.POST('/api/projects/auth', {
+		const { data, response } = await api.POST('/api/projects/auth', {
 			body: {
 				projectTitle: projectTitle.trim(),
 				projectType: 'web_playable',
@@ -45,7 +45,12 @@
 			invalidateAllProjectCaches();
 			goto(`/app/projects/${data.projectId}`);
 		} else {
-			projectError = 'Failed to create project. Please try again.';
+			let message = response.statusText || 'An unknown error occurred';
+			try {
+				const body = await response.json();
+				if (body?.message) message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
+			} catch {}
+			projectError = `Failed to create project: ${message}`;
 		}
 
 		projectSubmitting = false;
@@ -187,8 +192,8 @@
 								<p class="font-bricolage text-base font-medium text-black leading-normal">You don't need to have a completed project. You can just put an idea for a new project.</p>
 							</div>
 							<div class="flex flex-col gap-4 w-full">
-								<FormField label="Title" id="title" placeholder="Horizons" bind:value={projectTitle} />
-								<FormTextarea label="Description" id="description" placeholder="Describe what your project does..." bind:value={projectDescription} />
+								<FormField label="Title" id="title" placeholder="Horizons" maxlength={30} bind:value={projectTitle} />
+								<FormTextarea label="Description" id="description" placeholder="Describe what your project does..." maxlength={500} bind:value={projectDescription} />
 								<div class="flex flex-col gap-1 w-full">
 									<label class="font-bricolage text-base font-semibold text-black leading-normal">Screenshot <span class="opacity-60">(optional)</span></label>
 									<FileUpload label="" hideHint bind:mediaUrl bind:mediaPreview onerror={(msg) => projectError = msg} />

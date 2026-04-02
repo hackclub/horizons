@@ -41,7 +41,7 @@
 		submitting = true;
 		errorMsg = null;
 
-		const { data } = await api.POST('/api/projects/auth', {
+		const { data, response } = await api.POST('/api/projects/auth', {
 			body: {
 				projectTitle: title.trim(),
 				projectType,
@@ -55,7 +55,12 @@
 			invalidateAllProjectCaches();
 			goto(`/app/projects/${data.projectId}`);
 		} else {
-			errorMsg = 'Failed to create project. Please try again.';
+			let message = response.statusText || 'An unknown error occurred';
+			try {
+				const body = await response.json();
+				if (body?.message) message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
+			} catch {}
+			errorMsg = `Failed to create project: ${message}`;
 		}
 
 		submitting = false;
@@ -70,9 +75,9 @@
 		<div class="flex flex-col gap-2 w-full">
 			<h1 class="font-cook text-4xl font-semibold text-black m-0 leading-normal">Create New Project</h1>
 
-			<FormField label="Title" id="title" placeholder="Horizons" bind:value={title} />
+			<FormField label="Title" id="title" placeholder="Horizons" maxlength={30} bind:value={title} />
 			<FormSelect label="Project Type" id="project-type" options={projectTypes} bind:value={projectType} />
-			<FormTextarea label="Description" id="description" placeholder="Describe what your project does..." bind:value={description} />
+			<FormTextarea label="Description" id="description" placeholder="Describe what your project does..." maxlength={500} bind:value={description} />
 			<FileUpload label="Screenshot" bind:mediaUrl bind:mediaPreview onerror={(msg) => errorMsg = msg} />
 
 			<FormField label="Hackatime Link" id="hackatime-link">
