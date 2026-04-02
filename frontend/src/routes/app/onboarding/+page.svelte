@@ -199,7 +199,7 @@
 
 		if (data) {
 			invalidateAllProjectCaches();
-			goto(`/app/projects/${data.projectId}`);
+			goto('/app');
 		} else {
 			let message = response.statusText || 'An unknown error occurred';
 			try {
