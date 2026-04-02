@@ -9,6 +9,7 @@
 	import beanSiblingsSide from '$lib/assets/onboarding/bean-siblings-side.png';
 	import { FormField, FormTextarea, FileUpload, FormError } from '$lib/components/form';
 	import HackatimeLinkButton from '$lib/components/HackatimeLinkButton.svelte';
+	import hackatimeIcon from '$lib/assets/icons/hackatime.svg';
 	import { invalidateAllProjectCaches } from '$lib/store/projectDetailCache';
 	import { fetchProjects } from '$lib/store/projectCache';
 
@@ -256,7 +257,32 @@
 							<div class="flex flex-col gap-2">
 								<p class="font-bricolage text-2xl font-medium text-black leading-normal">Make sure to set up the Hackatime extension.</p>
 							</div>
-							<HackatimeLinkButton bind:linked={hackatimeLinked} variant="card" />
+							<div class="flex flex-col gap-2 w-full">
+								<p class="font-bricolage text-2xl font-bold text-black leading-normal">Link Hackatime <span class="opacity-40">(Required)</span></p>
+								<HackatimeLinkButton bind:linked={hackatimeLinked} variant="card" />
+							</div>
+
+							{#if hackatimeLinked}
+								<div class="flex flex-col gap-2 w-full">
+									<p class="font-bricolage text-2xl font-bold text-black leading-normal">
+										Hackatime Setup <span class="opacity-40">(Required)</span>
+									</p>
+									<a href="https://hackatime.hackclub.com/my/wakatime_setup" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale)">
+										<div class="bg-black/5 p-2 rounded-lg flex items-center shrink-0">
+											<img src={hackatimeIcon} alt="Hackatime" style="width: 52px; height: 64px;" />
+										</div>
+										<div class="flex flex-col gap-1">
+											<div class="flex items-center gap-1">
+												<span class="font-bricolage text-2xl font-semibold text-black">Install the Hackatime Extension</span>
+												<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+													<path d="M4.7943 1.01921C4.7943 0.456645 5.25095 0 5.81351 0L14.9808 0.000703475C15.5434 0.000703733 15.9993 0.456645 15.9993 1.01921L16 10.1865C16 10.7491 15.5434 11.2057 14.9808 11.2057C14.4185 11.2056 13.9626 10.7495 13.9623 10.1872V3.47826L1.44054 16L0 14.5595L12.5217 2.03772H5.81281C5.25053 2.03742 4.79437 1.58154 4.7943 1.01921Z" fill="black"/>
+												</svg>
+											</div>
+											<span class="font-bricolage text-base font-semibold text-black/60">Set up the Hackatime extension in your IDE to track your coding time!</span>
+										</div>
+									</a>
+								</div>
+							{/if}
 						</div>
 					</div>
 					<button

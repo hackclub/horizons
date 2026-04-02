@@ -102,7 +102,7 @@
 					{/if}
 				</span>
 			</div>
-			<span class="font-bricolage text-base font-semibold text-black/60">Hackatime keeps track of the amount of time you spend on your projects! <a href="https://hackatime.hackclub.com/my/wakatime_setup" target="_blank" rel="noopener" class="underline text-black/60" onclick={(e) => e.stopPropagation()}>Hackatime Setup</a></span>
+			<span class="font-bricolage text-base font-semibold text-black/60">Hackatime keeps track of the amount of time you spend on your projects!</span>
 		</div>
 	</button>
 {:else}
