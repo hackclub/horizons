@@ -23,7 +23,9 @@ export class SlackService {
     this.botToken = process.env.SLACK_BOT_TOKEN || '';
 
     if (!this.botToken) {
-      console.warn('SLACK_BOT_TOKEN not configured - Slack notifications disabled');
+      console.warn(
+        'SLACK_BOT_TOKEN not configured - Slack notifications disabled',
+      );
     }
   }
 
@@ -33,13 +35,16 @@ export class SlackService {
     }
 
     try {
-      const response = await fetch(`https://slack.com/api/users.info?user=${slackUserId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.botToken}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `https://slack.com/api/users.info?user=${slackUserId}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.botToken}`,
+            'Content-Type': 'application/json',
+          },
         },
-      });
+      );
 
       const data = await response.json();
 
@@ -55,19 +60,24 @@ export class SlackService {
     }
   }
 
-  async lookupSlackUserByEmail(email: string): Promise<{ slackUserId: string; displayName: string } | null> {
+  async lookupSlackUserByEmail(
+    email: string,
+  ): Promise<{ slackUserId: string; displayName: string } | null> {
     if (!this.botToken) {
       return null;
     }
 
     try {
-      const response = await fetch(`https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(email)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.botToken}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(email)}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.botToken}`,
+            'Content-Type': 'application/json',
+          },
         },
-      });
+      );
 
       const data = await response.json();
 
@@ -81,7 +91,11 @@ export class SlackService {
 
       return {
         slackUserId: data.user?.id,
-        displayName: data.user?.profile?.display_name || data.user?.profile?.real_name || data.user?.name || 'Unknown',
+        displayName:
+          data.user?.profile?.display_name ||
+          data.user?.profile?.real_name ||
+          data.user?.name ||
+          'Unknown',
       };
     } catch (error) {
       console.error('Error looking up Slack user by email:', error);
@@ -89,19 +103,24 @@ export class SlackService {
     }
   }
 
-  async getSlackUserInfo(slackUserId: string): Promise<{ displayName: string; email: string | null } | null> {
+  async getSlackUserInfo(
+    slackUserId: string,
+  ): Promise<{ displayName: string; email: string | null } | null> {
     if (!this.botToken || !slackUserId) {
       return null;
     }
 
     try {
-      const response = await fetch(`https://slack.com/api/users.info?user=${slackUserId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.botToken}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `https://slack.com/api/users.info?user=${slackUserId}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.botToken}`,
+            'Content-Type': 'application/json',
+          },
         },
-      });
+      );
 
       const data = await response.json();
 
@@ -111,7 +130,11 @@ export class SlackService {
       }
 
       return {
-        displayName: data.user?.profile?.display_name || data.user?.profile?.real_name || data.user?.name || 'Unknown',
+        displayName:
+          data.user?.profile?.display_name ||
+          data.user?.profile?.real_name ||
+          data.user?.name ||
+          'Unknown',
         email: data.user?.profile?.email || null,
       };
     } catch (error) {
@@ -131,14 +154,17 @@ export class SlackService {
     }
 
     try {
-      const openResponse = await fetch('https://slack.com/api/conversations.open', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.botToken}`,
-          'Content-Type': 'application/json',
+      const openResponse = await fetch(
+        'https://slack.com/api/conversations.open',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.botToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ users: slackUserId }),
         },
-        body: JSON.stringify({ users: slackUserId }),
-      });
+      );
 
       const openData = await openResponse.json();
 
@@ -158,14 +184,17 @@ export class SlackService {
         messagePayload.blocks = blocks;
       }
 
-      const messageResponse = await fetch('https://slack.com/api/chat.postMessage', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.botToken}`,
-          'Content-Type': 'application/json',
+      const messageResponse = await fetch(
+        'https://slack.com/api/chat.postMessage',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.botToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(messagePayload),
         },
-        body: JSON.stringify(messagePayload),
-      });
+      );
 
       const messageData = await messageResponse.json();
 
@@ -177,7 +206,10 @@ export class SlackService {
       return { success: true };
     } catch (error) {
       console.error('Error sending Slack DM:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 
@@ -258,4 +290,3 @@ export class SlackService {
     return this.sendDirectMessage(user.slackUserId, fallbackText, blocks);
   }
 }
-

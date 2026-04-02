@@ -17,5 +17,3 @@ export class SendGiftCodesDto {
   @IsUrl()
   filloutUrl: string;
 }
-
-

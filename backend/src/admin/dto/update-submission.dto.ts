@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsNumber, IsEnum, MaxLength, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsEnum,
+  MaxLength,
+  IsBoolean,
+} from 'class-validator';
 
 export class UpdateSubmissionDto {
   @IsNumber()

@@ -49,4 +49,3 @@ export class PosthogService implements OnModuleDestroy {
     this.logger.log('PostHog client shutdown');
   }
 }
-

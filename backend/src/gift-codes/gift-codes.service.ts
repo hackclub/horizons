@@ -16,7 +16,12 @@ export class GiftCodesService {
   }
 
   async sendGiftCodes(dto: SendGiftCodesDto) {
-    const results: Array<{ email: string; code: string; success: boolean; error?: string }> = [];
+    const results: Array<{
+      email: string;
+      code: string;
+      success: boolean;
+      error?: string;
+    }> = [];
 
     for (const email of dto.emails) {
       const code = this.generateCode();
@@ -72,8 +77,8 @@ export class GiftCodesService {
 
     return {
       total: dto.emails.length,
-      successful: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
+      successful: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
       results,
     };
   }
@@ -138,4 +143,3 @@ export class GiftCodesService {
     });
   }
 }
-

@@ -1,4 +1,12 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, IsInt, MaxLength, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  IsInt,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UpdateItemDto {
   @IsString()
@@ -29,4 +37,3 @@ export class UpdateItemDto {
   @IsOptional()
   isActive?: boolean;
 }
-

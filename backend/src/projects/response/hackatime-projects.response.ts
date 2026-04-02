@@ -4,10 +4,15 @@ export class HackatimeProjectsInfoResponse {
   @ApiProperty({ description: 'Project ID' })
   projectId: number;
 
-  @ApiPropertyOptional({ description: 'Linked Hackatime project names', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Linked Hackatime project names',
+    type: [String],
+  })
   hackatimeProjects: string[];
 
-  @ApiPropertyOptional({ description: 'Live Hackatime hours calculated on request' })
+  @ApiPropertyOptional({
+    description: 'Live Hackatime hours calculated on request',
+  })
   currentHackatimeHours: number;
 
   @ApiPropertyOptional({
@@ -18,7 +23,8 @@ export class HackatimeProjectsInfoResponse {
   hackatimeProjectHours: Record<string, number>;
 
   @ApiPropertyOptional({
-    description: 'Hours tallied at the time of the last submission; null if never submitted',
+    description:
+      'Hours tallied at the time of the last submission; null if never submitted',
     nullable: true,
   })
   lastSubmittedHours: number | null;

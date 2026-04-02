@@ -1,4 +1,11 @@
-import { IsString, IsNumber, IsOptional, IsInt, MaxLength, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsInt,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateItemDto {
   @IsString()
@@ -23,4 +30,3 @@ export class CreateItemDto {
   @Min(1)
   maxPerUser?: number;
 }
-

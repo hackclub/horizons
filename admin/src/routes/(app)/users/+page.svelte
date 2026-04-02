@@ -235,6 +235,7 @@
                             <div>
                                 <h3 class="text-xl font-semibold">
                                     {fullName(user)}
+                                    <span class="text-sm font-normal text-gray-500">#{user.userId}</span>
                                 </h3>
                                 <p class="text-sm text-gray-300">
                                     {user.email}
@@ -287,6 +288,12 @@
                             <div class="space-y-2">
                                 <p>
                                     Hackatime: {user.hackatimeAccount ?? 'Not linked'}
+                                </p>
+                                <p>
+                                    Referral code: {(user as any).referralCode ?? '—'}
+                                </p>
+                                <p>
+                                    Referred by: {(user as any).referredByUserId ? `User #${(user as any).referredByUserId}` : '—'}
                                 </p>
                                 {#if slackEditingUserId === user.userId}
                                     <div

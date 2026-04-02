@@ -1,4 +1,15 @@
-import { Controller, Get, Put, Body, Param, UseGuards, Req, ParseIntPipe, Delete, Post } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  ParseIntPipe,
+  Delete,
+  Post,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
@@ -218,6 +229,9 @@ export class AdminController {
     @Body() body: ToggleSubmissionsFrozenDto,
     @Req() req: Request,
   ) {
-    return this.adminService.toggleSubmissionsFrozen(body.submissionsFrozen, req.user.userId);
+    return this.adminService.toggleSubmissionsFrozen(
+      body.submissionsFrozen,
+      req.user.userId,
+    );
   }
 }

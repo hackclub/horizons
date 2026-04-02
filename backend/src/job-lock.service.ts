@@ -14,14 +14,20 @@ export class JobLockService {
     private redis: RedisService,
   ) {
     this.workerId = `worker-${process.env.HOSTNAME || randomBytes(8).toString('hex')}`;
-    console.log(`Job lock service initialized with worker ID: ${this.workerId}`);
+    console.log(
+      `Job lock service initialized with worker ID: ${this.workerId}`,
+    );
   }
 
   async acquireJobLock(jobId: string): Promise<boolean> {
     const lockKey = `email-job-lock:${jobId}`;
-    
-    const acquired = await this.redis.acquireLock(lockKey, this.workerId, this.lockTTL);
-    
+
+    const acquired = await this.redis.acquireLock(
+      lockKey,
+      this.workerId,
+      this.lockTTL,
+    );
+
     if (acquired) {
       try {
         const now = new Date();
@@ -30,10 +36,7 @@ export class JobLockService {
         const updated = await this.prisma.emailJob.updateMany({
           where: {
             id: jobId,
-            OR: [
-              { lockedBy: null },
-              { lockedAt: { lt: staleThreshold } },
-            ],
+            OR: [{ lockedBy: null }, { lockedAt: { lt: staleThreshold } }],
           },
           data: {
             lockedBy: this.workerId,
@@ -59,7 +62,7 @@ export class JobLockService {
   async releaseJobLock(jobId: string): Promise<void> {
     const lockKey = `email-job-lock:${jobId}`;
     await this.redis.releaseLock(lockKey, this.workerId);
-    
+
     await this.prisma.emailJob.updateMany({
       where: {
         id: jobId,
@@ -99,10 +102,7 @@ export class JobLockService {
             scheduledFor: {
               lte: now,
             },
-            OR: [
-              { lockedBy: null },
-              { lockedAt: { lt: staleThreshold } },
-            ],
+            OR: [{ lockedBy: null }, { lockedAt: { lt: staleThreshold } }],
           },
           {
             lockedAt: { lt: staleThreshold },
@@ -110,10 +110,7 @@ export class JobLockService {
         ],
       },
       take: limit,
-      orderBy: [
-        { scheduledFor: 'asc' },
-        { createdAt: 'asc' },
-      ],
+      orderBy: [{ scheduledFor: 'asc' }, { createdAt: 'asc' }],
     });
 
     return jobs;
@@ -166,5 +163,3 @@ export class JobLockService {
     return this.workerId;
   }
 }
-
-

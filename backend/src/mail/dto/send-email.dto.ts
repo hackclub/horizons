@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsNumber, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsString,
+} from 'class-validator';
 
 export class SendEmailDto {
   @IsEmail()
@@ -17,4 +23,3 @@ export class SendEmailDto {
   @IsString()
   stickerToken?: string;
 }
-

@@ -1,4 +1,9 @@
-import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { UploadsService, UploadableFile } from './uploads.service';
@@ -20,4 +25,3 @@ export class UploadsController {
     return this.uploadsService.uploadImage(file);
   }
 }
-

@@ -47,9 +47,13 @@ export class GitHubService implements OnModuleInit {
     this.tokenUsage = new Array(this.tokens.length).fill(0);
 
     if (this.tokens.length === 0) {
-      this.logger.warn('No GITHUB_TOKENS configured — GitHub API calls will be unauthenticated (60 req/hr)');
+      this.logger.warn(
+        'No GITHUB_TOKENS configured — GitHub API calls will be unauthenticated (60 req/hr)',
+      );
     } else {
-      this.logger.log(`Loaded ${this.tokens.length} GitHub token(s) (${this.tokens.length * 5000} req/hr combined)`);
+      this.logger.log(
+        `Loaded ${this.tokens.length} GitHub token(s) (${this.tokens.length * 5000} req/hr combined)`,
+      );
     }
   }
 
@@ -89,7 +93,9 @@ export class GitHubService implements OnModuleInit {
   }
 
   /** Parse owner/repo from a GitHub URL. Returns null if invalid. */
-  private parseRepoUrl(repoUrl: string): { owner: string; repo: string } | null {
+  private parseRepoUrl(
+    repoUrl: string,
+  ): { owner: string; repo: string } | null {
     const match = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
     if (!match) return null;
     return { owner: match[1], repo: match[2].replace(/\.git$/, '') };
@@ -211,8 +217,15 @@ export class GitHubService implements OnModuleInit {
   ): Promise<GitHubCommit[]> {
     const results: GitHubCommit[] = [];
 
-    for (let batchStart = 0; batchStart < commits.length; batchStart += this.COMMIT_STATS_BATCH_SIZE) {
-      const batch = commits.slice(batchStart, batchStart + this.COMMIT_STATS_BATCH_SIZE);
+    for (
+      let batchStart = 0;
+      batchStart < commits.length;
+      batchStart += this.COMMIT_STATS_BATCH_SIZE
+    ) {
+      const batch = commits.slice(
+        batchStart,
+        batchStart + this.COMMIT_STATS_BATCH_SIZE,
+      );
       const details = await Promise.all(
         batch.map((c: any) =>
           this.githubFetch(

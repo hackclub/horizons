@@ -16,6 +16,7 @@
     import CircleOut from '$lib/components/anim/CircleOut.svelte';
     import { api } from '$lib/api';
     import { goto } from '$app/navigation';
+    import { page } from '$app/stores';
     import { env } from '$env/dynamic/public';
     import { createListNav, parseNavKey, isNavKey, clampIndex, navState } from '$lib/nav/wasd.svelte';
 
@@ -34,6 +35,7 @@
     let isMobile = $derived(windowWidth > 0 && windowWidth < 640);
 
     let isAuthed = $state(false);
+    let referralCode = $derived($page.url.searchParams.get('ref') ?? undefined);
 
     // Sync disableAnimations with localStorage
     onMount(() => {
@@ -81,7 +83,8 @@
         const response = await api.GET('/api/user/auth/login', {
             params: {
                 query: {
-                    email
+                    email,
+                    referralCode
                 }
             }
          });

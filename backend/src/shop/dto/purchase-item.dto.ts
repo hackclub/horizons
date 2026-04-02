@@ -10,4 +10,3 @@ export class PurchaseItemDto {
   @Min(1)
   variantId?: number;
 }
-

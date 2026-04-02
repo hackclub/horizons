@@ -1,8 +1,23 @@
-import { Controller, Get, Put, Post, Body, Param, UseGuards, Req, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ReviewerService } from './reviewer.service';
-import { ReviewSubmissionDto, QuickApproveDto, SaveNoteDto, SaveChecklistDto } from './dto/review-submission.dto';
+import {
+  ReviewSubmissionDto,
+  QuickApproveDto,
+  SaveNoteDto,
+  SaveChecklistDto,
+} from './dto/review-submission.dto';
 import {
   QueueItemResponse,
   SubmissionDetailResponse,
@@ -53,7 +68,11 @@ export class ReviewerController {
     @Body() dto: QuickApproveDto,
     @Req() req: Request,
   ) {
-    return this.reviewerService.quickApproveSubmission(id, req.user.userId, dto);
+    return this.reviewerService.quickApproveSubmission(
+      id,
+      req.user.userId,
+      dto,
+    );
   }
 
   /** Get the shared note for a project */

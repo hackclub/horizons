@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma.service';
 import { MailService } from '../mail/mail.service';
@@ -175,7 +179,10 @@ export class ShopService {
     });
   }
 
-  async updateVariant(variantId: number, data: { name?: string; cost?: number; isActive?: boolean }) {
+  async updateVariant(
+    variantId: number,
+    data: { name?: string; cost?: number; isActive?: boolean },
+  ) {
     const variant = await this.prisma.shopItemVariant.findUnique({
       where: { variantId },
     });
@@ -229,49 +236,82 @@ export class ShopService {
   }
 
   async purchaseItem(userId: number, itemId: number, variantId?: number) {
-    console.log(`[Shop Purchase] Starting purchase for userId: ${userId}, itemId: ${itemId}, variantId: ${variantId || 'none'}`);
-    
+    console.log(
+      `[Shop Purchase] Starting purchase for userId: ${userId}, itemId: ${itemId}, variantId: ${variantId || 'none'}`,
+    );
+
     const user = await this.prisma.user.findUnique({
       where: { userId },
       select: { email: true },
     });
 
     if (!user || !user.email) {
-      console.error(`[Shop Purchase] User email not found for userId: ${userId}`);
+      console.error(
+        `[Shop Purchase] User email not found for userId: ${userId}`,
+      );
       throw new BadRequestException('User email not found');
     }
 
-    debugLog(`[Shop Purchase] Checking verification status for user: ${userId}, email: ${user.email}`);
-    const externalApiBaseUrl = this.configService.get<string>('EXTERNAL_VERIFICATION_API_URL', 'https://identity.hackclub.com/api/external');
+    debugLog(
+      `[Shop Purchase] Checking verification status for user: ${userId}, email: ${user.email}`,
+    );
+    const externalApiBaseUrl = this.configService.get<string>(
+      'EXTERNAL_VERIFICATION_API_URL',
+      'https://identity.hackclub.com/api/external',
+    );
     const checkUrl = `${externalApiBaseUrl}/check?email=${encodeURIComponent(user.email)}`;
     console.log(`[Shop Purchase] Verification API URL: ${checkUrl}`);
-    
+
     try {
       const verificationResponse = await fetch(checkUrl);
-      console.log(`[Shop Purchase] Verification API response status: ${verificationResponse.status}`);
-      
+      console.log(
+        `[Shop Purchase] Verification API response status: ${verificationResponse.status}`,
+      );
+
       if (!verificationResponse.ok) {
-        const errorText = await verificationResponse.text().catch(() => 'Unable to read response');
-        console.error(`[Shop Purchase] Verification API returned non-OK status: ${verificationResponse.status}, response: ${errorText}`);
-        throw new BadRequestException('Failed to verify eligibility. Please try again later.');
+        const errorText = await verificationResponse
+          .text()
+          .catch(() => 'Unable to read response');
+        console.error(
+          `[Shop Purchase] Verification API returned non-OK status: ${verificationResponse.status}, response: ${errorText}`,
+        );
+        throw new BadRequestException(
+          'Failed to verify eligibility. Please try again later.',
+        );
       }
-      
+
       const verificationData = await verificationResponse.json();
-      console.log(`[Shop Purchase] Verification API response data:`, JSON.stringify(verificationData));
-      
+      console.log(
+        `[Shop Purchase] Verification API response data:`,
+        JSON.stringify(verificationData),
+      );
+
       if (verificationData.result !== 'verified_eligible') {
-        debugLog(`[Shop Purchase] User ${userId} (${user.email}) is not verified_eligible. Result: ${verificationData.result}`);
-        throw new BadRequestException('You must be verified eligible to purchase items from the shop');
+        debugLog(
+          `[Shop Purchase] User ${userId} (${user.email}) is not verified_eligible. Result: ${verificationData.result}`,
+        );
+        throw new BadRequestException(
+          'You must be verified eligible to purchase items from the shop',
+        );
       }
-      
-      debugLog(`[Shop Purchase] User ${userId} (${user.email}) verification check passed`);
+
+      debugLog(
+        `[Shop Purchase] User ${userId} (${user.email}) verification check passed`,
+      );
     } catch (error) {
       if (error instanceof BadRequestException) {
-        console.log(`[Shop Purchase] Verification check failed for user ${userId}: ${error.message}`);
+        console.log(
+          `[Shop Purchase] Verification check failed for user ${userId}: ${error.message}`,
+        );
         throw error;
       }
-      console.error(`[Shop Purchase] Error checking verification status for user ${userId}:`, error);
-      throw new BadRequestException('Failed to verify eligibility. Please try again later.');
+      console.error(
+        `[Shop Purchase] Error checking verification status for user ${userId}:`,
+        error,
+      );
+      throw new BadRequestException(
+        'Failed to verify eligibility. Please try again later.',
+      );
     }
 
     const item = await this.prisma.shopItem.findUnique({
@@ -319,7 +359,7 @@ export class ShopService {
         throw new BadRequestException('This item requires selecting a variant');
       }
 
-      variant = item.variants.find(v => v.variantId === variantId);
+      variant = item.variants.find((v) => v.variantId === variantId);
       if (!variant) {
         throw new BadRequestException('Invalid variant selected');
       }
@@ -342,7 +382,9 @@ export class ShopService {
       );
     }
 
-    console.log(`[Shop Purchase] Creating transaction for userId: ${userId}, itemId: ${itemId}, cost: ${cost}`);
+    console.log(
+      `[Shop Purchase] Creating transaction for userId: ${userId}, itemId: ${itemId}, cost: ${cost}`,
+    );
     const transaction = await this.prisma.transaction.create({
       data: {
         userId,
@@ -357,18 +399,25 @@ export class ShopService {
       },
     });
 
-    console.log(`[Shop Purchase] Transaction created successfully: transactionId ${transaction.transactionId}`);
+    console.log(
+      `[Shop Purchase] Transaction created successfully: transactionId ${transaction.transactionId}`,
+    );
     const newBalance = await this.getUserBalance(userId);
-    console.log(`[Shop Purchase] New balance for userId ${userId}: ${newBalance.balance} hours`);
+    console.log(
+      `[Shop Purchase] New balance for userId ${userId}: ${newBalance.balance} hours`,
+    );
 
     let specialAction: string | null = null;
 
     if (item.itemId === 1) {
-      console.log('[Midnight Ticket] Processing ticket purchase for user:', userId);
+      console.log(
+        '[Midnight Ticket] Processing ticket purchase for user:',
+        userId,
+      );
       try {
         const attendApiKey = this.configService.get<string>('ATTEND_API_KEY');
         console.log('[Midnight Ticket] API Key present:', !!attendApiKey);
-        
+
         if (!attendApiKey) {
           console.error('[Midnight Ticket] ATTEND_API_KEY not configured');
         } else {
@@ -380,39 +429,56 @@ export class ShopService {
 
           if (user && user.email) {
             console.log('[Midnight Ticket] Sending request to attend API...');
-            const response = await fetch('https://attend.hackclub.com/api/v1/events/80acf8b8-8d7d-4ff6-9311-14edcff613b3/participants', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${attendApiKey}`,
-                'Content-Type': 'application/json',
+            const response = await fetch(
+              'https://attend.hackclub.com/api/v1/events/80acf8b8-8d7d-4ff6-9311-14edcff613b3/participants',
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${attendApiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  first_name: user.firstName || 'Midnight',
+                  last_name: user.lastName || 'Attendee',
+                  email: user.email,
+                }),
               },
-              body: JSON.stringify({
-                first_name: user.firstName || 'Midnight',
-                last_name: user.lastName || 'Attendee',
-                email: user.email,
-              }),
-            });
+            );
 
             const responseText = await response.text();
-            console.log('[Midnight Ticket] API Response status:', response.status);
+            console.log(
+              '[Midnight Ticket] API Response status:',
+              response.status,
+            );
             console.log('[Midnight Ticket] API Response body:', responseText);
 
             if (response.ok) {
               specialAction = 'midnight_ticket';
-              console.log('[Midnight Ticket] Success! specialAction set to midnight_ticket');
+              console.log(
+                '[Midnight Ticket] Success! specialAction set to midnight_ticket',
+              );
             } else {
-              console.error('[Midnight Ticket] API request failed:', response.status, responseText);
+              console.error(
+                '[Midnight Ticket] API request failed:',
+                response.status,
+                responseText,
+              );
             }
           } else {
             console.error('[Midnight Ticket] User not found or no email');
           }
         }
       } catch (error) {
-        console.error('[Midnight Ticket] Failed to register participant:', error);
+        console.error(
+          '[Midnight Ticket] Failed to register participant:',
+          error,
+        );
       }
     }
 
-    console.log(`[Shop Purchase] Purchase completed successfully for userId: ${userId}, transactionId: ${transaction.transactionId}, specialAction: ${specialAction || 'none'}`);
+    console.log(
+      `[Shop Purchase] Purchase completed successfully for userId: ${userId}, transactionId: ${transaction.transactionId}, specialAction: ${specialAction || 'none'}`,
+    );
     return {
       transaction,
       newBalance,
@@ -464,7 +530,9 @@ export class ShopService {
   }
 
   async removePinnedItem(userId: number) {
-    const pinned = await this.prisma.pinnedItem.findUnique({ where: { userId } });
+    const pinned = await this.prisma.pinnedItem.findUnique({
+      where: { userId },
+    });
     if (!pinned) {
       throw new NotFoundException('No pinned item found');
     }
@@ -548,11 +616,13 @@ export class ShopService {
       where: { transactionId },
     });
 
-    const itemName = transaction.variant 
+    const itemName = transaction.variant
       ? `${transaction.item.name} (${transaction.variant.name})`
       : transaction.item.name;
 
-    debugLog(`[Refund] Transaction ${transactionId} refunded: ${transaction.cost} hours returned to user ${transaction.user.email} for "${itemName}"`);
+    debugLog(
+      `[Refund] Transaction ${transactionId} refunded: ${transaction.cost} hours returned to user ${transaction.user.email} for "${itemName}"`,
+    );
 
     return {
       refunded: true,
@@ -611,24 +681,28 @@ export class ShopService {
       },
     });
 
-    const itemName = transaction.variant 
+    const itemName = transaction.variant
       ? `${transaction.item.name} (${transaction.variant.name})`
       : transaction.item.name;
 
-    debugLog(`[Fulfillment] Transaction ${transactionId} marked as fulfilled for user ${transaction.user.email} - "${itemName}"`);
+    debugLog(
+      `[Fulfillment] Transaction ${transactionId} marked as fulfilled for user ${transaction.user.email} - "${itemName}"`,
+    );
 
     try {
-      await this.mailService.sendOrderFulfilledEmail(
-        transaction.user.email,
-        {
-          transactionId,
-          itemName,
-          itemDescription: transaction.itemDescription,
-        },
+      await this.mailService.sendOrderFulfilledEmail(transaction.user.email, {
+        transactionId,
+        itemName,
+        itemDescription: transaction.itemDescription,
+      });
+      debugLog(
+        `[Fulfillment] Email sent to ${transaction.user.email} for transaction ${transactionId}`,
       );
-      debugLog(`[Fulfillment] Email sent to ${transaction.user.email} for transaction ${transactionId}`);
     } catch (error) {
-      console.error(`[Fulfillment] Error sending email to ${transaction.user.email}:`, error);
+      console.error(
+        `[Fulfillment] Error sending email to ${transaction.user.email}:`,
+        error,
+      );
     }
 
     return updatedTransaction;
@@ -682,11 +756,13 @@ export class ShopService {
       },
     });
 
-    const itemName = transaction.variant 
+    const itemName = transaction.variant
       ? `${transaction.item.name} (${transaction.variant.name})`
       : transaction.item.name;
 
-    debugLog(`[Unfulfill] Transaction ${transactionId} marked as unfulfilled for user ${transaction.user.email} - "${itemName}"`);
+    debugLog(
+      `[Unfulfill] Transaction ${transactionId} marked as unfulfilled for user ${transaction.user.email} - "${itemName}"`,
+    );
 
     return updatedTransaction;
   }

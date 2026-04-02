@@ -1,8 +1,16 @@
-import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
 
 import { createHmac } from 'crypto';
+import { createId } from '@paralleldrive/cuid2';
 import * as jose from 'jose';
 
 interface HackClubTokenResponse {
@@ -49,21 +57,36 @@ export class AuthService {
   private getStateSecret(): string {
     const secret = process.env.STATE_SECRET || process.env.JWT_SECRET;
     if (!secret) {
-      throw new HttpException('STATE_SECRET not configured', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'STATE_SECRET not configured',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
     return secret;
   }
 
   private signState(payload: object): string {
     const data = JSON.stringify(payload);
-    const signature = createHmac('sha256', this.getStateSecret()).update(data).digest('hex');
-    return Buffer.from(JSON.stringify({ data, signature })).toString('base64url');
+    const signature = createHmac('sha256', this.getStateSecret())
+      .update(data)
+      .digest('hex');
+    return Buffer.from(JSON.stringify({ data, signature })).toString(
+      'base64url',
+    );
   }
 
-  private verifyState(encodedState: string): { referralCode: string | null; timestamp: number; redirectPath: string | null } {
+  private verifyState(encodedState: string): {
+    referralCode: string | null;
+    timestamp: number;
+    redirectPath: string | null;
+  } {
     try {
-      const { data, signature } = JSON.parse(Buffer.from(encodedState, 'base64url').toString());
-      const expectedSignature = createHmac('sha256', this.getStateSecret()).update(data).digest('hex');
+      const { data, signature } = JSON.parse(
+        Buffer.from(encodedState, 'base64url').toString(),
+      );
+      const expectedSignature = createHmac('sha256', this.getStateSecret())
+        .update(data)
+        .digest('hex');
 
       if (signature !== expectedSignature) {
         throw new UnauthorizedException('Invalid state signature');
@@ -87,12 +110,19 @@ export class AuthService {
     private airtableService: AirtableService,
   ) {}
 
-  getAuthUrl(email?: string, referralCode?: string, redirectPath?: string): { url: string } {
+  getAuthUrl(
+    email?: string,
+    referralCode?: string,
+    redirectPath?: string,
+  ): { url: string } {
     const clientId = process.env.HACKCLUB_CLIENT_ID;
     const redirectUri = process.env.HACKCLUB_REDIRECT_URI;
 
     if (!clientId || !redirectUri) {
-      throw new HttpException('OAuth not configured', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'OAuth not configured',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     const state = this.signState({
@@ -105,7 +135,8 @@ export class AuthService {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: 'openid email name profile birthdate address verification_status slack_id basic_info',
+      scope:
+        'openid email name profile birthdate address verification_status slack_id basic_info',
       state,
     });
 
@@ -118,13 +149,24 @@ export class AuthService {
     };
   }
 
-  async handleCallback(code: string, state?: string): Promise<{ sessionId: string; isNewUser: boolean; user: any; redirectPath: string | null }> {
+  async handleCallback(
+    code: string,
+    state?: string,
+  ): Promise<{
+    sessionId: string;
+    isNewUser: boolean;
+    user: any;
+    redirectPath: string | null;
+  }> {
     const clientId = process.env.HACKCLUB_CLIENT_ID;
     const clientSecret = process.env.HACKCLUB_CLIENT_SECRET;
     const redirectUri = process.env.HACKCLUB_REDIRECT_URI;
 
     if (!clientId || !clientSecret || !redirectUri) {
-      throw new HttpException('OAuth not configured', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'OAuth not configured',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     if (!state) {
@@ -153,12 +195,17 @@ export class AuthService {
 
     const tokens: HackClubTokenResponse = await tokenResponse.json();
 
-    const userInfoResponse = await fetch(`${this.HACKCLUB_AUTH_URL}/oauth/userinfo`, {
-      headers: { 'Authorization': `Bearer ${tokens.access_token}` },
-    });
+    const userInfoResponse = await fetch(
+      `${this.HACKCLUB_AUTH_URL}/oauth/userinfo`,
+      {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      },
+    );
 
     if (!userInfoResponse.ok) {
-      throw new UnauthorizedException('Failed to fetch user info from Hack Club');
+      throw new UnauthorizedException(
+        'Failed to fetch user info from Hack Club',
+      );
     }
 
     const userInfo = await userInfoResponse.json();
@@ -170,7 +217,7 @@ export class AuthService {
     const claims: HackClubIdTokenClaims = {
       iss: this.HACKCLUB_AUTH_URL,
       sub: userInfo.sub,
-      aud: process.env.HACKCLUB_CLIENT_ID!,
+      aud: process.env.HACKCLUB_CLIENT_ID,
       exp: 0,
       iat: 0,
       email: userInfo.email,
@@ -187,7 +234,10 @@ export class AuthService {
       ysws_eligible: userInfo.ysws_eligible,
     };
 
-    const { user, isNewUser } = await this.findOrCreateUser(claims, referralCode);
+    const { user, isNewUser } = await this.findOrCreateUser(
+      claims,
+      referralCode,
+    );
 
     if (claims.ysws_eligible === false) {
       throw new ForbiddenException('You are not eligible for YSWS.');
@@ -215,7 +265,9 @@ export class AuthService {
 
   private async verifyIdToken(idToken: string): Promise<HackClubIdTokenClaims> {
     if (!this.jwks) {
-      this.jwks = jose.createRemoteJWKSet(new URL(`${this.HACKCLUB_AUTH_URL}/oauth/discovery/keys`));
+      this.jwks = jose.createRemoteJWKSet(
+        new URL(`${this.HACKCLUB_AUTH_URL}/oauth/discovery/keys`),
+      );
     }
 
     try {
@@ -230,8 +282,28 @@ export class AuthService {
     }
   }
 
-  private async findOrCreateUser(claims: HackClubIdTokenClaims, referralCode: string | null) {
-    const email = claims.email!;
+  private async resolveReferrer(
+    referralCode: string | null,
+    selfUserId?: number,
+  ): Promise<number | null> {
+    if (!referralCode) return null;
+
+    const referrer = await this.prisma.user.findUnique({
+      where: { referralCode },
+      select: { userId: true },
+    });
+
+    if (!referrer) return null;
+    if (selfUserId && referrer.userId === selfUserId) return null;
+
+    return referrer.userId;
+  }
+
+  private async findOrCreateUser(
+    claims: HackClubIdTokenClaims,
+    referralCode: string | null,
+  ) {
+    const email = claims.email;
     const hcaId = claims.sub;
 
     let existingUser = await this.prisma.user.findUnique({ where: { hcaId } });
@@ -250,9 +322,11 @@ export class AuthService {
 
       let rafflePos: string | null = null;
       try {
-        const airtableUser = await this.prisma.$queryRaw<Array<{
-          code: string | null;
-        }>>`
+        const airtableUser = await this.prisma.$queryRaw<
+          Array<{
+            code: string | null;
+          }>
+        >`
           SELECT CAST(code AS TEXT) as code
           FROM users_airtable
           WHERE email = ${email}
@@ -262,20 +336,30 @@ export class AuthService {
         if (airtableUser && airtableUser.length > 0) {
           rafflePos = airtableUser[0].code ?? null;
         } else {
-          const maxUserCodeResult = await this.prisma.$queryRaw<Array<{ max_code: string | null }>>`
+          const maxUserCodeResult = await this.prisma.$queryRaw<
+            Array<{ max_code: string | null }>
+          >`
             SELECT CAST(MAX(CAST(raffle_pos AS INTEGER)) AS TEXT) as max_code
             FROM users WHERE raffle_pos IS NOT NULL AND raffle_pos ~ '^[0-9]+$'
           `;
-          const maxAirtableCodeResult = await this.prisma.$queryRaw<Array<{ max_code: string | null }>>`
+          const maxAirtableCodeResult = await this.prisma.$queryRaw<
+            Array<{ max_code: string | null }>
+          >`
             SELECT CAST(MAX(code) AS TEXT) as max_code FROM users_airtable
           `;
-          const maxUserCode = maxUserCodeResult?.[0]?.max_code ? parseInt(maxUserCodeResult[0].max_code, 10) : 0;
-          const maxAirtableCode = maxAirtableCodeResult?.[0]?.max_code ? parseInt(maxAirtableCodeResult[0].max_code, 10) : 0;
+          const maxUserCode = maxUserCodeResult?.[0]?.max_code
+            ? parseInt(maxUserCodeResult[0].max_code, 10)
+            : 0;
+          const maxAirtableCode = maxAirtableCodeResult?.[0]?.max_code
+            ? parseInt(maxAirtableCodeResult[0].max_code, 10)
+            : 0;
           rafflePos = (Math.max(maxUserCode, maxAirtableCode) + 1).toString();
         }
       } catch (error) {
         console.error('Error checking users_airtable:', error);
       }
+
+      const referredByUserId = await this.resolveReferrer(referralCode);
 
       existingUser = await this.prisma.user.create({
         data: {
@@ -294,14 +378,18 @@ export class AuthService {
           country: claims.address?.country || null,
           role: 'user',
           hackatimeAccount: hackatimeAccount?.toString() || null,
-          referralCode,
+          ...(referredByUserId
+            ? { referredBy: { connect: { userId: referredByUserId } } }
+            : {}),
           rafflePos,
         },
       });
 
-      this.airtableService.syncUserEvent(email, existingUser.userId, 'signUp').catch((err) =>
-        console.error('Error syncing signUp event to Airtable:', err),
-      );
+      this.airtableService
+        .syncUserEvent(email, existingUser.userId, 'signUp')
+        .catch((err) =>
+          console.error('Error syncing signUp event to Airtable:', err),
+        );
 
       return { user: existingUser, isNewUser: true };
     }
@@ -310,9 +398,7 @@ export class AuthService {
     if (!existingUser.hcaId) {
       updateData.hcaId = hcaId;
     }
-    if (referralCode && !existingUser.referralCode) {
-      updateData.referralCode = referralCode;
-    }
+    // Referrals only apply to new users — existing users cannot retroactively gain a referrer
     if (claims.given_name && existingUser.firstName !== claims.given_name) {
       updateData.firstName = claims.given_name;
     }
@@ -322,24 +408,45 @@ export class AuthService {
     if (claims.slack_id && existingUser.slackUserId !== claims.slack_id) {
       updateData.slackUserId = claims.slack_id;
     }
-    if (claims.verification_status && existingUser.verificationStatus !== claims.verification_status) {
+    if (
+      claims.verification_status &&
+      existingUser.verificationStatus !== claims.verification_status
+    ) {
       updateData.verificationStatus = claims.verification_status;
     }
     if (claims.birthdate) {
       const incomingBirthday = new Date(claims.birthdate);
-      if (!existingUser.birthday || existingUser.birthday.getTime() !== incomingBirthday.getTime()) {
+      if (
+        !existingUser.birthday ||
+        existingUser.birthday.getTime() !== incomingBirthday.getTime()
+      ) {
         updateData.birthday = incomingBirthday;
       }
     }
     if (claims.address) {
       const line1 = claims.address.street_address?.split('\n')[0] || null;
       const line2 = claims.address.street_address?.split('\n')[1] || null;
-      if (line1 && existingUser.addressLine1 !== line1) updateData.addressLine1 = line1;
-      if (line2 && existingUser.addressLine2 !== line2) updateData.addressLine2 = line2;
-      if (claims.address.locality && existingUser.city !== claims.address.locality) updateData.city = claims.address.locality;
-      if (claims.address.region && existingUser.state !== claims.address.region) updateData.state = claims.address.region;
-      if (claims.address.postal_code && existingUser.zipCode !== claims.address.postal_code) updateData.zipCode = claims.address.postal_code;
-      if (claims.address.country && existingUser.country !== claims.address.country) updateData.country = claims.address.country;
+      if (line1 && existingUser.addressLine1 !== line1)
+        updateData.addressLine1 = line1;
+      if (line2 && existingUser.addressLine2 !== line2)
+        updateData.addressLine2 = line2;
+      if (
+        claims.address.locality &&
+        existingUser.city !== claims.address.locality
+      )
+        updateData.city = claims.address.locality;
+      if (claims.address.region && existingUser.state !== claims.address.region)
+        updateData.state = claims.address.region;
+      if (
+        claims.address.postal_code &&
+        existingUser.zipCode !== claims.address.postal_code
+      )
+        updateData.zipCode = claims.address.postal_code;
+      if (
+        claims.address.country &&
+        existingUser.country !== claims.address.country
+      )
+        updateData.country = claims.address.country;
     }
 
     if (Object.keys(updateData).length > 0) {
@@ -375,6 +482,7 @@ export class AuthService {
             onboardedAt: true,
             hackatimeAccount: true,
             referralCode: true,
+            referredByUserId: true,
             rafflePos: true,
             createdAt: true,
             updatedAt: true,
@@ -396,10 +504,25 @@ export class AuthService {
     }
 
     const user = session.user as any;
-    const hasAddress = !!(user.addressLine1 && user.city && user.state && user.country && user.zipCode);
-    const { addressLine1, city, state, country, zipCode, ...userWithoutAddress } = user;
+    const hasAddress = !!(
+      user.addressLine1 &&
+      user.city &&
+      user.state &&
+      user.country &&
+      user.zipCode
+    );
+    const {
+      addressLine1,
+      city,
+      state,
+      country,
+      zipCode,
+      ...userWithoutAddress
+    } = user;
     if (userWithoutAddress.projects) {
-      userWithoutAddress.projects = userWithoutAddress.projects.map(({ isFraud: _, hoursJustification: __, ...project }: any) => project);
+      userWithoutAddress.projects = userWithoutAddress.projects.map(
+        ({ isFraud: _, hoursJustification: __, ...project }: any) => project,
+      );
     }
     return { ...userWithoutAddress, hasAddress };
   }
@@ -424,15 +547,43 @@ export class AuthService {
     return { rafflePos: user.rafflePos };
   }
 
+  async getReferralCode(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: { referralCode: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (user.referralCode) {
+      return { referralCode: user.referralCode };
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { userId },
+      data: { referralCode: createId() },
+      select: { referralCode: true },
+    });
+
+    return { referralCode: updated.referralCode };
+  }
+
   async completeOnboarding(userId: number) {
     const user = await this.prisma.user.update({
       where: { userId },
       data: { onboardComplete: true },
     });
 
-    this.airtableService.syncUserEvent(user.email, userId, 'onboardingCompleted').catch((err) =>
-      console.error('Error syncing onboardingCompleted event to Airtable:', err),
-    );
+    this.airtableService
+      .syncUserEvent(user.email, userId, 'onboardingCompleted')
+      .catch((err) =>
+        console.error(
+          'Error syncing onboardingCompleted event to Airtable:',
+          err,
+        ),
+      );
 
     return {
       message: 'Onboarding completed successfully',
@@ -487,7 +638,7 @@ export class AuthService {
 
       const res = await fetch(url, {
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${STATS_API_KEY}` },
+        headers: { Authorization: `Bearer ${STATS_API_KEY}` },
       });
 
       if (!res.ok) {

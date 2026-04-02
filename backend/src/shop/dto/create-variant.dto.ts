@@ -9,5 +9,3 @@ export class CreateVariantDto {
   @Min(0)
   cost: number;
 }
-
-

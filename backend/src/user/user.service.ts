@@ -24,7 +24,7 @@ export class UserService {
   private async generateUniqueToken(): Promise<string> {
     let token: string;
     let exists = true;
-    
+
     while (exists) {
       token = randomBytes(32).toString('hex');
       const existingToken = await this.prisma.stickerToken.findUnique({
@@ -32,22 +32,25 @@ export class UserService {
       });
       exists = !!existingToken;
     }
-    
+
     return token;
   }
 
-  private async sendRsvpEmailInBackground(email: string, rafflePosition: number): Promise<void> {
+  private async sendRsvpEmailInBackground(
+    email: string,
+    rafflePosition: number,
+  ): Promise<void> {
     try {
       debugLog(`=== SENDING EMAIL IN BACKGROUND ===`);
       debugLog(`Email: ${email}, RafflePosition received: ${rafflePosition}`);
-      
+
       let stickerToken: string | null = null;
-      
+
       if (rafflePosition <= 5000) {
         const existingToken = await this.prisma.stickerToken.findFirst({
           where: { email },
         });
-        
+
         if (!existingToken) {
           const token = await this.generateUniqueToken();
           await this.prisma.stickerToken.create({
@@ -62,21 +65,21 @@ export class UserService {
           stickerToken = existingToken.token;
         }
       }
-      
+
       debugLog(`Calling mail service directly with:`, {
         email,
         rsvpNumber: rafflePosition,
         rafflePosition,
         stickerToken,
       });
-      
+
       await this.mailService.sendRsvpEmail(
         email,
         rafflePosition,
         rafflePosition,
-        stickerToken
+        stickerToken,
       );
-      
+
       console.log('Successfully sent RSVP confirmation email in background');
     } catch (error) {
       console.error('Error in background email send:', error);
@@ -95,14 +98,23 @@ export class UserService {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
       age--;
     }
     return age;
   }
 
   async completeRsvp(
-    data: { email: string; firstName: string; lastName: string; birthday: string; referralCode?: string },
+    data: {
+      email: string;
+      firstName: string;
+      lastName: string;
+      birthday: string;
+      referralCode?: string;
+    },
     clientIP: string,
   ): Promise<{ rafflePosition: number }> {
     throw new HttpException(
@@ -115,12 +127,11 @@ export class UserService {
     return { count: 0 };
   }
 
-  async verifyStickerToken(token: string): Promise<{ valid: boolean; email?: string; rsvpNumber?: number }> {
+  async verifyStickerToken(
+    token: string,
+  ): Promise<{ valid: boolean; email?: string; rsvpNumber?: number }> {
     if (!token) {
-      throw new HttpException(
-        'Token is required',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('Token is required', HttpStatus.BAD_REQUEST);
     }
 
     try {
@@ -160,5 +171,4 @@ export class UserService {
       );
     }
   }
-
 }

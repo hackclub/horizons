@@ -30,7 +30,10 @@ export class HackatimeProjectResponse {
 }
 
 export class HackatimeProjectsResponse {
-  @ApiProperty({ description: 'List of Hackatime projects', type: [HackatimeProjectResponse] })
+  @ApiProperty({
+    description: 'List of Hackatime projects',
+    type: [HackatimeProjectResponse],
+  })
   projects: HackatimeProjectResponse[];
 }
 
@@ -59,7 +62,11 @@ export class HackatimeAccountStatusResponse {
   @ApiProperty({ description: 'Whether a Hackatime account is linked' })
   hasHackatimeAccount: boolean;
 
-  @ApiProperty({ description: 'Hackatime account ID', required: false, nullable: true })
+  @ApiProperty({
+    description: 'Hackatime account ID',
+    required: false,
+    nullable: true,
+  })
   hackatimeAccountId: string | null;
 
   @ApiProperty({ description: 'Whether the stored access token is valid' })

@@ -220,6 +220,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/user/auth/referral-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get or generate referral code */
+        get: operations["AuthController_getReferralCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/user/auth/sync": {
         parameters: {
             query?: never;
@@ -886,6 +903,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/shop/auth/pinned-item": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ShopAuthController_getPinnedItem"];
+        put?: never;
+        post: operations["ShopAuthController_setPinnedItem"];
+        delete: operations["ShopAuthController_removePinnedItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/shop/admin/shops": {
         parameters: {
             query?: never;
@@ -1025,6 +1058,70 @@ export interface paths {
         put: operations["ShopAdminController_markTransactionFulfilled"];
         post?: never;
         delete: operations["ShopAdminController_unfulfillTransaction"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsAdminController_getEvents"];
+        put?: never;
+        post: operations["EventsAdminController_createEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/admin/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsAdminController_getEvent"];
+        put: operations["EventsAdminController_updateEvent"];
+        post?: never;
+        delete: operations["EventsAdminController_deleteEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/auth/pinned-event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsAuthController_getPinnedEvent"];
+        put?: never;
+        post: operations["EventsAuthController_setPinnedEvent"];
+        delete: operations["EventsAuthController_removePinnedEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsController_getActiveEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1351,6 +1448,9 @@ export interface components {
         RafflePosResponse: {
             rafflePos: string | null;
         };
+        ReferralCodeResponse: {
+            referralCode: string;
+        };
         CreateProjectDto: {
             /** @description Project title */
             projectTitle: string;
@@ -1477,10 +1577,298 @@ export interface components {
             lastSubmittedHours?: number | null;
         };
         DeleteProjectResponse: {
-            /** @description Whether the project was deleted */
             deleted: boolean;
-            /** @description Deleted project ID */
             projectId: number;
+        };
+        AdminSubmissionProjectUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+            birthday: string | null;
+            addressLine1: string | null;
+            addressLine2: string | null;
+            city: string | null;
+            state: string | null;
+            country: string | null;
+            zipCode: string | null;
+            hackatimeAccount: string | null;
+            slackUserId: string | null;
+            referralCode: string | null;
+            referredByUserId: number | null;
+            isFraud: boolean;
+            isSus: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            airtableRecId?: string | null;
+        };
+        AdminSubmissionProjectResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            description: string | null;
+            playableUrl: string | null;
+            repoUrl: string | null;
+            screenshotUrl: string | null;
+            nowHackatimeHours: number | null;
+            nowHackatimeProjects: string[] | null;
+            approvedHours: number | null;
+            hoursJustification: string | null;
+            adminComment: string | null;
+            isFraud: boolean;
+            user: components["schemas"]["AdminSubmissionProjectUserResponse"];
+        };
+        AdminSubmissionResponse: {
+            submissionId: number;
+            approvalStatus: string;
+            approvedHours: number | null;
+            hoursJustification: string | null;
+            description: string | null;
+            playableUrl: string | null;
+            repoUrl: string | null;
+            screenshotUrl: string | null;
+            hackatimeHours: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            project: components["schemas"]["AdminSubmissionProjectResponse"];
+        };
+        AuditLogAdminResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+        };
+        SubmissionAuditLogResponse: {
+            id: number;
+            submissionId: number;
+            adminId: number;
+            action: string;
+            newStatus: string | null;
+            approvedHours: number | null;
+            changes?: Record<string, never>;
+            /** Format: date-time */
+            createdAt: string;
+            admin: components["schemas"]["AuditLogAdminResponse"] | null;
+        };
+        AdminLightUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+            birthday: string | null;
+            addressLine1: string | null;
+            addressLine2: string | null;
+            city: string | null;
+            state: string | null;
+            country: string | null;
+            zipCode: string | null;
+            hackatimeAccount: string | null;
+            slackUserId: string | null;
+            referralCode: string | null;
+            referredByUserId: number | null;
+            isFraud: boolean;
+            isSus: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AdminProjectSubmissionResponse: {
+            submissionId: number;
+            approvalStatus: string;
+            approvedHours: number | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminProjectResponse: {
+            projectId: number;
+            projectTitle: string;
+            description: string | null;
+            projectType: string;
+            nowHackatimeHours: number | null;
+            nowHackatimeProjects: string[] | null;
+            playableUrl: string | null;
+            repoUrl: string | null;
+            screenshotUrl: string | null;
+            approvedHours: number | null;
+            hoursJustification: string | null;
+            isLocked: boolean;
+            isFraud: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            user: components["schemas"]["AdminLightUserResponse"];
+            submissions: components["schemas"]["AdminProjectSubmissionResponse"][];
+        };
+        TimelineActorResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+        };
+        TimelineEventResponse: {
+            /** @enum {string} */
+            type: "project_created" | "submission" | "resubmission" | "project_updated" | "admin_review" | "admin_update";
+            /** Format: date-time */
+            timestamp: string;
+            actor: components["schemas"]["TimelineActorResponse"] | null;
+            details: Record<string, never>;
+        };
+        ProjectTimelineResponse: {
+            projectId: number;
+            projectTitle: string;
+            user: components["schemas"]["TimelineActorResponse"];
+            timeline: components["schemas"]["TimelineEventResponse"][];
+        };
+        RecalculateProjectResponse: {
+            project?: components["schemas"]["AdminProjectResponse"];
+            skipped?: boolean;
+            reason?: string;
+        };
+        RecalculateAllSkipped: {
+            projectId: number;
+            reason: string;
+        };
+        RecalculateAllError: {
+            projectId: number;
+            message: string;
+        };
+        RecalculateAllResponse: {
+            processed: number;
+            updated: number;
+            skipped: components["schemas"]["RecalculateAllSkipped"][];
+            errors: components["schemas"]["RecalculateAllError"][];
+        };
+        AdminUserSubmissionResponse: {
+            submissionId: number;
+            approvalStatus: string;
+            approvedHours: number | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminUserProjectResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            nowHackatimeHours: number | null;
+            approvedHours: number | null;
+            isLocked: boolean;
+            isFraud: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            submissions: components["schemas"]["AdminUserSubmissionResponse"][];
+        };
+        AdminUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+            birthday: string | null;
+            addressLine1: string | null;
+            addressLine2: string | null;
+            city: string | null;
+            state: string | null;
+            country: string | null;
+            zipCode: string | null;
+            hackatimeAccount: string | null;
+            slackUserId: string | null;
+            referralCode: string | null;
+            referredByUserId: number | null;
+            isFraud: boolean;
+            isSus: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            role: string;
+            projects: components["schemas"]["AdminUserProjectResponse"][];
+        };
+        MetricsTotals: {
+            totalHackatimeHours: number;
+            totalApprovedHours: number;
+            totalUsers: number;
+            totalProjects: number;
+            totalSubmittedHackatimeHours: number;
+        };
+        AdminMetricsResponse: {
+            totals: components["schemas"]["MetricsTotals"];
+        };
+        ReviewerLeaderboardEntry: {
+            reviewerId: string;
+            firstName: string | null;
+            lastName: string | null;
+            email: string | null;
+            approved: number;
+            rejected: number;
+            total: number;
+            /** Format: date-time */
+            lastReviewedAt: string | null;
+        };
+        ToggleFraudFlagDto: {
+            isFraud: boolean;
+        };
+        AdminFraudFlagResponse: {
+            projectId: number;
+            projectTitle: string;
+            isFraud: boolean;
+        };
+        AdminUserFlagResponse: {
+            userId: number;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            isFraud: boolean;
+        };
+        ToggleSusFlagDto: {
+            isSus: boolean;
+        };
+        AdminUserSusFlagResponse: {
+            userId: number;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            isSus: boolean;
+        };
+        UpdateSlackIdDto: {
+            slackUserId: string | null;
+        };
+        AdminUserSlackResponse: {
+            userId: number;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            slackUserId: string | null;
+        };
+        SlackLookupResponse: {
+            found: boolean;
+            message?: string;
+            slackUserId?: string;
+            displayName?: string;
+            realName?: string;
+        };
+        PriorityUserResponse: {
+            userId: number;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            totalApprovedHours: number;
+            potentialHoursIfApproved: number;
+            reason: string;
+        };
+        GlobalSettingsResponse: {
+            id: string;
+            submissionsFrozen: boolean;
+            /** Format: date-time */
+            submissionsFrozenAt: string | null;
+            submissionsFrozenBy: string | null;
+        };
+        ToggleSubmissionsFrozenDto: {
+            submissionsFrozen: boolean;
         };
         ScopedUserResponse: {
             userId: number;
@@ -1576,9 +1964,94 @@ export interface components {
         SaveChecklistDto: {
             checkedItems: number[];
         };
+        ShopResponse: {
+            shopId: number;
+            slug: string;
+            description: string | null;
+            isActive: boolean;
+            isPublic: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ShopItemVariantResponse: {
+            variantId: number;
+            itemId: number;
+            name: string;
+            cost: number;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ShopItemResponse: {
+            itemId: number;
+            shopId: number;
+            name: string;
+            description: string | null;
+            imageUrl: string | null;
+            cost: number;
+            maxPerUser: number | null;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            variants: components["schemas"]["ShopItemVariantResponse"][];
+        };
+        BalanceResponse: {
+            totalApprovedHours: number;
+            totalSpent: number;
+            balance: number;
+        };
         PurchaseItemDto: {
             itemId: number;
             variantId?: number;
+        };
+        TransactionItemSummary: {
+            itemId: number;
+            name: string;
+            imageUrl?: string | null;
+        };
+        TransactionVariantSummary: {
+            variantId: number;
+            name: string;
+        };
+        UserTransactionResponse: {
+            transactionId: number;
+            userId: number;
+            itemId: number;
+            variantId: number | null;
+            cost: number;
+            /** Format: date-time */
+            createdAt: string;
+            item: components["schemas"]["TransactionItemSummary"];
+            variant: components["schemas"]["TransactionVariantSummary"] | null;
+        };
+        PurchaseResponse: {
+            transaction: components["schemas"]["UserTransactionResponse"];
+            newBalance: components["schemas"]["BalanceResponse"];
+            specialAction: string | null;
+        };
+        PinnedItemDetailResponse: {
+            itemId: number;
+            name: string;
+            description: string | null;
+            imageUrl: string | null;
+            cost: number;
+            isActive: boolean;
+        };
+        PinnedItemResponse: {
+            userId: number;
+            itemId: number;
+            /** Format: date-time */
+            createdAt: string;
+            item: components["schemas"]["PinnedItemDetailResponse"];
+        };
+        RemovedResponse: {
+            removed: boolean;
         };
         CreateShopDto: {
             slug: string;
@@ -1591,6 +2064,10 @@ export interface components {
             description?: string;
             isActive?: boolean;
             isPublic?: boolean;
+        };
+        DeleteShopResponse: {
+            deleted: boolean;
+            shopId: number;
         };
         CreateItemDto: {
             name: string;
@@ -1607,6 +2084,10 @@ export interface components {
             maxPerUser?: number | null;
             isActive?: boolean;
         };
+        DeleteItemResponse: {
+            deleted: boolean;
+            itemId: number;
+        };
         CreateVariantDto: {
             name: string;
             cost: number;
@@ -1616,6 +2097,141 @@ export interface components {
             cost?: number;
             isActive?: boolean;
         };
+        DeleteVariantResponse: {
+            deleted: boolean;
+            variantId: number;
+        };
+        TransactionUserSummary: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+            addressLine1: string | null;
+            addressLine2: string | null;
+            city: string | null;
+            state: string | null;
+            country: string | null;
+            zipCode: string | null;
+        };
+        AdminTransactionResponse: {
+            transactionId: number;
+            userId: number;
+            itemId: number;
+            variantId: number | null;
+            cost: number;
+            /** Format: date-time */
+            createdAt: string;
+            item: components["schemas"]["TransactionItemSummary"];
+            variant: components["schemas"]["TransactionVariantSummary"] | null;
+            isFulfilled: boolean;
+            /** Format: date-time */
+            fulfilledAt: string | null;
+            user: components["schemas"]["TransactionUserSummary"];
+        };
+        RefundResponse: {
+            refunded: boolean;
+            transactionId: number;
+            refundedAmount: number;
+            userId: number;
+            itemName: string;
+        };
+        AdminEventResponse: {
+            eventId: number;
+            slug: string;
+            title: string;
+            description: string | null;
+            imageUrl: string | null;
+            location: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string | null;
+            hourCost: number;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            _count: {
+                pinnedBy: number;
+            };
+        };
+        CreateEventDto: {
+            slug: string;
+            title: string;
+            description?: string;
+            imageUrl?: string;
+            location?: string;
+            startDate: string;
+            endDate: string;
+            hourCost: number;
+            isActive?: boolean;
+        };
+        EventResponse: {
+            eventId: number;
+            slug: string;
+            title: string;
+            description: string | null;
+            imageUrl: string | null;
+            location: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string | null;
+            hourCost: number;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateEventDto: {
+            slug?: string;
+            title?: string;
+            description?: string;
+            imageUrl?: string;
+            location?: string;
+            startDate?: string;
+            endDate?: string;
+            hourCost?: number;
+            isActive?: boolean;
+        };
+        DeleteEventResponse: {
+            deleted: boolean;
+            slug: string;
+        };
+        PinnedEventDetailResponse: {
+            eventId: number;
+            slug: string;
+            title: string;
+            description: string | null;
+            imageUrl: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string | null;
+            hourCost: number;
+            isActive: boolean;
+        };
+        PinnedEventResponse: {
+            userId: number;
+            eventId: number;
+            /** Format: date-time */
+            createdAt: string;
+            event: components["schemas"]["PinnedEventDetailResponse"];
+        };
+        RemovedEventResponse: {
+            removed: boolean;
+        };
+        GiftCodePublicResponse: {
+            imageUrl: string;
+            itemDescription: string;
+            isClaimed: boolean;
+        };
+        GiftCodeClaimResponse: {
+            success: boolean;
+            isClaimed: boolean;
+        };
         SendGiftCodesDto: {
             emails: string[];
             itemDescription: string;
@@ -1623,6 +2239,35 @@ export interface components {
             imageUrl: string;
             /** Format: uri */
             filloutUrl: string;
+        };
+        SendGiftCodeResult: {
+            email: string;
+            code: string;
+            success: boolean;
+            error?: string;
+        };
+        SendGiftCodesResponse: {
+            total: number;
+            successful: number;
+            failed: number;
+            results: components["schemas"]["SendGiftCodeResult"][];
+        };
+        GiftCodeResponse: {
+            giftCodeId: number;
+            code: string;
+            email: string;
+            itemDescription: string;
+            imageUrl: string;
+            filloutUrl: string;
+            isClaimed: boolean;
+            /** Format: date-time */
+            emailSentAt?: string;
+            firstName?: string;
+            lastName?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         HackatimeLinkUrlResponse: {
             /** @description Hackatime OAuth authorization URL */
@@ -1992,6 +2637,25 @@ export interface operations {
             };
         };
     };
+    AuthController_getReferralCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralCodeResponse"];
+                };
+            };
+        };
+    };
     AuthController_syncHcaData: {
         parameters: {
             query?: never;
@@ -2253,7 +2917,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": components["schemas"]["AdminSubmissionResponse"][];
                 };
             };
         };
@@ -2273,7 +2937,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SubmissionAuditLogResponse"][];
+                };
             };
         };
     };
@@ -2293,7 +2959,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["AdminProjectResponse"];
                 };
             };
         };
@@ -2313,7 +2979,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ProjectTimelineResponse"];
+                };
             };
         };
     };
@@ -2331,7 +2999,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": components["schemas"]["AdminProjectResponse"][];
                 };
             };
         };
@@ -2352,7 +3020,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["RecalculateProjectResponse"];
                 };
             };
         };
@@ -2370,7 +3038,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RecalculateAllResponse"];
+                };
             };
         };
     };
@@ -2389,7 +3059,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DeleteProjectResponse"];
+                };
             };
         };
     };
@@ -2407,7 +3079,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": components["schemas"]["AdminUserResponse"][];
                 };
             };
         };
@@ -2425,7 +3097,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminMetricsResponse"];
+                };
             };
         };
     };
@@ -2442,7 +3116,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ReviewerLeaderboardEntry"][];
+                };
             };
         };
     };
@@ -2455,13 +3131,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleFraudFlagDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminFraudFlagResponse"];
+                };
             };
         };
     };
@@ -2474,13 +3156,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleFraudFlagDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminUserFlagResponse"];
+                };
             };
         };
     };
@@ -2493,13 +3181,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleSusFlagDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminUserSusFlagResponse"];
+                };
             };
         };
     };
@@ -2512,13 +3206,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSlackIdDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminUserSlackResponse"];
+                };
             };
         };
     };
@@ -2536,7 +3236,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["SlackLookupResponse"];
                 };
             };
         };
@@ -2555,7 +3255,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["SlackLookupResponse"];
                 };
             };
         };
@@ -2573,7 +3273,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PriorityUserResponse"][];
+                };
             };
         };
     };
@@ -2590,7 +3292,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["GlobalSettingsResponse"];
+                };
             };
         };
     };
@@ -2601,13 +3305,19 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleSubmissionsFrozenDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["GlobalSettingsResponse"];
+                };
             };
         };
     };
@@ -2892,7 +3602,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ShopResponse"][];
+                };
             };
         };
     };
@@ -2912,7 +3624,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": components["schemas"]["ShopItemResponse"][];
                 };
             };
         };
@@ -2934,7 +3646,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["ShopItemResponse"];
                 };
             };
         };
@@ -2952,7 +3664,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BalanceResponse"];
+                };
             };
         };
     };
@@ -2973,7 +3687,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PurchaseResponse"];
+                };
             };
         };
     };
@@ -2991,7 +3707,64 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": components["schemas"]["UserTransactionResponse"][];
+                };
+            };
+        };
+    };
+    ShopAuthController_getPinnedItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinnedItemResponse"];
+                };
+            };
+        };
+    };
+    ShopAuthController_setPinnedItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinnedItemResponse"];
+                };
+            };
+        };
+    };
+    ShopAuthController_removePinnedItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemovedResponse"];
                 };
             };
         };
@@ -3009,7 +3782,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ShopResponse"][];
+                };
             };
         };
     };
@@ -3030,7 +3805,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ShopResponse"];
+                };
             };
         };
     };
@@ -3053,7 +3830,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ShopResponse"];
+                };
             };
         };
     };
@@ -3072,7 +3851,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DeleteShopResponse"];
+                };
             };
         };
     };
@@ -3092,7 +3873,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": components["schemas"]["ShopItemResponse"][];
                 };
             };
         };
@@ -3117,7 +3898,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["ShopItemResponse"];
                 };
             };
         };
@@ -3142,7 +3923,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["ShopItemResponse"];
                 };
             };
         };
@@ -3162,7 +3943,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DeleteItemResponse"];
+                };
             };
         };
     };
@@ -3185,7 +3968,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ShopItemVariantResponse"];
+                };
             };
         };
     };
@@ -3208,7 +3993,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ShopItemVariantResponse"];
+                };
             };
         };
     };
@@ -3227,14 +4014,16 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DeleteVariantResponse"];
+                };
             };
         };
     };
     ShopAdminController_getAllTransactions: {
         parameters: {
-            query: {
-                shopId: string;
+            query?: {
+                shopId?: string;
             };
             header?: never;
             path?: never;
@@ -3247,7 +4036,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": components["schemas"]["AdminTransactionResponse"][];
                 };
             };
         };
@@ -3267,7 +4056,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RefundResponse"];
+                };
             };
         };
     };
@@ -3287,7 +4078,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["AdminTransactionResponse"];
                 };
             };
         };
@@ -3308,7 +4099,192 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["AdminTransactionResponse"];
+                };
+            };
+        };
+    };
+    EventsAdminController_getEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminEventResponse"][];
+                };
+            };
+        };
+    };
+    EventsAdminController_createEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEventDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+        };
+    };
+    EventsAdminController_getEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminEventResponse"];
+                };
+            };
+        };
+    };
+    EventsAdminController_updateEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEventDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+        };
+    };
+    EventsAdminController_deleteEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteEventResponse"];
+                };
+            };
+        };
+    };
+    EventsAuthController_getPinnedEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinnedEventResponse"];
+                };
+            };
+        };
+    };
+    EventsAuthController_setPinnedEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinnedEventResponse"];
+                };
+            };
+        };
+    };
+    EventsAuthController_removePinnedEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemovedEventResponse"];
+                };
+            };
+        };
+    };
+    EventsController_getActiveEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"][];
                 };
             };
         };
@@ -3328,7 +4304,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["GiftCodePublicResponse"];
+                };
             };
         };
     };
@@ -3347,7 +4325,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["GiftCodeClaimResponse"];
+                };
             };
         };
     };
@@ -3368,7 +4348,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SendGiftCodesResponse"];
+                };
             };
         };
     };
@@ -3385,7 +4367,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["GiftCodeResponse"][];
+                };
             };
         };
     };
