@@ -27,6 +27,9 @@ Hack Club takes the safety and well-being of all participants seriously. You can
 
 Yes, we want you to! This hackathon is for all skill levels. We'll be running workshops and support calls to help everyone learn together.
 
+## How do I qualify?
+For Horizons Sol (Sao Paulo), you are required to code and ship 35 hours of projects.
+
 ## What can I make?
 
 Any kind of technical project is allowed - websites, games, hardware - anything!
