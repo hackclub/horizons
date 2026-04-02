@@ -1,11 +1,11 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ fetch }) => {
+export const load: PageServerLoad = async ({ fetch, request }) => {
   const apiUrl = process.env.PUBLIC_API_URL || 'http://localhost:3000';
 
   const userResponse = await fetch(`${apiUrl}/api/user/auth/me`, {
-    credentials: 'include',
+    headers: { cookie: request.headers.get('cookie') || '' },
   });
 
   if (userResponse.status === 401) {

@@ -28,6 +28,8 @@ WORKDIR /app/admin
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV PROTOCOL_HEADER=x-forwarded-proto
+ENV HOST_HEADER=x-forwarded-host
 
 EXPOSE 3000
 

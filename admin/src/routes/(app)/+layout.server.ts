@@ -1,11 +1,11 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ fetch }) => {
+export const load: LayoutServerLoad = async ({ fetch, request }) => {
   const apiUrl = process.env.PUBLIC_API_URL || 'http://localhost:3000';
 
   const userResponse = await fetch(`${apiUrl}/api/user/auth/me`, {
-    credentials: 'include',
+    headers: { cookie: request.headers.get('cookie') || '' },
   });
 
   if (userResponse.status === 401) {
@@ -31,7 +31,7 @@ export const load: LayoutServerLoad = async ({ fetch }) => {
   };
 
   try {
-    const metricsResponse = await fetch(`${apiUrl}/api/admin/metrics`, { credentials: 'include' });
+    const metricsResponse = await fetch(`${apiUrl}/api/admin/metrics`, { headers: { cookie: request.headers.get('cookie') || '' } });
     if (metricsResponse.ok) {
       const metricsData = await metricsResponse.json();
       metrics = metricsData.totals ?? metricsData;
