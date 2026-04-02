@@ -265,7 +265,7 @@
 							{#if hackatimeLinked}
 								<div class="flex flex-col gap-2 w-full">
 									<p class="font-bricolage text-2xl font-bold text-black leading-normal">
-										Hackatime Setup <span class="opacity-40">(Required)</span>
+										Hackatime Setup <span class="opacity-40">(Important)</span>
 									</p>
 									<a href="https://hackatime.hackclub.com/my/wakatime_setup" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale)">
 										<div class="bg-black/5 p-2 rounded-lg flex items-center shrink-0">
