@@ -73,22 +73,22 @@
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-{#if !authed}
-	<!-- Waiting for auth check -->
-{:else if isMobile}
+{#if isMobile}
 	<div class="fixed inset-0 z-50 bg-[#271c0c] flex flex-col items-center justify-center gap-4 p-8 text-center">
 		<p class="font-cook text-[32px] font-semibold text-[#f3e8d8] leading-tight">THIS SITE ISN'T READY FOR MOBILE YET.</p>
 		<p class="font-bricolage text-[18px] font-semibold text-[#f3e8d8] tracking-wide">We recommend opening this on desktop.</p>
 	</div>
 {:else}
 	<BG {disableAnimations}>
-		{#key page.url.pathname}
-			<div
-				class="page-transition"
-			>
-				{@render children()}
-			</div>
-		{/key}
+		{#if authed}
+			{#key page.url.pathname}
+				<div
+					class="page-transition"
+				>
+					{@render children()}
+				</div>
+			{/key}
+		{/if}
 	</BG>
 {/if}
 

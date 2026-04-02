@@ -15,6 +15,15 @@
 
 	const showPattern = $derived(!backgroundImage && backgroundPattern);
 	const bgUrl = $derived(backgroundImage || bgPattern);
+
+	// Compute animation delay synchronously so it's set before first render.
+	// This syncs the animation to wall-clock time so the background appears
+	// continuous across page transitions.
+	const ANIMATION_DURATION_MS = 40_000;
+	const patternDelay = (() => {
+		if (typeof window === 'undefined') return '0ms';
+		return `${-(performance.now() % ANIMATION_DURATION_MS)}ms`;
+	})();
 </script>
 
 <div class="bg-content relative size-full overflow-hidden {className}" style="background-color: var(--bg-color, #f3e8d8)">
@@ -30,7 +39,7 @@
 			<div
 				class="w-[300%] h-[300%] pointer-events-none bg-repeat"
 				class:pattern-slide={!disableAnimations}
-				style="background-image: url({bgPattern}); background-size: 1600px; opacity: {backgroundOpacity};"
+				style="background-image: url({bgPattern}); background-size: 1600px; opacity: {backgroundOpacity}; animation-delay: {patternDelay};"
 			></div>
 		</div>
 	{/if}
