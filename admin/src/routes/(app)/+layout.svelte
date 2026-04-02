@@ -1,8 +1,10 @@
 <script lang="ts">
     import { page } from '$app/stores';
+    import { goto } from '$app/navigation';
     import { api, type components } from '$lib/api';
+    import { onMount } from 'svelte';
 
-    let { children, data } = $props();
+    let { children } = $props();
 
     type Metrics = {
         totalHackatimeHours: number;
@@ -12,11 +14,34 @@
         totalSubmittedHackatimeHours: number;
     };
 
-    let metrics = $state<Metrics>(data.metrics);
+    let user = $state<{ email: string; role: string } | null>(null);
+    let metrics = $state<Metrics>({
+        totalHackatimeHours: 0,
+        totalApprovedHours: 0,
+        totalUsers: 0,
+        totalProjects: 0,
+        totalSubmittedHackatimeHours: 0,
+    });
     let metricsLoading = $state(false);
     let recalcAllBusy = $state(false);
     let bulkProjectMessage = $state('');
     let bulkProjectError = $state('');
+    let loading = $state(true);
+
+    onMount(async () => {
+        const { data: userData, error } = await api.GET('/api/user/auth/me');
+        if (error || !userData) {
+            goto('/login');
+            return;
+        }
+        if (userData.role !== 'admin') {
+            goto('/app/projects');
+            return;
+        }
+        user = userData as any;
+        await loadMetrics();
+        loading = false;
+    });
 
     function formatTotalHoursValue(value: number) {
         return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -75,12 +100,17 @@
     }
 </script>
 
+{#if loading}
+    <div class="min-h-screen bg-gray-950 flex items-center justify-center">
+        <p class="text-white text-lg">Loading...</p>
+    </div>
+{:else}
 <div class="min-h-screen bg-gray-950 text-white p-4 md:p-6 overflow-x-hidden">
     <div class="max-w-7xl mx-auto space-y-8 w-full">
         <header class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
                 <h1 class="text-4xl font-bold">Admin Panel</h1>
-                <p class="text-gray-300">Signed in as {data.user.email}</p>
+                <p class="text-gray-300">Signed in as {user?.email}</p>
             </div>
             <nav class="flex gap-2 flex-wrap">
                 {#each navItems as item}
@@ -146,3 +176,4 @@
         {@render children()}
     </div>
 </div>
+{/if}
