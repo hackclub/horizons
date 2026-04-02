@@ -5,4 +5,3 @@ export class InitialRsvpDto {
   @IsEmail({}, { message: 'Please enter a valid email address' })
   email: string;
 }
-

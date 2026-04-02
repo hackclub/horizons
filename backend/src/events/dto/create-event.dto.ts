@@ -1,10 +1,20 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, IsDateString, MaxLength, Matches, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  IsDateString,
+  MaxLength,
+  Matches,
+  Min,
+} from 'class-validator';
 
 export class CreateEventDto {
   @IsString()
   @MaxLength(100)
   @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/, {
-    message: 'Slug must be lowercase alphanumeric with hyphens (e.g. "my-event")',
+    message:
+      'Slug must be lowercase alphanumeric with hyphens (e.g. "my-event")',
   })
   slug: string;
 

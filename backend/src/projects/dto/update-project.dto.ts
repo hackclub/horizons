@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUrl, MaxLength, IsArray, ArrayMinSize } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  IsArray,
+  ArrayMinSize,
+} from 'class-validator';
 
 export class UpdateProjectDto {
   @ApiPropertyOptional({ description: 'Project title', maxLength: 30 })
@@ -41,11 +48,13 @@ export class UpdateProjectDto {
   @IsOptional()
   journalUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Linked Hackatime project names', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Linked Hackatime project names',
+    type: [String],
+  })
   @IsArray()
   @IsOptional()
   @ArrayMinSize(1)
   @IsString({ each: true })
   nowHackatimeProjects?: string[];
-
 }

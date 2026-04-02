@@ -1,4 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Req, ParseIntPipe, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+  ParseIntPipe,
+  NotFoundException,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiCreatedResponse, ApiQuery } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ShopService } from './shop.service';
@@ -52,7 +65,10 @@ export class ShopController {
 
   @Get(':slug/items/:id')
   @ApiOkResponse({ type: ShopItemResponse })
-  async getItem(@Param('slug') slug: string, @Param('id', ParseIntPipe) id: number) {
+  async getItem(
+    @Param('slug') slug: string,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const shop = await this.shopService.getShopBySlug(slug);
     if (!shop.isActive || !shop.isPublic) {
       throw new NotFoundException('Shop not found');
@@ -73,8 +89,15 @@ export class ShopAuthController {
 
   @Post('purchase')
   @ApiCreatedResponse({ type: PurchaseResponse })
-  async purchaseItem(@Body() purchaseItemDto: PurchaseItemDto, @Req() req: Request) {
-    return this.shopService.purchaseItem(req.user.userId, purchaseItemDto.itemId, purchaseItemDto.variantId);
+  async purchaseItem(
+    @Body() purchaseItemDto: PurchaseItemDto,
+    @Req() req: Request,
+  ) {
+    return this.shopService.purchaseItem(
+      req.user.userId,
+      purchaseItemDto.itemId,
+      purchaseItemDto.variantId,
+    );
   }
 
   @Get('transactions')
@@ -91,7 +114,10 @@ export class ShopAuthController {
 
   @Post('pinned-item')
   @ApiCreatedResponse({ type: PinnedItemResponse })
-  async setPinnedItem(@Body('itemId', ParseIntPipe) itemId: number, @Req() req: Request) {
+  async setPinnedItem(
+    @Body('itemId', ParseIntPipe) itemId: number,
+    @Req() req: Request,
+  ) {
     return this.shopService.setPinnedItem(req.user.userId, itemId);
   }
 
@@ -213,7 +239,9 @@ export class ShopAdminController {
 
   @Put('transactions/:id/fulfill')
   @ApiOkResponse({ type: AdminTransactionResponse })
-  async markTransactionFulfilled(@Param('id', ParseIntPipe) transactionId: number) {
+  async markTransactionFulfilled(
+    @Param('id', ParseIntPipe) transactionId: number,
+  ) {
     return this.shopService.markTransactionFulfilled(transactionId);
   }
 

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -133,7 +137,9 @@ export class EventsService {
   }
 
   async removePinnedEvent(userId: number) {
-    const pinned = await this.prisma.pinnedEvent.findUnique({ where: { userId } });
+    const pinned = await this.prisma.pinnedEvent.findUnique({
+      where: { userId },
+    });
     if (!pinned) {
       throw new NotFoundException('No pinned event found');
     }

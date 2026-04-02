@@ -15,9 +15,11 @@ export class SmimeUtil {
   constructor(certData: SmimeCertificate) {
     this.privateKey = forge.pki.privateKeyFromPem(certData.privateKey);
     this.certificate = forge.pki.certificateFromPem(certData.certificate);
-    
+
     if (certData.chain) {
-      this.chain = certData.chain.map(cert => forge.pki.certificateFromPem(cert));
+      this.chain = certData.chain.map((cert) =>
+        forge.pki.certificateFromPem(cert),
+      );
     }
   }
 
@@ -28,14 +30,16 @@ export class SmimeUtil {
 
     const bags = p12.getBags({ bagType: forge.pki.oids.certBag });
     const certBag = bags[forge.pki.oids.certBag];
-    
-    const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
+
+    const keyBags = p12.getBags({
+      bagType: forge.pki.oids.pkcs8ShroudedKeyBag,
+    });
     const keyBag = keyBags[forge.pki.oids.pkcs8ShroudedKeyBag];
 
     if (!certBag || certBag.length === 0) {
       throw new Error('No certificate found in P12 file');
     }
-    
+
     if (!keyBag || keyBag.length === 0) {
       throw new Error('No private key found in P12 file');
     }
@@ -44,7 +48,9 @@ export class SmimeUtil {
     const privateKey = keyBag[0].key;
 
     if (!certificate || !privateKey) {
-      throw new Error('Failed to extract certificate or private key from P12 file');
+      throw new Error(
+        'Failed to extract certificate or private key from P12 file',
+      );
     }
 
     const chain: string[] = [];
@@ -71,7 +77,7 @@ export class SmimeUtil {
 
     fs.writeFileSync(`${outputDir}/private-key.pem`, certData.privateKey);
     fs.writeFileSync(`${outputDir}/certificate.pem`, certData.certificate);
-    
+
     if (certData.chain && certData.chain.length > 0) {
       fs.writeFileSync(`${outputDir}/chain.pem`, certData.chain.join('\n'));
     }
@@ -80,9 +86,9 @@ export class SmimeUtil {
   createDetachedSignature(message: string): string {
     const p7 = forge.pkcs7.createSignedData();
     p7.content = forge.util.createBuffer(message, 'utf8');
-    
+
     p7.addCertificate(this.certificate);
-    this.chain.forEach(cert => p7.addCertificate(cert));
+    this.chain.forEach((cert) => p7.addCertificate(cert));
 
     p7.addSigner({
       key: this.privateKey as any,
@@ -91,16 +97,16 @@ export class SmimeUtil {
       authenticatedAttributes: [
         {
           type: forge.pki.oids.contentType,
-          value: forge.pki.oids.data
+          value: forge.pki.oids.data,
         },
         {
-          type: forge.pki.oids.messageDigest
+          type: forge.pki.oids.messageDigest,
         },
         {
           type: forge.pki.oids.signingTime,
-          value: new Date().toISOString()
-        }
-      ]
+          value: new Date().toISOString(),
+        },
+      ],
     });
 
     p7.sign({ detached: true });
@@ -108,12 +114,15 @@ export class SmimeUtil {
     return forge.util.encode64(forge.asn1.toDer(p7.toAsn1()).getBytes());
   }
 
-  signAndEncrypt(message: string, recipientCert?: forge.pki.Certificate): string {
+  signAndEncrypt(
+    message: string,
+    recipientCert?: forge.pki.Certificate,
+  ): string {
     const p7 = forge.pkcs7.createSignedData();
     p7.content = forge.util.createBuffer(message, 'utf8');
-    
+
     p7.addCertificate(this.certificate);
-    this.chain.forEach(cert => p7.addCertificate(cert));
+    this.chain.forEach((cert) => p7.addCertificate(cert));
 
     p7.addSigner({
       key: this.privateKey as any,
@@ -122,30 +131,33 @@ export class SmimeUtil {
       authenticatedAttributes: [
         {
           type: forge.pki.oids.contentType,
-          value: forge.pki.oids.data
+          value: forge.pki.oids.data,
         },
         {
-          type: forge.pki.oids.messageDigest
+          type: forge.pki.oids.messageDigest,
         },
         {
           type: forge.pki.oids.signingTime,
-          value: new Date().toISOString()
-        }
-      ]
+          value: new Date().toISOString(),
+        },
+      ],
     });
 
     p7.sign();
 
     if (recipientCert) {
       const p7Encrypted = forge.pkcs7.createEnvelopedData();
-      p7Encrypted.content = forge.util.createBuffer(forge.asn1.toDer(p7.toAsn1()).getBytes());
+      p7Encrypted.content = forge.util.createBuffer(
+        forge.asn1.toDer(p7.toAsn1()).getBytes(),
+      );
       p7Encrypted.addRecipient(recipientCert);
       p7Encrypted.encrypt();
 
-      return forge.util.encode64(forge.asn1.toDer(p7Encrypted.toAsn1()).getBytes());
+      return forge.util.encode64(
+        forge.asn1.toDer(p7Encrypted.toAsn1()).getBytes(),
+      );
     }
 
     return forge.util.encode64(forge.asn1.toDer(p7.toAsn1()).getBytes());
   }
 }
-

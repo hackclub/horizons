@@ -6,9 +6,12 @@ export class DashboardController {
   // private mailServicePrisma: PrismaClient;
 
   constructor() {
-    const mailDbUrl = process.env.MAIL_SERVICE_DATABASE_URL || process.env.DATABASE_URL;
+    const mailDbUrl =
+      process.env.MAIL_SERVICE_DATABASE_URL || process.env.DATABASE_URL;
     if (!mailDbUrl) {
-      throw new Error('MAIL_SERVICE_DATABASE_URL or DATABASE_URL must be configured');
+      throw new Error(
+        'MAIL_SERVICE_DATABASE_URL or DATABASE_URL must be configured',
+      );
     }
 
     // this.mailServicePrisma = new PrismaClient({
@@ -91,9 +94,7 @@ export class DashboardController {
     return { message: 'getStats logged' };
   }
 
-
   async onModuleDestroy() {
     // await this.mailServicePrisma.$disconnect();
   }
 }
-

@@ -6,4 +6,3 @@ export enum ProjectType {
   CrossPlatformPlayable = 'cross_platform_playable',
   Hardware = 'hardware',
 }
- 

@@ -17,7 +17,9 @@ export class AirtableBackfillService implements OnModuleInit {
     console.log('[AirtableBackfill] Starting user backfill...');
     try {
       await this.run();
-      console.log('[AirtableBackfill] Backfill complete. You can now remove RUN_AIRTABLE_USERS_BACKFILL.');
+      console.log(
+        '[AirtableBackfill] Backfill complete. You can now remove RUN_AIRTABLE_USERS_BACKFILL.',
+      );
     } catch (error) {
       console.error('[AirtableBackfill] Backfill failed:', error);
     }
@@ -46,16 +48,26 @@ export class AirtableBackfillService implements OnModuleInit {
     console.log(`[AirtableBackfill] Processing ${users.length} users...`);
 
     let synced = 0;
-    let skipped = 0;
+    const skipped = 0;
     let failed = 0;
 
     for (const user of users) {
       try {
-        await this.airtableService.syncUserEvent(user.email, user.userId, 'signUp', this.toDateString(user.createdAt));
+        await this.airtableService.syncUserEvent(
+          user.email,
+          user.userId,
+          'signUp',
+          this.toDateString(user.createdAt),
+        );
 
         const firstProject = user.projects[0];
         if (firstProject) {
-          await this.airtableService.syncUserEvent(user.email, user.userId, 'firstProjectCreated', this.toDateString(firstProject.createdAt));
+          await this.airtableService.syncUserEvent(
+            user.email,
+            user.userId,
+            'firstProjectCreated',
+            this.toDateString(firstProject.createdAt),
+          );
         }
 
         let earliestSubmission: Date | null = null;
@@ -68,7 +80,12 @@ export class AirtableBackfillService implements OnModuleInit {
           }
         }
         if (earliestSubmission) {
-          await this.airtableService.syncUserEvent(user.email, user.userId, 'firstSubmit', this.toDateString(earliestSubmission));
+          await this.airtableService.syncUserEvent(
+            user.email,
+            user.userId,
+            'firstSubmit',
+            this.toDateString(earliestSubmission),
+          );
         }
 
         synced++;
@@ -81,7 +98,9 @@ export class AirtableBackfillService implements OnModuleInit {
       await this.sleep(700);
     }
 
-    console.log(`[AirtableBackfill] Done. Synced: ${synced}, Failed: ${failed}, Skipped: ${skipped}`);
+    console.log(
+      `[AirtableBackfill] Done. Synced: ${synced}, Failed: ${failed}, Skipped: ${skipped}`,
+    );
   }
 
   private toDateString(date: Date): string {

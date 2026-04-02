@@ -21,4 +21,3 @@ export class CompleteRsvpDto {
   @IsOptional()
   referralCode?: string;
 }
-

@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../prisma.service';
 import { IS_PUBLIC_KEY } from './public.decorator';
@@ -21,7 +26,7 @@ export class AuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const sessionId = request.cookies?.sessionId;
-    
+
     if (!sessionId) {
       throw new UnauthorizedException('Session required');
     }

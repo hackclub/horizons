@@ -1,4 +1,11 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, MaxLength, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UpdateVariantDto {
   @IsString()
@@ -15,5 +22,3 @@ export class UpdateVariantDto {
   @IsOptional()
   isActive?: boolean;
 }
-
-

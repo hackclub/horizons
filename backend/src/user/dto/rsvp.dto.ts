@@ -1,4 +1,10 @@
-import { IsString, IsEmail, IsNotEmpty, IsOptional, Matches } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  Matches,
+} from 'class-validator';
 
 export class CreateRsvpDto {
   @IsString()
@@ -20,4 +26,3 @@ export class CreateRsvpDto {
   })
   birthday?: string;
 }
-

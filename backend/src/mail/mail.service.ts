@@ -29,8 +29,10 @@ export class MailService {
     private prisma: PrismaService,
     private jobLock: JobLockService,
   ) {
-    console.log('[Mail DISABLED] MailService initialized - emails will be logged instead of sent');
-    
+    console.log(
+      '[Mail DISABLED] MailService initialized - emails will be logged instead of sent',
+    );
+
     // const smtpHost = process.env.SMTP_HOST || `email-smtp.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`;
     // const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
     // const smtpUser = process.env.SMTP_USER;
@@ -160,7 +162,7 @@ export class MailService {
   //       const certData: SmimeCertificate = {
   //         privateKey: this.loadCertContent(smimePrivateKeyPath),
   //         certificate: this.loadCertContent(smimeCertPath),
-  //         chain: smimeChainPath 
+  //         chain: smimeChainPath
   //           ? [this.loadCertContent(smimeChainPath)]
   //           : undefined,
   //       };
@@ -181,7 +183,7 @@ export class MailService {
   //   if (fs.existsSync(pathOrBase64)) {
   //     return fs.readFileSync(pathOrBase64, 'utf8');
   //   }
-    
+
   //   try {
   //     return Buffer.from(pathOrBase64, 'base64').toString('utf8');
   //   } catch (error) {
@@ -191,7 +193,7 @@ export class MailService {
 
   // private createMimeMessage(from: string, to: string, subject: string, htmlContent: string): string {
   //   const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
+
   //   let message = `From: ${from}\r\n`;
   //   message += `To: ${to}\r\n`;
   //   message += `Subject: ${subject}\r\n`;
@@ -208,47 +210,74 @@ export class MailService {
   //   message += htmlContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
   //   message += `\r\n`;
   //   message += `--${boundary}--\r\n`;
-    
+
   //   return message;
   // }
 
-  async sendRsvpEmail(email: string, rsvpNumber?: number, rafflePosition?: number, stickerToken?: string): Promise<{ success: boolean }> {
+  async sendRsvpEmail(
+    email: string,
+    rsvpNumber?: number,
+    rafflePosition?: number,
+    stickerToken?: string,
+  ): Promise<{ success: boolean }> {
     console.log('=== MAIL SERVICE DEBUG ===');
-    debugLog(`sendRsvpEmail called with: email=${email}, rsvpNumber=${rsvpNumber}, rafflePosition=${rafflePosition}, stickerToken=${stickerToken ? 'present' : 'null'}`);
-    console.log(`rafflePosition type: ${typeof rafflePosition}, value: ${rafflePosition}, isUndefined: ${rafflePosition === undefined}, isNull: ${rafflePosition === null}`);
-    
-    await this.sendImmediateEmail(email, this.emailTemplate, 'To my dear nibbling...', {
-      smimeEnabled: this.smimeEnabled,
-      type: 'rsvp-confirmation',
-    });
+    debugLog(
+      `sendRsvpEmail called with: email=${email}, rsvpNumber=${rsvpNumber}, rafflePosition=${rafflePosition}, stickerToken=${stickerToken ? 'present' : 'null'}`,
+    );
+    console.log(
+      `rafflePosition type: ${typeof rafflePosition}, value: ${rafflePosition}, isUndefined: ${rafflePosition === undefined}, isNull: ${rafflePosition === null}`,
+    );
 
-    console.log(`Checking sticker email conditions: rsvpNumber=${!!rsvpNumber}, rsvpNumber<=5000=${rsvpNumber ? rsvpNumber <= 5000 : 'N/A'}`);
-    
+    await this.sendImmediateEmail(
+      email,
+      this.emailTemplate,
+      'To my dear nibbling...',
+      {
+        smimeEnabled: this.smimeEnabled,
+        type: 'rsvp-confirmation',
+      },
+    );
+
+    console.log(
+      `Checking sticker email conditions: rsvpNumber=${!!rsvpNumber}, rsvpNumber<=5000=${rsvpNumber ? rsvpNumber <= 5000 : 'N/A'}`,
+    );
+
     if (rsvpNumber && rsvpNumber <= 5000) {
       const scheduledFor = new Date();
       scheduledFor.setMinutes(scheduledFor.getMinutes() + 5);
-      
-      const stickerUrl = stickerToken 
+
+      const stickerUrl = stickerToken
         ? `https://forms.hackclub.com/midnight-stickers?owl_tkn=${stickerToken}`
         : `https://forms.hackclub.com/midnight-stickers`;
-      const referralLink = rafflePosition !== undefined && rafflePosition !== null
-        ? `https://midnight.hackclub.com/?code=${rafflePosition}`
-        : `https://midnight.hackclub.com/`;
-      console.log(`Generated referralLink: ${referralLink} (from rafflePosition: ${rafflePosition})`);
+      const referralLink =
+        rafflePosition !== undefined && rafflePosition !== null
+          ? `https://midnight.hackclub.com/?code=${rafflePosition}`
+          : `https://midnight.hackclub.com/`;
+      console.log(
+        `Generated referralLink: ${referralLink} (from rafflePosition: ${rafflePosition})`,
+      );
       const emailContent = this.stickerEmailTemplate
         .replace(/{{rsvpNumber}}/g, rsvpNumber.toString())
         .replace(/{{stickerUrl}}/g, stickerUrl)
         .replace(/{{referralLink}}/g, referralLink);
 
-      await this.scheduleEmail(email, emailContent, 'Midnight + Free Framework 12 Laptop', scheduledFor, {
-        smimeEnabled: this.smimeEnabled,
-        rsvpNumber,
-        rafflePosition,
-        stickerToken,
-        type: 'early-supporter-stickers',
-      });
+      await this.scheduleEmail(
+        email,
+        emailContent,
+        'Midnight + Free Framework 12 Laptop',
+        scheduledFor,
+        {
+          smimeEnabled: this.smimeEnabled,
+          rsvpNumber,
+          rafflePosition,
+          stickerToken,
+          type: 'early-supporter-stickers',
+        },
+      );
     } else {
-      console.log(`Sticker email NOT scheduled. Reason: rsvpNumber=${rsvpNumber || 'MISSING'}, rsvpNumber<=5000=${rsvpNumber ? (rsvpNumber <= 5000 ? 'YES' : `NO (${rsvpNumber})`) : 'N/A'}`);
+      console.log(
+        `Sticker email NOT scheduled. Reason: rsvpNumber=${rsvpNumber || 'MISSING'}, rsvpNumber<=5000=${rsvpNumber ? (rsvpNumber <= 5000 ? 'YES' : `NO (${rsvpNumber})`) : 'N/A'}`,
+      );
     }
 
     return { success: true };
@@ -257,13 +286,18 @@ export class MailService {
   generateOtpEmailHtml(otp: string): string {
     const now = new Date();
     const dateStr = `${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
-    
+
     return this.otpEmailTemplate
       .replace(/{{otp}}/g, otp)
       .replace(/{{date}}/g, dateStr);
   }
 
-  async sendImmediateEmail(email: string, htmlContent: string, subject: string, metadata: any = {}): Promise<{ success: boolean }> {
+  async sendImmediateEmail(
+    email: string,
+    htmlContent: string,
+    subject: string,
+    metadata: any = {},
+  ): Promise<{ success: boolean }> {
     debugLog('[Mail DISABLED] === sendImmediateEmail CALLED ===');
     debugLog('[Mail DISABLED] To:', email);
     console.log('[Mail DISABLED] Subject:', subject);
@@ -289,7 +323,7 @@ export class MailService {
     debugLog(`[Mail DISABLED] Would have sent email to: ${email}`);
     debugLog(`[Mail DISABLED] From: ${fromEmail}`);
     console.log(`[Mail DISABLED] Subject: ${subject}`);
-    
+
     await this.prisma.emailJob.update({
       where: { id: emailJob.id },
       data: {
@@ -310,15 +344,15 @@ export class MailService {
     //   if (this.smimeEnabled && this.smimeUtil) {
     //     const htmlBoundary = `----=_Part_HTML_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     //     const signedBoundary = `----=_Part_Signed_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        
+
     //     let htmlPart = `Content-Type: text/html; charset="UTF-8"\r\n`;
     //     htmlPart += `Content-Transfer-Encoding: 7bit\r\n`;
     //     htmlPart += `\r\n`;
     //     htmlPart += htmlContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
-        
+
     //     const signature = this.smimeUtil.createDetachedSignature(htmlPart);
     //     const base64Lines = signature.match(/.{1,76}/g) || [];
-        
+
     //     let message = `From: ${from}\r\n`;
     //     message += `To: ${email}\r\n`;
     //     message += `Subject: ${subject}\r\n`;
@@ -348,7 +382,7 @@ export class MailService {
     //     });
 
     //     console.log('Successfully sent S/MIME signed email to:', email);
-        
+
     //     await this.prisma.emailJob.update({
     //       where: { id: emailJob.id },
     //       data: {
@@ -370,7 +404,7 @@ export class MailService {
     //     });
 
     //     console.log('Successfully sent email via SMTP:', info.messageId);
-        
+
     //     await this.prisma.emailJob.update({
     //       where: { id: emailJob.id },
     //       data: {
@@ -388,7 +422,7 @@ export class MailService {
     //   return { success: true };
     // } catch (error) {
     //   console.error('Error sending email:', error);
-      
+
     //   await this.prisma.emailJob.update({
     //     where: { id: emailJob.id },
     //     data: {
@@ -408,9 +442,15 @@ export class MailService {
     // }
   }
 
-  async scheduleEmail(email: string, htmlContent: string, subject: string, scheduledFor: Date, metadata: any = {}): Promise<{ success: boolean; jobId: string }> {
+  async scheduleEmail(
+    email: string,
+    htmlContent: string,
+    subject: string,
+    scheduledFor: Date,
+    metadata: any = {},
+  ): Promise<{ success: boolean; jobId: string }> {
     const fromEmail = process.env.EMAIL_FROM || 'noreply@midnight.hackclub.com';
-    
+
     const emailJob = await this.prisma.emailJob.create({
       data: {
         recipientEmail: email,
@@ -425,39 +465,50 @@ export class MailService {
       },
     });
 
-    debugLog(`Scheduled email for ${email} at ${scheduledFor.toISOString()}, job ID: ${emailJob.id}`);
+    debugLog(
+      `Scheduled email for ${email} at ${scheduledFor.toISOString()}, job ID: ${emailJob.id}`,
+    );
 
     return { success: true, jobId: emailJob.id };
   }
 
   async processScheduledEmails(): Promise<void> {
     const availableJobs = await this.jobLock.getAvailableJobs(50);
-    
-    console.log(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Found ${availableJobs.length} available email job(s)`);
+
+    console.log(
+      `[Mail DISABLED] [${this.jobLock.getWorkerId()}] Found ${availableJobs.length} available email job(s)`,
+    );
 
     let processed = 0;
     for (const job of availableJobs) {
       const lockAcquired = await this.jobLock.acquireJobLock(job.id);
-      
+
       if (!lockAcquired) {
-        console.log(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Failed to acquire lock for job ${job.id}, skipping`);
+        console.log(
+          `[Mail DISABLED] [${this.jobLock.getWorkerId()}] Failed to acquire lock for job ${job.id}, skipping`,
+        );
         continue;
       }
 
       processed++;
-      console.log(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Processing job ${job.id} (${processed}/${availableJobs.length})`);
+      console.log(
+        `[Mail DISABLED] [${this.jobLock.getWorkerId()}] Processing job ${job.id} (${processed}/${availableJobs.length})`,
+      );
 
       try {
         await this.jobLock.markJobProcessing(job.id);
 
-        const metadata = job.metadata as any;
+        const metadata = job.metadata;
         // const htmlContent = metadata.htmlContent || this.emailTemplate;
-        
-        const fromEmail = process.env.EMAIL_FROM || 'noreply@midnight.hackclub.com';
+
+        const fromEmail =
+          process.env.EMAIL_FROM || 'noreply@midnight.hackclub.com';
         // const from = `Midnight (Hack Club) <${fromEmail}>`;
 
         // Email sending is disabled - just log and mark as sent
-        debugLog(`[Mail DISABLED] Would have sent scheduled email to: ${job.recipientEmail}`);
+        debugLog(
+          `[Mail DISABLED] Would have sent scheduled email to: ${job.recipientEmail}`,
+        );
         debugLog(`[Mail DISABLED] From: ${fromEmail}`);
         console.log(`[Mail DISABLED] Subject: ${job.subject}`);
 
@@ -466,12 +517,12 @@ export class MailService {
         //   htmlPart += `Content-Transfer-Encoding: 7bit\r\n`;
         //   htmlPart += `\r\n`;
         //   htmlPart += htmlContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
-          
+
         //   const signature = this.smimeUtil.createDetachedSignature(htmlPart);
         //   const base64Lines = signature.match(/.{1,76}/g) || [];
-          
+
         //   const signedBoundary = `----=_Part_Signed_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-          
+
         //   let message = `From: ${from}\r\n`;
         //   message += `To: ${job.recipientEmail}\r\n`;
         //   message += `Subject: ${job.subject}\r\n`;
@@ -511,19 +562,26 @@ export class MailService {
         await this.jobLock.markJobSent(job.id);
         await this.jobLock.releaseJobLock(job.id);
 
-        debugLog(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Logged (not sent) email to: ${job.recipientEmail}`);
+        debugLog(
+          `[Mail DISABLED] [${this.jobLock.getWorkerId()}] Logged (not sent) email to: ${job.recipientEmail}`,
+        );
       } catch (error) {
-        console.error(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Error processing email job ${job.id}:`, error);
-        
+        console.error(
+          `[Mail DISABLED] [${this.jobLock.getWorkerId()}] Error processing email job ${job.id}:`,
+          error,
+        );
+
         await this.jobLock.markJobFailed(
           job.id,
-          error instanceof Error ? error.message : 'Unknown error'
+          error instanceof Error ? error.message : 'Unknown error',
         );
         await this.jobLock.releaseJobLock(job.id);
       }
     }
 
-    console.log(`[Mail DISABLED] [${this.jobLock.getWorkerId()}] Processed ${processed} email job(s)`);
+    console.log(
+      `[Mail DISABLED] [${this.jobLock.getWorkerId()}] Processed ${processed} email job(s)`,
+    );
   }
 
   async sendSubmissionReviewEmail(
@@ -546,7 +604,7 @@ export class MailService {
     const projectUrl = `${process.env.FRONTEND_URL || 'https://midnight.hackclub.com'}/app/projects/${data.projectId}`;
 
     // Use the appropriate template based on approval status
-    let emailTemplate = data.approved
+    const emailTemplate = data.approved
       ? this.submissionApprovedEmailTemplate
       : this.submissionDeniedEmailTemplate;
 
@@ -558,7 +616,10 @@ export class MailService {
 
     // For approved emails, replace approved hours
     if (data.approved && data.approvedHours !== undefined) {
-      emailContent = emailContent.replace(/\{\{approvedHours\}\}/g, data.approvedHours.toString());
+      emailContent = emailContent.replace(
+        /\{\{approvedHours\}\}/g,
+        data.approvedHours.toString(),
+      );
     }
 
     // Handle feedback section (only in approved template is it optional)
@@ -569,7 +630,10 @@ export class MailService {
       emailContent = emailContent.replace(/\{\{\/if\}\}/g, '');
     } else {
       // Remove the entire feedback section if no feedback
-      emailContent = emailContent.replace(/\{\{#if feedback\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+      emailContent = emailContent.replace(
+        /\{\{#if feedback\}\}[\s\S]*?\{\{\/if\}\}/g,
+        '',
+      );
     }
 
     await this.sendImmediateEmail(email, emailContent, subject, {
@@ -579,7 +643,9 @@ export class MailService {
       approved: data.approved,
     });
 
-    debugLog(`Sent submission review email to: ${email} (Project: ${data.projectTitle}, Approved: ${data.approved})`);
+    debugLog(
+      `Sent submission review email to: ${email} (Project: ${data.projectTitle}, Approved: ${data.approved})`,
+    );
 
     return { success: true };
   }
@@ -603,10 +669,15 @@ export class MailService {
       .replace(/\{\{imageUrl\}\}/g, data.imageUrl)
       .replace(/\{\{claimUrl\}\}/g, data.claimUrl);
 
-    await this.sendImmediateEmail(email, emailContent, 'Claim your stickers here!', {
-      smimeEnabled: this.smimeEnabled,
-      type: 'gift-code-claim',
-    });
+    await this.sendImmediateEmail(
+      email,
+      emailContent,
+      'Claim your stickers here!',
+      {
+        smimeEnabled: this.smimeEnabled,
+        type: 'gift-code-claim',
+      },
+    );
 
     debugLog(`Sent gift code claim email to: ${email}`);
 
@@ -633,13 +704,20 @@ export class MailService {
       .replace(/\{\{itemDescription\}\}/g, data.itemDescription)
       .replace(/\{\{ordersUrl\}\}/g, ordersUrl);
 
-    await this.sendImmediateEmail(email, emailContent, `Your order has been fulfilled!`, {
-      smimeEnabled: this.smimeEnabled,
-      type: 'order-fulfilled',
-      transactionId: data.transactionId,
-    });
+    await this.sendImmediateEmail(
+      email,
+      emailContent,
+      `Your order has been fulfilled!`,
+      {
+        smimeEnabled: this.smimeEnabled,
+        type: 'order-fulfilled',
+        transactionId: data.transactionId,
+      },
+    );
 
-    debugLog(`Sent order fulfilled email to: ${email} (Transaction: ${data.transactionId})`);
+    debugLog(
+      `Sent order fulfilled email to: ${email} (Transaction: ${data.transactionId})`,
+    );
 
     return { success: true };
   }

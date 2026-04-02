@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ProjectsController, ProjectsAuthController } from './projects.controller';
+import {
+  ProjectsController,
+  ProjectsAuthController,
+} from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { PrismaService } from '../prisma.service';
 import { RedisService } from '../redis.service';

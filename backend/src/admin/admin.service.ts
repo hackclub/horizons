@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
 
@@ -17,6 +21,8 @@ const projectAdminInclude = {
       country: true,
       zipCode: true,
       hackatimeAccount: true,
+      referralCode: true,
+      referredByUserId: true,
       isFraud: true,
       isSus: true,
       createdAt: true,
@@ -54,6 +60,8 @@ export class AdminService {
                 country: true,
                 zipCode: true,
                 hackatimeAccount: true,
+                referralCode: true,
+                referredByUserId: true,
                 airtableRecId: true,
                 isFraud: true,
                 isSus: true,
@@ -119,7 +127,9 @@ export class AdminService {
       throw new NotFoundException('Project not found');
     }
 
-    const baseUrl = process.env.HACKATIME_ADMIN_API_URL || 'https://hackatime.hackclub.com/api/admin/v1';
+    const baseUrl =
+      process.env.HACKATIME_ADMIN_API_URL ||
+      'https://hackatime.hackclub.com/api/admin/v1';
     const apiKey = process.env.HACKATIME_API_KEY;
 
     const cache = new Map<string, Map<string, number>>();
@@ -143,7 +153,9 @@ export class AdminService {
     });
 
     const cache = new Map<string, Map<string, number>>();
-    const baseUrl = process.env.HACKATIME_ADMIN_API_URL || 'https://hackatime.hackclub.com/api/admin/v1';
+    const baseUrl =
+      process.env.HACKATIME_ADMIN_API_URL ||
+      'https://hackatime.hackclub.com/api/admin/v1';
     const apiKey = process.env.HACKATIME_API_KEY;
 
     const updated: Array<{ projectId: number; nowHackatimeHours: number }> = [];
@@ -187,7 +199,13 @@ export class AdminService {
   }
 
   async getTotals() {
-    const [hackatimeAggregate, approvedAggregate, totalUsers, totalProjects, submittedProjects] = await Promise.all([
+    const [
+      hackatimeAggregate,
+      approvedAggregate,
+      totalUsers,
+      totalProjects,
+      submittedProjects,
+    ] = await Promise.all([
       this.prisma.project.aggregate({
         _sum: { nowHackatimeHours: true },
       }),
@@ -281,13 +299,26 @@ export class AdminService {
       },
     });
 
-    const reviewerStats = new Map<string, { approved: number; rejected: number; total: number; lastReviewedAt: Date | null }>();
+    const reviewerStats = new Map<
+      string,
+      {
+        approved: number;
+        rejected: number;
+        total: number;
+        lastReviewedAt: Date | null;
+      }
+    >();
 
     for (const submission of reviewedSubmissions) {
       if (!submission.reviewedBy) continue;
 
-      const stats = reviewerStats.get(submission.reviewedBy) || { approved: 0, rejected: 0, total: 0, lastReviewedAt: null };
-      
+      const stats = reviewerStats.get(submission.reviewedBy) || {
+        approved: 0,
+        rejected: 0,
+        total: 0,
+        lastReviewedAt: null,
+      };
+
       if (submission.approvalStatus === 'approved') {
         stats.approved++;
       } else if (submission.approvalStatus === 'rejected') {
@@ -295,15 +326,20 @@ export class AdminService {
       }
       stats.total++;
 
-      if (submission.reviewedAt && (!stats.lastReviewedAt || submission.reviewedAt > stats.lastReviewedAt)) {
+      if (
+        submission.reviewedAt &&
+        (!stats.lastReviewedAt || submission.reviewedAt > stats.lastReviewedAt)
+      ) {
         stats.lastReviewedAt = submission.reviewedAt;
       }
 
       reviewerStats.set(submission.reviewedBy, stats);
     }
 
-    const reviewerUserIds = Array.from(reviewerStats.keys()).map(id => parseInt(id)).filter(id => !isNaN(id));
-    
+    const reviewerUserIds = Array.from(reviewerStats.keys())
+      .map((id) => parseInt(id))
+      .filter((id) => !isNaN(id));
+
     const reviewerUsers = await this.prisma.user.findMany({
       where: { userId: { in: reviewerUserIds } },
       select: {
@@ -314,21 +350,23 @@ export class AdminService {
       },
     });
 
-    const userMap = new Map(reviewerUsers.map(u => [u.userId.toString(), u]));
+    const userMap = new Map(reviewerUsers.map((u) => [u.userId.toString(), u]));
 
-    const leaderboard = Array.from(reviewerStats.entries()).map(([reviewerId, stats]) => {
-      const user = userMap.get(reviewerId);
-      return {
-        reviewerId,
-        firstName: user?.firstName || null,
-        lastName: user?.lastName || null,
-        email: user?.email || null,
-        approved: stats.approved,
-        rejected: stats.rejected,
-        total: stats.total,
-        lastReviewedAt: stats.lastReviewedAt,
-      };
-    });
+    const leaderboard = Array.from(reviewerStats.entries()).map(
+      ([reviewerId, stats]) => {
+        const user = userMap.get(reviewerId);
+        return {
+          reviewerId,
+          firstName: user?.firstName || null,
+          lastName: user?.lastName || null,
+          email: user?.email || null,
+          approved: stats.approved,
+          rejected: stats.rejected,
+          total: stats.total,
+          lastReviewedAt: stats.lastReviewedAt,
+        };
+      },
+    );
 
     leaderboard.sort((a, b) => b.total - a.total);
 
@@ -416,14 +454,16 @@ export class AdminService {
 
     if (slackUserId) {
       const existingLink = await this.prisma.user.findFirst({
-        where: { 
+        where: {
           slackUserId,
           NOT: { userId },
         },
       });
 
       if (existingLink) {
-        throw new BadRequestException(`This Slack ID is already linked to user: ${existingLink.email}`);
+        throw new BadRequestException(
+          `This Slack ID is already linked to user: ${existingLink.email}`,
+        );
       }
     }
 
@@ -483,7 +523,10 @@ export class AdminService {
       if (strict) {
         throw new BadRequestException('User has no hackatime account linked');
       }
-      return { skipped: true as const, reason: 'missing_hackatime_account' as const };
+      return {
+        skipped: true as const,
+        reason: 'missing_hackatime_account' as const,
+      };
     }
 
     const hackatimeProjects = project.nowHackatimeProjects || [];
@@ -541,10 +584,13 @@ export class AdminService {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
-    const response = await fetch(`${baseUrl}/user/projects?id=${hackatimeAccount}`, {
-      method: 'GET',
-      headers,
-    });
+    const response = await fetch(
+      `${baseUrl}/user/projects?id=${hackatimeAccount}`,
+      {
+        method: 'GET',
+        headers,
+      },
+    );
 
     if (!response.ok) {
       throw new BadRequestException('Failed to fetch hackatime projects');
@@ -564,7 +610,8 @@ export class AdminService {
       const name = entry?.name || entry?.projectName;
 
       if (typeof name === 'string') {
-        const duration = typeof entry?.total_duration === 'number' ? entry.total_duration : 0;
+        const duration =
+          typeof entry?.total_duration === 'number' ? entry.total_duration : 0;
         projectsMap.set(name, duration);
       }
     };
@@ -585,7 +632,9 @@ export class AdminService {
     projectNames: string[],
     baseUrl: string,
     apiKey?: string,
-    cutoffDate: Date = new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z'),
+    cutoffDate: Date = new Date(
+      process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z',
+    ),
   ): Promise<Map<string, number>> {
     const startDate = cutoffDate.toISOString().split('T')[0];
     const uri = `https://hackatime.hackclub.com/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${startDate}`;
@@ -613,14 +662,15 @@ export class AdminService {
       if (response.ok) {
         const responseData = await response.json();
         const projects = responseData?.data?.projects;
-        
+
         if (projects && Array.isArray(projects)) {
           for (const project of projects) {
             const name = project?.name;
             if (typeof name === 'string' && projectNames.includes(name)) {
-              const duration = typeof project?.total_seconds === 'number' 
-                ? project.total_seconds 
-                : 0;
+              const duration =
+                typeof project?.total_seconds === 'number'
+                  ? project.total_seconds
+                  : 0;
               durationsMap.set(name, duration);
             }
           }
@@ -641,14 +691,17 @@ export class AdminService {
     apiKey?: string,
   ) {
     if (hackatimeAccount && baseUrl) {
-      const cutoffDate = new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z');
-      const filteredDurations = await this.fetchHackatimeProjectDurationsAfterDate(
-        hackatimeAccount,
-        projectNames,
-        baseUrl,
-        apiKey,
-        cutoffDate,
+      const cutoffDate = new Date(
+        process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z',
       );
+      const filteredDurations =
+        await this.fetchHackatimeProjectDurationsAfterDate(
+          hackatimeAccount,
+          projectNames,
+          baseUrl,
+          apiKey,
+          cutoffDate,
+        );
 
       let totalSeconds = 0;
       for (const name of projectNames) {
@@ -704,15 +757,17 @@ export class AdminService {
   }
 
   async getPriorityUsers() {
-    const priorityUsers = await this.prisma.$queryRaw<Array<{
-      user_id: number;
-      email: string;
-      first_name: string | null;
-      last_name: string | null;
-      total_approved_hours: number;
-      potential_hours_if_approved: number;
-      reason: string;
-    }>>`
+    const priorityUsers = await this.prisma.$queryRaw<
+      Array<{
+        user_id: number;
+        email: string;
+        first_name: string | null;
+        last_name: string | null;
+        total_approved_hours: number;
+        potential_hours_if_approved: number;
+        reason: string;
+      }>
+    >`
       WITH projects_with_pending AS (
         SELECT DISTINCT p.project_id
         FROM projects p
@@ -755,7 +810,7 @@ export class AdminService {
       ORDER BY total_approved_hours DESC, potential_hours_if_approved DESC
     `;
 
-    return priorityUsers.map(user => ({
+    return priorityUsers.map((user) => ({
       userId: user.user_id,
       email: user.email,
       firstName: user.first_name,
@@ -781,14 +836,14 @@ export class AdminService {
     });
 
     // Resolve admin user info
-    const adminIds = [...new Set(logs.map(l => l.adminId))];
+    const adminIds = [...new Set(logs.map((l) => l.adminId))];
     const admins = await this.prisma.user.findMany({
       where: { userId: { in: adminIds } },
       select: { userId: true, firstName: true, lastName: true, email: true },
     });
-    const adminMap = new Map(admins.map(a => [a.userId, a]));
+    const adminMap = new Map(admins.map((a) => [a.userId, a]));
 
-    return logs.map(log => ({
+    return logs.map((log) => ({
       ...log,
       admin: adminMap.get(log.adminId) || null,
     }));
@@ -799,7 +854,12 @@ export class AdminService {
       where: { projectId },
       include: {
         user: {
-          select: { userId: true, firstName: true, lastName: true, email: true },
+          select: {
+            userId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
         },
         submissions: {
           orderBy: { createdAt: 'asc' },
@@ -817,9 +877,20 @@ export class AdminService {
     }
 
     type TimelineEvent = {
-      type: 'project_created' | 'submission' | 'resubmission' | 'project_updated' | 'admin_review' | 'admin_update';
+      type:
+        | 'project_created'
+        | 'submission'
+        | 'resubmission'
+        | 'project_updated'
+        | 'admin_review'
+        | 'admin_update';
       timestamp: Date;
-      actor: { userId: number; firstName: string | null; lastName: string | null; email: string } | null;
+      actor: {
+        userId: number;
+        firstName: string | null;
+        lastName: string | null;
+        email: string;
+      } | null;
       details: Record<string, any>;
     };
 
@@ -837,8 +908,8 @@ export class AdminService {
     });
 
     // Resolve all admin IDs from audit logs + reviewedBy fields upfront
-    const allAuditLogs = project.submissions.flatMap(s => s.auditLogs);
-    const adminIds = new Set(allAuditLogs.map(l => l.adminId));
+    const allAuditLogs = project.submissions.flatMap((s) => s.auditLogs);
+    const adminIds = new Set(allAuditLogs.map((l) => l.adminId));
     for (const sub of project.submissions) {
       if (sub.reviewedBy) {
         const parsed = parseInt(sub.reviewedBy);
@@ -846,13 +917,19 @@ export class AdminService {
       }
     }
     const adminIdArray = [...adminIds];
-    const admins = adminIdArray.length > 0
-      ? await this.prisma.user.findMany({
-          where: { userId: { in: adminIdArray } },
-          select: { userId: true, firstName: true, lastName: true, email: true },
-        })
-      : [];
-    const adminMap = new Map(admins.map(a => [a.userId, a]));
+    const admins =
+      adminIdArray.length > 0
+        ? await this.prisma.user.findMany({
+            where: { userId: { in: adminIdArray } },
+            select: {
+              userId: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          })
+        : [];
+    const adminMap = new Map(admins.map((a) => [a.userId, a]));
 
     // 2. Submissions & 3. User project detail changes (diff between submissions)
     for (let i = 0; i < project.submissions.length; i++) {
@@ -877,7 +954,12 @@ export class AdminService {
       if (!isFirst) {
         const prev = project.submissions[i - 1];
         const changedFields: Record<string, { from: any; to: any }> = {};
-        for (const field of ['playableUrl', 'repoUrl', 'screenshotUrl', 'description'] as const) {
+        for (const field of [
+          'playableUrl',
+          'repoUrl',
+          'screenshotUrl',
+          'description',
+        ] as const) {
           if (submission[field] !== prev[field]) {
             changedFields[field] = { from: prev[field], to: submission[field] };
           }
@@ -914,13 +996,17 @@ export class AdminService {
 
       // Fallback: if submission was reviewed but has no audit log review entries,
       // synthesize one from the submission's own reviewedBy/reviewedAt fields
-      const hasAuditReview = submission.auditLogs.some(l => l.action === 'review');
+      const hasAuditReview = submission.auditLogs.some(
+        (l) => l.action === 'review',
+      );
       if (!hasAuditReview && submission.reviewedBy && submission.reviewedAt) {
         const reviewerAdminId = parseInt(submission.reviewedBy);
         events.push({
           type: 'admin_review',
           timestamp: submission.reviewedAt,
-          actor: !isNaN(reviewerAdminId) ? (adminMap.get(reviewerAdminId) || null) : null,
+          actor: !isNaN(reviewerAdminId)
+            ? adminMap.get(reviewerAdminId) || null
+            : null,
           details: {
             submissionId: submission.submissionId,
             newStatus: submission.approvalStatus,

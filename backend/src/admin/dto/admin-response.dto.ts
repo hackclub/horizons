@@ -40,6 +40,12 @@ export class AdminLightUserResponse {
   @ApiProperty({ type: String, nullable: true })
   slackUserId: string | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  referralCode: string | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  referredByUserId: number | null;
+
   @ApiProperty()
   isFraud: boolean;
 
@@ -488,7 +494,16 @@ class TimelineActorResponse {
 }
 
 class TimelineEventResponse {
-  @ApiProperty({ enum: ['project_created', 'submission', 'resubmission', 'project_updated', 'admin_review', 'admin_update'] })
+  @ApiProperty({
+    enum: [
+      'project_created',
+      'submission',
+      'resubmission',
+      'project_updated',
+      'admin_review',
+      'admin_update',
+    ],
+  })
   type: string;
 
   @ApiProperty()

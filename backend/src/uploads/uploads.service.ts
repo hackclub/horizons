@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export type UploadableFile = {
@@ -16,7 +21,9 @@ export class UploadsService {
   constructor(private configService: ConfigService) {
     this.apiKey = this.configService.get<string>('HC_CDN_API_KEY') ?? null;
     if (!this.apiKey) {
-      this.logger.warn('HC_CDN_API_KEY is not set – file uploads will be disabled');
+      this.logger.warn(
+        'HC_CDN_API_KEY is not set – file uploads will be disabled',
+      );
     }
   }
 
@@ -31,7 +38,9 @@ export class UploadsService {
       throw new BadRequestException('Only image uploads are allowed');
     }
 
-    const blob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
+    const blob = new Blob([new Uint8Array(file.buffer)], {
+      type: file.mimetype,
+    });
     const formData = new FormData();
     formData.append('file', blob, file.originalname);
 

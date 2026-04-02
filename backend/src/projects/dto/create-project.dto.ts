@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ArrayMinSize, IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+} from 'class-validator';
 import { ProjectType } from '../../../generated/prisma/client';
 
 export class CreateProjectDto {
@@ -39,7 +48,10 @@ export class CreateProjectDto {
   @IsOptional()
   screenshotUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Linked Hackatime project names', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Linked Hackatime project names',
+    type: [String],
+  })
   @IsArray()
   @IsOptional()
   @ArrayMinSize(1)

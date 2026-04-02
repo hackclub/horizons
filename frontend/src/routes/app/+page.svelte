@@ -34,6 +34,22 @@
 	};
 
 	let userName = $state('');
+	let referralCode = $state('');
+	let copiedReferral = $state(false);
+	let showPopover = $state(false);
+	let referralBtnEl = $state<HTMLButtonElement>();
+	let popoverPos = $state<{ top: number; left: number } | null>(null);
+
+	$effect(() => {
+		if (copiedReferral && referralBtnEl) {
+			const rect = referralBtnEl.getBoundingClientRect();
+			popoverPos = { top: rect.top - 8, left: rect.left + rect.width / 2 };
+			showPopover = true;
+		} else if (!copiedReferral && showPopover) {
+			// delay removal so popover-out animation can play
+			setTimeout(() => { showPopover = false; popoverPos = null; }, 200);
+		}
+	});
 	let approvedHours = $state(0);
 	let completedHours = $state(0);
 	const TARGET_HOURS = 30;
@@ -51,6 +67,11 @@
 
 		if (userRes.data?.firstName) {
 			userName = (userRes.data.firstName as string).toLowerCase();
+		}
+
+		const referralRes = await (api.GET)('/api/user/auth/referral-code');
+		if (referralRes.data?.referralCode) {
+			referralCode = referralRes.data.referralCode;
 		}
 		if (totalRes.data) {
 			completedHours = Math.round(((totalRes.data as any).totalNowHackatimeHours ?? 0) * 10) / 10;
@@ -322,6 +343,20 @@
 			{#if userName}
 				<div class="card user-card">
 					<p class="font-cook text-[24px] font-semibold text-black m-0">{userName}</p>
+					{#if referralCode}
+						<button class="logout-btn" bind:this={referralBtnEl} onclick={() => { navigator.clipboard.writeText(`${window.location.origin}/?ref=${referralCode}`); copiedReferral = true; setTimeout(() => copiedReferral = false, 2000); }} aria-label="Copy referral link">
+							{#if copiedReferral}
+								<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+								</svg>
+							{:else}
+								<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+									<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+								</svg>
+							{/if}
+						</button>
+					{/if}
 					<button class="logout-btn" onclick={async () => { await api.POST('/api/user/auth/logout'); window.location.href = '/'; }} aria-label="Logout">
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -334,6 +369,12 @@
 		</div>
 	</div>
 </div>
+
+{#if showPopover && popoverPos}
+	<div class="referral-popover" class:popover-out={!copiedReferral} style:top="{popoverPos.top}px" style:left="{popoverPos.left}px">
+		Link copied!
+	</div>
+{/if}
 
 <style>
 	/* Page layout — fill the absolute-positioned container exactly */
@@ -549,6 +590,32 @@
 	}
 	.logout-btn:hover {
 		opacity: 1;
+	}
+
+	.referral-popover {
+		position: fixed;
+		transform: translate(-50%, -100%);
+		background: black;
+		color: white;
+		font-family: var(--font-cook);
+		font-size: 14px;
+		padding: 6px 12px;
+		border-radius: 8px;
+		white-space: nowrap;
+		pointer-events: none;
+		z-index: 9999;
+		animation: popover-in 0.15s ease-out;
+	}
+	.referral-popover.popover-out {
+		animation: popover-out 0.2s ease-in forwards;
+	}
+	@keyframes popover-in {
+		from { opacity: 0; transform: translate(-50%, -100%) translateY(4px); }
+		to   { opacity: 1; transform: translate(-50%, -100%) translateY(0); }
+	}
+	@keyframes popover-out {
+		from { opacity: 1; transform: translate(-50%, -100%) translateY(0); }
+		to   { opacity: 0; transform: translate(-50%, -100%) translateY(4px); }
 	}
 
 	/* Entry / exit animations */

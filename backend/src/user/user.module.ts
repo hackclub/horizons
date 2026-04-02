@@ -9,10 +9,12 @@ import { SlackModule } from '../slack/slack.module';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{
-      ttl: 3600000,
-      limit: 1000000,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 3600000,
+        limit: 1000000,
+      },
+    ]),
     MailModule,
     SlackModule,
   ],

@@ -9,6 +9,6 @@ export class HealthController {
   @Get('/api/healthcheck')
   @HttpCode(200)
   async healthCheck() {
-    return { success: true, message: 'Health check passed' };  
+    return { success: true, message: 'Health check passed' };
   }
 }

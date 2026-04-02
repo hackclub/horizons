@@ -1,5 +1,10 @@
 import { Controller, Post, Get, Req, Res, Query, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiOkResponse,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -11,6 +16,7 @@ import {
   CompleteOnboardingResponse,
   OnboardingStatusResponse,
   RafflePosResponse,
+  ReferralCodeResponse,
 } from './response';
 
 @ApiTags('Auth')
@@ -48,9 +54,14 @@ export class AuthController {
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' as const : 'lax' as const,
+      sameSite:
+        process.env.NODE_ENV === 'production'
+          ? ('strict' as const)
+          : ('lax' as const),
       path: '/',
-      domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? undefined : 'localhost'),
+      domain:
+        process.env.COOKIE_DOMAIN ||
+        (process.env.NODE_ENV === 'production' ? undefined : 'localhost'),
     };
 
     res.cookie('sessionId', result.sessionId, {
@@ -69,9 +80,12 @@ export class AuthController {
     // const defaultPath = '/app';
     const redirectPath = result.redirectPath ?? defaultPath;
     // Prevent open redirect: only allow relative paths starting with /
-    const destination = (typeof redirectPath === 'string' && redirectPath.startsWith('/') && !redirectPath.startsWith('//'))
-      ? redirectPath
-      : '/app';
+    const destination =
+      typeof redirectPath === 'string' &&
+      redirectPath.startsWith('/') &&
+      !redirectPath.startsWith('//')
+        ? redirectPath
+        : '/app';
     res.redirect(destination);
   }
 
@@ -92,15 +106,23 @@ export class AuthController {
   @Post('logout')
   @ApiOperation({ summary: 'Logout and clear session' })
   @ApiOkResponse({ type: LogoutResponse })
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<LogoutResponse> {
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<LogoutResponse> {
     const sessionId = req.cookies.sessionId;
 
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' as const : 'lax' as const,
+      sameSite:
+        process.env.NODE_ENV === 'production'
+          ? ('strict' as const)
+          : ('lax' as const),
       path: '/',
-      domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? undefined : 'localhost'),
+      domain:
+        process.env.COOKIE_DOMAIN ||
+        (process.env.NODE_ENV === 'production' ? undefined : 'localhost'),
     };
 
     res.clearCookie('sessionId', cookieOptions);
@@ -112,7 +134,9 @@ export class AuthController {
   @Post('complete-onboarding')
   @ApiOperation({ summary: 'Mark onboarding as complete' })
   @ApiOkResponse({ type: CompleteOnboardingResponse })
-  async completeOnboarding(@Req() req: Request): Promise<CompleteOnboardingResponse> {
+  async completeOnboarding(
+    @Req() req: Request,
+  ): Promise<CompleteOnboardingResponse> {
     const userId = req.user.userId;
     return this.authService.completeOnboarding(userId);
   }
@@ -120,7 +144,9 @@ export class AuthController {
   @Get('onboarding-status')
   @ApiOperation({ summary: 'Get onboarding status' })
   @ApiOkResponse({ type: OnboardingStatusResponse })
-  async getOnboardingStatus(@Req() req: Request): Promise<OnboardingStatusResponse> {
+  async getOnboardingStatus(
+    @Req() req: Request,
+  ): Promise<OnboardingStatusResponse> {
     const userId = req.user.userId;
     return this.authService.getOnboardingStatus(userId);
   }
@@ -133,10 +159,27 @@ export class AuthController {
     return this.authService.getRafflePos(userId);
   }
 
+  @Get('referral-code')
+  @ApiOperation({ summary: 'Get or generate referral code' })
+  @ApiOkResponse({ type: ReferralCodeResponse })
+  async getReferralCode(@Req() req: Request): Promise<ReferralCodeResponse> {
+    const userId = req.user.userId;
+    return this.authService.getReferralCode(userId);
+  }
+
   @Post('sync')
-  @ApiOperation({ summary: 'Get re-login URL to force sync user data from HCA' })
+  @ApiOperation({
+    summary: 'Get re-login URL to force sync user data from HCA',
+  })
   @ApiOkResponse({ type: AuthUrlResponse })
-  async syncHcaData(@Req() req: Request, @Body() body: { redirectPath?: string }): Promise<AuthUrlResponse> {
-    return this.authService.getAuthUrl(req.user.email, undefined, body?.redirectPath);
+  async syncHcaData(
+    @Req() req: Request,
+    @Body() body: { redirectPath?: string },
+  ): Promise<AuthUrlResponse> {
+    return this.authService.getAuthUrl(
+      req.user.email,
+      undefined,
+      body?.redirectPath,
+    );
   }
 }

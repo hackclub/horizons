@@ -1,5 +1,12 @@
 import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiOkResponse, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiOkResponse,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
 import { resolveAndCheckPrivate } from './is-private-url';
 
@@ -24,7 +31,12 @@ export class UrlCheckController {
   @Get('check-url')
   @ApiOperation({ summary: 'Check if a URL is reachable' })
   @ApiQuery({ name: 'url', required: true, description: 'URL to check' })
-  @ApiQuery({ name: 'type', required: false, description: 'Check type: "url" (default) or "repo" (verify git repository)' })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    description:
+      'Check type: "url" (default) or "repo" (verify git repository)',
+  })
   @ApiOkResponse({ description: 'URL check result', type: UrlCheckResponse })
   async checkUrl(
     @Query('url') url: string,
@@ -42,15 +54,24 @@ export class UrlCheckController {
     }
 
     if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return { ok: false, status: 0, error: 'Only HTTP and HTTPS URLs are allowed' };
+      return {
+        ok: false,
+        status: 0,
+        error: 'Only HTTP and HTTPS URLs are allowed',
+      };
     }
 
     if (await resolveAndCheckPrivate(parsed)) {
-      return { ok: false, status: 0, error: 'URLs pointing to private/internal addresses are not allowed' };
+      return {
+        ok: false,
+        status: 0,
+        error: 'URLs pointing to private/internal addresses are not allowed',
+      };
     }
 
     // For repo checks on non-GitHub URLs, verify it's actually a git repository
-    const isGitHub = parsed.hostname === 'github.com' || parsed.hostname === 'www.github.com';
+    const isGitHub =
+      parsed.hostname === 'github.com' || parsed.hostname === 'www.github.com';
     if (type === 'repo' && !isGitHub) {
       return this.checkGitRepo(url);
     }
@@ -66,7 +87,7 @@ export class UrlCheckController {
         redirect: 'follow',
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; HorizonBot/1.0)',
-          'Accept': 'text/html,*/*',
+          Accept: 'text/html,*/*',
         },
       });
 
@@ -140,14 +161,16 @@ export class UrlCheckController {
       return {
         ok: false,
         status: 0,
-        error: "This URL doesn't appear to be a git repository. Please provide a link to a git repo (GitHub, GitLab, etc.).",
+        error:
+          "This URL doesn't appear to be a git repository. Please provide a link to a git repo (GitHub, GitLab, etc.).",
       };
     } catch {
       // info/refs not reachable — not a git repo
       return {
         ok: false,
         status: 0,
-        error: "This URL doesn't appear to be a git repository. Please provide a link to a git repo (GitHub, GitLab, etc.).",
+        error:
+          "This URL doesn't appear to be a git repository. Please provide a link to a git repo (GitHub, GitLab, etc.).",
       };
     }
   }
@@ -163,7 +186,10 @@ export class UrlCheckController {
     return "Hmm, something's not right. We couldn't reach your site — please make sure the URL is correct and reachable.";
   }
 
-  private async extractFavicon(response: Response, parsed: URL): Promise<string | null> {
+  private async extractFavicon(
+    response: Response,
+    parsed: URL,
+  ): Promise<string | null> {
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.includes('text/html')) {
       return `${parsed.origin}/favicon.ico`;
@@ -173,7 +199,8 @@ export class UrlCheckController {
       const html = await response.text();
 
       // Look for <link rel="icon" ...> or <link rel="shortcut icon" ...>
-      const linkRegex = /<link\s[^>]*rel\s*=\s*["'](?:shortcut\s+)?icon["'][^>]*>/gi;
+      const linkRegex =
+        /<link\s[^>]*rel\s*=\s*["'](?:shortcut\s+)?icon["'][^>]*>/gi;
       const matches = html.matchAll(linkRegex);
 
       for (const match of matches) {
@@ -190,7 +217,8 @@ export class UrlCheckController {
       }
 
       // Also check for <link rel="apple-touch-icon" ...> as fallback
-      const appleRegex = /<link\s[^>]*rel\s*=\s*["']apple-touch-icon["'][^>]*>/gi;
+      const appleRegex =
+        /<link\s[^>]*rel\s*=\s*["']apple-touch-icon["'][^>]*>/gi;
       const appleMatches = html.matchAll(appleRegex);
 
       for (const match of appleMatches) {
