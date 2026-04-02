@@ -43,7 +43,7 @@
 
 		if (data) {
 			invalidateAllProjectCaches();
-			goto('/app');
+			goto('/app?post-onboarding');
 		} else {
 			let message = response.statusText || 'An unknown error occurred';
 			try {

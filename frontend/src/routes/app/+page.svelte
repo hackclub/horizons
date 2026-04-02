@@ -23,6 +23,16 @@
 	let disableAnimations = false;
 	let hideCirc = $state(page.url.searchParams.has('noanimate') || disableAnimations);
 
+	// Post-onboarding popovers
+	let postOnboarding = $state(page.url.searchParams.has('post-onboarding'));
+
+	const cardDescriptions: Record<string, string> = {
+		'0-0': 'Create projects, track your progress, and submit them for review!',
+		'1-0': 'Spend your approved hours on rewards!',
+		'2-0': 'Check out upcoming Horizons events!',
+		'3-0': 'Got questions? Find answers here.',
+	};
+
 	let userName = $state('');
 	let approvedHours = $state(0);
 	let completedHours = $state(0);
@@ -167,6 +177,11 @@
 								CREATE AND SHIP YOUR PROJECTS
 							</p>
 						</div>
+						{#if postOnboarding && nav.isSelected(0, 0)}
+							<div class="card-popover">
+								<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['0-0']}</p>
+							</div>
+						{/if}
 					</a>
 				</div>
 
@@ -194,7 +209,7 @@
 									</div>
 									<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
 										{#if remainingHours > 0}
-											{remainingHours} HOURS TO GO!
+											WORK {remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!
 										{:else}
 											GOAL REACHED!
 										{/if}
@@ -224,6 +239,11 @@
 										BUY STUFF FOR YOURSELF!
 									</p>
 								</div>
+								{#if postOnboarding && nav.isSelected(1, 0)}
+									<div class="card-popover">
+										<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['1-0']}</p>
+									</div>
+								{/if}
 							</a>
 						</div>
 
@@ -248,6 +268,11 @@
 										CHECK OUT HORIZONS EVENTS!
 									</p>
 								</div>
+								{#if postOnboarding && nav.isSelected(2, 0)}
+									<div class="card-popover">
+										<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['2-0']}</p>
+									</div>
+								{/if}
 							</a>
 						</div>
 					</div>
@@ -272,6 +297,11 @@
 								NEED HELP?
 							</p>
 						</div>
+						{#if postOnboarding && nav.isSelected(3, 0)}
+							<div class="card-popover">
+								<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['3-0']}</p>
+							</div>
+						{/if}
 					</a>
 				</div>
 				</div>
@@ -581,5 +611,19 @@
 
 	.card.shaking {
 		animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+	}
+
+	/* Post-onboarding popover */
+	.card-popover {
+		position: absolute;
+		bottom: 12px;
+		left: 12px;
+		right: 12px;
+		z-index: 20;
+		background: #f3e8d8;
+		border: 3px solid black;
+		border-radius: 12px;
+		box-shadow: 3px 3px 0px 0px black;
+		padding: 12px 16px;
 	}
 </style>

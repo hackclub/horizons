@@ -164,7 +164,7 @@
 			step++;
 		} else {
 			await completeOnboarding();
-			goto('/app');
+			goto('/app?post-onboarding');
 		}
 	}
 
@@ -198,7 +198,7 @@
 
 		if (data) {
 			invalidateAllProjectCaches();
-			goto('/app');
+			goto('/app?post-onboarding');
 		} else {
 			let message = response.statusText || 'An unknown error occurred';
 			try {
@@ -329,7 +329,7 @@
 
 			{#if isEventSelectStep}
 				<div class="flex justify-between items-center">
-					<button class="font-bricolage text-base font-semibold text-black opacity-40 bg-transparent border-none cursor-pointer underline hover:opacity-70 transition-opacity duration-150 ease-in-out" onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app'); } }}>
+					<button class="font-bricolage text-base font-semibold text-black opacity-40 bg-transparent border-none cursor-pointer underline hover:opacity-70 transition-opacity duration-150 ease-in-out" onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app?post-onboarding'); } }}>
 						Skip
 					</button>
 					{#if selectedEvent}
