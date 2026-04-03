@@ -90,7 +90,7 @@
 
 	// Projects (0,0), Shop (1,0), and FAQ (3,0) are enabled
 	function isDisabled(col: number, row: number) {
-		return !(col === 0 && row === 0) && !(col === 1 && row === 0) && !(col === 3 && row === 0);
+		return !(col === 0 && row === 0) && !(col === 1 && row === 0) && !(col === 2 && row === 0) && !(col === 3 && row === 0);
 	}
 
 	let shakingKey = $state<string | null>(null);
