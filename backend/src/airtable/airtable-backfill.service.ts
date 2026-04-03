@@ -9,20 +9,21 @@ export class AirtableBackfillService implements OnModuleInit {
     private airtableService: AirtableService,
   ) {}
 
-  async onModuleInit() {
+  onModuleInit() {
     if (process.env.RUN_AIRTABLE_USERS_BACKFILL !== 'true') {
       return;
     }
 
-    console.log('[AirtableBackfill] Starting user backfill...');
-    try {
-      await this.run();
-      console.log(
-        '[AirtableBackfill] Backfill complete. You can now remove RUN_AIRTABLE_USERS_BACKFILL.',
+    console.log('[AirtableBackfill] Starting user backfill in background...');
+    this.run()
+      .then(() =>
+        console.log(
+          '[AirtableBackfill] Backfill complete. You can now remove RUN_AIRTABLE_USERS_BACKFILL.',
+        ),
+      )
+      .catch((error) =>
+        console.error('[AirtableBackfill] Backfill failed:', error),
       );
-    } catch (error) {
-      console.error('[AirtableBackfill] Backfill failed:', error);
-    }
   }
 
   private async run() {
