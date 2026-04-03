@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import TopBar from './components/TopBar.svelte';
 	import UserInfo from './components/UserInfo.svelte';
 	import NotesSection from './components/NotesSection.svelte';
@@ -42,7 +43,16 @@
 	let checkedItems = $state<number[]>([]);
 	let editedHours = $state<number | null>(null);
 
-	onMount(() => {
+	onMount(async () => {
+		const { data, error } = await api.GET('/api/user/auth/me');
+		if (error || !data) {
+			goto('/login');
+			return;
+		}
+		if (data.role !== 'admin' && data.role !== 'reviewer') {
+			goto('/app/projects');
+			return;
+		}
 		loadQueue();
 	});
 
