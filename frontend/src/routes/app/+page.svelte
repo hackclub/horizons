@@ -54,6 +54,7 @@
 	});
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 	let pinnedEventConfig = $state<EventConfig | null>(null);
+	let pinnedEventSlug = $state<string | null>(null);
 
 	let approvedHours = $state(0);
 	let completedHours = $state(0);
@@ -89,6 +90,7 @@
 		if (pinnedRes?.data) {
 			const slug = (pinnedRes.data as any).event?.slug;
 			if (slug && eventsMap[slug]) {
+				pinnedEventSlug = slug;
 				pinnedEventConfig = eventsMap[slug];
 			}
 		}
@@ -223,7 +225,7 @@
 				<div class="middle-col shrink-0">
 					<!-- Event / Nexus Card (informational, not navigable) -->
 					<div class="enter-up" class:exiting={navigating} style:--exit-delay="30ms" style:--enter-delay="100ms">
-						<div class="card event-card relative" style="background-color: {pinnedEventConfig?.colors.primary ?? '#fac393'};">
+						<div class="card event-card relative" style="background-color: {pinnedEventSlug === 'nexus' || !pinnedEventConfig ? '#fac393' : pinnedEventConfig.colors.primary};">
 							<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0">PROGRESS</p>
 							<div class="flex flex-col gap-3 w-full">
 								<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left" />
@@ -241,13 +243,15 @@
 										{/if}
 										<div class="flex-1" style="background-color: {pinnedEventConfig?.colors.tertiary ?? '#46467c'};"></div>
 									</div>
-									<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
-										{#if remainingHours > 0}
-											{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO`}
-										{:else}
-											GOAL REACHED!
-										{/if}
-									</p>
+									{#if pinnedEventSlug === 'nexus'}
+										<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
+											{#if remainingHours > 0}
+												{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO`}
+											{:else}
+												GOAL REACHED!
+											{/if}
+										</p>
+									{/if}
 								</div>
 							</div>
 						</div>
