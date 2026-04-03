@@ -44,10 +44,16 @@ spring-event/
 │       │   │   ├── anim/              # CircleIn, CircleOut, SlideOut transitions
 │       │   │   ├── BG.svelte          # Animated background pattern
 │       │   │   ├── Card.svelte        # Generic card with beige theme
-│       │   │   └── BobaButton.svelte  # Interactive button with animations
+│       │   │   ├── BobaButton.svelte  # Interactive button with animations
+│       │   │   ├── FAQ.svelte         # Parse markdown FAQ items with anchor linking
+│       │   │   └── Events.svelte      # Display event cards with countdown timers
 │       │   └── store/
 │       │       ├── projectCache.ts    # Project list cache (5 min TTL)
 │       │       └── projectDetailCache.ts # Single project + submission cache (3 min TTL)
+│       │
+│       ├── static/content/
+│       │   ├── faq.md                 # FAQ content in markdown format
+│       │   └── events.md              # Upcoming events with YAML metadata (date, time, links)
 │       │
 │       └── routes/
 │           ├── +layout.svelte         # Root layout — beige theme for users, bypass for admin/review
@@ -55,6 +61,7 @@ spring-event/
 │           ├── app/                   # Authenticated user routes (projects, submissions)
 │           ├── admin/                 # Admin dashboard (full data access)
 │           ├── faq/                   # FAQ page
+│           ├── community/             # Upcoming community events schedule page
 │           └── review/                # Reviewer UI (dark theme, 3-panel layout)
 │               ├── +page.svelte       # Main review page — assembles all panels
 │               ├── api.ts             # Reviewer API client + GitHub fetch + types
