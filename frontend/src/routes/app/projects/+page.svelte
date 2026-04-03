@@ -191,8 +191,11 @@
 							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease]" style="font-size: {selected ? '32px' : '20px'};">{project.nowHackatimeHours ?? 0} hrs tracked</p>
 						</div>
 
-						{#if selected}
-							<div class="flex items-center gap-2 z-1">
+						<div
+							class="grid z-1"
+							style="grid-template-rows: {selected ? '1fr' : '0fr'}; opacity: {selected ? 1 : 0}; transition: grid-template-rows 0.15s ease, opacity 0.15s ease;"
+						>
+							<div class="overflow-hidden flex items-center gap-2">
 								<InputPrompt type="Enter" />
 
 								<span class="font-bricolage text-2xl font-bold text-black">OR</span>
@@ -201,7 +204,7 @@
 
 								<span class="font-bricolage text-2xl font-bold text-black">TO VIEW</span>
 							</div>
-						{/if}
+						</div>
 
 						{#if status}
 							<span
@@ -229,8 +232,11 @@
 						<p class="font-cook font-semibold text-black m-0 leading-[1.1] opacity-70 transition-[font-size_0.3s_ease]" style="font-size: {nav.selectedIndex === projects.length ? '64px' : '40px'};">+ CREATE PROJECT</p>
 					</div>
 
-					{#if nav.selectedIndex === projects.length}
-						<div class="flex items-center gap-2 z-1">
+					<div
+						class="grid z-1"
+						style="grid-template-rows: {nav.selectedIndex === projects.length ? '1fr' : '0fr'}; opacity: {nav.selectedIndex === projects.length ? 1 : 0}; transition: grid-template-rows 0.15s ease, opacity 0.15s ease;"
+					>
+						<div class="overflow-hidden flex items-center gap-2 whitespace-nowrap">
 							<InputPrompt type="Enter" />
 
 							<span class="font-bricolage text-2xl font-bold text-black">OR</span>
@@ -239,7 +245,7 @@
 
 							<span class="font-bricolage text-2xl font-bold text-black">TO CREATE</span>
 						</div>
-					{/if}
+					</div>
 				</button>
 			{/if}
 		</div>
