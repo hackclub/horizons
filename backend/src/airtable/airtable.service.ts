@@ -1,4 +1,5 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { createId } from '@paralleldrive/cuid2';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
@@ -222,6 +223,19 @@ export class AirtableService {
     const now = dateOverride || new Date().toISOString().split('T')[0];
 
     try {
+      let user = await this.prisma.user.findUnique({
+        where: { email },
+        select: { referralCode: true },
+      });
+
+      if (!user?.referralCode) {
+        user = await this.prisma.user.update({
+          where: { email },
+          data: { referralCode: createId() },
+          select: { referralCode: true },
+        });
+      }
+
       let recordId: string | null = null;
       const existingRecord = await this.findUserRecord(email);
 
@@ -234,6 +248,9 @@ export class AirtableService {
         }
         if (!existingRecord.fields['Horizons User ID']) {
           fieldsToUpdate['Horizons User ID'] = userId;
+        }
+        if (user?.referralCode) {
+          fieldsToUpdate['Referral Code'] = user.referralCode;
         }
 
         if (Object.keys(fieldsToUpdate).length > 0) {
@@ -267,6 +284,9 @@ export class AirtableService {
                     Email: email,
                     'Horizons User ID': userId,
                     [fieldName]: now,
+                    ...(user?.referralCode
+                      ? { 'Referral Code': user.referralCode }
+                      : {}),
                   },
                 },
               ],
