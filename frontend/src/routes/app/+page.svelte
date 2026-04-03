@@ -54,7 +54,7 @@
 	let completedHours = $state(0);
 	const TARGET_HOURS = 30;
 
-	let remainingHours = $derived(Math.max(0, TARGET_HOURS - completedHours));
+	let remainingHours = $derived(Math.round(Math.max(0, TARGET_HOURS - completedHours) * 10) / 10);
 	let approvedPct = $derived(TARGET_HOURS > 0 ? Math.min(100, (approvedHours / TARGET_HOURS) * 100) : 0);
 	let completedPct = $derived(TARGET_HOURS > 0 ? Math.min(100, ((completedHours - approvedHours) / TARGET_HOURS) * 100) : 0);
 
