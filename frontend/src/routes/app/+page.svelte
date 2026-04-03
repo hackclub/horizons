@@ -230,7 +230,7 @@
 									</div>
 									<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
 										{#if remainingHours > 0}
-											WORK {remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!
+											{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO`}
 										{:else}
 											GOAL REACHED!
 										{/if}
