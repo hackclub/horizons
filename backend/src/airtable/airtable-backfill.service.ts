@@ -31,6 +31,7 @@ export class AirtableBackfillService implements OnModuleInit {
       select: {
         userId: true,
         email: true,
+        referralCode: true,
         createdAt: true,
         projects: {
           select: {
@@ -54,6 +55,15 @@ export class AirtableBackfillService implements OnModuleInit {
 
     for (const user of users) {
       try {
+        // Migrate referral code from cuid2 to userId
+        const expectedCode = user.userId.toString();
+        if (user.referralCode !== expectedCode) {
+          await this.prisma.user.update({
+            where: { userId: user.userId },
+            data: { referralCode: expectedCode },
+          });
+        }
+
         await this.airtableService.syncUserEvent(
           user.email,
           user.userId,

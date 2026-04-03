@@ -1,5 +1,4 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { createId } from '@paralleldrive/cuid2';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
@@ -231,7 +230,7 @@ export class AirtableService {
       if (!user?.referralCode) {
         user = await this.prisma.user.update({
           where: { email },
-          data: { referralCode: createId() },
+          data: { referralCode: userId.toString() },
           select: { referralCode: true },
         });
       }

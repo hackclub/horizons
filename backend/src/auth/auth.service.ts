@@ -10,7 +10,6 @@ import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
 
 import { createHmac } from 'crypto';
-import { createId } from '@paralleldrive/cuid2';
 import * as jose from 'jose';
 
 interface HackClubTokenResponse {
@@ -563,7 +562,7 @@ export class AuthService {
 
     const updated = await this.prisma.user.update({
       where: { userId },
-      data: { referralCode: createId() },
+      data: { referralCode: userId.toString() },
       select: { referralCode: true },
     });
 
