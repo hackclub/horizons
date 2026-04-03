@@ -44,12 +44,21 @@
 	let error = $state<string | null>(null);
 	let pinning = $state(false);
 	let pinnedSlug = $state<string | null>(null);
+	let pinnedDismissing = $state(false);
+	let pinnedAction = $state<'pinned' | 'unpinned'>('pinned');
+	let currentPinnedSlug = $state<string | null>(null);
 
 	onMount(async () => {
 		try {
-			const res = await api.GET('/api/events' as any, {});
-			if (res.data && Array.isArray(res.data)) {
-				apiEvents = res.data;
+			const [eventsRes, pinnedRes] = await Promise.all([
+				api.GET('/api/events' as any, {}),
+				api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null)
+			]);
+			if (eventsRes.data && Array.isArray(eventsRes.data)) {
+				apiEvents = eventsRes.data;
+			}
+			if (pinnedRes?.data) {
+				currentPinnedSlug = (pinnedRes.data as any).event?.slug ?? null;
 			}
 		} catch {
 			error = 'Failed to load events';
@@ -78,23 +87,28 @@
 		onEscape: () => navigateTo('/app?noanimate', { exitBack: true }),
 		onSelect: (i) => {
 			const event = events[i];
-			if (event) pinEvent(event.slug);
+			if (event) togglePin(event.slug);
 		},
 	});
 
-	async function pinEvent(slug: string) {
+	function togglePin(slug: string) {
 		if (pinning) return;
 		pinning = true;
-		try {
-			await api.POST('/api/events/auth/pinned-event' as any, {
+
+		const wasAlreadyPinned = currentPinnedSlug === slug;
+		pinnedAction = wasAlreadyPinned ? 'unpinned' : 'pinned';
+		currentPinnedSlug = wasAlreadyPinned ? null : slug;
+		pinnedSlug = slug;
+		pinnedDismissing = false;
+		setTimeout(() => { pinnedDismissing = true; }, 1500);
+		setTimeout(() => { pinnedSlug = null; pinnedDismissing = false; pinning = false; }, 2500);
+
+		if (wasAlreadyPinned) {
+			api.DELETE('/api/events/auth/pinned-event' as any, {}).catch(() => {});
+		} else {
+			api.POST('/api/events/auth/pinned-event' as any, {
 				body: { slug }
-			});
-			pinnedSlug = slug;
-			setTimeout(() => { pinnedSlug = null; }, 2000);
-		} catch {
-			// silently fail
-		} finally {
-			pinning = false;
+			}).catch(() => {});
 		}
 	}
 
@@ -165,9 +179,15 @@
 						class:exiting={navigating}
 						onpointerdown={() => { clickWasSelected = nav.selectedIndex === i; }}
 						onfocus={() => { nav.selectedIndex = i; updateScroll(); }}
-						onclick={() => { if (clickWasSelected) { pinEvent(event.slug); } }}
+						onclick={() => { if (clickWasSelected) { togglePin(event.slug); } }}
 						style="--card-index: {i}; width: {selected ? '824px' : '649px'}; background-color: {selected ? getCardBgSelected(event) : getCardBg(event)}; gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
 					>
+						{#if currentPinnedSlug === event.slug}
+							<span class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black z-1" style="background-color: {event.config.colors.primary};">
+								PINNED
+							</span>
+						{/if}
+
 						<div class="flex flex-col gap-1 z-1 w-full">
 							<img
 								src={event.config.logo}
@@ -191,7 +211,7 @@
 
 								<InputPrompt type="click" />
 
-								<span class="font-bricolage text-2xl font-bold text-black">TO PIN</span>
+								<span class="font-bricolage text-2xl font-bold text-black">{currentPinnedSlug === event.slug ? 'TO UNPIN' : 'TO PIN'}</span>
 							</div>
 						</div>
 					</button>
@@ -222,9 +242,9 @@
 
 	<!-- Pinned popup -->
 	{#if pinnedSlug}
-		<div class="absolute top-13 left-1/2 -translate-x-1/2 z-20 pinned-popup">
+		<div class="pinned-popup absolute top-13 left-1/2 z-20" class:exiting={pinnedDismissing}>
 			<div class="flex items-center gap-2.5 px-7 py-5 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black]">
-				<p class="font-cook text-[24px] font-semibold text-black m-0 whitespace-nowrap">EVENT PINNED!</p>
+				<p class="font-cook text-[24px] font-semibold text-black m-0 whitespace-nowrap">EVENT {pinnedAction === 'pinned' ? 'PINNED' : 'UNPINNED'}!</p>
 			</div>
 		</div>
 	{/if}
@@ -263,11 +283,18 @@
 		transition: opacity 250ms ease;
 	}
 
-	@keyframes popup-in {
-		from { opacity: 0; transform: translateY(-20px); }
-		to   { opacity: 1; transform: translateY(0); }
+	@keyframes fly-in-top {
+		from { transform: translate(-50%, -120vh); }
+		to   { transform: translate(-50%, 0); }
+	}
+	@keyframes fly-out-top {
+		from { transform: translate(-50%, 0); }
+		to   { transform: translate(-50%, -120vh); }
 	}
 	.pinned-popup {
-		animation: popup-in 0.3s ease both;
+		animation: fly-in-top var(--enter-duration) var(--enter-easing) both;
+	}
+	.pinned-popup.exiting {
+		animation: fly-out-top var(--exit-duration) var(--exit-easing) both;
 	}
 </style>
