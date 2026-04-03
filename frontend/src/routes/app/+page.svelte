@@ -2,7 +2,6 @@
 	import CircleIn from '$lib/components/anim/CircleIn.svelte';
 	import TextWave from '$lib/components/TextWave.svelte';
 	import logoSvg from '$lib/assets/Logo.svg';
-	import nexusLogo from '$lib/assets/onboarding/nexus-logo-constrained.svg';
 
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -11,6 +10,9 @@
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
+	import yaml from 'js-yaml';
+	import type { EventConfig } from '$lib/events/types';
+	import eventsRaw from '$lib/events/events.yaml?raw';
 
 	const phrases = [
 		"OH YEAH. IT'S ALL COMING TOGETHER.",
@@ -50,6 +52,9 @@
 			setTimeout(() => { showPopover = false; popoverPos = null; }, 200);
 		}
 	});
+	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
+	let pinnedEventConfig = $state<EventConfig | null>(null);
+
 	let approvedHours = $state(0);
 	let completedHours = $state(0);
 	const TARGET_HOURS = 30;
@@ -78,6 +83,14 @@
 		}
 		if (approvedRes.data) {
 			approvedHours = Math.round(((approvedRes.data as any).totalApprovedHours ?? 0) * 10) / 10;
+		}
+
+		const pinnedRes = await api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null);
+		if (pinnedRes?.data) {
+			const slug = (pinnedRes.data as any).event?.slug;
+			if (slug && eventsMap[slug]) {
+				pinnedEventConfig = eventsMap[slug];
+			}
 		}
 	});
 
@@ -210,23 +223,23 @@
 				<div class="middle-col shrink-0">
 					<!-- Event / Nexus Card (informational, not navigable) -->
 					<div class="enter-up" class:exiting={navigating} style:--exit-delay="30ms" style:--enter-delay="100ms">
-						<div class="card event-card relative">
+						<div class="card event-card relative" style="background-color: {pinnedEventConfig?.colors.primary ?? '#fac393'};">
 							<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0">PROGRESS</p>
 							<div class="flex flex-col gap-3 w-full">
-								<img src={nexusLogo} alt="Horizon Nexus" class="h-[68px] w-auto object-contain object-left" />
+								<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left" />
 								<div class="card progress-card">
 									<div class="progress-bar">
 										{#if approvedPct > 0}
-											<div class="progress-segment bg-[#ffa936]" style="width: {approvedPct}%;">
+											<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.colors.primary ?? '#ffa936'};">
 												<span class="progress-label">{approvedHours} HOURS APPROVED</span>
 											</div>
 										{/if}
 										{#if completedPct > 0}
-											<div class="progress-segment bg-[#f86d95]" style="width: {completedPct}%;">
+											<div class="progress-segment" style="width: {completedPct}%; background-color: {pinnedEventConfig?.colors.secondary ?? '#f86d95'};">
 												<span class="progress-label">{completedHours - approvedHours} HOURS COMPLETED</span>
 											</div>
 										{/if}
-										<div class="bg-[#46467c] flex-1"></div>
+										<div class="flex-1" style="background-color: {pinnedEventConfig?.colors.tertiary ?? '#46467c'};"></div>
 									</div>
 									<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
 										{#if remainingHours > 0}
