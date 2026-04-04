@@ -111,7 +111,7 @@
 
 			<!-- Right column: Referrals list -->
 			<div class="referrals-col">
-				<p class="font-cook text-[24px] text-black m-0">YOUR REFERRALS</p>
+				<p class="font-cook text-[24px] text-black m-0">YOUR REFERRALS ({referrals.length})</p>
 
 				<div class="referrals-scroll">
 					{#if loading}
