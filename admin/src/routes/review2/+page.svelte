@@ -797,21 +797,22 @@
 						</div>
 					</div>
 
-					{#if reviewPanelOpen && currentSubmission}
+					<div class="review-panel-body" class:review-panel-open={reviewPanelOpen && !!currentSubmission}><div class="overflow-hidden">
 						<!-- Tabs -->
 						<div class="flex gap-1 items-center justify-center p-1 mx-4 mt-3 bg-[#eaebf8] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.1)]">
 							<button
-								class="flex-1 px-2 py-1 rounded text-xs font-medium cursor-pointer border-none {activeForm === 'approve' ? 'bg-[#e8f5e9] text-[#4caf50] border border-[#4caf50]/30 shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#c8e6c9]' : 'bg-transparent text-[#4c4c4c] hover:bg-white/40'}"
+								class="flex-1 px-2 py-1 rounded text-xs font-medium cursor-pointer border-none {activeForm === 'approve' ? 'bg-[#e8f5e9] text-[#4caf50] border border-[#4caf50]/30 shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#c8e6c9]' : 'bg-transparent text-[#4c4c4c] hover:bg-white/10'}"
 								onclick={() => (activeForm = 'approve')}
 							>Approve</button>
 							<button
-								class="flex-1 px-2 py-1 rounded text-xs font-medium cursor-pointer border-none {activeForm === 'changes' ? 'bg-[#ffebee] text-[#ef5350] border border-[#ef5350]/30 shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#ffcdd2]' : 'bg-transparent text-[#4c4c4c] hover:bg-white/40'}"
+								class="flex-1 px-2 py-1 rounded text-xs font-medium cursor-pointer border-none {activeForm === 'changes' ? 'bg-[#ffebee] text-[#ef5350] border border-[#ef5350]/30 shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#ffcdd2]' : 'bg-transparent text-[#4c4c4c] hover:bg-white/10'}"
 								onclick={() => (activeForm = 'changes')}
 							>Changes Needed</button>
 						</div>
 
 						<!-- Tab content -->
-						<div class="p-4">
+						{#key activeForm}
+						<div class="p-4 tab-content min-h-85">
 							{#if activeForm === 'approve'}
 								<div class="flex gap-4">
 									<div class="flex-1">
@@ -881,7 +882,8 @@
 								</div>
 							{/if}
 						</div>
-					{/if}
+						{/key}
+					</div></div>
 				</div>
 			</div>
 		</div>
@@ -987,7 +989,53 @@
 	.readme-content :global(li) { margin-bottom: 4px; }
 	.readme-content :global(a) { color: #3a3a6a; }
 	.readme-content :global(img) { max-width: 100%; }
+	/* Accordion animations */
+	.accordion :global(.accordion-chevron) { transition: transform 0.2s ease; }
 	.accordion[open] :global(.accordion-chevron) { transform: rotate(180deg); }
+	.accordion[open] > :global(:not(summary)) {
+		animation: accordion-open 0.2s ease;
+	}
+	@keyframes accordion-open {
+		from { opacity: 0; transform: translateY(-4px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+
+	/* Button hover animations */
+	:global(.rv2-theme) button,
+	:global(.rv2-theme) a[href],
+	:global(.rv2-theme) summary {
+		transition: all 0.15s ease;
+	}
+	:global(.rv2-theme) button:active:not(:disabled) {
+		transform: scale(0.97);
+	}
+
+	/* Tab switching animation */
+	:global(.tab-content) {
+		animation: tab-fade-in 0.15s ease;
+	}
+	@keyframes tab-fade-in {
+		from { opacity: 0; transform: translateY(4px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+
+	/* Review panel collapse animation */
+	.review-panel-body {
+		display: grid;
+		grid-template-rows: 0fr;
+		transition: grid-template-rows 0.25s ease;
+	}
+	.review-panel-body > :global(div) {
+		opacity: 0;
+		transition: opacity 0.15s ease;
+	}
+	.review-panel-open {
+		grid-template-rows: 1fr;
+	}
+	.review-panel-open > :global(div) {
+		opacity: 1;
+		transition: opacity 0.2s ease 0.1s;
+	}
 
 	/* Readme dark mode */
 	:global(.rv2-dark) .readme-content :global(code) { background: #2a2a2a; color: #e0e0e0; }
@@ -1059,7 +1107,7 @@
 	/* Hover — brighten all buttons uniformly */
 	:global(.rv2-dark) button:hover,
 	:global(.rv2-dark) a[href]:hover {
-		filter: brightness(1.3);
+		filter: brightness(1.15);
 	}
 	:global(.rv2-dark) summary:hover,
 	:global(.rv2-dark .dark-hover):hover {
