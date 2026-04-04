@@ -88,7 +88,7 @@
 					<p class="font-bricolage text-[20px] text-black m-0">Share this link with your friends</p>
 					<div class="flex gap-4 items-center">
 						<div class="link-box">
-							<p class="font-bricolage text-[20px] text-black m-0 whitespace-nowrap">{shareUrl || '...'}</p>
+							<p class="font-bricolage text-[20px] text-black m-0 whitespace-nowrap overflow-hidden text-ellipsis">{shareUrl || '...'}</p>
 						</div>
 						<button class="copy-btn" onclick={copyLink}>
 							{copied ? 'Copied!' : 'Copy'}
@@ -131,7 +131,12 @@
 					{:else}
 						{#each referrals as referral, i}
 							<div class="referral-card" class:first={i === 0}>
-								<p class="font-cook text-[20px] text-black m-0">{referral.username.toUpperCase()}</p>
+								<div class="flex items-center justify-between w-full">
+									<p class="font-cook text-[20px] text-black m-0">{referral.username.toUpperCase()}</p>
+									<span class="font-bricolage text-sm font-semibold px-3 py-1 rounded-full border-2 border-black {referral.onboardComplete ? 'bg-[#91D374]' : 'bg-[#f3e8d8]'}">
+										{referral.onboardComplete ? 'Onboarded' : 'Pending'}
+									</span>
+								</div>
 								<p class="font-bricolage text-[20px] text-black m-0">{referral.email}</p>
 							</div>
 						{/each}
@@ -264,7 +269,10 @@
 
 	.link-box {
 		background: rgba(0, 0, 0, 0.07);
-		padding: 8px;
+		padding: 8px 16px;
+		border-radius: 8px;
+		min-width: 0;
+		flex: 1;
 	}
 
 	.copy-btn {
