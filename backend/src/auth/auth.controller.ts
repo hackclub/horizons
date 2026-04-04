@@ -17,6 +17,7 @@ import {
   OnboardingStatusResponse,
   RafflePosResponse,
   ReferralCodeResponse,
+  ReferralsResponse,
 } from './response';
 
 @ApiTags('Auth')
@@ -165,6 +166,14 @@ export class AuthController {
   async getReferralCode(@Req() req: Request): Promise<ReferralCodeResponse> {
     const userId = req.user.userId;
     return this.authService.getReferralCode(userId);
+  }
+
+  @Get('referrals')
+  @ApiOperation({ summary: 'Get list of users referred by current user' })
+  @ApiOkResponse({ type: ReferralsResponse })
+  async getReferrals(@Req() req: Request): Promise<ReferralsResponse> {
+    const userId = req.user.userId;
+    return this.authService.getReferrals(userId);
   }
 
   @Post('sync')

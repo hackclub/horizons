@@ -37,21 +37,6 @@
 
 	let userName = $state('');
 	let referralCode = $state('');
-	let copiedReferral = $state(false);
-	let showPopover = $state(false);
-	let referralBtnEl = $state<HTMLButtonElement>();
-	let popoverPos = $state<{ top: number; left: number } | null>(null);
-
-	$effect(() => {
-		if (copiedReferral && referralBtnEl) {
-			const rect = referralBtnEl.getBoundingClientRect();
-			popoverPos = { top: rect.top - 8, left: rect.left + rect.width / 2 };
-			showPopover = true;
-		} else if (!copiedReferral && showPopover) {
-			// delay removal so popover-out animation can play
-			setTimeout(() => { showPopover = false; popoverPos = null; }, 200);
-		}
-	});
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 	let pinnedEventConfig = $state<EventConfig | null>(null);
 	let pinnedEventSlug = $state<string | null>(null);
@@ -125,9 +110,11 @@
 	}
 
 	let navigating = $state(false);
+	let exitRight = $state(false);
 
-	async function navigateTo(href: string) {
+	async function navigateTo(href: string, opts: { exitRight?: boolean } = {}) {
 		navigating = true;
+		if (opts.exitRight) exitRight = true;
 		await new Promise(resolve => setTimeout(resolve, EXIT_DURATION + 350));
 		goto(href);
 	}
@@ -181,7 +168,7 @@
 <div class="page-wrap">
 	<div class="page-content">
 		<!-- Header -->
-		<div class="flex items-end gap-2 w-full shrink-0 exit-up enter-up" class:exiting={navigating}>
+		<div class="flex items-end gap-2 w-full shrink-0 exit-up enter-up" class:exiting={navigating} class:exit-right={exitRight}>
 			<div class="w-[347.58px] h-[75.13px] shrink-0">
 				<img src={logoSvg} alt="Horizon" class="w-full h-full block" />
 			</div>
@@ -194,7 +181,7 @@
 		<div class="scroll-wrapper" bind:this={scrollContainer}>
 			<div class="cards-row" bind:this={cardsRow}>
 				<!-- Projects (tall left card) -->
-				<div class="enter-up shrink-0" class:exiting={navigating} style:--exit-delay="0ms" style:--enter-delay="50ms">
+				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms">
 					<a bind:this={cardRefs[0]} href="/app/projects" class="card nav-card projects-card"
 						class:selected={nav.isSelected(0, 0)}
 						onmouseenter={() => { if (!nav.usingKeyboard) nav.select(0, 0); }}
@@ -224,7 +211,7 @@
 				<!-- Middle Column -->
 				<div class="middle-col shrink-0">
 					<!-- Event / Nexus Card (informational, not navigable) -->
-					<div class="enter-up" class:exiting={navigating} style:--exit-delay="30ms" style:--enter-delay="100ms">
+					<div class="enter-up" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms">
 						<div class="card event-card relative" style="background-color: {pinnedEventSlug === 'nexus' || !pinnedEventConfig ? '#fac393' : pinnedEventConfig.colors.primary};">
 							<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0">PROGRESS</p>
 							<div class="flex flex-col gap-3 w-full">
@@ -260,7 +247,7 @@
 					<!-- Shop + Events Row -->
 					<div class="bottom-row">
 						<!-- Shop -->
-						<div class="enter-down flex-1" class:exiting={navigating} style:--exit-delay="60ms" style:--enter-delay="150ms">
+						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="60ms" style:--enter-delay="150ms">
 							<a bind:this={cardRefs[1]} href="/app/shop" class="card nav-card shop-card"
 								class:selected={nav.isSelected(1, 0)}
 								onmouseenter={() => { if (!nav.usingKeyboard) nav.select(1, 0); }}
@@ -286,7 +273,7 @@
 						</div>
 
 						<!-- Events -->
-						<div class="enter-down flex-1" class:exiting={navigating} style:--exit-delay="90ms" style:--enter-delay="200ms">
+						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms">
 							<a bind:this={cardRefs[2]} href="/app/events" class="card nav-card events-card"
 								class:selected={nav.isSelected(2, 0)}
 								class:disabled={isDisabled(2, 0)}
@@ -317,7 +304,7 @@
 				</div>
 
 				<!-- FAQ (tall right card) -->
-				<div class="enter-up shrink-0" class:exiting={navigating} style:--exit-delay="120ms" style:--enter-delay="250ms">
+				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="120ms" style:--enter-delay="250ms">
 					<a bind:this={cardRefs[3]} href="/faq?from=app" class="card nav-card faq-card"
 						class:selected={nav.isSelected(3, 0)}
 						class:shaking={isShaking(3, 0)}
@@ -346,7 +333,7 @@
 		</div>
 
 		<!-- Bottom Info Row -->
-		<div class="info-row enter-down" class:exiting={navigating} style:--exit-delay="0ms" style:--enter-delay="300ms">
+		<div class="info-row enter-down" class:exiting={navigating && !exitRight} style:--exit-delay="0ms" style:--enter-delay="300ms">
 			<div class="card nav-hint-card">
 				<div class="flex items-center gap-5">
 					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">USE</p>
@@ -361,17 +348,11 @@
 				<div class="card user-card">
 					<p class="font-cook text-[24px] font-semibold text-black m-0">{userName}</p>
 					{#if referralCode}
-						<button class="logout-btn" bind:this={referralBtnEl} onclick={() => { navigator.clipboard.writeText(`${window.location.origin}/?ref=${referralCode}`); copiedReferral = true; setTimeout(() => copiedReferral = false, 2000); }} aria-label="Copy referral link">
-							{#if copiedReferral}
-								<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-									<path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-								</svg>
-							{:else}
-								<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-									<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-									<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-								</svg>
-							{/if}
+						<button
+							class="refer-btn py-2 px-4 border-2 border-black rounded-lg bg-[#ffa936] font-bricolage text-base font-semibold text-black cursor-pointer"
+							onclick={() => navigateTo('/app/refer?back', { exitRight: true })}
+						>
+							Refer a Friend
 						</button>
 					{/if}
 					<button class="logout-btn" onclick={async () => { await api.POST('/api/user/auth/logout'); window.location.href = '/'; }} aria-label="Logout">
@@ -386,12 +367,6 @@
 		</div>
 	</div>
 </div>
-
-{#if showPopover && popoverPos}
-	<div class="referral-popover" class:popover-out={!copiedReferral} style:top="{popoverPos.top}px" style:left="{popoverPos.left}px">
-		Link copied!
-	</div>
-{/if}
 
 <style>
 	/* Page layout — fill the absolute-positioned container exactly */
@@ -592,6 +567,21 @@
 		padding: 20px;
 		background-color: #f3e8d8;
 		cursor: default;
+		overflow: visible;
+	}
+
+	.refer-btn {
+		transition:
+			background-color var(--selected-duration) ease,
+			transform var(--juice-duration) var(--juice-easing);
+		animation: white-blink 1.5s ease-in-out infinite;
+	}
+	@keyframes white-blink {
+		0%, 100% { background-color: #fdd9a8; }
+		50% { background-color: #fba74d; }
+	}
+	.refer-btn:hover {
+		transform: scale(var(--juice-scale));
 	}
 
 	.logout-btn {
@@ -609,31 +599,6 @@
 		opacity: 1;
 	}
 
-	.referral-popover {
-		position: fixed;
-		transform: translate(-50%, -100%);
-		background: black;
-		color: white;
-		font-family: var(--font-cook);
-		font-size: 14px;
-		padding: 6px 12px;
-		border-radius: 8px;
-		white-space: nowrap;
-		pointer-events: none;
-		z-index: 9999;
-		animation: popover-in 0.15s ease-out;
-	}
-	.referral-popover.popover-out {
-		animation: popover-out 0.2s ease-in forwards;
-	}
-	@keyframes popover-in {
-		from { opacity: 0; transform: translate(-50%, -100%) translateY(4px); }
-		to   { opacity: 1; transform: translate(-50%, -100%) translateY(0); }
-	}
-	@keyframes popover-out {
-		from { opacity: 1; transform: translate(-50%, -100%) translateY(0); }
-		to   { opacity: 0; transform: translate(-50%, -100%) translateY(4px); }
-	}
 
 	/* Entry / exit animations */
 	@keyframes fly-in-top {
@@ -683,6 +648,11 @@
 	}
 	.enter-down.exiting {
 		animation: fly-out-bottom var(--exit-duration) var(--exit-easing) var(--exit-delay, 0ms) both;
+	}
+
+	/* Override: all cards fly out to the right simultaneously */
+	.exit-right.exiting {
+		animation: fly-out-right var(--exit-duration) var(--exit-easing) 0ms both;
 	}
 
 	@keyframes shake {

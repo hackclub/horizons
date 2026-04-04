@@ -569,6 +569,28 @@ export class AuthService {
     return { referralCode: updated.referralCode };
   }
 
+  async getReferrals(userId: number) {
+    const users = await this.prisma.user.findMany({
+      where: { referredByUserId: userId },
+      select: {
+        firstName: true,
+        email: true,
+        onboardComplete: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      referrals: users.map((u) => ({
+        username: u.firstName ?? 'Unknown',
+        email: u.email,
+        onboardComplete: u.onboardComplete,
+        createdAt: u.createdAt.toISOString(),
+      })),
+    };
+  }
+
   async completeOnboarding(userId: number) {
     const user = await this.prisma.user.update({
       where: { userId },
