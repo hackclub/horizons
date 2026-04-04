@@ -103,7 +103,7 @@
 				<div class="flex items-center justify-between w-full">
 					<div class="flex flex-col gap-1 w-[369px]">
 						<p class="font-bricolage text-[20px] text-black m-0">Refer friends to earn tickets to win a Nintendo Switch Lite.</p>
-						<p class="font-bricolage text-[12px] text-black m-0">*Your friends must verify their IDs</p>
+						<p class="font-bricolage text-[12px] text-black m-0">*Your friends must verify their IDs through Hack Club Auth</p>
 					</div>
 					<img src={switchLiteImg} alt="Nintendo Switch Lite" class="w-[213px] h-[120px] object-cover -rotate-5" />
 				</div>
