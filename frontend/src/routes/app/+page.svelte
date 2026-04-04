@@ -160,7 +160,7 @@
 <div class="page-wrap">
 	<div class="page-content">
 		<!-- Header -->
-		<div class="flex items-end gap-2 w-full shrink-0 exit-up enter-up" class:exiting={navigating} class:exit-right={exitRight}>
+		<div class="flex items-end gap-2 w-full shrink-0 exit-up enter-up" class:exiting={navigating} class:exit-right={exitRight} style:--exit-right-delay="0ms">
 			<div class="w-[347.58px] h-[75.13px] shrink-0">
 				<img src={logoSvg} alt="Horizon" class="w-full h-full block" />
 			</div>
@@ -173,7 +173,7 @@
 		<div class="scroll-wrapper" bind:this={scrollContainer}>
 			<div class="cards-row" bind:this={cardsRow}>
 				<!-- Projects (tall left card) -->
-				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms">
+				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms" style:--exit-right-delay="150ms">
 					<a bind:this={cardRefs[0]} href="/app/projects" class="card nav-card projects-card"
 						class:selected={nav.isSelected(0, 0)}
 						onmouseenter={() => { if (!nav.usingKeyboard) nav.select(0, 0); }}
@@ -203,7 +203,7 @@
 				<!-- Middle Column -->
 				<div class="middle-col shrink-0">
 					<!-- Event / Nexus Card (informational, not navigable) -->
-					<div class="enter-up" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms">
+					<div class="enter-up" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
 						<div class="card event-card relative" style="background-color: {pinnedEventSlug === 'nexus' || !pinnedEventConfig ? '#fac393' : pinnedEventConfig.colors.primary};">
 							<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0">PROGRESS</p>
 							<div class="flex flex-col gap-3 w-full">
@@ -239,7 +239,7 @@
 					<!-- Shop + Events Row -->
 					<div class="bottom-row">
 						<!-- Shop -->
-						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="60ms" style:--enter-delay="150ms">
+						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="60ms" style:--enter-delay="150ms" style:--exit-right-delay="150ms">
 							<a bind:this={cardRefs[1]} href="/app/shop" class="card nav-card shop-card"
 								class:selected={nav.isSelected(1, 0)}
 								onmouseenter={() => { if (!nav.usingKeyboard) nav.select(1, 0); }}
@@ -265,7 +265,7 @@
 						</div>
 
 						<!-- Events -->
-						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms">
+						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms" style:--exit-right-delay="150ms">
 							<a bind:this={cardRefs[2]} href="/app/events" class="card nav-card events-card"
 								class:selected={nav.isSelected(2, 0)}
 								class:disabled={isDisabled(2, 0)}
@@ -296,7 +296,7 @@
 				</div>
 
 				<!-- FAQ (tall right card) -->
-				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="120ms" style:--enter-delay="250ms">
+				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="120ms" style:--enter-delay="250ms" style:--exit-right-delay="150ms">
 					<a bind:this={cardRefs[3]} href="/faq?from=app" class="card nav-card faq-card"
 						class:selected={nav.isSelected(3, 0)}
 						class:shaking={isShaking(3, 0)}
@@ -642,9 +642,9 @@
 		animation: fly-out-bottom var(--exit-duration) var(--exit-easing) var(--exit-delay, 0ms) both;
 	}
 
-	/* Override: all cards fly out to the right simultaneously */
+	/* Override: all cards fly out to the right with stagger */
 	.exit-right.exiting {
-		animation: fly-out-right var(--exit-duration) var(--exit-easing) 0ms both;
+		animation: fly-out-right var(--exit-duration) var(--exit-easing) var(--exit-right-delay, 0ms) both;
 	}
 
 	@keyframes shake {

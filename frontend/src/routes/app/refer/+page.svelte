@@ -67,13 +67,13 @@
 <div class="page-wrap">
 	<div class="page-content">
 		<!-- Back button -->
-		<button class="back-btn fly-left" class:entered class:exiting={navigating} style="--fly-delay: 0ms;" onclick={goBack}>
+		<button class="back-btn fly-left" class:entered class:exiting={navigating} style="--fly-in-delay: 0ms; --fly-out-delay: 0ms;" onclick={goBack}>
 			<InputPrompt type="ESC" />
 			<span class="font-cook text-2xl font-semibold text-black">BACK</span>
 		</button>
 
 		<!-- Content (vertically centered in remaining space) -->
-		<div class="content-area fly-left" class:entered class:exiting={navigating} style="--fly-delay: 150ms;">
+		<div class="content-area fly-left" class:entered class:exiting={navigating} style="--fly-in-delay: 150ms; --fly-out-delay: 150ms;">
 			<!-- Left column: Refer card -->
 			<div class="card refer-card">
 				<p class="font-cook text-[32px] text-black m-0">REFER YOUR FRIENDS</p>
@@ -181,7 +181,7 @@
 		gap: 32px;
 		width: 100%;
 		height: 100%;
-		padding: 32px;
+		padding: 32px 40px;
 	}
 
 	/* Back button — in flow at top */
@@ -364,10 +364,10 @@
 	}
 	.fly-left.entered {
 		transform: translateX(0);
-		transition: transform var(--enter-duration) var(--enter-easing) var(--fly-delay, 0ms);
+		transition: transform var(--enter-duration) var(--enter-easing) var(--fly-in-delay, 0ms);
 	}
 	.fly-left.exiting {
 		transform: translateX(-120vw);
-		transition: transform var(--exit-duration) var(--exit-easing);
+		transition: transform var(--exit-duration) var(--exit-easing) var(--fly-out-delay, 0ms);
 	}
 </style>
