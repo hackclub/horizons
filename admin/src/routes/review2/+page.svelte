@@ -127,6 +127,7 @@
 	let repoUrl = $derived(currentSubmission?.project.repoUrl ?? currentSubmission?.repoUrl ?? null);
 	let sanitizedReadme = $derived(readmeMarkdown ? DOMPurify.sanitize(marked.parse(readmeMarkdown) as string) : '');
 	let userNoteCount = $derived(userNote.trim().length > 0 ? 1 : 0);
+	let hackatimeProjects = $derived(currentSubmission?.project.nowHackatimeProjects ?? []);
 
 	const CHECKLIST_ITEMS = [
 		'README exists and has setup instructions',
@@ -581,7 +582,7 @@
 
 							<!-- Accordion: Readme -->
 							<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
-								<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-[#f5f5f5] list-none [&::-webkit-details-marker]:hidden">
+								<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
 									<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
 									Readme
 								</summary>
@@ -596,7 +597,7 @@
 
 							<!-- Accordion: Github -->
 							<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
-								<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-[#f5f5f5] list-none [&::-webkit-details-marker]:hidden">
+								<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
 									<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
 									Github
 								</summary>
@@ -644,7 +645,7 @@
 
 							<!-- Accordion: Review History -->
 							<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
-								<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-[#f5f5f5] list-none [&::-webkit-details-marker]:hidden">
+								<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
 									<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
 									Review History
 								</summary>
@@ -685,6 +686,64 @@
 									{/each}
 								</div>
 							</details>
+
+								<!-- Accordion: Hours Breakdown -->
+								{#if currentSubmission.hackatimeHours != null}
+									<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
+										<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
+											<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
+											Hours Breakdown
+											<span class="text-[#808080] ml-auto">{currentSubmission.hackatimeHours.toFixed(1)}h total</span>
+										</summary>
+										<div class="border-t border-[#a7a7a7] p-3 text-xs">
+											{#if hackatimeProjects.length > 1}
+												<p class="text-xs font-medium mb-2">Per-project hours</p>
+												{#each hackatimeProjects as project}
+													<div class="flex items-center gap-2 mb-1.5">
+														<span class="text-[#808080] truncate flex-1">{project}</span>
+														<span class="font-bold">{(currentSubmission.hackatimeHours / hackatimeProjects.length).toFixed(1)}h</span>
+													</div>
+												{/each}
+												<div class="flex items-center gap-2 pt-2 mt-2 border-t border-[#a7a7a7]">
+													<span class="font-medium">Total</span>
+													<span class="font-bold ml-auto">{currentSubmission.hackatimeHours.toFixed(1)}h</span>
+												</div>
+											{:else if hackatimeProjects.length === 1}
+												<div class="flex items-center gap-2">
+													<span class="text-[#808080]">{hackatimeProjects[0]}</span>
+													<span class="font-bold ml-auto">{currentSubmission.hackatimeHours.toFixed(1)}h</span>
+												</div>
+											{:else}
+												<p class="text-[#808080]">No linked Hackatime projects.</p>
+											{/if}
+										</div>
+									</details>
+								{/if}
+
+								<!-- Accordion: Project Card -->
+								<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
+									<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
+										<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
+										Project Card
+									</summary>
+									<div class="border-t border-[#a7a7a7]">
+										{#if currentSubmission.screenshotUrl}
+											<img
+												class="w-full max-h-[200px] object-cover block border-b border-[#a7a7a7]"
+												src={currentSubmission.screenshotUrl}
+												alt="{currentSubmission.project.projectTitle ?? 'Project'} screenshot"
+											/>
+										{:else}
+											<div class="w-full h-[100px] flex items-center justify-center text-[#808080] text-xs bg-[#f5f5f5] border-b border-[#a7a7a7]">No screenshot</div>
+										{/if}
+										<div class="p-3">
+											<h4 class="text-[15px] font-bold m-0 mb-1.5">{currentSubmission.project.projectTitle ?? 'Untitled Project'}</h4>
+											<p class="text-xs text-[#808080] m-0 leading-relaxed whitespace-pre-wrap">
+												{currentSubmission.project.description ?? 'No description provided.'}
+											</p>
+										</div>
+									</div>
+								</details>
 						</div>
 					{/if}
 				</div>
@@ -972,9 +1031,13 @@
 	}
 	/* Hover — brighten all buttons uniformly */
 	:global(.rv2-dark) button:hover,
-	:global(.rv2-dark) a[href]:hover,
-	:global(.rv2-dark) summary:hover {
+	:global(.rv2-dark) a[href]:hover {
 		filter: brightness(1.3);
+	}
+	:global(.rv2-dark) summary:hover,
+	:global(.rv2-dark .dark-hover):hover {
+		filter: brightness(1.5);
+		background-color: rgba(255, 255, 255, 0.08) !important;
 	}
 	/* Shadow adjustments */
 	:global(.rv2-dark .shadow-\[0_1px_4px_rgba\(0\,0\,0\,0\.1\)\]),
