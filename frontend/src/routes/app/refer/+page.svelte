@@ -4,6 +4,7 @@
 	import { api } from '$lib/api';
 	import type { components } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
+	import { userStore } from '$lib/store/userCache';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
 	import stickerSheetImg from '$lib/assets/refer/sticker-sheet.png';
 	import switchLiteImg from '$lib/assets/refer/switch-lite.png';
@@ -13,9 +14,9 @@
 	let entered = $state(false);
 	let navigating = $state(false);
 
-	let referralCode = $state('');
+	let userName = $derived($userStore.userName);
+	let referralCode = $derived($userStore.referralCode);
 	let referrals = $state<ReferralUser[]>([]);
-	let userName = $state('');
 	let loading = $state(true);
 	let copied = $state(false);
 
@@ -24,20 +25,13 @@
 	onMount(async () => {
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
 
-		const [codeRes, referralsRes, userRes] = await Promise.all([
-			api.GET('/api/user/auth/referral-code'),
+		const [, referralsRes] = await Promise.all([
+			userStore.load(),
 			api.GET('/api/user/auth/referrals'),
-			api.GET('/api/user/auth/me') as Promise<{ data?: Record<string, any> }>,
 		]);
 
-		if (codeRes.data?.referralCode) {
-			referralCode = codeRes.data.referralCode;
-		}
 		if (referralsRes.data?.referrals) {
 			referrals = referralsRes.data.referrals;
-		}
-		if (userRes.data?.firstName) {
-			userName = (userRes.data.firstName as string).toLowerCase();
 		}
 
 		loading = false;

@@ -9,6 +9,7 @@
 	import { createGridNav } from '$lib/nav/wasd.svelte';
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
+	import { userStore } from '$lib/store/userCache';
 	import { onMount } from 'svelte';
 	import yaml from 'js-yaml';
 	import type { EventConfig } from '$lib/events/types';
@@ -35,8 +36,8 @@
 		'3-0': 'Got questions? Find answers here.',
 	};
 
-	let userName = $state('');
-	let referralCode = $state('');
+	let userName = $derived($userStore.userName);
+	let referralCode = $derived($userStore.referralCode);
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 	let pinnedEventConfig = $state<EventConfig | null>(null);
 	let pinnedEventSlug = $state<string | null>(null);
@@ -50,20 +51,11 @@
 	let completedPct = $derived(TARGET_HOURS > 0 ? Math.min(100, ((completedHours - approvedHours) / TARGET_HOURS) * 100) : 0);
 
 	onMount(async () => {
-		const [userRes, totalRes, approvedRes] = await Promise.all([
-			api.GET('/api/user/auth/me') as Promise<{ data?: Record<string, any> }>,
+		const [, totalRes, approvedRes] = await Promise.all([
+			userStore.load(),
 			api.GET('/api/hackatime/hours/total'),
 			api.GET('/api/hackatime/hours/approved'),
 		]);
-
-		if (userRes.data?.firstName) {
-			userName = (userRes.data.firstName as string).toLowerCase();
-		}
-
-		const referralRes = await (api.GET)('/api/user/auth/referral-code');
-		if (referralRes.data?.referralCode) {
-			referralCode = referralRes.data.referralCode;
-		}
 		if (totalRes.data) {
 			completedHours = Math.round(((totalRes.data as any).totalNowHackatimeHours ?? 0) * 10) / 10;
 		}
