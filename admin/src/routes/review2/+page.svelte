@@ -44,6 +44,16 @@
 	let checklistOpen = $state(false);
 	let darkMode = $state(true);
 
+	// ── Panel resize ──
+	let splitPercent = $state(50);
+	let resizing = $state(false);
+	let splitContainer: HTMLDivElement | undefined = $state();
+
+	function startResize(e: MouseEvent) {
+		resizing = true;
+		e.preventDefault();
+	}
+
 	// ── Demo iframe ──
 	let iframeLoaded = $state(false);
 	let iframeElement: HTMLIFrameElement | undefined = $state();
@@ -70,6 +80,12 @@
 	}
 
 	function onMouseMove(e: MouseEvent) {
+		if (resizing && splitContainer) {
+			const rect = splitContainer.getBoundingClientRect();
+			const pct = ((e.clientX - rect.left) / rect.width) * 100;
+			splitPercent = Math.max(20, Math.min(80, pct));
+			return;
+		}
 		if (!dragging) return;
 		if (dragging === 'notes') {
 			notesPosX = e.clientX - dragOffsetX;
@@ -82,6 +98,7 @@
 
 	function onMouseUp() {
 		dragging = null;
+		resizing = false;
 	}
 
 	$effect(() => {
@@ -474,10 +491,11 @@
 		</div>
 
 		<!-- ── MAIN 2-COLUMN LAYOUT ── -->
-		<div class="flex flex-1 overflow-hidden">
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="flex flex-1 overflow-hidden split-container" class:cursor-col-resize={resizing} class:select-none={resizing} bind:this={splitContainer}>
 
 			<!-- ═══ LEFT: DEMO IFRAME ═══ -->
-			<div class="w-1/2 flex flex-col border-r border-[#b3b3b3]">
+			<div class="flex flex-col" style="width: {splitPercent}%">
 				<!-- URL toolbar -->
 				<div class="flex gap-2 items-center p-2 bg-[#d8bfa1] border-b border-[#b3b3b3] shrink-0">
 					<div class="flex-1 bg-[#d5d5d5] border border-[#a7a7a7] rounded-lg p-2 text-xs text-[#808080] font-medium overflow-hidden text-ellipsis whitespace-nowrap shadow-[0_1px_4px_rgba(0,0,0,0.1)]">
@@ -533,8 +551,17 @@
 				</div>
 			</div>
 
+			<!-- ═══ RESIZE HANDLE ═══ -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class="w-1 shrink-0 bg-[#b3b3b3] cursor-col-resize hover:bg-[#808080] active:bg-[#666] transition-colors relative group"
+				onmousedown={startResize}
+			>
+				<div class="absolute inset-y-0 -left-1 -right-1"></div>
+			</div>
+
 			<!-- ═══ RIGHT: INFO + REVIEW ═══ -->
-			<div class="w-1/2 flex flex-col overflow-hidden">
+			<div class="flex flex-col overflow-hidden" style="width: {100 - splitPercent}%">
 
 				<!-- Right top toolbar -->
 				<div class="flex items-center justify-end gap-2 px-2 h-[51px] box-border bg-[#a1a8d8] border-b border-[#b3b3b3] shrink-0">
@@ -1053,6 +1080,9 @@
 	:global(.rv2-dark .bg-\[\#aaafda\]) { background-color: #1a1e38 !important; } /* user notes button hover */
 	:global(.rv2-dark .bg-\[\#e0bcc9\]) { background-color: #2a1e24 !important; } /* checklist button */
 	:global(.rv2-dark .bg-\[\#d4aebb\]) { background-color: #221a20 !important; } /* checklist button hover */
+	/* Resize handle */
+	:global(.rv2-dark .bg-\[\#b3b3b3\]) { background-color: #3a3a3a !important; }
+	:global(.rv2-dark .hover\:bg-\[\#808080\]):hover { background-color: #555 !important; }
 	/* Logo invert */
 	:global(.rv2-dark) img[alt="Horizons"] {
 		filter: invert(1);
