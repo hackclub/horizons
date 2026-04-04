@@ -5,9 +5,9 @@
 Start: 2026-04-07T14:00:00+00:00
 End: 2026-04-07T20:00:00+00:00
 JoinInfo: "[Join the huddle in #Horizons!](https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476)"
-Tagline: "Lets start off with a bang!"
+Tagline: "Let's start off with a bang!"
 ```
-Come join us for our first lock in call of the event! Discuse project ideas, ask questions or just lock in on your project for any Horizons event!
+Come join us for our first lock in call of the event! Discuss project ideas, ask questions or just lock in on your project for any Horizons event!
 
 
 ## Kickoff call (#1!)
@@ -33,10 +33,10 @@ DATE NOT FINAL.
 ```yaml
 Start: 2026-04-09T19:00:00+00:00
 End: 2026-04-09T20:00:00+00:00
-Tagline: "Show off what youve been working on"
-JoinInfo: "[Join the huddle in #Horizons!](https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476)"
+Tagline: "Show off what you've been working on"
+JoinInfo: "[Join the huddle in #horizons!](https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476)"
 ```
-Come show off what youve been working on! Get some feedback!
+Come show off what you've been working on! Get some feedback!
 lock in call afterwards tentative on if i can get someone to commit to it
 
 
@@ -45,12 +45,12 @@ lock in call afterwards tentative on if i can get someone to commit to it
 Start: 2026-04-10T11:00:00+00:00
 End: 2026-04-12T13:00:00+00:00
 JoinInfo: "[Sign up on itch.io!](https://itch.io/)"
-Tagline: "Create a game your proud of!"
+Tagline: "Create a game you're proud of!"
 ```
-Take part in Horizons first game jam! With a constant lock in call and workshops to help you get started, this is the perfect way get into horizons!2
+Take part in Horizons' first game jam! With a constant lock in call and workshops to help you get started, this is the perfect to way get into Horizons!
 
 
-## Godot workshop!!
+## Godot Workshop!!
 ```yaml
 Start: 2026-04-10T15:00:00+00:00
 End: 2026-04-10T16:00:00+00:00
@@ -66,9 +66,9 @@ End: 2026-04-11T14:00:00+00:00
 JoinInfo: "[Sign up on the Horizons dashboard](/app)"
 Tagline: "Learn sound design using LMMS"
 ```
-Learn how to polish your game with sound effects using lmms!!
+Learn how to polish your game with sound effects using LMMS!!
 
-## Lock in Call (3/14)
+## Lock in Call (4/14)
 ```yaml
 Start: 2026-04-14T14:00:00+00:00
 End: 2026-04-14T20:00:00+00:00
