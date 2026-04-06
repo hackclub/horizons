@@ -14,7 +14,7 @@ Come join us for our first lock in call of the event! Discuss project ideas, ask
 ```yaml
 Start: 2026-04-08T21:00:00+00:00
 End: 2026-04-08T22:00:00+00:00
-JoinInfo: "[Sign up on the Horizons dashboard](/app)"
+JoinInfo: "[RSVP](https://luma.com/5pxqedh2)"
 Tagline: "Learn more about Horizons!"
 ```
 Learn more about Horizons, ask questions, and more!
@@ -23,7 +23,7 @@ Learn more about Horizons, ask questions, and more!
 ```yaml
 Start: 2026-04-08T23:00:00.000-12:00
 End: 2026-04-08T24:00:00.000-12:00
-JoinInfo: "[Sign up on the Horizons dashboard](/app)"
+JoinInfo: "[RSVP](https://luma.com/rhm4npjv)"
 Tagline: "Learn more about Horizons!"
 ```
 Learn more about Horizons, ask questions, and more!
@@ -44,7 +44,7 @@ Stay tuned for a potential lock in call afterwards!
 ```yaml
 Start: 2026-04-10T11:00:00+00:00
 End: 2026-04-12T13:00:00+00:00
-JoinInfo: "[Sign up on itch.io!](https://itch.io/)"
+JoinInfo: "[Sign up on itch.io!](https://itch.io/jam/orion)"
 Tagline: "Create a game you're proud of!"
 ```
 Take part in Horizons' first game jam! With a constant lock in call and workshops to help you get started, this is the perfect to way get into Horizons!
@@ -93,6 +93,8 @@ Stay tuned for a potential lock in call afterwards!
 ```yaml
 Start: 2026-04-18T00:00:00+00:00
 End: 2026-04-18T02:00:00+00:00
-Tagline: "Show off what youve been working on"
+Tagline: "come hang out and play some games :)"
+JoinInfo: "[Join the huddle in #horizons!](https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476)"
+
 ```
 Come play some party games!
