@@ -240,8 +240,8 @@
 		<TopBar
 			{currentIndex}
 			totalCount={queueLength}
-			onPrev={navigatePrev}
 			onNext={navigateNext}
+			onPrev={navigatePrev}
 			onBackToGallery={returnToGallery}
 		/>
 

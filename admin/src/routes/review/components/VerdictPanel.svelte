@@ -147,7 +147,7 @@
 
 			<!-- Structured justification builder -->
 			<div class="mb-3">
-				<label class="block text-xs font-semibold text-rv-dim mb-1">
+				<label class="block text-xs font-semibold text-rv-text mb-1">
 					Ship Justification
 					<span class="font-normal opacity-70 italic">(internal — synced to Airtable)</span>
 				</label>

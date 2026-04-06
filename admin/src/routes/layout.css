@@ -4,7 +4,7 @@
 @theme {
 	--font-bricolage: 'Bricolage Grotesque', sans-serif;
 
-	/* Review page dark theme */
+	/* Review page dark theme (default) */
 	--color-rv-bg: #1c1c1c;
 	--color-rv-surface: #242424;
 	--color-rv-surface2: #2e2e2e;
@@ -19,4 +19,22 @@
 	--color-rv-blue: #42a5f5;
 	--color-rv-tag-bg: rgba(245, 166, 35, 0.15);
 	--color-rv-divider: rgba(255, 255, 255, 0.06);
+}
+
+/* Light theme overrides */
+:root[data-theme='light'] {
+	--color-rv-bg: #f5f5f5;
+	--color-rv-surface: #ffffff;
+	--color-rv-surface2: #eaeaea;
+	--color-rv-border: #d0d0d0;
+	--color-rv-text: #1a1a1a;
+	--color-rv-dim: #6b7280;
+	--color-rv-accent: #d4890a;
+	--color-rv-green: #2e7d32;
+	--color-rv-green-bg: rgba(46, 125, 50, 0.1);
+	--color-rv-red: #c62828;
+	--color-rv-red-bg: rgba(198, 40, 40, 0.1);
+	--color-rv-blue: #1976d2;
+	--color-rv-tag-bg: rgba(212, 137, 10, 0.12);
+	--color-rv-divider: rgba(0, 0, 0, 0.08);
 }

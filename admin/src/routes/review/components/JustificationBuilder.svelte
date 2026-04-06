@@ -8,7 +8,7 @@
 </script>
 
 <div>
-	<div class="mb-2 rounded-md border border-rv-border px-3 py-2.5 text-[13px] text-white leading-relaxed">
+	<div class="mb-2 rounded-md border border-rv-border px-3 py-2.5 text-[13px] text-rv-text leading-relaxed">
 		<p class="mb-1.5">
 			Your approval message should cover the following points. Keep in mind this is
 			qualitative — the numbers and facts are logged automatically when submitted to the
