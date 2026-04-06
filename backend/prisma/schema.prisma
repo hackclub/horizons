@@ -67,7 +67,7 @@ model Project {
   updatedAt          DateTime     @updatedAt @map("updated_at")
   approvedHours      Float?       @map("approved_hours")
   description        String?      @db.VarChar(500)
-  hoursJustification String?      @map("hours_justification") @db.VarChar(500)
+  hoursJustification String?      @map("hours_justification") @db.Text
   nowHackatimeHours  Float?       @map("now_hackatime_hours")
   nowHackatimeProjects String[]   @map("now_hackatime_projects")
   playableUrl        String?      @map("playable_url")

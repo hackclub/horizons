@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api } from '$lib/api';
+	import JustificationBuilder from './JustificationBuilder.svelte';
 
 	interface Props {
 		submissionId: number;
@@ -15,7 +16,7 @@
 		onReviewComplete,
 	}: Props = $props();
 
-	let activeForm: 'approve' | 'changes' | null = $state(null);
+	let activeForm: 'approve' | 'changes' = $state('changes');
 	let submitting = $state(false);
 
 	// Approval form fields
@@ -32,7 +33,7 @@
 	// Reset fields when submission changes
 	$effect(() => {
 		submissionId; // track
-		activeForm = null;
+		activeForm = 'changes';
 		hoursJustification = '';
 		approveComment = '';
 		approvedHours = hackatimeHours ?? 0;
@@ -49,12 +50,8 @@
 		}
 	});
 
-	function showForm(type: 'approve' | 'changes') {
-		activeForm = activeForm === type ? null : type;
-	}
-
-	function hideForm() {
-		activeForm = null;
+	function setVerdict(type: 'approve' | 'changes') {
+		activeForm = type;
 	}
 
 	async function submitApproval() {
@@ -108,18 +105,22 @@
 </script>
 
 <div class="h-full overflow-y-auto bg-rv-bg p-5">
-	<div class="flex gap-2.5 items-center mb-4">
+	<!-- Full-width slide toggle -->
+	<div class="relative flex w-full rounded-lg bg-rv-surface border border-rv-border mb-4 overflow-hidden">
+		<div
+			class="absolute top-0 bottom-0 w-1/2 rounded-lg transition-all duration-200 ease-in-out {activeForm === 'changes' ? 'left-0 bg-rv-red' : 'left-1/2 bg-rv-green'}"
+		></div>
 		<button
-			class="px-6 py-2.5 rounded-lg text-sm font-semibold font-inherit cursor-pointer border-2 border-transparent transition-all duration-150 bg-rv-green text-white hover:bg-[#66bb6a]"
-			onclick={() => showForm('approve')}
-		>
-			Approve
-		</button>
-		<button
-			class="px-6 py-2.5 rounded-lg text-sm font-semibold font-inherit cursor-pointer border-2 transition-all duration-150 bg-rv-red-bg text-rv-red border-rv-red hover:bg-[rgba(239,83,80,0.2)]"
-			onclick={() => showForm('changes')}
+			class="relative z-10 flex-1 py-2.5 text-sm font-semibold font-inherit cursor-pointer bg-transparent border-none transition-colors duration-200 {activeForm === 'changes' ? 'text-white' : 'text-rv-dim hover:text-rv-text'}"
+			onclick={() => setVerdict('changes')}
 		>
 			Changes Needed
+		</button>
+		<button
+			class="relative z-10 flex-1 py-2.5 text-sm font-semibold font-inherit cursor-pointer bg-transparent border-none transition-colors duration-200 {activeForm === 'approve' ? 'text-white' : 'text-rv-dim hover:text-rv-text'}"
+			onclick={() => setVerdict('approve')}
+		>
+			Approve
 		</button>
 	</div>
 
@@ -143,19 +144,18 @@
 					class="w-[100px] bg-rv-surface border border-rv-border rounded-md p-2.5 text-rv-text font-[Space_Mono,monospace] text-[13px] font-semibold resize-vertical focus:outline-none focus:border-rv-accent"
 				/>
 			</div>
+
+			<!-- Structured justification builder -->
 			<div class="mb-3">
-				<label for="justify" class="block text-xs font-semibold text-rv-dim mb-1">
+				<label class="block text-xs font-semibold text-rv-dim mb-1">
 					Ship Justification
 					<span class="font-normal opacity-70 italic">(internal — synced to Airtable)</span>
 				</label>
-				<textarea
-					id="justify"
-					bind:value={hoursJustification}
-					maxlength={500}
-					placeholder="Why are you approving this? e.g. hours look right, project is complete, shipped publicly..."
-					class="w-full bg-rv-surface border border-rv-border rounded-md p-2.5 text-rv-text font-inherit text-[13px] resize-vertical min-h-[60px] focus:outline-none focus:border-rv-accent"
-				></textarea>
+				<JustificationBuilder
+					bind:justification={hoursJustification}
+				/>
 			</div>
+
 			<div class="mb-3">
 				<label for="approve-comment" class="block text-xs font-semibold text-rv-dim mb-1">
 					Comment for User
@@ -176,10 +176,6 @@
 				</label>
 			</div>
 			<div class="flex gap-2 justify-end">
-				<button
-					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text disabled:opacity-50 disabled:cursor-not-allowed"
-					onclick={hideForm}
-				>Cancel</button>
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-green text-white border-rv-green disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitApproval}
@@ -216,10 +212,6 @@
 				</label>
 			</div>
 			<div class="flex gap-2 justify-end">
-				<button
-					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text disabled:opacity-50 disabled:cursor-not-allowed"
-					onclick={hideForm}
-				>Cancel</button>
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-red text-white border-rv-red disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitChangesNeeded}
