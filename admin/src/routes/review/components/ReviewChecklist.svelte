@@ -9,13 +9,13 @@
 	let { submissionId, checkedItems = $bindable([]) }: Props = $props();
 
 	const CHECKLIST_ITEMS = [
-		'README exists and has setup instructions',
-		'Demo link works and is accessible',
-		'Code is original (not a tutorial clone)',
-		'Hours claimed match Hackatime logs',
-		'Commits show meaningful progress over time',
-		'Project is publicly shipped / deployed',
-		'No red flags in code or dependencies',
+		'README exists with setup/run instructions',
+		'Playable URL works without building from source',
+		'Code repo is public and accessible',
+		'Code is original (not AI slop, tutorial clone, or plagiarism)',
+		'Commits show incremental progress matching claimed hours',
+		'Hours are proportional to project scope and complexity',
+		'Screenshot accurately represents the project',
 	];
 
 	let checkedCount = $derived(checkedItems.length);
