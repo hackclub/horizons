@@ -5,9 +5,11 @@
 	interface Props {
 		items: QueueItem[];
 		onSelect: (index: number) => void;
+		onRefresh: () => void;
+		refreshing?: boolean;
 	}
 
-	let { items, onSelect }: Props = $props();
+	let { items, onSelect, onRefresh, refreshing = false }: Props = $props();
 
 	const PROJECT_TYPES = [
 		'windows_playable',
@@ -57,7 +59,16 @@
 <div class="flex flex-col h-screen overflow-hidden">
 	<div class="flex items-center justify-between px-6 py-4 bg-rv-surface border-b border-rv-border shrink-0">
 		<div class="font-[Space_Mono,monospace] font-bold text-[18px] text-rv-accent">HORIZONS <span class="text-rv-text font-normal text-[13px] ml-2">Project Review</span></div>
-		<p class="text-[13px] text-rv-dim m-0">{filteredItems.length} of {items.length} projects</p>
+		<div class="flex items-center gap-3">
+			<p class="text-[13px] text-rv-dim m-0">{filteredItems.length} of {items.length} projects</p>
+			<button
+				class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text disabled:opacity-40 disabled:cursor-not-allowed"
+				onclick={onRefresh}
+				disabled={refreshing}
+			>
+				{refreshing ? 'Refreshing…' : 'Refresh Queue'}
+			</button>
+		</div>
 	</div>
 
 	<div class="flex flex-col gap-3 px-6 py-4 bg-rv-surface border-b border-rv-border shrink-0">

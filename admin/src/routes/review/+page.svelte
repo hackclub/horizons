@@ -1,6 +1,9 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+
+	// How often to auto-poll the fraud review platform and refresh the queue (ms)
+	const FRAUD_POLL_INTERVAL_MS = 5 * 60 * 1000;
 	import TopBar from './components/TopBar.svelte';
 	import UserInfo from './components/UserInfo.svelte';
 	import NotesSection from './components/NotesSection.svelte';
@@ -21,6 +24,9 @@
 	let queue = $state<QueueItem[]>([]);
 	let queueLoading = $state(true);
 	let queueError = $state<string | null>(null);
+	let queueRefreshing = $state(false);
+
+	let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 	// Navigation
 	let galleryMode = $state(true);
@@ -53,8 +59,30 @@
 			goto('/app/projects');
 			return;
 		}
-		loadQueue();
+		await loadQueue();
+
+		// Periodically poll fraud review statuses and refresh the queue
+		pollTimer = setInterval(refreshQueue, FRAUD_POLL_INTERVAL_MS);
 	});
+
+	onDestroy(() => {
+		if (pollTimer) clearInterval(pollTimer);
+	});
+
+	async function refreshQueue() {
+		if (queueRefreshing) return;
+		queueRefreshing = true;
+		try {
+			// Ask the backend to poll the fraud review platform for pending projects
+			await api.POST('/api/reviewer/fraud-review/refresh', {});
+			// Reload the queue so newly-passed projects appear
+			await loadQueue();
+		} catch {
+			// Refresh failures are non-fatal — the queue stays as-is
+		} finally {
+			queueRefreshing = false;
+		}
+	}
 
 	async function loadQueue() {
 		queueLoading = true;
@@ -224,7 +252,7 @@
 			<p>No pending submissions to review.</p>
 		</div>
 	{:else if galleryMode}
-		<ProjectGallery items={queue} onSelect={selectFromGallery} />
+		<ProjectGallery items={queue} onSelect={selectFromGallery} onRefresh={refreshQueue} refreshing={queueRefreshing} />
 	{:else}
 		<TopBar
 			{currentIndex}

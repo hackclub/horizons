@@ -79,6 +79,10 @@ model Project {
   isLocked           Boolean      @default(false) @map("is_locked")
   isFraud             Boolean      @default(false) @map("is_fraud")
   adminComment       String?      @map("admin_comment") @db.VarChar(1000)
+  // Fraud review integration: stores the external review platform's project UUID
+  joeProjectId       String?      @map("joe_project_id")
+  // null = not yet reviewed; true = passed; false = auto-rejected
+  joeFraudPassed     Boolean?     @map("joe_fraud_passed")
   user               User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
   submissions        Submission[]
   @@index([userId])

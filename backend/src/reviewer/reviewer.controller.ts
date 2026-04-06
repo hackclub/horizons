@@ -35,6 +35,12 @@ import { Role } from '../auth/enums/role.enum';
 export class ReviewerController {
   constructor(private reviewerService: ReviewerService) {}
 
+  /** Poll the fraud review platform and update pass/fail status for all pending projects */
+  @Post('fraud-review/refresh')
+  async refreshFraudStatuses() {
+    return this.reviewerService.refreshFraudStatuses();
+  }
+
   /** Get the pending submissions queue with scoped data */
   @Get('queue')
   @ApiOkResponse({ type: [QueueItemResponse] })
