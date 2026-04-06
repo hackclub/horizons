@@ -141,6 +141,12 @@ export class AuthService {
 
     if (email) {
       params.set('login_hint', email);
+
+      this.airtableService
+        .syncPreAuthSignUp(email)
+        .catch((err) =>
+          console.error('Error syncing pre-auth signUp to Airtable:', err),
+        );
     }
 
     return {
