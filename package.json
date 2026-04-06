@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "pnpm": "^10.33.0",
-    "prisma": "^7.0.0"
+    "prisma": "^7.6.0"
   },
   "keywords": [],
   "author": "",
