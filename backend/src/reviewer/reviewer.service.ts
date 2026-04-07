@@ -9,6 +9,7 @@ import {
 import { AirtableService } from '../airtable/airtable.service';
 import { MailService } from '../mail/mail.service';
 import { SlackService } from '../slack/slack.service';
+import { FraudReviewService } from '../fraud-review/fraud-review.service';
 
 /** Format decimal hours as "Xh Ymin". */
 function formatHoursMin(hours: number): string {
@@ -82,6 +83,7 @@ export class ReviewerService {
     private airtableService: AirtableService,
     private mailService: MailService,
     private slackService: SlackService,
+    private fraudReviewService: FraudReviewService,
   ) {}
 
   /**
@@ -89,8 +91,21 @@ export class ReviewerService {
    * Returns minimal info for the queue list, not full details.
    */
   async getReviewQueue() {
+    const fraudFilterEnabled = this.fraudReviewService.isEnabled();
+
+    // Sync fraud statuses before returning the queue so newly-passed
+    // projects appear immediately when a reviewer opens the page
+    if (fraudFilterEnabled) {
+      await this.fraudReviewService.pollPendingProjects();
+    }
+
+    const fraudFilter = fraudFilterEnabled ? { joeFraudPassed: true } : {};
+
     const submissions = await this.prisma.submission.findMany({
-      where: { approvalStatus: 'pending' },
+      where: {
+        approvalStatus: 'pending',
+        project: fraudFilter,
+      },
       include: {
         project: {
           select: {
@@ -649,6 +664,14 @@ export class ReviewerService {
     } catch (error) {
       console.error('Slack notification failed:', error);
     }
+  }
+
+  /**
+   * Poll the fraud review platform for all projects awaiting a decision,
+   * submit any that were missed (e.g. API was down), and update pass/fail status.
+   */
+  async refreshFraudStatuses() {
+    return this.fraudReviewService.pollPendingProjects();
   }
 
   /** Save the adminComment field on a project or user. */

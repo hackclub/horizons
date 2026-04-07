@@ -147,8 +147,12 @@
 	function formatDateRange(start: string, end: string) {
 		const s = new Date(start);
 		const e = new Date(end);
-		const month = s.getMonth() + 1;
-		return `${month}/${s.getDate()}-${e.getDate()}`;
+		const sMonth = s.toLocaleString('default', { month: 'long' });
+		const eMonth = e.toLocaleString('default', { month: 'long' });
+		if (sMonth === eMonth) {
+			return `${sMonth} ${s.getDate()} - ${e.getDate()}`;
+		}
+		return `${sMonth} ${s.getDate()} - ${eMonth} ${e.getDate()}`;
 	}
 
 	async function completeOnboarding() {

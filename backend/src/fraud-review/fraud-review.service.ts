@@ -1,0 +1,262 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
+import { PrismaService } from '../prisma.service';
+
+const FRAUD_POLL_INTERVAL_MS = 5 * 60 * 1000;
+
+/** Shape of a single project returned by GET /events/{eventId}/projects */
+interface JoeProject {
+  id: string;
+  name: string;
+  organizerPlatformId: string | null;
+  status: 'pending' | 'complete';
+  review: {
+    trustScore: number;
+    justification: string;
+    reviewedAt: string;
+  } | null;
+  outcome: {
+    status: 'approved' | 'rejected';
+    reason: string | null;
+    recordedAt: string;
+  } | null;
+}
+
+interface SubmitProjectPayload {
+  name: string;
+  codeLink: string;
+  demoLink?: string;
+  submitter: { slackId: string } | { email: string };
+  hackatimeProjects?: string[];
+  organizerPlatformId?: string;
+}
+
+@Injectable()
+export class FraudReviewService {
+  private readonly logger = new Logger(FraudReviewService.name);
+  private readonly baseUrl: string;
+  private readonly apiKey: string;
+  private readonly eventId: string;
+  private readonly enabled: boolean;
+
+  constructor(private prisma: PrismaService) {
+    this.baseUrl = (process.env.JOE_API_BASE_URL || '').replace(/\/$/, '');
+    this.apiKey = process.env.JOE_API_KEY || '';
+    this.eventId = process.env.JOE_EVENT_ID || '';
+    this.enabled = !!(this.baseUrl && this.apiKey && this.eventId);
+
+    if (!this.enabled) {
+      this.logger.warn(
+        'Fraud review API not configured — set JOE_API_BASE_URL, JOE_API_KEY, and JOE_EVENT_ID to enable',
+      );
+    } else {
+      this.logger.log(
+        `Fraud review enabled — base=${this.baseUrl} eventId=${this.eventId}`,
+      );
+    }
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
+  private authHeaders() {
+    return {
+      Authorization: `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  /**
+   * Submit a project to the fraud review platform.
+   * Returns the platform-assigned UUID, or null if the call fails.
+   */
+  async submitProject(payload: SubmitProjectPayload): Promise<string | null> {
+    if (!this.enabled) return null;
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/events/${this.eventId}/projects`,
+        {
+          method: 'POST',
+          headers: this.authHeaders(),
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const data = (await response.json()) as { id?: string };
+
+      if (!response.ok && response.status !== 200) {
+        this.logger.error(
+          `Fraud review submit failed (${response.status}): ${JSON.stringify(data)}`,
+        );
+        return null;
+      }
+
+      // 201 = created, 200 = already exists (deduplicated by organizerPlatformId)
+      return data.id ?? null;
+    } catch (error) {
+      this.logger.error('Fraud review submit request threw', error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch all projects for this event from the fraud review platform.
+   * Returns a map of organizerPlatformId -> JoeProject for easy lookup.
+   */
+  async listAllProjects(): Promise<Map<string, JoeProject> | null> {
+    if (!this.enabled) return null;
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/events/${this.eventId}/projects`,
+        { headers: this.authHeaders() },
+      );
+
+      if (!response.ok) {
+        this.logger.error(
+          `Fraud review list projects failed (${response.status})`,
+        );
+        return null;
+      }
+
+      const data = (await response.json()) as { projects: JoeProject[] };
+      const projectMap = new Map<string, JoeProject>();
+
+      for (const project of data.projects) {
+        // Index by organizerPlatformId so we can match to our DB rows
+        if (project.organizerPlatformId) {
+          projectMap.set(project.organizerPlatformId, project);
+        }
+        // Also index by Joe's UUID for lookups by joeProjectId
+        projectMap.set(project.id, project);
+      }
+
+      return projectMap;
+    } catch (error) {
+      this.logger.error('Fraud review list projects threw', error);
+      return null;
+    }
+  }
+
+  /**
+   * Submit a project to fraud review and persist the returned ID on the project row.
+   * Fire-and-forget safe: errors are logged but not re-thrown.
+   */
+  async submitAndPersist(projectId: number): Promise<void> {
+    try {
+      const project = await this.prisma.project.findUnique({
+        where: { projectId },
+        include: {
+          user: { select: { slackUserId: true, email: true } },
+        },
+      });
+
+      if (!project) return;
+      if (project.joeProjectId) return;
+
+      const submitter = project.user.slackUserId
+        ? { slackId: project.user.slackUserId }
+        : { email: project.user.email };
+
+      const fraudReviewId = await this.submitProject({
+        name: project.projectTitle,
+        codeLink: project.repoUrl || '',
+        demoLink: project.playableUrl || undefined,
+        submitter,
+        hackatimeProjects:
+          project.nowHackatimeProjects.length > 0
+            ? project.nowHackatimeProjects
+            : undefined,
+        // Stable dedup key so resubmissions don't create duplicate review entries
+        organizerPlatformId: `project-${projectId}`,
+      });
+
+      if (fraudReviewId) {
+        await this.prisma.project.update({
+          where: { projectId },
+          data: { joeProjectId: fraudReviewId },
+        });
+      }
+    } catch (error) {
+      this.logger.error(
+        `submitAndPersist failed for project ${projectId}`,
+        error,
+      );
+    }
+  }
+
+  /** Determine pass/fail from a Joe project's review data. */
+  private didPassFraudReview(joeProject: JoeProject): boolean {
+    if (joeProject.status !== 'complete' || !joeProject.review) return false;
+    return joeProject.review.trustScore > 4;
+  }
+
+  /**
+   * Poll the fraud review platform for all projects awaiting a decision
+   * and update their joeFraudPassed status in the DB.
+   *
+   * Also catches projects that were never submitted (e.g. API was down at
+   * submission time) and submits them now.
+   *
+   * Runs automatically every 5 minutes via @nestjs/schedule, and can also
+   * be triggered manually from the reviewer controller.
+   */
+  @Interval(FRAUD_POLL_INTERVAL_MS)
+  async pollPendingProjects(): Promise<{ submitted: number; updated: number }> {
+    if (!this.enabled) return { submitted: 0, updated: 0 };
+
+    // Step 1: submit any projects that never got sent to fraud review
+    const unsubmittedProjects = await this.prisma.project.findMany({
+      where: {
+        joeProjectId: null,
+        joeFraudPassed: null,
+        submissions: { some: { approvalStatus: 'pending' } },
+      },
+      select: { projectId: true },
+    });
+
+    let submitted = 0;
+    for (const project of unsubmittedProjects) {
+      await this.submitAndPersist(project.projectId);
+      submitted++;
+    }
+
+    // Step 2: fetch all projects from Joe in a single API call
+    const joeProjects = await this.listAllProjects();
+    if (!joeProjects) return { submitted, updated: 0 };
+
+    // Step 3: find our DB projects that are still awaiting a fraud decision
+    const pendingProjects = await this.prisma.project.findMany({
+      where: {
+        joeProjectId: { not: null },
+        joeFraudPassed: null,
+      },
+      select: { projectId: true, joeProjectId: true },
+    });
+
+    let updated = 0;
+    for (const project of pendingProjects) {
+      if (!project.joeProjectId) continue;
+
+      // Match by joeProjectId (UUID) or by our organizerPlatformId
+      const joeProject =
+        joeProjects.get(project.joeProjectId) ??
+        joeProjects.get(`project-${project.projectId}`);
+
+      if (!joeProject || joeProject.status !== 'complete') continue;
+
+      const passed = this.didPassFraudReview(joeProject);
+
+      await this.prisma.project.update({
+        where: { projectId: project.projectId },
+        data: { joeFraudPassed: passed },
+      });
+
+      updated++;
+    }
+
+    return { submitted, updated };
+  }
+}

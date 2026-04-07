@@ -13,6 +13,7 @@ import { RedisService } from '../redis.service';
 import { randomBytes } from 'crypto';
 import { PosthogService } from '../posthog/posthog.service';
 import { AirtableService } from '../airtable/airtable.service';
+import { FraudReviewService } from '../fraud-review/fraud-review.service';
 
 @Injectable()
 export class ProjectsService {
@@ -21,6 +22,7 @@ export class ProjectsService {
     private redis: RedisService,
     private posthog: PosthogService,
     private airtableService: AirtableService,
+    private fraudReviewService: FraudReviewService,
   ) {}
 
   private excludeAdminFields<
@@ -310,6 +312,9 @@ export class ProjectsService {
           console.error('Error syncing firstSubmit event to Airtable:', err),
         );
     }
+
+    // Submit to fraud review in the background — does not block the response
+    this.fraudReviewService.submitAndPersist(projectId).catch(() => {});
 
     return submission;
   }

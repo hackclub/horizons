@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma.service';
 @Injectable()
 export class AirtableService {
   constructor(private prisma: PrismaService) {}
+  private readonly pendingPreAuthSyncs = new Map<string, { promise: Promise<void>; createdAt: number }>();
+  private static readonly PENDING_SYNC_TTL_MS = 30_000;
   private readonly AIRTABLE_API_KEY = process.env.YSWS_AIRTABLE_API_KEY;
   private readonly YSWS_BASE_ID = process.env.YSWS_BASE_ID;
   private readonly APPROVED_PROJECTS_TABLE_ID =
@@ -197,6 +199,77 @@ export class AirtableService {
     return record ? { id: record.id, fields: record.fields } : null;
   }
 
+  private cleanExpiredPendingSyncs(): void {
+    const now = Date.now();
+    for (const [email, entry] of this.pendingPreAuthSyncs) {
+      if (now - entry.createdAt > AirtableService.PENDING_SYNC_TTL_MS) {
+        this.pendingPreAuthSyncs.delete(email);
+      }
+    }
+  }
+
+  async syncPreAuthSignUp(email: string): Promise<void> {
+    this.cleanExpiredPendingSyncs();
+    const promise = this._syncPreAuthSignUp(email);
+    this.pendingPreAuthSyncs.set(email, { promise, createdAt: Date.now() });
+    promise.finally(() => this.pendingPreAuthSyncs.delete(email));
+    return promise;
+  }
+
+  private async _syncPreAuthSignUp(email: string): Promise<void> {
+    if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
+      return;
+    }
+
+    const fieldName = 'Loops - horizonsSignUpAt';
+    const now = new Date().toISOString().split('T')[0];
+
+    try {
+      const existingRecord = await this.findUserRecord(email);
+
+      if (existingRecord) {
+        if (!existingRecord.fields[fieldName]) {
+          await fetch(
+            `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}/${existingRecord.id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                fields: { [fieldName]: now },
+              }),
+            },
+          );
+        }
+      } else {
+        await fetch(
+          `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              records: [
+                {
+                  fields: {
+                    Email: email,
+                    [fieldName]: now,
+                  },
+                },
+              ],
+            }),
+          },
+        );
+      }
+    } catch (error) {
+      console.error('Error syncing pre-auth signUp to Airtable:', error);
+    }
+  }
+
   async syncUserEvent(
     email: string,
     userId: number,
@@ -209,6 +282,11 @@ export class AirtableService {
   ): Promise<void> {
     if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
       return;
+    }
+
+    const entry = this.pendingPreAuthSyncs.get(email);
+    if (entry) {
+      await entry.promise.catch(() => {});
     }
 
     const fieldMap: Record<string, string> = {
