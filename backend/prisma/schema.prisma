@@ -83,6 +83,7 @@ model Project {
   joeProjectId       String?      @map("joe_project_id")
   // null = not yet reviewed; true = passed; false = auto-rejected
   joeFraudPassed     Boolean?     @map("joe_fraud_passed")
+  joeFraudReviewedAt DateTime?    @map("joe_fraud_reviewed_at")
   user               User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
   submissions        Submission[]
   @@index([userId])
@@ -98,7 +99,7 @@ model Submission {
   repoUrl          String?        @map("repo_url")
   approvedHours    Float?         @map("approved_hours")
   hackatimeHours   Float?         @map("hackatime_hours")
-  hoursJustification String?      @map("hours_justification") @db.VarChar(500)
+  hoursJustification String?      @map("hours_justification") @db.Text
   approvalStatus   ApprovalStatus @default(pending) @map("approval_status")
   reviewedBy       String?        @map("reviewed_by")
   reviewedAt       DateTime?      @map("reviewed_at")

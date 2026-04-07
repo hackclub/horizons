@@ -19,9 +19,16 @@ function formatHoursMin(hours: number): string {
   return `${h}h ${m}min`;
 }
 
+/** Fraud review metadata to include in the justification footer. */
+interface FraudReviewInfo {
+  joeProjectId: string;
+  reviewedAt: Date;
+  hackatimeProjects: string[];
+}
+
 /**
  * Wrap the reviewer's freeform analysis with auto-generated boilerplate:
- * hours summary header + submitted-by / reviewed-by footer.
+ * hours summary header + fraud review line + submitted-by / reviewed-by footer.
  */
 function buildFullJustification(
   reviewerAnalysis: string,
@@ -30,6 +37,7 @@ function buildFullJustification(
   submitterSlackId: string | null,
   submissionDate: Date,
   reviewerSlackId: string | null,
+  fraudReview?: FraudReviewInfo | null,
 ): string {
   const parts: string[] = [];
 
@@ -62,6 +70,18 @@ function buildFullJustification(
 
   parts.push('');
   parts.push(`Project was submitted by @/${submitterRef} on ${submitDate}.`);
+
+  if (fraudReview) {
+    const fraudDate = fraudReview.reviewedAt.toISOString().split('T')[0];
+    const projectsSuffix =
+      fraudReview.hackatimeProjects.length > 0
+        ? `, who reviewed the time tracked on ${fraudReview.hackatimeProjects.join(', ')}`
+        : '';
+    parts.push(
+      `Project passed fraud review (case ${fraudReview.joeProjectId}) from the Fraud Squad on ${fraudDate}${projectsSuffix}.`,
+    );
+  }
+
   parts.push(`Project was reviewed by @/${reviewerRef} on ${today}.`);
 
   return parts.join('\n');
@@ -293,6 +313,7 @@ export class ReviewerService {
         where: { userId: reviewerId },
         select: { slackUserId: true },
       });
+      const fraudReview = this.buildFraudReviewInfo(submission.project);
       fullJustification = buildFullJustification(
         dto.hoursJustification,
         submission.hackatimeHours,
@@ -300,6 +321,7 @@ export class ReviewerService {
         submission.project.user.slackUserId,
         submission.createdAt,
         reviewer?.slackUserId ?? null,
+        fraudReview,
       );
     }
 
@@ -365,6 +387,7 @@ export class ReviewerService {
       where: { userId: reviewerId },
       select: { slackUserId: true },
     });
+    const fraudReview = this.buildFraudReviewInfo(submission.project);
     const hoursJustification = buildFullJustification(
       reviewerAnalysis,
       submission.hackatimeHours,
@@ -372,6 +395,7 @@ export class ReviewerService {
       submission.project.user.slackUserId,
       submission.createdAt,
       reviewer?.slackUserId ?? null,
+      fraudReview,
     );
 
     const updatedSubmission = await this.prisma.submission.update({
@@ -447,6 +471,21 @@ export class ReviewerService {
     }
 
     return { success: true, submissionId, status: 'approved' };
+  }
+
+  /** Extract fraud review info from a project if the fraud review passed. */
+  private buildFraudReviewInfo(project: {
+    joeProjectId: string | null;
+    joeFraudPassed: boolean | null;
+    joeFraudReviewedAt: Date | null;
+    nowHackatimeProjects: string[];
+  }): FraudReviewInfo | null {
+    if (!project.joeFraudPassed || !project.joeProjectId) return null;
+    return {
+      joeProjectId: project.joeProjectId,
+      reviewedAt: project.joeFraudReviewedAt ?? new Date(),
+      hackatimeProjects: project.nowHackatimeProjects,
+    };
   }
 
   /** Sync approved hours, justification, adminComment, and submission data to the project table. */

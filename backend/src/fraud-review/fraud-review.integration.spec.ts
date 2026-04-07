@@ -83,7 +83,9 @@ describe('Fraud Review API (integration)', () => {
     console.log('List response:', response.status, text.slice(0, 500));
 
     if (response.status === 401 || response.status === 403) {
-      console.warn('API key lacks projects:read permission — skipping list test');
+      console.warn(
+        'API key lacks projects:read permission — skipping list test',
+      );
       return;
     }
 
@@ -105,15 +107,15 @@ describe('Fraud Review API (integration)', () => {
       (p) => p.organizerPlatformId === dedupKey,
     );
     expect(ourProject).toBeDefined();
-    expect(ourProject!.id).toBe(joeProjectId);
-    expect(ourProject!.status).toBe('pending');
+    expect(ourProject.id).toBe(joeProjectId);
+    expect(ourProject.status).toBe('pending');
     console.log(
       'Found project in list:',
-      ourProject!.id,
+      ourProject.id,
       'status=',
-      ourProject!.status,
+      ourProject.status,
       'review=',
-      ourProject!.review,
+      ourProject.review,
     );
   });
 
@@ -151,7 +153,9 @@ describe('Fraud Review API (integration)', () => {
     console.log('List after review:', response.status, text.slice(0, 500));
 
     if (response.status === 401 || response.status === 403) {
-      console.warn('API key lacks projects:read permission — skipping list test');
+      console.warn(
+        'API key lacks projects:read permission — skipping list test',
+      );
       return;
     }
 
@@ -167,16 +171,16 @@ describe('Fraud Review API (integration)', () => {
 
     const ourProject = data.projects.find((p) => p.id === joeProjectId);
     expect(ourProject).toBeDefined();
-    expect(ourProject!.status).toBe('complete');
-    expect(ourProject!.review).not.toBeNull();
-    expect(ourProject!.review!.trustScore).toBe(7);
+    expect(ourProject.status).toBe('complete');
+    expect(ourProject.review).not.toBeNull();
+    expect(ourProject.review.trustScore).toBe(7);
 
     console.log(
       'After review:',
       'status=',
-      ourProject!.status,
+      ourProject.status,
       'trustScore=',
-      ourProject!.review!.trustScore,
+      ourProject.review.trustScore,
     );
   });
 

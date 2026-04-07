@@ -249,9 +249,13 @@ export class FraudReviewService {
 
       const passed = this.didPassFraudReview(joeProject);
 
+      const fraudReviewedAt = joeProject.review?.reviewedAt
+        ? new Date(joeProject.review.reviewedAt)
+        : new Date();
+
       await this.prisma.project.update({
         where: { projectId: project.projectId },
-        data: { joeFraudPassed: passed },
+        data: { joeFraudPassed: passed, joeFraudReviewedAt: fraudReviewedAt },
       });
 
       updated++;
