@@ -19,6 +19,7 @@
 		{#if onBackToGallery}
 			<button class={btnClass} onclick={onBackToGallery}>← Gallery</button>
 		{/if}
+		<a href="/admin/review/stats" class="{btnClass} no-underline inline-block">Stats</a>
 	</div>
 
 	<div class="flex items-center gap-3">

@@ -713,6 +713,140 @@ export class ReviewerService {
     return this.fraudReviewService.pollPendingProjects();
   }
 
+  /**
+   * Reviewer leaderboard + general review timing stats.
+   * Leaderboard: broken down by all-time, past 7 days, and today.
+   * General stats: longest wait, average and median review time (past 30 days).
+   */
+  async getReviewStats() {
+    const submissions = await this.prisma.submission.findMany({
+      where: {
+        reviewedBy: { not: null },
+        approvalStatus: { in: ['approved', 'rejected'] },
+      },
+      select: {
+        reviewedBy: true,
+        reviewedAt: true,
+        createdAt: true,
+      },
+    });
+
+    const now = new Date();
+    const dayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const weekStart = new Date(dayStart);
+    weekStart.setDate(weekStart.getDate() - 7);
+    const thirtyDaysAgo = new Date(dayStart);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Leaderboard buckets keyed by reviewerId
+    const allTime = new Map<string, number>();
+    const week = new Map<string, number>();
+    const day = new Map<string, number>();
+
+    // Review durations for general stats (past 30 days only)
+    const recentDurationsMs: number[] = [];
+
+    for (const sub of submissions) {
+      const reviewerId = sub.reviewedBy!;
+      allTime.set(reviewerId, (allTime.get(reviewerId) || 0) + 1);
+
+      if (sub.reviewedAt && sub.reviewedAt >= weekStart) {
+        week.set(reviewerId, (week.get(reviewerId) || 0) + 1);
+      }
+      if (sub.reviewedAt && sub.reviewedAt >= dayStart) {
+        day.set(reviewerId, (day.get(reviewerId) || 0) + 1);
+      }
+
+      // Review duration = reviewedAt - createdAt
+      if (sub.reviewedAt && sub.reviewedAt >= thirtyDaysAgo) {
+        recentDurationsMs.push(
+          sub.reviewedAt.getTime() - sub.createdAt.getTime(),
+        );
+      }
+    }
+
+    // Resolve reviewer names
+    const reviewerIds = [...allTime.keys()]
+      .map((id) => parseInt(id))
+      .filter((id) => !isNaN(id));
+    const reviewerUsers = await this.prisma.user.findMany({
+      where: { userId: { in: reviewerIds } },
+      select: { userId: true, firstName: true, lastName: true },
+    });
+    const userMap = new Map(
+      reviewerUsers.map((u) => [u.userId.toString(), u]),
+    );
+
+    const buildLeaderboard = (bucket: Map<string, number>) =>
+      [...bucket.entries()]
+        .map(([id, count]) => {
+          const user = userMap.get(id);
+          return {
+            reviewerId: id,
+            name: user
+              ? `${user.firstName} ${user.lastName}`
+              : `User ${id}`,
+            count,
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+    // General stats from past-30-day durations
+    recentDurationsMs.sort((a, b) => a - b);
+    const toHours = (ms: number) =>
+      Math.round((ms / (1000 * 60 * 60)) * 10) / 10;
+
+    const longestWaitHours =
+      recentDurationsMs.length > 0
+        ? toHours(recentDurationsMs[recentDurationsMs.length - 1])
+        : null;
+    const avgReviewHours =
+      recentDurationsMs.length > 0
+        ? toHours(
+            recentDurationsMs.reduce((a, b) => a + b, 0) /
+              recentDurationsMs.length,
+          )
+        : null;
+    let medianReviewHours: number | null = null;
+    if (recentDurationsMs.length > 0) {
+      const mid = Math.floor(recentDurationsMs.length / 2);
+      const medianMs =
+        recentDurationsMs.length % 2 === 1
+          ? recentDurationsMs[mid]
+          : (recentDurationsMs[mid - 1] + recentDurationsMs[mid]) / 2;
+      medianReviewHours = toHours(medianMs);
+    }
+
+    // Pending submissions for longest current wait
+    const oldestPending = await this.prisma.submission.findFirst({
+      where: { approvalStatus: 'pending' },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    });
+    const longestCurrentWaitHours = oldestPending
+      ? toHours(now.getTime() - oldestPending.createdAt.getTime())
+      : null;
+
+    return {
+      leaderboard: {
+        allTime: buildLeaderboard(allTime),
+        week: buildLeaderboard(week),
+        day: buildLeaderboard(day),
+      },
+      general: {
+        longestWaitLast30Days: longestWaitHours,
+        avgReviewTimeLast30Days: avgReviewHours,
+        medianReviewTimeLast30Days: medianReviewHours,
+        longestCurrentWait: longestCurrentWaitHours,
+        reviewsLast30Days: recentDurationsMs.length,
+      },
+    };
+  }
+
   /** Save the adminComment field on a project or user. */
   async saveNote(
     targetType: 'project' | 'user',
