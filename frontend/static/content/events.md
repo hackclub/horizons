@@ -2,30 +2,15 @@
 
 ## Kickoff Lock in Call
 ```yaml
-Start: 2026-04-07T14:00:00+00:00
-End: 2026-04-07T20:00:00+00:00
+Start: 2026-04-07T23:00:00+00:00
+End: 2026-04-08T10:00:00+00:00
 JoinInfo: "[Join the huddle in #Horizons!](https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476)"
 Tagline: "Let's start off with a bang!"
 ```
 Come join us for our first lock in call of the event! Discuss project ideas, ask questions or just lock in on your project for any Horizons event!
 
 
-## Kickoff call (#1!)
-```yaml
-Start: 2026-04-08T21:00:00+00:00
-End: 2026-04-08T22:00:00+00:00
-JoinInfo: "[RSVP](https://luma.com/5pxqedh2)"
-Tagline: "Learn more about Horizons!"
-```
-Learn more about Horizons, ask questions, and more!
 
-## Kickoff call (#2!)
-```yaml
-Start: 2026-04-08T23:00:00.000-12:00
-End: 2026-04-08T24:00:00.000-12:00
-JoinInfo: "[RSVP](https://luma.com/rhm4npjv)"
-Tagline: "Learn more about Horizons!"
-```
 Learn more about Horizons, ask questions, and more!
 
 ## Show and tell!(1)
@@ -42,8 +27,8 @@ Stay tuned for a potential lock in call afterwards!
 
 ## Orion Jam!
 ```yaml
-Start: 2026-04-10T11:00:00+00:00
-End: 2026-04-12T13:00:00+00:00
+Start: 2026-04-10T15:00:00+00:00
+End: 2026-04-12T17:00:00+00:00
 JoinInfo: "[Sign up on itch.io!](https://itch.io/jam/orion)"
 Tagline: "Create a game you're proud of!"
 ```
@@ -87,7 +72,22 @@ Tagline: "Show off what youve been working on"
 Come show off what youve been working on! Get some feedback!
 Stay tuned for a potential lock in call afterwards!
 
+## Kickoff call (#1!)
+```yaml
+Start: 2026-04-13T21:00:00+00:00
+End: 2026-04-13T22:00:00+00:00
+JoinInfo: "[RSVP](https://luma.com/5pxqedh2)"
+Tagline: "Learn more about Horizons!"
+```
+Learn more about Horizons, ask questions, and more!
 
+## Kickoff call (#2!)
+```yaml
+Start: 2026-04-13T23:00:00.000-12:00
+End: 2026-04-13T24:00:00.000-12:00
+JoinInfo: "[RSVP](https://luma.com/rhm4npjv)"
+Tagline: "Learn more about Horizons!"
+```
 
 ## Jackbox Night
 ```yaml
