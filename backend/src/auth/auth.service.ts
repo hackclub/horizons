@@ -526,7 +526,12 @@ export class AuthService {
     } = user;
     if (userWithoutAddress.projects) {
       userWithoutAddress.projects = userWithoutAddress.projects.map(
-        ({ isFraud: _, hoursJustification: __, ...project }: any) => project,
+        ({
+          isFraud: _,
+          hoursJustification: __,
+          adminComment: ___,
+          ...project
+        }: any) => project,
       );
     }
     return { ...userWithoutAddress, hasAddress };
@@ -580,7 +585,7 @@ export class AuthService {
       where: { referredByUserId: userId },
       select: {
         firstName: true,
-        email: true,
+        slackUserId: true,
         onboardComplete: true,
         createdAt: true,
       },
@@ -590,7 +595,7 @@ export class AuthService {
     return {
       referrals: users.map((u) => ({
         username: u.firstName ?? 'Unknown',
-        email: u.email,
+        slackUserId: u.slackUserId,
         onboardComplete: u.onboardComplete,
         createdAt: u.createdAt.toISOString(),
       })),

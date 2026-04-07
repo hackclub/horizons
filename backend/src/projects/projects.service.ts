@@ -26,15 +26,15 @@ export class ProjectsService {
   ) {}
 
   private excludeAdminFields<
-    T extends { hoursJustification?: any; isFraud?: any },
-  >(obj: T): Omit<T, 'hoursJustification' | 'isFraud'> {
-    const { hoursJustification, isFraud, ...rest } = obj;
+    T extends { hoursJustification?: any; isFraud?: any; adminComment?: any },
+  >(obj: T): Omit<T, 'hoursJustification' | 'isFraud' | 'adminComment'> {
+    const { hoursJustification, isFraud, adminComment, ...rest } = obj;
     return rest;
   }
 
   private excludeAdminFieldsFromArray<
-    T extends { hoursJustification?: any; isFraud?: any },
-  >(arr: T[]): Omit<T, 'hoursJustification' | 'isFraud'>[] {
+    T extends { hoursJustification?: any; isFraud?: any; adminComment?: any },
+  >(arr: T[]): Omit<T, 'hoursJustification' | 'isFraud' | 'adminComment'>[] {
     return arr.map((item) => this.excludeAdminFields(item));
   }
 

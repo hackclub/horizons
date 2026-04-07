@@ -732,11 +732,7 @@ export class ReviewerService {
     });
 
     const now = new Date();
-    const dayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart = new Date(dayStart);
     weekStart.setDate(weekStart.getDate() - 7);
     const thirtyDaysAgo = new Date(dayStart);
@@ -751,7 +747,7 @@ export class ReviewerService {
     const recentDurationsMs: number[] = [];
 
     for (const sub of submissions) {
-      const reviewerId = sub.reviewedBy!;
+      const reviewerId = sub.reviewedBy;
       allTime.set(reviewerId, (allTime.get(reviewerId) || 0) + 1);
 
       if (sub.reviewedAt && sub.reviewedAt >= weekStart) {
@@ -777,9 +773,7 @@ export class ReviewerService {
       where: { userId: { in: reviewerIds } },
       select: { userId: true, firstName: true, lastName: true },
     });
-    const userMap = new Map(
-      reviewerUsers.map((u) => [u.userId.toString(), u]),
-    );
+    const userMap = new Map(reviewerUsers.map((u) => [u.userId.toString(), u]));
 
     const buildLeaderboard = (bucket: Map<string, number>) =>
       [...bucket.entries()]
@@ -787,9 +781,7 @@ export class ReviewerService {
           const user = userMap.get(id);
           return {
             reviewerId: id,
-            name: user
-              ? `${user.firstName} ${user.lastName}`
-              : `User ${id}`,
+            name: user ? `${user.firstName} ${user.lastName}` : `User ${id}`,
             count,
           };
         })

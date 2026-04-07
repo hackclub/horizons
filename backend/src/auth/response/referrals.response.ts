@@ -4,8 +4,8 @@ export class ReferralUserResponse {
   @ApiProperty()
   username: string;
 
-  @ApiProperty()
-  email: string;
+  @ApiProperty({ nullable: true })
+  slackUserId: string | null;
 
   @ApiProperty()
   onboardComplete: boolean;

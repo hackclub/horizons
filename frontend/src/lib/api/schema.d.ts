@@ -1470,7 +1470,7 @@ export interface components {
         };
         ReferralUserResponse: {
             username: string;
-            email: string;
+            slackUserId: string | null;
             onboardComplete: boolean;
             createdAt: string;
         };

@@ -131,7 +131,9 @@
 										{referral.onboardComplete ? 'Onboarded' : 'Pending'}
 									</span>
 								</div>
-								<p class="font-bricolage text-[20px] text-black m-0">{referral.email}</p>
+								{#if referral.slackUserId}
+									<p class="font-bricolage text-[20px] text-black m-0">Slack: {referral.slackUserId}</p>
+								{/if}
 							</div>
 						{/each}
 					{/if}
