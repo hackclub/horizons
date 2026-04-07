@@ -74,8 +74,8 @@ Stay tuned for a potential lock in call afterwards!
 
 ## Kickoff call (#1!)
 ```yaml
-Start: 2026-04-015T21:00:00+00:00
-End: 2026-04-015T22:00:00+00:00
+Start: 2026-04-13T21:00:00+00:00
+End: 2026-04-13T22:00:00+00:00
 JoinInfo: "[RSVP](https://luma.com/5pxqedh2)"
 Tagline: "Learn more about Horizons!"
 ```
@@ -83,8 +83,8 @@ Learn more about Horizons, ask questions, and more!
 
 ## Kickoff call (#2!)
 ```yaml
-Start: 2026-04-015T23:00:00.000-12:00
-End: 2026-04-015T24:00:00.000-12:00
+Start: 2026-04-13T23:00:00.000-12:00
+End: 2026-04-13T24:00:00.000-12:00
 JoinInfo: "[RSVP](https://luma.com/rhm4npjv)"
 Tagline: "Learn more about Horizons!"
 ```
