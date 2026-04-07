@@ -24,6 +24,7 @@ import {
   ReviewResultResponse,
   NoteResponse,
   ChecklistResponse,
+  ReviewStatsResponse,
 } from './dto/reviewer-response.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -39,6 +40,13 @@ export class ReviewerController {
   @Post('fraud-review/refresh')
   async refreshFraudStatuses() {
     return this.reviewerService.refreshFraudStatuses();
+  }
+
+  /** Reviewer leaderboard and general review timing stats */
+  @Get('stats')
+  @ApiOkResponse({ type: ReviewStatsResponse })
+  async getStats() {
+    return this.reviewerService.getReviewStats();
   }
 
   /** Get the pending submissions queue with scoped data */

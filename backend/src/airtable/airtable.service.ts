@@ -4,7 +4,10 @@ import { PrismaService } from '../prisma.service';
 @Injectable()
 export class AirtableService {
   constructor(private prisma: PrismaService) {}
-  private readonly pendingPreAuthSyncs = new Map<string, { promise: Promise<void>; createdAt: number }>();
+  private readonly pendingPreAuthSyncs = new Map<
+    string,
+    { promise: Promise<void>; createdAt: number }
+  >();
   private static readonly PENDING_SYNC_TTL_MS = 30_000;
   private readonly AIRTABLE_API_KEY = process.env.YSWS_AIRTABLE_API_KEY;
   private readonly YSWS_BASE_ID = process.env.YSWS_BASE_ID;

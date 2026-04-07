@@ -11,6 +11,82 @@ import { MailService } from '../mail/mail.service';
 import { SlackService } from '../slack/slack.service';
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
 
+/** Format decimal hours as "Xh Ymin". */
+function formatHoursMin(hours: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}min`;
+}
+
+/** Fraud review metadata to include in the justification footer. */
+interface FraudReviewInfo {
+  joeProjectId: string;
+  reviewedAt: Date;
+  hackatimeProjects: string[];
+}
+
+/**
+ * Wrap the reviewer's freeform analysis with auto-generated boilerplate:
+ * hours summary header + fraud review line + submitted-by / reviewed-by footer.
+ */
+function buildFullJustification(
+  reviewerAnalysis: string,
+  hackatimeHours: number | null,
+  approvedHours: number,
+  submitterSlackId: string | null,
+  submissionDate: Date,
+  reviewerSlackId: string | null,
+  fraudReview?: FraudReviewInfo | null,
+): string {
+  const parts: string[] = [];
+
+  // Hours summary line
+  const tracked =
+    hackatimeHours != null ? formatHoursMin(hackatimeHours) : 'unknown';
+  const approved = formatHoursMin(approvedHours);
+  if (
+    hackatimeHours != null &&
+    Math.abs(hackatimeHours - approvedHours) < 0.05
+  ) {
+    parts.push(
+      `This user tracked ${tracked} on Hackatime. No adjustment was made.`,
+    );
+  } else {
+    parts.push(
+      `This user tracked ${tracked} on Hackatime. This was adjusted to ${approved} after review.`,
+    );
+  }
+
+  if (reviewerAnalysis.trim()) {
+    parts.push('', reviewerAnalysis.trim());
+  }
+
+  // Footer metadata
+  const submitterRef = submitterSlackId || 'unknown';
+  const submitDate = submissionDate.toISOString().split('T')[0];
+  const reviewerRef = reviewerSlackId || 'unknown';
+  const today = new Date().toISOString().split('T')[0];
+
+  parts.push('');
+  parts.push(`Project was submitted by @/${submitterRef} on ${submitDate}.`);
+
+  if (fraudReview) {
+    const fraudDate = fraudReview.reviewedAt.toISOString().split('T')[0];
+    const projectsSuffix =
+      fraudReview.hackatimeProjects.length > 0
+        ? `, who reviewed the time tracked on ${fraudReview.hackatimeProjects.join(', ')}`
+        : '';
+    parts.push(
+      `Project passed fraud review (case ${fraudReview.joeProjectId}) from the Fraud Squad on ${fraudDate}${projectsSuffix}.`,
+    );
+  }
+
+  parts.push(`Project was reviewed by @/${reviewerRef} on ${today}.`);
+
+  return parts.join('\n');
+}
+
 // Scoped user fields — no PII like email, address, birthday
 const SCOPED_USER_SELECT = {
   userId: true,
@@ -230,19 +306,42 @@ export class ReviewerService {
       },
     });
 
+    // Assemble full justification with boilerplate when approving
+    let fullJustification: string | undefined;
+    if (dto.hoursJustification !== undefined) {
+      const reviewer = await this.prisma.user.findUnique({
+        where: { userId: reviewerId },
+        select: { slackUserId: true },
+      });
+      const fraudReview = this.buildFraudReviewInfo(submission.project);
+      fullJustification = buildFullJustification(
+        dto.hoursJustification,
+        submission.hackatimeHours,
+        dto.approvedHours ?? submission.approvedHours ?? 0,
+        submission.project.user.slackUserId,
+        submission.createdAt,
+        reviewer?.slackUserId ?? null,
+        fraudReview,
+      );
+    }
+
+    const syncDto = fullJustification
+      ? { ...dto, hoursJustification: fullJustification }
+      : dto;
+
     const isNewApproval =
       dto.approvalStatus === 'approved' &&
       submission.approvalStatus !== 'approved';
     if (isNewApproval) {
-      await this.syncAirtable(submission, dto);
+      await this.syncAirtable(submission, syncDto);
     } else if (
       submission.approvalStatus === 'approved' &&
       submission.airtableRecId
     ) {
-      await this.updateAirtableRecord(submission, dto);
+      await this.updateAirtableRecord(submission, syncDto);
     }
 
-    await this.syncProjectData(submission, dto);
+    await this.syncProjectData(submission, syncDto);
 
     // Notifications only fire on status changes
     if (dto.approvalStatus !== undefined) {
@@ -281,7 +380,23 @@ export class ReviewerService {
     const hackatimeHours = submission.project.nowHackatimeHours || 0;
     const approvedHours = dto.approvedHours ?? hackatimeHours;
     const autoJustification = `Quick approved with ${approvedHours.toFixed(1)} hours.`;
-    const hoursJustification = dto.hoursJustification || autoJustification;
+    const reviewerAnalysis = dto.hoursJustification || autoJustification;
+
+    // Look up reviewer's Slack handle for the footer
+    const reviewer = await this.prisma.user.findUnique({
+      where: { userId: reviewerId },
+      select: { slackUserId: true },
+    });
+    const fraudReview = this.buildFraudReviewInfo(submission.project);
+    const hoursJustification = buildFullJustification(
+      reviewerAnalysis,
+      submission.hackatimeHours,
+      approvedHours,
+      submission.project.user.slackUserId,
+      submission.createdAt,
+      reviewer?.slackUserId ?? null,
+      fraudReview,
+    );
 
     const updatedSubmission = await this.prisma.submission.update({
       where: { submissionId },
@@ -356,6 +471,21 @@ export class ReviewerService {
     }
 
     return { success: true, submissionId, status: 'approved' };
+  }
+
+  /** Extract fraud review info from a project if the fraud review passed. */
+  private buildFraudReviewInfo(project: {
+    joeProjectId: string | null;
+    joeFraudPassed: boolean | null;
+    joeFraudReviewedAt: Date | null;
+    nowHackatimeProjects: string[];
+  }): FraudReviewInfo | null {
+    if (!project.joeFraudPassed || !project.joeProjectId) return null;
+    return {
+      joeProjectId: project.joeProjectId,
+      reviewedAt: project.joeFraudReviewedAt ?? new Date(),
+      hackatimeProjects: project.nowHackatimeProjects,
+    };
   }
 
   /** Sync approved hours, justification, adminComment, and submission data to the project table. */
@@ -581,6 +711,140 @@ export class ReviewerService {
    */
   async refreshFraudStatuses() {
     return this.fraudReviewService.pollPendingProjects();
+  }
+
+  /**
+   * Reviewer leaderboard + general review timing stats.
+   * Leaderboard: broken down by all-time, past 7 days, and today.
+   * General stats: longest wait, average and median review time (past 30 days).
+   */
+  async getReviewStats() {
+    const submissions = await this.prisma.submission.findMany({
+      where: {
+        reviewedBy: { not: null },
+        approvalStatus: { in: ['approved', 'rejected'] },
+      },
+      select: {
+        reviewedBy: true,
+        reviewedAt: true,
+        createdAt: true,
+      },
+    });
+
+    const now = new Date();
+    const dayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const weekStart = new Date(dayStart);
+    weekStart.setDate(weekStart.getDate() - 7);
+    const thirtyDaysAgo = new Date(dayStart);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Leaderboard buckets keyed by reviewerId
+    const allTime = new Map<string, number>();
+    const week = new Map<string, number>();
+    const day = new Map<string, number>();
+
+    // Review durations for general stats (past 30 days only)
+    const recentDurationsMs: number[] = [];
+
+    for (const sub of submissions) {
+      const reviewerId = sub.reviewedBy!;
+      allTime.set(reviewerId, (allTime.get(reviewerId) || 0) + 1);
+
+      if (sub.reviewedAt && sub.reviewedAt >= weekStart) {
+        week.set(reviewerId, (week.get(reviewerId) || 0) + 1);
+      }
+      if (sub.reviewedAt && sub.reviewedAt >= dayStart) {
+        day.set(reviewerId, (day.get(reviewerId) || 0) + 1);
+      }
+
+      // Review duration = reviewedAt - createdAt
+      if (sub.reviewedAt && sub.reviewedAt >= thirtyDaysAgo) {
+        recentDurationsMs.push(
+          sub.reviewedAt.getTime() - sub.createdAt.getTime(),
+        );
+      }
+    }
+
+    // Resolve reviewer names
+    const reviewerIds = [...allTime.keys()]
+      .map((id) => parseInt(id))
+      .filter((id) => !isNaN(id));
+    const reviewerUsers = await this.prisma.user.findMany({
+      where: { userId: { in: reviewerIds } },
+      select: { userId: true, firstName: true, lastName: true },
+    });
+    const userMap = new Map(
+      reviewerUsers.map((u) => [u.userId.toString(), u]),
+    );
+
+    const buildLeaderboard = (bucket: Map<string, number>) =>
+      [...bucket.entries()]
+        .map(([id, count]) => {
+          const user = userMap.get(id);
+          return {
+            reviewerId: id,
+            name: user
+              ? `${user.firstName} ${user.lastName}`
+              : `User ${id}`,
+            count,
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+    // General stats from past-30-day durations
+    recentDurationsMs.sort((a, b) => a - b);
+    const toHours = (ms: number) =>
+      Math.round((ms / (1000 * 60 * 60)) * 10) / 10;
+
+    const longestWaitHours =
+      recentDurationsMs.length > 0
+        ? toHours(recentDurationsMs[recentDurationsMs.length - 1])
+        : null;
+    const avgReviewHours =
+      recentDurationsMs.length > 0
+        ? toHours(
+            recentDurationsMs.reduce((a, b) => a + b, 0) /
+              recentDurationsMs.length,
+          )
+        : null;
+    let medianReviewHours: number | null = null;
+    if (recentDurationsMs.length > 0) {
+      const mid = Math.floor(recentDurationsMs.length / 2);
+      const medianMs =
+        recentDurationsMs.length % 2 === 1
+          ? recentDurationsMs[mid]
+          : (recentDurationsMs[mid - 1] + recentDurationsMs[mid]) / 2;
+      medianReviewHours = toHours(medianMs);
+    }
+
+    // Pending submissions for longest current wait
+    const oldestPending = await this.prisma.submission.findFirst({
+      where: { approvalStatus: 'pending' },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    });
+    const longestCurrentWaitHours = oldestPending
+      ? toHours(now.getTime() - oldestPending.createdAt.getTime())
+      : null;
+
+    return {
+      leaderboard: {
+        allTime: buildLeaderboard(allTime),
+        week: buildLeaderboard(week),
+        day: buildLeaderboard(day),
+      },
+      general: {
+        longestWaitLast30Days: longestWaitHours,
+        avgReviewTimeLast30Days: avgReviewHours,
+        medianReviewTimeLast30Days: medianReviewHours,
+        longestCurrentWait: longestCurrentWaitHours,
+        reviewsLast30Days: recentDurationsMs.length,
+      },
+    };
   }
 
   /** Save the adminComment field on a project or user. */

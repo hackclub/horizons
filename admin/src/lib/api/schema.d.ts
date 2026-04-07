@@ -679,6 +679,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/queue": {
         parameters: {
             query?: never;
@@ -1979,6 +1995,27 @@ export interface components {
         };
         SaveChecklistDto: {
             checkedItems: number[];
+        };
+        LeaderboardEntry: {
+            reviewerId: string;
+            name: string;
+            count: number;
+        };
+        LeaderboardBreakdown: {
+            allTime: components["schemas"]["LeaderboardEntry"][];
+            week: components["schemas"]["LeaderboardEntry"][];
+            day: components["schemas"]["LeaderboardEntry"][];
+        };
+        GeneralStats: {
+            longestWaitLast30Days: number | null;
+            avgReviewTimeLast30Days: number | null;
+            medianReviewTimeLast30Days: number | null;
+            longestCurrentWait: number | null;
+            reviewsLast30Days: number;
+        };
+        ReviewStatsResponse: {
+            leaderboard: components["schemas"]["LeaderboardBreakdown"];
+            general: components["schemas"]["GeneralStats"];
         };
         ShopResponse: {
             shopId: number;
@@ -3351,6 +3388,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ReviewerController_getStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewStatsResponse"];
+                };
             };
         };
     };

@@ -27,8 +27,8 @@ export class ReviewSubmissionDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(500)
-  hoursJustification?: string; // Internal justification, synced to Airtable
+  @MaxLength(2000)
+  hoursJustification?: string; // Reviewer's analysis — server wraps with boilerplate before saving
 
   @IsString()
   @IsOptional()

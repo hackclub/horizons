@@ -9,8 +9,10 @@
 	import NotesSection from './components/NotesSection.svelte';
 	import ReviewHistory from './components/ReviewHistory.svelte';
 	import DemoIframe from './components/DemoIframe.svelte';
-	import ReadmeDrawer from './components/ReadmeDrawer.svelte';
-	import ActionBar from './components/ActionBar.svelte';
+	import TabBar, { type Tab } from './components/TabBar.svelte';
+	import ReadmePanel from './components/ReadmePanel.svelte';
+	import ProjectCardPanel from './components/ProjectCardPanel.svelte';
+	import VerdictPanel from './components/VerdictPanel.svelte';
 	import GitHubPanel from './components/GitHubPanel.svelte';
 	import ReviewChecklist from './components/ReviewChecklist.svelte';
 	import ProjectGallery from './components/ProjectGallery.svelte';
@@ -48,6 +50,15 @@
 	let userNote = $state('');
 	let checkedItems = $state<number[]>([]);
 	let editedHours = $state<number | null>(null);
+
+	// Tab bar
+	const centerTabs: Tab[] = [
+		{ id: 'readme', label: 'Readme' },
+		{ id: 'demo', label: 'Demo' },
+		{ id: 'card', label: 'Project Card' },
+		{ id: 'verdict', label: 'Verdict' },
+	];
+	let activeTab = $state('readme');
 
 	onMount(async () => {
 		const { data, error } = await api.GET('/api/user/auth/me');
@@ -257,8 +268,8 @@
 		<TopBar
 			{currentIndex}
 			totalCount={queueLength}
-			onPrev={navigatePrev}
 			onNext={navigateNext}
+			onPrev={navigatePrev}
 			onBackToGallery={returnToGallery}
 		/>
 
@@ -305,21 +316,38 @@
 			<!-- CENTER PANEL -->
 			<div class="flex flex-col overflow-hidden">
 				{#if currentSubmission}
-					<DemoIframe
-						demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
-					/>
+					<TabBar tabs={centerTabs} {activeTab} onTabChange={(id) => { activeTab = id; }} />
 
-					<ReadmeDrawer markdown={readmeMarkdown} />
-
-					<ActionBar
-						submissionId={currentSubmission.submissionId}
-						hackatimeHours={currentSubmission.hackatimeHours}
-						{editedHours}
-						projectTitle={currentSubmission.project.projectTitle}
-						projectDescription={currentSubmission.project.description}
-						screenshotUrl={currentSubmission.screenshotUrl}
-						onReviewComplete={handleReviewComplete}
-					/>
+					<!-- All tabs stay mounted; only the active one is visible -->
+					<div class="flex-1 overflow-hidden relative">
+						<div class="absolute inset-0" class:hidden={activeTab !== 'readme'}>
+							<ReadmePanel markdown={readmeMarkdown} />
+						</div>
+						<div class="absolute inset-0 flex flex-col" class:hidden={activeTab !== 'demo'}>
+							<DemoIframe
+								demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
+							/>
+						</div>
+						<div class="absolute inset-0" class:hidden={activeTab !== 'card'}>
+							<ProjectCardPanel
+								projectTitle={currentSubmission.project.projectTitle}
+								projectDescription={currentSubmission.project.description}
+								screenshotUrl={currentSubmission.screenshotUrl}
+								projectType={currentSubmission.project.projectType}
+								demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
+								codeUrl={currentSubmission.repoUrl ?? currentSubmission.project.repoUrl}
+								readmeUrl={currentSubmission.project.readmeUrl}
+							/>
+						</div>
+						<div class="absolute inset-0" class:hidden={activeTab !== 'verdict'}>
+							<VerdictPanel
+								submissionId={currentSubmission.submissionId}
+								hackatimeHours={currentSubmission.hackatimeHours}
+								{editedHours}
+								onReviewComplete={handleReviewComplete}
+							/>
+						</div>
+					</div>
 				{:else if submissionLoading}
 					<div class="flex items-center justify-center p-10 text-rv-dim text-[13px]">Loading submission...</div>
 				{/if}
