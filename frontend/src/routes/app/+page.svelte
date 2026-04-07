@@ -34,7 +34,7 @@
 		'0-0': 'Create projects, track your progress, and submit them for review!',
 		'0-1': 'Check out upcoming Horizons events!',
 		'1-0': 'Spend your approved hours on rewards!',
-		'2-0': 'See what the community is up to!',
+		'2-0': 'Check out online events we\'re running for the community!',
 		'3-0': 'Got questions? Find answers here.',
 	};
 
