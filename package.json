@@ -19,11 +19,6 @@
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.19.0",
-  "pnpm": {
-    "overrides": {
-      "express>path-to-regexp": "0.1.12"
-    }
-  },
   "workspaces": [
     "frontend",
     "backend",
