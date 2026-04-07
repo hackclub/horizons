@@ -27,6 +27,7 @@
     let bulkProjectMessage = $state('');
     let bulkProjectError = $state('');
     let loading = $state(true);
+    let rickroll = $state(true);
 
     onMount(async () => {
         const { data: userData, error } = await api.GET('/api/user/auth/me');
@@ -99,6 +100,18 @@
         return path === href || path.startsWith(href + '/');
     }
 </script>
+
+{#if rickroll}
+    <div class="fixed inset-0 z-9999 bg-black flex items-center justify-center cursor-pointer" onclick={() => rickroll = false}>
+        <iframe
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&controls=0&loop=1&playlist=dQw4w9WgXcQ"
+            class="w-full h-full"
+            frameborder="0"
+            allow="autoplay"
+            title="surprise"
+        ></iframe>
+    </div>
+{/if}
 
 {#if loading}
     <div class="min-h-screen bg-gray-950 flex items-center justify-center">
