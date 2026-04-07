@@ -220,6 +220,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/user/auth/referral-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get or generate referral code */
+        get: operations["AuthController_getReferralCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/user/auth/sync": {
         parameters: {
             query?: never;
@@ -639,6 +656,38 @@ export interface paths {
         };
         get?: never;
         put: operations["AdminController_toggleSubmissionsFrozen"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/fraud-review/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewerController_refreshFraudStatuses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getStats"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1431,6 +1480,9 @@ export interface components {
         RafflePosResponse: {
             rafflePos: string | null;
         };
+        ReferralCodeResponse: {
+            referralCode: string;
+        };
         CreateProjectDto: {
             /** @description Project title */
             projectTitle: string;
@@ -1574,6 +1626,8 @@ export interface components {
             zipCode: string | null;
             hackatimeAccount: string | null;
             slackUserId: string | null;
+            referralCode: string | null;
+            referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
             /** Format: date-time */
@@ -1646,6 +1700,8 @@ export interface components {
             zipCode: string | null;
             hackatimeAccount: string | null;
             slackUserId: string | null;
+            referralCode: string | null;
+            referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
             /** Format: date-time */
@@ -1753,6 +1809,8 @@ export interface components {
             zipCode: string | null;
             hackatimeAccount: string | null;
             slackUserId: string | null;
+            referralCode: string | null;
+            referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
             /** Format: date-time */
@@ -1937,6 +1995,27 @@ export interface components {
         };
         SaveChecklistDto: {
             checkedItems: number[];
+        };
+        LeaderboardEntry: {
+            reviewerId: string;
+            name: string;
+            count: number;
+        };
+        LeaderboardBreakdown: {
+            allTime: components["schemas"]["LeaderboardEntry"][];
+            week: components["schemas"]["LeaderboardEntry"][];
+            day: components["schemas"]["LeaderboardEntry"][];
+        };
+        GeneralStats: {
+            longestWaitLast30Days: number | null;
+            avgReviewTimeLast30Days: number | null;
+            medianReviewTimeLast30Days: number | null;
+            longestCurrentWait: number | null;
+            reviewsLast30Days: number;
+        };
+        ReviewStatsResponse: {
+            leaderboard: components["schemas"]["LeaderboardBreakdown"];
+            general: components["schemas"]["GeneralStats"];
         };
         ShopResponse: {
             shopId: number;
@@ -2611,6 +2690,25 @@ export interface operations {
             };
         };
     };
+    AuthController_getReferralCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralCodeResponse"];
+                };
+            };
+        };
+    };
     AuthController_syncHcaData: {
         parameters: {
             query?: never;
@@ -3272,6 +3370,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GlobalSettingsResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_refreshFraudStatuses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewerController_getStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewStatsResponse"];
                 };
             };
         };

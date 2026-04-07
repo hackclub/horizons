@@ -1,8 +1,14 @@
 # FAQ
 
 ## What is Horizons?
-Horizons is a series of hackathons happening in San Francisco, Toronto, Singapore, Central Europe, South America, Australia, and Africa. Horizons Nexus (the event in San Francisco) is on June 19-21st! (Dates and exact cities are TBA for the other events.)
-
+Horizons is a series of hackathons happening in San Francisco, Toronto, Singapore, Central Europe, South America, Australia, and Africa.
+* Horizons Nexus - San Francisco, US; June 19-22
+* Horizons Sol - São Paulo, Brazil; June 12-14
+* Horizons Crux - Sydney, Australia; July 10-12
+* Horizons Europa - TBD; July 24-26
+* Horizons Arcana - Singapore; July 31 - Aug 2
+* Horizons Polaris - Toronto, Canada; Aug 7-9
+* Horizons Equinox - Cairo/Giza, Egypt; Aug 14-16
 ## What's a hackathon?
 
 A hackathon is an event where you build a technical project from scratch. It's about teamwork, creativity, having fun, and learning new things.

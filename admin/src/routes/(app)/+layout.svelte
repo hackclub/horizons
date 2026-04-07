@@ -28,6 +28,7 @@
     let bulkProjectError = $state('');
     let loading = $state(true);
 
+
     onMount(async () => {
         const { data: userData, error } = await api.GET('/api/user/auth/me');
         if (error || !userData) {

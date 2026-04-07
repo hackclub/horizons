@@ -173,3 +173,50 @@ export class ChecklistResponse {
   @ApiProperty({ type: [Number] })
   checkedItems: number[];
 }
+
+class LeaderboardEntry {
+  @ApiProperty()
+  reviewerId: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  count: number;
+}
+
+class LeaderboardBreakdown {
+  @ApiProperty({ type: [LeaderboardEntry] })
+  allTime: LeaderboardEntry[];
+
+  @ApiProperty({ type: [LeaderboardEntry] })
+  week: LeaderboardEntry[];
+
+  @ApiProperty({ type: [LeaderboardEntry] })
+  day: LeaderboardEntry[];
+}
+
+class GeneralStats {
+  @ApiProperty({ type: Number, nullable: true })
+  longestWaitLast30Days: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  avgReviewTimeLast30Days: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  medianReviewTimeLast30Days: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  longestCurrentWait: number | null;
+
+  @ApiProperty()
+  reviewsLast30Days: number;
+}
+
+export class ReviewStatsResponse {
+  @ApiProperty({ type: LeaderboardBreakdown })
+  leaderboard: LeaderboardBreakdown;
+
+  @ApiProperty({ type: GeneralStats })
+  general: GeneralStats;
+}

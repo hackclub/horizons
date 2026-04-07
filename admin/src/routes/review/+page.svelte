@@ -1,13 +1,18 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+
+	// How often to auto-poll the fraud review platform and refresh the queue (ms)
+	const FRAUD_POLL_INTERVAL_MS = 5 * 60 * 1000;
 	import TopBar from './components/TopBar.svelte';
 	import UserInfo from './components/UserInfo.svelte';
 	import NotesSection from './components/NotesSection.svelte';
 	import ReviewHistory from './components/ReviewHistory.svelte';
 	import DemoIframe from './components/DemoIframe.svelte';
-	import ReadmeDrawer from './components/ReadmeDrawer.svelte';
-	import ActionBar from './components/ActionBar.svelte';
+	import TabBar, { type Tab } from './components/TabBar.svelte';
+	import ReadmePanel from './components/ReadmePanel.svelte';
+	import ProjectCardPanel from './components/ProjectCardPanel.svelte';
+	import VerdictPanel from './components/VerdictPanel.svelte';
 	import GitHubPanel from './components/GitHubPanel.svelte';
 	import ReviewChecklist from './components/ReviewChecklist.svelte';
 	import ProjectGallery from './components/ProjectGallery.svelte';
@@ -21,6 +26,9 @@
 	let queue = $state<QueueItem[]>([]);
 	let queueLoading = $state(true);
 	let queueError = $state<string | null>(null);
+	let queueRefreshing = $state(false);
+
+	let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 	// Navigation
 	let galleryMode = $state(true);
@@ -43,6 +51,15 @@
 	let checkedItems = $state<number[]>([]);
 	let editedHours = $state<number | null>(null);
 
+	// Tab bar
+	const centerTabs: Tab[] = [
+		{ id: 'readme', label: 'Readme' },
+		{ id: 'demo', label: 'Demo' },
+		{ id: 'card', label: 'Project Card' },
+		{ id: 'verdict', label: 'Verdict' },
+	];
+	let activeTab = $state('readme');
+
 	onMount(async () => {
 		const { data, error } = await api.GET('/api/user/auth/me');
 		if (error || !data) {
@@ -53,8 +70,30 @@
 			goto('/app/projects');
 			return;
 		}
-		loadQueue();
+		await loadQueue();
+
+		// Periodically poll fraud review statuses and refresh the queue
+		pollTimer = setInterval(refreshQueue, FRAUD_POLL_INTERVAL_MS);
 	});
+
+	onDestroy(() => {
+		if (pollTimer) clearInterval(pollTimer);
+	});
+
+	async function refreshQueue() {
+		if (queueRefreshing) return;
+		queueRefreshing = true;
+		try {
+			// Ask the backend to poll the fraud review platform for pending projects
+			await api.POST('/api/reviewer/fraud-review/refresh', {});
+			// Reload the queue so newly-passed projects appear
+			await loadQueue();
+		} catch {
+			// Refresh failures are non-fatal — the queue stays as-is
+		} finally {
+			queueRefreshing = false;
+		}
+	}
 
 	async function loadQueue() {
 		queueLoading = true;
@@ -224,13 +263,13 @@
 			<p>No pending submissions to review.</p>
 		</div>
 	{:else if galleryMode}
-		<ProjectGallery items={queue} onSelect={selectFromGallery} />
+		<ProjectGallery items={queue} onSelect={selectFromGallery} onRefresh={refreshQueue} refreshing={queueRefreshing} />
 	{:else}
 		<TopBar
 			{currentIndex}
 			totalCount={queueLength}
-			onPrev={navigatePrev}
 			onNext={navigateNext}
+			onPrev={navigatePrev}
 			onBackToGallery={returnToGallery}
 		/>
 
@@ -277,21 +316,38 @@
 			<!-- CENTER PANEL -->
 			<div class="flex flex-col overflow-hidden">
 				{#if currentSubmission}
-					<DemoIframe
-						demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
-					/>
+					<TabBar tabs={centerTabs} {activeTab} onTabChange={(id) => { activeTab = id; }} />
 
-					<ReadmeDrawer markdown={readmeMarkdown} />
-
-					<ActionBar
-						submissionId={currentSubmission.submissionId}
-						hackatimeHours={currentSubmission.hackatimeHours}
-						{editedHours}
-						projectTitle={currentSubmission.project.projectTitle}
-						projectDescription={currentSubmission.project.description}
-						screenshotUrl={currentSubmission.screenshotUrl}
-						onReviewComplete={handleReviewComplete}
-					/>
+					<!-- All tabs stay mounted; only the active one is visible -->
+					<div class="flex-1 overflow-hidden relative">
+						<div class="absolute inset-0" class:hidden={activeTab !== 'readme'}>
+							<ReadmePanel markdown={readmeMarkdown} />
+						</div>
+						<div class="absolute inset-0 flex flex-col" class:hidden={activeTab !== 'demo'}>
+							<DemoIframe
+								demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
+							/>
+						</div>
+						<div class="absolute inset-0" class:hidden={activeTab !== 'card'}>
+							<ProjectCardPanel
+								projectTitle={currentSubmission.project.projectTitle}
+								projectDescription={currentSubmission.project.description}
+								screenshotUrl={currentSubmission.screenshotUrl}
+								projectType={currentSubmission.project.projectType}
+								demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
+								codeUrl={currentSubmission.repoUrl ?? currentSubmission.project.repoUrl}
+								readmeUrl={currentSubmission.project.readmeUrl}
+							/>
+						</div>
+						<div class="absolute inset-0" class:hidden={activeTab !== 'verdict'}>
+							<VerdictPanel
+								submissionId={currentSubmission.submissionId}
+								hackatimeHours={currentSubmission.hackatimeHours}
+								{editedHours}
+								onReviewComplete={handleReviewComplete}
+							/>
+						</div>
+					</div>
 				{:else if submissionLoading}
 					<div class="flex items-center justify-center p-10 text-rv-dim text-[13px]">Loading submission...</div>
 				{/if}
