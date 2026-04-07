@@ -2,8 +2,8 @@
 
 ## Kickoff Lock in Call
 ```yaml
-Start: 2026-04-07T14:00:00+00:00
-End: 2026-04-07T20:00:00+00:00
+Start: 2026-04-07T22:00:00+00:00
+End: 2026-04-08T00:00:00+00:00
 JoinInfo: "[Join the huddle in #Horizons!](https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476)"
 Tagline: "Let's start off with a bang!"
 ```
@@ -42,8 +42,8 @@ Stay tuned for a potential lock in call afterwards!
 
 ## Orion Jam!
 ```yaml
-Start: 2026-04-10T11:00:00+00:00
-End: 2026-04-12T13:00:00+00:00
+Start: 2026-04-10T15:00:00+00:00
+End: 2026-04-12T17:00:00+00:00
 JoinInfo: "[Sign up on itch.io!](https://itch.io/jam/orion)"
 Tagline: "Create a game you're proud of!"
 ```
