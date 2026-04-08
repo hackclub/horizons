@@ -188,18 +188,19 @@
     });
 </script>
 
+<div class="p-6"><div class="mx-auto max-w-6xl space-y-6">
 <section class="space-y-4">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 class="text-2xl font-semibold">Users</h2>
         <div class="flex items-center gap-3">
             <input
                 type="text"
-                class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                class="rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                 placeholder="Search users..."
                 bind:value={userSearch}
             />
             <button
-                class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
+                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
                 onclick={loadUsers}
             >
                 Refresh
@@ -208,26 +209,26 @@
     </div>
 
     {#if usersLoading}
-        <div class="py-12 text-center text-gray-300">
+        <div class="py-12 text-center text-ds-text-secondary">
             Loading users...
         </div>
     {:else if users.length === 0}
-        <div class="py-12 text-center text-gray-300">
+        <div class="py-12 text-center text-ds-text-secondary">
             No users available.
         </div>
     {:else}
         {#if userSearch.trim() && filteredUsers().length === 0}
-            <div class="py-12 text-center text-gray-300">
+            <div class="py-12 text-center text-ds-text-secondary">
                 No users match your search.
             </div>
         {:else}
-            <p class="text-sm text-gray-400">
+            <p class="text-sm text-ds-text-secondary">
                 Showing {filteredUsers().length} of {users.length} users
             </p>
             <div class="grid gap-6">
                 {#each filteredUsers() as user (user.userId)}
                     <div
-                        class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-4"
+                        class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-4"
                     >
                         <div
                             class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between"
@@ -235,25 +236,25 @@
                             <div>
                                 <h3 class="text-xl font-semibold">
                                     {fullName(user)}
-                                    <span class="text-sm font-normal text-gray-500">#{user.userId}</span>
+                                    <span class="text-sm font-normal text-ds-text-placeholder">#{user.userId}</span>
                                 </h3>
-                                <p class="text-sm text-gray-300">
+                                <p class="text-sm text-ds-text-secondary">
                                     {user.email}
                                 </p>
                             </div>
                             <div
-                                class="flex flex-wrap gap-2 text-sm text-gray-300"
+                                class="flex flex-wrap gap-2 text-sm text-ds-text-secondary"
                             >
                                 <span
-                                    class="rounded-full border border-gray-600 px-3 py-1 capitalize"
+                                    class="rounded-full border border-ds-border px-3 py-1 capitalize"
                                 >{user.role}</span>
                                 <span
-                                    class="rounded-full border border-gray-600 px-3 py-1"
+                                    class="rounded-full border border-ds-border px-3 py-1"
                                 >{(user as any).onboardComplete
                                     ? 'Onboarding complete'
                                     : 'Onboarding pending'}</span>
                                 <span
-                                    class="rounded-full border border-gray-600 px-3 py-1"
+                                    class="rounded-full border border-ds-border px-3 py-1"
                                 >
                                     Projects: {user.projects.length}
                                 </span>
@@ -261,7 +262,7 @@
                         </div>
 
                         <div
-                            class="grid gap-4 md:grid-cols-3 text-sm text-gray-300"
+                            class="grid gap-4 md:grid-cols-3 text-sm text-ds-text-secondary"
                         >
                             <div>
                                 <p>
@@ -297,12 +298,12 @@
                                 </p>
                                 {#if slackEditingUserId === user.userId}
                                     <div
-                                        class="space-y-2 p-3 bg-gray-800 rounded-lg border border-gray-700"
+                                        class="space-y-2 p-3 bg-ds-surface2 rounded-lg border border-ds-border"
                                     >
                                         <div class="flex gap-2">
                                             <input
                                                 type="text"
-                                                class="flex-1 rounded-lg border border-gray-600 bg-gray-900 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                                class="flex-1 rounded-lg border border-ds-border bg-ds-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ds-accent"
                                                 placeholder="Slack User ID (e.g., U12345678)"
                                                 bind:value={slackEditValue}
                                             />
@@ -322,8 +323,8 @@
                                         {#if slackLookupResult}
                                             <p
                                                 class="text-xs {slackLookupResult.found
-                                                    ? 'text-green-400'
-                                                    : 'text-yellow-400'}"
+                                                    ? 'text-green-700'
+                                                    : 'text-yellow-600'}"
                                             >
                                                 {slackLookupResult.found
                                                     ? `Found: ${slackLookupResult.displayName}`
@@ -332,7 +333,7 @@
                                         {/if}
                                         {#if slackError}
                                             <p
-                                                class="text-xs text-red-400"
+                                                class="text-xs text-red-600"
                                             >
                                                 {slackError}
                                             </p>
@@ -351,7 +352,7 @@
                                                     : 'Save'}
                                             </button>
                                             <button
-                                                class="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                                                class="px-2 py-1 text-xs bg-ds-surface-inactive hover:bg-ds-surface-inactive rounded transition-colors"
                                                 onclick={cancelSlackEdit}
                                             >
                                                 Cancel
@@ -364,15 +365,15 @@
                                     >
                                         <span
                                             class={user.slackUserId
-                                                ? 'text-green-400'
-                                                : 'text-gray-500'}
+                                                ? 'text-green-700'
+                                                : 'text-ds-text-placeholder'}
                                         >
                                             Slack: {user.slackUserId
                                                 ? user.slackUserId
                                                 : 'Not linked'}
                                         </span>
                                         <button
-                                            class="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                                            class="px-2 py-0.5 text-xs bg-ds-surface-inactive hover:bg-ds-surface-inactive rounded transition-colors"
                                             onclick={() =>
                                                 startSlackEdit(user)}
                                         >
@@ -388,8 +389,8 @@
                             <button
                                 class={`px-3 py-2 text-sm rounded-lg border transition-colors ${
                                     user.isFraud
-                                        ? 'bg-red-600/20 border-red-500 text-red-300 hover:bg-red-600/30'
-                                        : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                        ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30'
+                                        : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                                 }`}
                                 onclick={() =>
                                     toggleUserFraudFlag(
@@ -404,8 +405,8 @@
                             <button
                                 class={`px-3 py-2 text-sm rounded-lg border transition-colors ${
                                     user.isSus
-                                        ? 'bg-yellow-600/20 border-yellow-500 text-yellow-300 hover:bg-yellow-600/30'
-                                        : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                        ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
+                                        : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                                 }`}
                                 onclick={() =>
                                     toggleSusFlag(
@@ -422,14 +423,14 @@
                         {#if user.projects.length > 0}
                             <div class="space-y-3">
                                 <h4
-                                    class="text-sm font-semibold uppercase tracking-wide text-gray-400"
+                                    class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary"
                                 >
                                     Projects
                                 </h4>
                                 <div class="grid gap-3">
                                     {#each user.projects as project (project.projectId)}
                                         <div
-                                            class="rounded-xl border border-gray-700 bg-gray-800/60 p-4 space-y-2"
+                                            class="rounded-xl border border-ds-border bg-ds-surface2/60 p-4 space-y-2"
                                         >
                                             <div
                                                 class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between"
@@ -441,32 +442,32 @@
                                                         {project.projectTitle}
                                                     </p>
                                                     <p
-                                                        class="text-xs uppercase tracking-wide text-gray-400"
+                                                        class="text-xs uppercase tracking-wide text-ds-text-secondary"
                                                     >
                                                         {project.projectType}
                                                     </p>
                                                 </div>
                                                 <div
-                                                    class="flex flex-wrap gap-2 text-xs text-gray-300"
+                                                    class="flex flex-wrap gap-2 text-xs text-ds-text-secondary"
                                                 >
                                                     <span
-                                                        class="rounded-full border border-gray-600 px-2 py-1"
+                                                        class="rounded-full border border-ds-border px-2 py-1"
                                                     >Hackatime {formatHours(
                                                         project.nowHackatimeHours,
                                                     )}</span>
                                                     {#if project.isFraud}
                                                         <span
-                                                            class="rounded-full border border-red-500 bg-red-600/20 text-red-300 px-2 py-1"
+                                                            class="rounded-full border border-red-500 bg-red-600/20 text-red-600 px-2 py-1"
                                                         >Fraud</span>
                                                     {/if}
                                                     <span
-                                                        class="rounded-full border border-gray-600 px-2 py-1"
+                                                        class="rounded-full border border-ds-border px-2 py-1"
                                                     >{project.isLocked ? "Locked" : "Unlocked"}</span>
                                                 </div>
                                             </div>
                                             {#if project.submissions.length > 0}
                                                 <p
-                                                    class="text-xs text-gray-400"
+                                                    class="text-xs text-ds-text-secondary"
                                                 >
                                                     Latest submission: {project
                                                         .submissions[0]
@@ -479,7 +480,7 @@
                                                 </p>
                                             {:else}
                                                 <p
-                                                    class="text-xs text-gray-500"
+                                                    class="text-xs text-ds-text-placeholder"
                                                 >
                                                     No submissions yet.
                                                 </p>
@@ -495,3 +496,4 @@
         {/if}
     {/if}
 </section>
+</div></div>

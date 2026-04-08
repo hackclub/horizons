@@ -4,10 +4,11 @@ import { api } from '$lib/api';
 interface UserCache {
 	userName: string;
 	referralCode: string;
+	role: string;
 	loaded: boolean;
 }
 
-const store = writable<UserCache>({ userName: '', referralCode: '', loaded: false });
+const store = writable<UserCache>({ userName: '', referralCode: '', role: '', loaded: false });
 
 let fetchPromise: Promise<void> | null = null;
 
@@ -30,6 +31,7 @@ export const userStore = {
 				store.set({
 					userName: userRes.data?.firstName ? (userRes.data.firstName as string).toLowerCase() : '',
 					referralCode: referralRes.data?.referralCode ?? '',
+					role: (userRes.data?.role as string) ?? '',
 					loaded: true,
 				});
 			})();

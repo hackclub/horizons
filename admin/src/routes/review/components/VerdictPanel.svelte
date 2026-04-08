@@ -132,7 +132,7 @@
 			<div class="mb-3">
 				<label for="approved-hours" class="block text-xs font-semibold text-rv-dim mb-1">
 					Approved Hours
-					<span class="font-normal opacity-70 italic">(defaults to Hackatime hours)</span>
+					<span class="font-normal opacity-80 italic">(defaults to Hackatime hours)</span>
 				</label>
 				<input
 					id="approved-hours"
@@ -149,7 +149,7 @@
 			<div class="mb-3">
 				<label class="block text-xs font-semibold text-rv-text mb-1">
 					Ship Justification
-					<span class="font-normal opacity-70 italic">(internal — synced to Airtable)</span>
+					<span class="font-normal opacity-80 italic">(internal — synced to Airtable)</span>
 				</label>
 				<JustificationBuilder
 					bind:justification={hoursJustification}
@@ -159,7 +159,7 @@
 			<div class="mb-3">
 				<label for="approve-comment" class="block text-xs font-semibold text-rv-dim mb-1">
 					Comment for User
-					<span class="font-normal opacity-70 italic">(optional — shown to user)</span>
+					<span class="font-normal opacity-80 italic">(optional — shown to user)</span>
 				</label>
 				<textarea
 					id="approve-comment"
@@ -195,7 +195,7 @@
 			<div class="mb-3">
 				<label for="changes-comment" class="block text-xs font-semibold text-rv-dim mb-1">
 					What needs to change?
-					<span class="font-normal opacity-70 italic">(shown to user)</span>
+					<span class="font-normal opacity-80 italic">(shown to user)</span>
 				</label>
 				<textarea
 					id="changes-comment"

@@ -128,69 +128,70 @@
     });
 </script>
 
+<div class="p-6"><div class="mx-auto max-w-6xl space-y-6">
 <section class="space-y-4">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 class="text-2xl font-semibold">Gift Codes</h2>
         <button
-            class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
+            class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
             onclick={loadGiftCodes}
         >
             Refresh
         </button>
     </div>
 
-    <div class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-6">
+    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6">
         <h3 class="text-lg font-semibold">Send Gift Code Emails</h3>
 
         <div class="grid gap-4 md:grid-cols-2">
             <div class="space-y-2 md:col-span-2">
-                <label class="text-sm font-medium text-gray-300" for="gift-emails"
+                <label class="text-sm font-medium text-ds-text-secondary" for="gift-emails"
                     >Email Addresses *</label
                 >
                 <textarea
                     id="gift-emails"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     rows="4"
                     placeholder="Enter email addresses (one per line, or comma/semicolon separated)&#10;example@email.com&#10;another@email.com"
                     bind:value={giftCodeForm.emails}
                 ></textarea>
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="gift-description"
+                <label class="text-sm font-medium text-ds-text-secondary" for="gift-description"
                     >Item Description *</label
                 >
                 <input
                     id="gift-description"
                     type="text"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="e.g., Midnight Sticker Sheet"
                     bind:value={giftCodeForm.itemDescription}
                 />
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="gift-image"
+                <label class="text-sm font-medium text-ds-text-secondary" for="gift-image"
                     >Image URL *</label
                 >
                 <input
                     id="gift-image"
                     type="text"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="https://example.com/image.png"
                     bind:value={giftCodeForm.imageUrl}
                 />
             </div>
             <div class="space-y-2 md:col-span-2">
-                <label class="text-sm font-medium text-gray-300" for="gift-fillout"
+                <label class="text-sm font-medium text-ds-text-secondary" for="gift-fillout"
                     >Fillout Form URL *</label
                 >
                 <input
                     id="gift-fillout"
                     type="text"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="https://forms.fillout.com/your-form"
                     bind:value={giftCodeForm.filloutUrl}
                 />
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-ds-text-placeholder">
                     Parameters first_name, last_name, email, and lfd_rec will be automatically
                     appended
                 </p>
@@ -200,7 +201,7 @@
         {#if giftCodeForm.imageUrl}
             <div class="flex items-center gap-4">
                 <div
-                    class="w-24 h-24 rounded-lg border border-gray-700 overflow-hidden bg-gray-800"
+                    class="w-24 h-24 rounded-lg border border-ds-border overflow-hidden bg-ds-surface2"
                 >
                     <img
                         src={giftCodeForm.imageUrl}
@@ -211,13 +212,13 @@
                         }}
                     />
                 </div>
-                <p class="text-sm text-gray-400">Image Preview</p>
+                <p class="text-sm text-ds-text-secondary">Image Preview</p>
             </div>
         {/if}
 
         <div class="flex flex-wrap gap-3 items-center">
             <button
-                class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
                 onclick={sendGiftCodes}
                 disabled={giftCodeSending ||
                     !giftCodeForm.emails ||
@@ -228,35 +229,35 @@
                 {giftCodeSending ? 'Sending...' : 'Send Gift Code Emails'}
             </button>
             <button
-                class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
                 onclick={resetGiftCodeForm}
             >
                 Clear Form
             </button>
             {#if giftCodeError}
-                <span class="text-red-400 text-sm">{giftCodeError}</span>
+                <span class="text-red-600 text-sm">{giftCodeError}</span>
             {/if}
             {#if giftCodeSuccess}
-                <span class="text-green-400 text-sm">{giftCodeSuccess}</span>
+                <span class="text-green-700 text-sm">{giftCodeSuccess}</span>
             {/if}
         </div>
 
         {#if giftCodeResults.length > 0}
-            <div class="border-t border-gray-700 pt-4 space-y-2">
-                <h4 class="text-sm font-semibold text-gray-300">Send Results</h4>
+            <div class="border-t border-ds-border pt-4 space-y-2">
+                <h4 class="text-sm font-semibold text-ds-text-secondary">Send Results</h4>
                 <div class="max-h-48 overflow-y-auto space-y-1">
                     {#each giftCodeResults as result}
                         <div class="flex items-center gap-2 text-sm">
                             {#if result.success}
-                                <span class="text-green-400">&#x2713;</span>
+                                <span class="text-green-700">&#x2713;</span>
                             {:else}
-                                <span class="text-red-400">&#x2717;</span>
+                                <span class="text-red-600">&#x2717;</span>
                             {/if}
-                            <span class="text-gray-300">{result.email}</span>
+                            <span class="text-ds-text-secondary">{result.email}</span>
                             {#if result.success}
-                                <span class="text-gray-500 font-mono text-xs">{result.code}</span>
+                                <span class="text-ds-text-placeholder font-mono text-xs">{result.code}</span>
                             {:else}
-                                <span class="text-red-400 text-xs">{result.error}</span>
+                                <span class="text-red-600 text-xs">{result.error}</span>
                             {/if}
                         </div>
                     {/each}
@@ -266,51 +267,51 @@
     </div>
 
     {#if giftCodesLoading}
-        <div class="py-12 text-center text-gray-300">Loading gift codes...</div>
+        <div class="py-12 text-center text-ds-text-secondary">Loading gift codes...</div>
     {:else if giftCodes.length === 0}
-        <div class="py-12 text-center text-gray-300">No gift codes sent yet.</div>
+        <div class="py-12 text-center text-ds-text-secondary">No gift codes sent yet.</div>
     {:else}
         <div
-            class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur overflow-hidden"
+            class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur overflow-hidden"
         >
             <table class="w-full">
-                <thead class="bg-gray-800/50">
+                <thead class="bg-ds-surface2/50">
                     <tr>
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                             >Date</th
                         >
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                             >Email</th
                         >
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                             >Code</th
                         >
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                             >Item</th
                         >
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                             >Status</th
                         >
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-700">
                     {#each giftCodes as giftCode (giftCode.giftCodeId)}
-                        <tr class="hover:bg-gray-800/30">
-                            <td class="px-4 py-3 text-sm text-gray-300"
+                        <tr class="hover:bg-ds-surface2/30">
+                            <td class="px-4 py-3 text-sm text-ds-text-secondary"
                                 >{formatDate(giftCode.createdAt)}</td
                             >
                             <td class="px-4 py-3">
-                                <p class="text-sm font-medium text-white">
+                                <p class="text-sm font-medium text-ds-text">
                                     {giftCode.email}
                                 </p>
                                 {#if giftCode.firstName || giftCode.lastName}
-                                    <p class="text-xs text-gray-400">
+                                    <p class="text-xs text-ds-text-secondary">
                                         {[giftCode.firstName, giftCode.lastName].filter(Boolean).join(' ')}
                                     </p>
                                 {/if}
                             </td>
                             <td class="px-4 py-3">
-                                <span class="font-mono text-sm text-purple-300"
+                                <span class="font-mono text-sm text-ds-text-secondary"
                                     >{giftCode.code}</span
                                 >
                             </td>
@@ -323,7 +324,7 @@
                                             class="w-8 h-8 rounded object-cover"
                                         />
                                     {/if}
-                                    <span class="text-sm text-gray-300"
+                                    <span class="text-sm text-ds-text-secondary"
                                         >{giftCode.itemDescription}</span
                                     >
                                 </div>
@@ -331,17 +332,17 @@
                             <td class="px-4 py-3">
                                 {#if giftCode.isClaimed}
                                     <span
-                                        class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-300"
+                                        class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700"
                                         >Claimed</span
                                     >
                                 {:else if giftCode.emailSentAt}
                                     <span
-                                        class="px-2 py-1 text-xs rounded bg-blue-500/20 border border-blue-400 text-blue-300"
+                                        class="px-2 py-1 text-xs rounded bg-blue-500/20 border border-blue-400 text-blue-700"
                                         >Sent</span
                                     >
                                 {:else}
                                     <span
-                                        class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-300"
+                                        class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-600"
                                         >Pending</span
                                     >
                                 {/if}
@@ -353,3 +354,4 @@
         </div>
     {/if}
 </section>
+</div></div>

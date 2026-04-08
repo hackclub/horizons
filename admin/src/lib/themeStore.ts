@@ -3,19 +3,18 @@ import { browser } from '$app/environment';
 
 type Theme = 'dark' | 'light';
 
-const STORAGE_KEY = 'rv-theme';
+const STORAGE_KEY = 'admin-theme';
 
 function getInitialTheme(): Theme {
 	if (browser) {
 		const saved = localStorage.getItem(STORAGE_KEY);
 		if (saved === 'light' || saved === 'dark') return saved;
 	}
-	return 'dark';
+	return 'light';
 }
 
 export const theme = writable<Theme>(getInitialTheme());
 
-// Sync to localStorage and DOM attribute whenever it changes
 if (browser) {
 	theme.subscribe((value) => {
 		localStorage.setItem(STORAGE_KEY, value);

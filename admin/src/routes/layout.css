@@ -1,8 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&display=swap');
 @import 'tailwindcss';
 
 @theme {
 	--font-bricolage: 'Bricolage Grotesque', sans-serif;
+	--font-dm: 'DM Sans', sans-serif;
+
+	/* Design system tokens (from review2 master) */
+	--color-ds-bg: #eaeaea;
+	--color-ds-bg-secondary: #f5f5f5;
+	--color-ds-surface: #ffffff;
+	--color-ds-surface2: #e4e4e4;
+	--color-ds-surface-inactive: #d5d5d5;
+	--color-ds-border: #a7a7a7;
+	--color-ds-border-divider: #b3b3b3;
+	--color-ds-border-strong: #666666;
+	--color-ds-border-light: #e0e0e0;
+	--color-ds-text: #000000;
+	--color-ds-text-secondary: #4f4f4f;
+	--color-ds-text-tertiary: #999999;
+	--color-ds-text-placeholder: #808080;
+	--color-ds-text-muted: rgba(0, 0, 0, 0.8);
+	--color-ds-link: #3a3a6a;
+	--color-ds-green: #4caf50;
+	--color-ds-green-bg: #e8f5e9;
+	--color-ds-red: #ef5350;
+	--color-ds-red-bg: #ffebee;
+	--color-ds-tag-active: #fce3c5;
+	--color-ds-tag-active-border: #cabc96;
+	--color-ds-accent: #838ff4;
+	--color-ds-accent-bg: rgba(131, 143, 244, 0.4);
+	--color-ds-settings: #8c5b3b;
+	--color-ds-settings-bg: rgba(140, 91, 59, 0.4);
+	--color-ds-shadow: 0px 1px 4px rgba(0, 0, 0, 0.1);
+	--color-ds-shadow-popout: 0 4px 20px rgba(0, 0, 0, 0.2);
+	--color-ds-banner: #c0c0c0;
+	/* Zone colors (review2 color zones) */
+	--color-ds-zone-warm: #d8bfa1;
+	--color-ds-zone-warm-body: #eee1d2;
+	--color-ds-zone-cool: #a1a8d8;
+	--color-ds-zone-cool-body: #d2d5ee;
+	--color-ds-zone-cool-btn: #bfc3e6;
+	--color-ds-zone-pink: #d8a1b4;
+	--color-ds-zone-pink-body: #eed2dc;
+	--color-ds-zone-pink-btn: #e0bcc9;
 
 	/* Review page dark theme (default) */
 	--color-rv-bg: #1c1c1c;
@@ -21,7 +61,91 @@
 	--color-rv-divider: rgba(255, 255, 255, 0.06);
 }
 
-/* Light theme overrides */
+/* ── Global interaction styles (from review2) ── */
+button,
+a[href],
+summary {
+	transition: all 0.15s ease;
+}
+
+button:active:not(:disabled) {
+	transform: scale(0.97);
+}
+
+/* Tab content fade-in */
+@keyframes tab-fade-in {
+	from { opacity: 0; transform: translateY(4px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+.tab-content {
+	animation: tab-fade-in 0.15s ease;
+}
+
+/* Collapsible panel (grid-based open/close) */
+.panel-collapse {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows 0.25s ease;
+}
+
+.panel-collapse > * {
+	overflow: hidden;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+
+.panel-collapse.panel-open {
+	grid-template-rows: 1fr;
+}
+
+.panel-collapse.panel-open > * {
+	opacity: 1;
+	transition: opacity 0.2s ease 0.1s;
+}
+
+/* ── Dark mode overrides for design system tokens ── */
+:root[data-theme='dark'] {
+	--color-ds-bg: #1a1a1a;
+	--color-ds-bg-secondary: #222222;
+	--color-ds-surface: #252525;
+	--color-ds-surface2: #2e2e2e;
+	--color-ds-surface-inactive: #333333;
+	--color-ds-border: #3a3a3a;
+	--color-ds-border-divider: #3a3a3a;
+	--color-ds-border-strong: #555555;
+	--color-ds-border-light: #3a3a3a;
+	--color-ds-text: #e0e0e0;
+	--color-ds-text-secondary: #aaaaaa;
+	--color-ds-text-tertiary: #777777;
+	--color-ds-text-placeholder: #666666;
+	--color-ds-text-muted: rgba(255, 255, 255, 0.8);
+	--color-ds-link: #8a8ac8;
+	--color-ds-green: #66bb6a;
+	--color-ds-green-bg: rgba(76, 175, 80, 0.15);
+	--color-ds-red: #ef5350;
+	--color-ds-red-bg: rgba(239, 83, 80, 0.15);
+	--color-ds-tag-active: #3a3020;
+	--color-ds-tag-active-border: #4a4020;
+	--color-ds-accent: #8a96f8;
+	--color-ds-accent-bg: rgba(131, 143, 244, 0.25);
+	--color-ds-settings: #c08050;
+	--color-ds-settings-bg: rgba(140, 91, 59, 0.3);
+	--color-ds-shadow: 0px 1px 4px rgba(0, 0, 0, 0.4);
+	--color-ds-shadow-popout: 0 4px 20px rgba(0, 0, 0, 0.6);
+	--color-ds-banner: #111111;
+	--color-ds-zone-warm: #221e18;
+	--color-ds-zone-warm-body: #2e2822;
+	--color-ds-zone-cool: #1a1c38;
+	--color-ds-zone-cool-body: #252840;
+	--color-ds-zone-cool-btn: #202440;
+	--color-ds-zone-pink: #241a20;
+	--color-ds-zone-pink-body: #302028;
+	--color-ds-zone-pink-btn: #2a1e24;
+	color-scheme: dark;
+}
+
+/* Light theme overrides (rv-* tokens for review page) */
 :root[data-theme='light'] {
 	--color-rv-bg: #f5f5f5;
 	--color-rv-surface: #ffffff;

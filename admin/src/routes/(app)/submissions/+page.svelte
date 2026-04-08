@@ -3,6 +3,7 @@
     import { invalidateAll } from '$app/navigation';
     import { api, type components } from '$lib/api';
     import { env } from '$env/dynamic/public';
+    import { Play, Snowflake, LoaderCircle } from 'lucide-svelte';
 
     type AdminSubmission = components['schemas']['AdminSubmissionResponse'];
     type AdminSubmissionUser = components['schemas']['AdminSubmissionProjectUserResponse'];
@@ -249,9 +250,9 @@
             case 'submission': return 'border-green-500 bg-green-500/10';
             case 'resubmission': return 'border-yellow-500 bg-yellow-500/10';
             case 'project_updated': return 'border-cyan-500 bg-cyan-500/10';
-            case 'admin_review': return 'border-purple-500 bg-purple-500/10';
+            case 'admin_review': return 'border-ds-accent bg-purple-500/10';
             case 'admin_update': return 'border-orange-500 bg-orange-500/10';
-            default: return 'border-gray-500 bg-gray-500/10';
+            default: return 'border-ds-border bg-ds-surface2';
         }
     }
 
@@ -263,7 +264,7 @@
             case 'project_updated': return 'bg-cyan-500';
             case 'admin_review': return 'bg-purple-500';
             case 'admin_update': return 'bg-orange-500';
-            default: return 'bg-gray-500';
+            default: return 'bg-ds-surface-inactive';
         }
     }
 
@@ -821,7 +822,8 @@
     <title>Submissions - Admin Panel</title>
 </svelte:head>
 
-<section class="space-y-4">
+<div class="p-6"><div class="mx-auto max-w-6xl space-y-6">
+<section class="space-y-4 font-dm">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 class="text-2xl font-semibold">Submission Review Platform</h2>
         <div class="flex items-center gap-3">
@@ -829,22 +831,24 @@
                 <button
                     class={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
                         globalSettings.submissionsFrozen
-                            ? 'bg-blue-600/20 border-blue-500 text-blue-300 hover:bg-blue-600/30'
-                            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                            ? 'bg-blue-600/20 border-blue-500 text-blue-700 hover:bg-blue-600/30'
+                            : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                     }`}
                     onclick={toggleGlobalSubmissionsFrozen}
                     disabled={globalSettingsLoading}
                 >
                     {#if globalSettingsLoading}
-                        <span class="animate-spin">&#10227;</span>
+                        <LoaderCircle size={16} class="animate-spin" />
+                    {:else if globalSettings.submissionsFrozen}
+                        <Snowflake size={16} />
                     {:else}
-                        <span>{globalSettings.submissionsFrozen ? '&#129482;' : '&#9654;&#65039;'}</span>
+                        <Play size={16} />
                     {/if}
                     {globalSettings.submissionsFrozen ? 'Submissions Frozen' : 'Freeze All Submissions'}
                 </button>
             {/if}
             <button
-                class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
+                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
                 onclick={() => loadSubmissions(false)}
             >
                 Refresh
@@ -856,38 +860,38 @@
         <div class="rounded-xl border border-blue-500 bg-blue-600/10 p-4 flex items-center gap-3">
             <span class="text-2xl">&#129482;</span>
             <div>
-                <p class="font-semibold text-blue-300">Submissions are currently frozen</p>
-                <p class="text-sm text-blue-400">Users cannot submit or resubmit projects until unfrozen.</p>
+                <p class="font-semibold text-blue-700">Submissions are currently frozen</p>
+                <p class="text-sm text-blue-600">Users cannot submit or resubmit projects until unfrozen.</p>
             </div>
         </div>
     {/if}
 
-    <div class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-6">
+    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6">
         <div class="grid gap-4 md:grid-cols-2">
             <div>
-                <div class="text-sm font-medium text-gray-300 mb-2">Date Range for Billy Links</div>
+                <div class="text-sm font-medium text-ds-text-secondary mb-2">Date Range for Billy Links</div>
                 <div class="flex flex-col gap-3 md:flex-row md:items-end md:gap-4">
                     <div class="flex-1">
-                        <label for="date-range-start" class="block text-xs text-gray-400 mb-1">Start Date</label>
+                        <label for="date-range-start" class="block text-xs text-ds-text-secondary mb-1">Start Date</label>
                         <input
                             id="date-range-start"
                             type="date"
-                            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm text-ds-text focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             bind:value={dateRangeStart}
                         />
                     </div>
                     <div class="flex-1">
-                        <label for="date-range-end" class="block text-xs text-gray-400 mb-1">End Date</label>
+                        <label for="date-range-end" class="block text-xs text-ds-text-secondary mb-1">End Date</label>
                         <input
                             id="date-range-end"
                             type="date"
-                            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm text-ds-text focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             bind:value={dateRangeEnd}
                         />
                     </div>
                     <div>
                         <button
-                            class="px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-400 text-sm hover:bg-gray-700 transition-colors whitespace-nowrap"
+                            class="px-4 py-2 rounded-lg border border-ds-border bg-ds-surface2 text-ds-text-secondary text-sm hover:bg-ds-surface-inactive transition-colors whitespace-nowrap"
                             onclick={() => {
                                 const defaultRange = getDefaultDateRange();
                                 dateRangeStart = defaultRange.startDate;
@@ -901,12 +905,12 @@
             </div>
 
             <div>
-                <label for="search-submissions" class="block text-sm font-medium text-gray-300 mb-2">Search</label>
+                <label for="search-submissions" class="block text-sm font-medium text-ds-text-secondary mb-2">Search</label>
                 <input
                     id="search-submissions"
                     type="text"
                     placeholder="Search by project title, user name, email, or description..."
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-4 py-2 text-sm text-ds-text placeholder-ds-text-placeholder focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     bind:value={searchQuery}
                 />
             </div>
@@ -914,13 +918,13 @@
 
         <div class="grid gap-4 md:grid-cols-6">
             <div>
-                <div class="block text-sm font-medium text-gray-300 mb-2">Priority Filter</div>
+                <div class="block text-sm font-medium text-ds-text-secondary mb-2">Priority Filter</div>
                 <div class="flex flex-wrap gap-2">
                     <button
                         class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
                             priorityFilterEnabled
-                                ? 'bg-yellow-600 border-yellow-400 text-white'
-                                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                ? 'bg-yellow-600 border-yellow-400 text-ds-text'
+                                : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                         }`}
                         onclick={togglePriorityFilter}
                         disabled={priorityUsersLoading}
@@ -931,20 +935,20 @@
                         {/if}
                     </button>
                     {#if priorityFilterEnabled && priorityUsersLoaded}
-                        <span class="px-2 py-1.5 text-xs text-gray-400 self-center">
+                        <span class="px-2 py-1.5 text-xs text-ds-text-secondary self-center">
                             ({priorityUsers.length} users)
                         </span>
                     {/if}
                 </div>
             </div>
             <div>
-                <div class="block text-sm font-medium text-gray-300 mb-2">Filter by Submission Count</div>
+                <div class="block text-sm font-medium text-ds-text-secondary mb-2">Filter by Submission Count</div>
                 <div class="flex flex-wrap gap-2">
                     <button
                         class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
                             submissionCountFilter === 'all'
-                                ? 'bg-purple-600 border-purple-400 text-white'
-                                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                ? 'bg-ds-accent border-ds-accent text-ds-text'
+                                : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                         }`}
                         onclick={() => (submissionCountFilter = 'all')}
                     >
@@ -953,8 +957,8 @@
                     <button
                         class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
                             submissionCountFilter === 'single'
-                                ? 'bg-purple-600 border-purple-400 text-white'
-                                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                ? 'bg-ds-accent border-ds-accent text-ds-text'
+                                : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                         }`}
                         onclick={() => (submissionCountFilter = 'single')}
                     >
@@ -963,8 +967,8 @@
                     <button
                         class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
                             submissionCountFilter === 'multiple'
-                                ? 'bg-purple-600 border-purple-400 text-white'
-                                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                ? 'bg-ds-accent border-ds-accent text-ds-text'
+                                : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                         }`}
                         onclick={() => (submissionCountFilter = 'multiple')}
                     >
@@ -973,18 +977,18 @@
                 </div>
             </div>
             <div>
-                <div class="block text-sm font-medium text-gray-300 mb-2">Filter by Status</div>
+                <div class="block text-sm font-medium text-ds-text-secondary mb-2">Filter by Status</div>
                 <div class="flex flex-wrap gap-2">
                     {#each statusOptions as status}
                         <button
                             class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
                                 selectedStatuses.has(status)
                                     ? status === 'pending'
-                                        ? 'bg-yellow-600 border-yellow-400 text-white'
+                                        ? 'bg-yellow-600 border-yellow-400 text-ds-text'
                                         : status === 'approved'
-                                          ? 'bg-green-600 border-green-400 text-white'
-                                          : 'bg-red-600 border-red-400 text-white'
-                                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                          ? 'bg-green-600 border-green-400 text-ds-text'
+                                          : 'bg-red-600 border-red-400 text-ds-text'
+                                    : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                             }`}
                             onclick={() => toggleStatus(status)}
                         >
@@ -996,7 +1000,7 @@
                     {/each}
                     {#if selectedStatuses.size > 0}
                         <button
-                            class="px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 text-gray-400 text-sm hover:bg-gray-700 transition-colors"
+                            class="px-3 py-1.5 rounded-lg border border-ds-border bg-ds-surface2 text-ds-text-secondary text-sm hover:bg-ds-surface-inactive transition-colors"
                             onclick={() => (selectedStatuses = new Set())}
                         >
                             Clear
@@ -1006,14 +1010,14 @@
             </div>
 
             <div>
-                <div class="block text-sm font-medium text-gray-300 mb-2">Filter by Project Type</div>
+                <div class="block text-sm font-medium text-ds-text-secondary mb-2">Filter by Project Type</div>
                 <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                     {#each projectTypes as projectType}
                         <button
                             class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
                                 selectedProjectTypes.has(projectType)
-                                    ? 'bg-purple-600 border-purple-400 text-white'
-                                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                    ? 'bg-ds-accent border-ds-accent text-ds-text'
+                                    : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                             }`}
                             onclick={() => toggleProjectType(projectType)}
                         >
@@ -1025,7 +1029,7 @@
                     {/each}
                     {#if selectedProjectTypes.size > 0}
                         <button
-                            class="px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 text-gray-400 text-sm hover:bg-gray-700 transition-colors"
+                            class="px-3 py-1.5 rounded-lg border border-ds-border bg-ds-surface2 text-ds-text-secondary text-sm hover:bg-ds-surface-inactive transition-colors"
                             onclick={() => (selectedProjectTypes = new Set())}
                         >
                             Clear
@@ -1035,32 +1039,32 @@
             </div>
 
             <div>
-                <div class="block text-sm font-medium text-gray-300 mb-2">Filter Fraud/Sus</div>
+                <div class="block text-sm font-medium text-ds-text-secondary mb-2">Filter Fraud/Sus</div>
                 <div class="flex flex-col gap-2">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input
                             type="checkbox"
                             bind:checked={showFraudSubmissions}
-                            class="w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-600 focus:ring-purple-500 focus:ring-2"
+                            class="w-4 h-4 rounded border-ds-border bg-ds-surface2 text-purple-600 focus:ring-ds-accent focus:ring-2"
                         />
-                        <span class="text-sm text-gray-300">Show fraud</span>
+                        <span class="text-sm text-ds-text-secondary">Show fraud</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input
                             type="checkbox"
                             bind:checked={showSusSubmissions}
-                            class="w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-600 focus:ring-purple-500 focus:ring-2"
+                            class="w-4 h-4 rounded border-ds-border bg-ds-surface2 text-purple-600 focus:ring-ds-accent focus:ring-2"
                         />
-                        <span class="text-sm text-gray-300">Show sus</span>
+                        <span class="text-sm text-ds-text-secondary">Show sus</span>
                     </label>
                 </div>
             </div>
 
             <div>
-                <div class="block text-sm font-medium text-gray-300 mb-2">Sort By</div>
+                <div class="block text-sm font-medium text-ds-text-secondary mb-2">Sort By</div>
                 <div class="flex gap-2">
                     <select
-                        class="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        class="flex-1 rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm text-ds-text focus:outline-none focus:ring-2 focus:ring-ds-accent"
                         bind:value={sortField}
                     >
                         <option value="createdAt">Date Created</option>
@@ -1071,7 +1075,7 @@
                         <option value="approvedHours">Approved Hours</option>
                     </select>
                     <button
-                        class="px-3 py-2 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white transition-colors"
+                        class="px-3 py-2 rounded-lg border border-ds-border bg-ds-surface2 hover:bg-ds-surface-inactive text-ds-text transition-colors"
                         onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
                         title={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
                     >
@@ -1081,20 +1085,20 @@
             </div>
         </div>
 
-        <div class="text-sm text-gray-400">
+        <div class="text-sm text-ds-text-secondary">
             Showing {Object.keys(filteredGroupedSubmissions).length}
             project{Object.keys(filteredGroupedSubmissions).length === 1 ? '' : 's'} with {Object.values(filteredGroupedSubmissions).reduce((sum, subs) => sum + subs.length, 0)} submission{Object.values(filteredGroupedSubmissions).reduce((sum, subs) => sum + subs.length, 0) === 1 ? '' : 's'} of {submissions.length} total
         </div>
     </div>
 
     <!-- Reviewer Leaderboard -->
-    <div class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-4">
+    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-4">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold flex items-center gap-2">
                 Reviewer Leaderboard
             </h3>
             <button
-                class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors text-sm"
+                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors text-sm"
                 onclick={loadReviewerLeaderboard}
                 disabled={leaderboardLoading}
             >
@@ -1105,50 +1109,50 @@
         {#if leaderboardLoaded && reviewerLeaderboard.length > 0}
             <div class="overflow-x-auto">
                 <table class="w-full">
-                    <thead class="bg-gray-800/50">
+                    <thead class="bg-ds-surface2/50">
                         <tr>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300">#</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300">Reviewer</th>
-                            <th class="px-4 py-3 text-center text-sm font-semibold text-green-400">Approved</th>
-                            <th class="px-4 py-3 text-center text-sm font-semibold text-red-400">Rejected</th>
-                            <th class="px-4 py-3 text-center text-sm font-semibold text-purple-400">Total</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300">Last Review</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">#</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">Reviewer</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-green-700">Approved</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-red-600">Rejected</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-purple-600">Total</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">Last Review</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-700">
+                    <tbody class="divide-y divide-ds-border">
                         {#each reviewerLeaderboard as reviewer, index}
                             <tr
-                                class="hover:bg-gray-800/30 {index === 0
+                                class="hover:bg-ds-surface2 {index === 0
                                     ? 'bg-yellow-500/10'
                                     : index === 1
-                                      ? 'bg-gray-400/10'
+                                      ? 'bg-ds-surface2/30'
                                       : index === 2
                                         ? 'bg-amber-600/10'
                                         : ''}"
                             >
                                 <td
                                     class="px-4 py-3 text-sm font-bold {index === 0
-                                        ? 'text-yellow-400'
+                                        ? 'text-yellow-600'
                                         : index === 1
-                                          ? 'text-gray-300'
+                                          ? 'text-ds-text-secondary'
                                           : index === 2
                                             ? 'text-amber-500'
-                                            : 'text-gray-400'}"
+                                            : 'text-ds-text-secondary'}"
                                 >
                                     {#if index === 0}1st{:else if index === 1}2nd{:else if index === 2}3rd{:else}{index + 1}{/if}
                                 </td>
                                 <td class="px-4 py-3">
-                                    <p class="text-sm font-medium text-white">
+                                    <p class="text-sm font-medium text-ds-text">
                                         {reviewer.firstName || ''} {reviewer.lastName || ''}
                                     </p>
-                                    <p class="text-xs text-gray-400">
+                                    <p class="text-xs text-ds-text-secondary">
                                         {reviewer.email || `ID: ${reviewer.reviewerId}`}
                                     </p>
                                 </td>
-                                <td class="px-4 py-3 text-center text-sm font-semibold text-green-400">{reviewer.approved}</td>
-                                <td class="px-4 py-3 text-center text-sm font-semibold text-red-400">{reviewer.rejected}</td>
-                                <td class="px-4 py-3 text-center text-sm font-bold text-purple-400">{reviewer.total}</td>
-                                <td class="px-4 py-3 text-sm text-gray-400">
+                                <td class="px-4 py-3 text-center text-sm font-semibold text-green-700">{reviewer.approved}</td>
+                                <td class="px-4 py-3 text-center text-sm font-semibold text-red-600">{reviewer.rejected}</td>
+                                <td class="px-4 py-3 text-center text-sm font-bold text-purple-600">{reviewer.total}</td>
+                                <td class="px-4 py-3 text-sm text-ds-text-secondary">
                                     {reviewer.lastReviewedAt ? formatDate(reviewer.lastReviewedAt) : '\u2014'}
                                 </td>
                             </tr>
@@ -1157,17 +1161,17 @@
                 </table>
             </div>
         {:else if leaderboardLoaded}
-            <p class="text-gray-400 text-sm">No reviews recorded yet.</p>
+            <p class="text-ds-text-secondary text-sm">No reviews recorded yet.</p>
         {:else}
-            <p class="text-gray-500 text-sm">Click "Load Leaderboard" to see reviewer stats.</p>
+            <p class="text-ds-text-placeholder text-sm">Click "Load Leaderboard" to see reviewer stats.</p>
         {/if}
     </div>
 
     <!-- Submissions List -->
     {#if submissionsLoading}
-        <div class="py-12 text-center text-gray-300">Loading submissions...</div>
+        <div class="py-12 text-center text-ds-text-secondary">Loading submissions...</div>
     {:else if Object.keys(filteredGroupedSubmissions).length === 0}
-        <div class="py-12 text-center text-gray-300">No submissions match your filters.</div>
+        <div class="py-12 text-center text-ds-text-secondary">No submissions match your filters.</div>
     {:else}
         <div class="grid gap-6">
             {#each sortedGroupedSubmissionsEntries as [projectIdStr, projectSubmissions]}
@@ -1179,31 +1183,31 @@
                 {@const deltaHours = selectedSubmission.approvedHours != null && previousSubmission?.approvedHours != null ? selectedSubmission.approvedHours - previousSubmission.approvedHours : null}
                 <div
                     id="submission-card-{projectId}"
-                    class={`rounded-2xl border bg-gray-900/70 backdrop-blur p-4 md:p-6 space-y-4 min-w-0 max-w-full overflow-hidden ${
+                    class={`rounded-lg border bg-ds-surface backdrop-blur p-4 md:p-6 space-y-4 min-w-0 max-w-full overflow-hidden ${
                         selectedSubmission.project.user.isSus
                             ? 'border-yellow-500'
                             : selectedSubmission.project.isFraud
                               ? 'border-red-500'
-                              : 'border-gray-700'
+                              : 'border-ds-border'
                     }`}
                 >
                     {#if selectedSubmission.project.isFraud}
                         <div class="bg-red-600/20 border-2 border-red-500 rounded-lg p-3 mb-4">
-                            <p class="text-red-300 font-bold text-center uppercase tracking-wide">
+                            <p class="text-red-600 font-bold text-center uppercase tracking-wide">
                                 FRAUD FLAGGED
                             </p>
                         </div>
                     {/if}
                     {#if selectedSubmission.project.user.isSus}
                         <div class="bg-yellow-600/20 border-2 border-yellow-500 rounded-lg p-3 mb-4">
-                            <p class="text-yellow-300 font-bold text-center uppercase tracking-wide">
+                            <p class="text-yellow-600 font-bold text-center uppercase tracking-wide">
                                 SUS FLAGGED
                             </p>
                         </div>
                     {/if}
                     {#if projectSubmissions.length > 1}
-                        <div class="mb-4 pb-4 border-b border-gray-700">
-                            <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-3">
+                        <div class="mb-4 pb-4 border-b border-ds-border">
+                            <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">
                                 Submissions ({projectSubmissions.length})
                             </h4>
                             <div class="flex flex-wrap gap-2">
@@ -1212,11 +1216,11 @@
                                         class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
                                             selectedSubmissionId === sub.submissionId
                                                 ? selectedSubmission.project.user.isSus
-                                                    ? 'bg-yellow-600 border-yellow-400 text-white'
-                                                    : 'bg-purple-600 border-purple-400 text-white'
+                                                    ? 'bg-yellow-600 border-yellow-400 text-ds-text'
+                                                    : 'bg-ds-accent border-ds-accent text-ds-text'
                                                 : selectedSubmission.project.user.isSus
-                                                  ? 'bg-yellow-600/20 border-yellow-500 text-yellow-300 hover:bg-yellow-600/30'
-                                                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                                  ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
+                                                  : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                                         }`}
                                         onclick={() =>
                                             (selectedSubmissionByProject = {
@@ -1228,10 +1232,10 @@
                                         <span
                                             class={`ml-2 px-1.5 py-0.5 rounded text-xs ${
                                                 sub.approvalStatus === 'approved'
-                                                    ? 'bg-green-500/20 text-green-300'
+                                                    ? 'bg-green-500/20 text-green-700'
                                                     : sub.approvalStatus === 'rejected'
-                                                      ? 'bg-red-500/20 text-red-300'
-                                                      : 'bg-yellow-500/20 text-yellow-300'
+                                                      ? 'bg-red-500/20 text-red-600'
+                                                      : 'bg-yellow-500/20 text-yellow-600'
                                             }`}
                                         >
                                             {sub.approvalStatus}
@@ -1244,7 +1248,7 @@
                     <div class="flex flex-col gap-4 md:flex-row md:gap-6">
                         {#if selectedSubmission.screenshotUrl || selectedSubmission.project.screenshotUrl}
                             <div class="w-full md:w-64 flex-shrink-0">
-                                <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                                <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">
                                     Screenshot Preview
                                 </h4>
                                 <a
@@ -1257,7 +1261,7 @@
                                         alt="Project screenshot"
                                         loading="lazy"
                                         decoding="async"
-                                        class="w-full h-48 object-cover rounded-lg border border-gray-700 hover:border-purple-500 transition-colors cursor-pointer"
+                                        class="w-full h-48 object-cover rounded-lg border border-ds-border hover:border-ds-accent transition-colors cursor-pointer"
                                     />
                                 </a>
                             </div>
@@ -1269,19 +1273,19 @@
                                     <h3 class="text-2xl font-semibold">
                                         {selectedSubmission.project.projectTitle}
                                     </h3>
-                                    <p class="text-sm text-gray-400">
+                                    <p class="text-sm text-ds-text-secondary">
                                         Submitted {formatDate(selectedSubmission.createdAt)}
                                     </p>
                                 </div>
                                 <span
                                     class={`px-3 py-1 rounded-full text-sm border self-start ${
                                         selectedSubmission.project.user.isSus
-                                            ? 'bg-yellow-500/20 border-yellow-400 text-yellow-300'
+                                            ? 'bg-yellow-500/20 border-yellow-400 text-yellow-600'
                                             : selectedSubmission.approvalStatus === 'approved'
-                                              ? 'bg-green-500/20 border-green-400 text-green-300'
+                                              ? 'bg-green-500/20 border-green-400 text-green-700'
                                               : selectedSubmission.approvalStatus === 'rejected'
-                                                ? 'bg-red-500/20 border-red-400 text-red-300'
-                                                : 'bg-yellow-500/20 border-yellow-400 text-yellow-200'
+                                                ? 'bg-red-500/20 border-red-400 text-red-600'
+                                                : 'bg-yellow-500/20 border-yellow-400 text-yellow-600'
                                     }`}
                                 >
                                     {selectedSubmission.project.user.isSus
@@ -1292,19 +1296,19 @@
 
                             <div class="grid gap-4 md:grid-cols-2">
                                 <div class="space-y-2">
-                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400">User Info</h4>
+                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">User Info</h4>
                                     <p class="text-lg font-medium">
                                         {fullName(selectedSubmission.project.user)}
                                     </p>
-                                    <p class="text-sm text-gray-300">
+                                    <p class="text-sm text-ds-text-secondary">
                                         {selectedSubmission.project.user.email}
                                     </p>
                                     <div class="flex items-center gap-2 mb-2">
                                         <button
                                             class={`px-3 py-1 text-xs rounded border transition-colors ${
                                                 selectedSubmission.project.user.isSus
-                                                    ? 'bg-yellow-600/20 border-yellow-500 text-yellow-300 hover:bg-yellow-600/30'
-                                                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                                    ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
+                                                    : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                                             }`}
                                             onclick={() => toggleSusFlag(selectedSubmission.project.user.userId, selectedSubmission.project.user.isSus)}
                                         >
@@ -1312,24 +1316,24 @@
                                         </button>
                                     </div>
                                     {#if selectedSubmission.project.user.hackatimeAccount}
-                                        <p class="text-sm text-purple-300">
+                                        <p class="text-sm text-purple-600">
                                             Hackatime: <span class="font-mono">{selectedSubmission.project.user.hackatimeAccount}</span>
                                         </p>
                                     {/if}
-                                    <p class="text-sm {selectedSubmission.project.user.slackUserId ? 'text-green-300' : 'text-gray-500'}">
+                                    <p class="text-sm {selectedSubmission.project.user.slackUserId ? 'text-green-700' : 'text-ds-text-placeholder'}">
                                         Slack: {selectedSubmission.project.user.slackUserId ? selectedSubmission.project.user.slackUserId : 'Not linked'}
                                     </p>
-                                    <p class="text-sm text-gray-400">
+                                    <p class="text-sm text-ds-text-secondary">
                                         {selectedSubmission.project.user.city ? `${selectedSubmission.project.user.city}, ` : ''}{selectedSubmission.project.user.state}
                                     </p>
                                     <button
-                                        class="text-xs text-left text-blue-400 hover:text-blue-300 transition-colors"
+                                        class="text-xs text-left text-blue-600 hover:text-blue-700 transition-colors"
                                         onclick={() => (addressExpanded[selectedSubmission.submissionId] = !addressExpanded[selectedSubmission.submissionId])}
                                     >
                                         {addressExpanded[selectedSubmission.submissionId] ? '\u25BC' : '\u25B6'} Full Address
                                     </button>
                                     {#if addressExpanded[selectedSubmission.submissionId]}
-                                        <div class="mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700 text-xs text-gray-300 space-y-1">
+                                        <div class="mt-2 p-3 bg-ds-surface2/50 rounded-lg border border-ds-border text-xs text-ds-text-secondary space-y-1">
                                             {#if selectedSubmission.project.user.addressLine1}
                                                 <p>{selectedSubmission.project.user.addressLine1}</p>
                                             {/if}
@@ -1349,7 +1353,7 @@
                                                 <p>{selectedSubmission.project.user.country}</p>
                                             {/if}
                                             {#if selectedSubmission.project.user.birthday}
-                                                <p class="pt-2 border-t border-gray-700">
+                                                <p class="pt-2 border-t border-ds-border">
                                                     Birthday: {formatDate(selectedSubmission.project.user.birthday)}
                                                 </p>
                                             {/if}
@@ -1357,13 +1361,13 @@
                                     {/if}
                                 </div>
                                 <div class="space-y-2">
-                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400">Project Info</h4>
+                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Project Info</h4>
                                     <div class="flex items-center gap-2 mb-2">
                                         <button
                                             class={`px-3 py-1 text-xs rounded border transition-colors ${
                                                 selectedSubmission.project.isFraud
-                                                    ? 'bg-red-600/20 border-red-500 text-red-300 hover:bg-red-600/30'
-                                                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                                    ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30'
+                                                    : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                                             }`}
                                             onclick={() => toggleFraudFlag(selectedSubmission.project.projectId, selectedSubmission.project.isFraud)}
                                         >
@@ -1371,11 +1375,11 @@
                                         </button>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <p class="text-sm text-gray-300">
-                                            Hackatime hours: <span class="font-semibold text-purple-300">{formatHours(selectedSubmission.project.nowHackatimeHours)}</span>
+                                        <p class="text-sm text-ds-text-secondary">
+                                            Hackatime hours: <span class="font-semibold text-purple-600">{formatHours(selectedSubmission.project.nowHackatimeHours)}</span>
                                         </p>
                                         <button
-                                            class="px-2 py-1 text-xs rounded bg-purple-700 hover:bg-purple-600 border border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            class="px-2 py-1 text-xs rounded bg-ds-accent hover:bg-ds-accent/80 border border-ds-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             onclick={() => recalculateSubmissionHours(selectedSubmission.submissionId, selectedSubmission.project.projectId)}
                                             disabled={submissionRecalculating[selectedSubmission.submissionId]}
                                         >
@@ -1383,17 +1387,17 @@
                                         </button>
                                     </div>
                                     {#if selectedSubmission.project.nowHackatimeProjects?.length}
-                                        <p class="text-sm text-gray-400">
+                                        <p class="text-sm text-ds-text-secondary">
                                             Projects: {selectedSubmission.project.nowHackatimeProjects.join(', ')}
                                         </p>
                                     {/if}
                                     {#if selectedSubmission.project.approvedHours !== null}
-                                        <p class="text-sm text-green-300">
+                                        <p class="text-sm text-green-700">
                                             Approved hours (total): <span class="font-semibold">{formatHours(selectedSubmission.project.approvedHours)}</span>
                                         </p>
                                     {/if}
                                     {#if deltaHours != null}
-                                        <p class="text-sm text-blue-300">
+                                        <p class="text-sm text-blue-700">
                                             Additional hours (this submission): <span class="font-semibold">+{formatHours(deltaHours)}</span>
                                         </p>
                                     {/if}
@@ -1402,8 +1406,8 @@
 
                             {#if selectedSubmission.description || selectedSubmission.project.description}
                                 <div class="space-y-2">
-                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400">Description</h4>
-                                    <p class="text-sm text-gray-300 break-words">
+                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Description</h4>
+                                    <p class="text-sm text-ds-text-secondary break-words">
                                         {selectedSubmission.description || selectedSubmission.project.description}
                                     </p>
                                 </div>
@@ -1411,27 +1415,27 @@
 
                             {#if selectedSubmission.hoursJustification}
                                 <div class="space-y-2 bg-blue-950/30 border border-blue-800 rounded-lg p-4">
-                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-blue-300">User Feedback</h4>
-                                    <p class="text-sm text-gray-300 break-words">{selectedSubmission.hoursJustification}</p>
+                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-blue-700">User Feedback</h4>
+                                    <p class="text-sm text-ds-text-secondary break-words">{selectedSubmission.hoursJustification}</p>
                                 </div>
                             {/if}
 
                             {#if selectedSubmission.project.hoursJustification}
                                 <div class="space-y-2 bg-purple-950/30 border border-purple-800 rounded-lg p-4">
-                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-purple-300">Hours Justification (Admin Only)</h4>
-                                    <p class="text-sm text-gray-300 break-words">{selectedSubmission.project.hoursJustification}</p>
+                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-purple-600">Hours Justification (Admin Only)</h4>
+                                    <p class="text-sm text-ds-text-secondary break-words">{selectedSubmission.project.hoursJustification}</p>
                                 </div>
                             {/if}
 
                             {#if selectedSubmission.project.adminComment}
                                 <div class="space-y-2 bg-orange-950/30 border border-orange-800 rounded-lg p-4">
-                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-orange-300">Admin Comment</h4>
-                                    <p class="text-sm text-gray-300 break-words">{selectedSubmission.project.adminComment}</p>
+                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-orange-600">Admin Comment</h4>
+                                    <p class="text-sm text-ds-text-secondary break-words">{selectedSubmission.project.adminComment}</p>
                                 </div>
                             {/if}
 
                             <div class="flex flex-wrap gap-2">
-                                <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400 w-full">Quick Actions</h4>
+                                <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary w-full">Quick Actions</h4>
                                 {#if selectedSubmission.playableUrl || selectedSubmission.project.playableUrl}
                                     {@const normalizedPlayableUrl = normalizeUrl(selectedSubmission.playableUrl || selectedSubmission.project.playableUrl)}
                                     {#if normalizedPlayableUrl}
@@ -1439,7 +1443,7 @@
                                             href={normalizedPlayableUrl}
                                             target="_blank"
                                             rel="noreferrer"
-                                            class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white text-sm transition-colors"
+                                            class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 border border-blue-400 text-ds-text text-sm transition-colors"
                                         >
                                             View Live Demo
                                         </a>
@@ -1450,7 +1454,7 @@
                                         href={selectedSubmission.repoUrl || selectedSubmission.project.repoUrl}
                                         target="_blank"
                                         rel="noreferrer"
-                                        class="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white text-sm transition-colors"
+                                        class="px-4 py-2 rounded-lg bg-ds-surface-inactive hover:bg-ds-surface-inactive border border-ds-border text-ds-text text-sm transition-colors"
                                     >
                                         View Repository
                                     </a>
@@ -1458,7 +1462,7 @@
                                         href={`https://airlock.hackclub.com/?r=${selectedSubmission.repoUrl || selectedSubmission.project.repoUrl}`}
                                         target="_blank"
                                         rel="noreferrer"
-                                        class="px-4 py-2 rounded-lg bg-orange-700 hover:bg-orange-600 border border-orange-500 text-white text-sm transition-colors"
+                                        class="px-4 py-2 rounded-lg bg-orange-700 hover:bg-orange-600 border border-orange-500 text-ds-text text-sm transition-colors"
                                     >
                                         Open in Airlock
                                     </a>
@@ -1468,7 +1472,7 @@
                                         href={selectedSubmission.screenshotUrl || selectedSubmission.project.screenshotUrl}
                                         target="_blank"
                                         rel="noreferrer"
-                                        class="px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 border border-purple-500 text-white text-sm transition-colors"
+                                        class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 border border-ds-accent text-ds-text text-sm transition-colors"
                                     >
                                         Full Screenshot
                                     </a>
@@ -1479,13 +1483,13 @@
                                         href={billyLinkResult}
                                         target="_blank"
                                         rel="noreferrer"
-                                        class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 border border-green-400 text-white text-sm transition-colors"
+                                        class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 border border-green-400 text-ds-text text-sm transition-colors"
                                     >
                                         Billy
                                     </a>
                                 {:else}
                                     <span
-                                        class="px-4 py-2 rounded-lg bg-gray-600 border border-gray-500 text-gray-400 text-sm cursor-not-allowed"
+                                        class="px-4 py-2 rounded-lg bg-ds-surface-inactive border border-ds-border text-ds-text-secondary text-sm cursor-not-allowed"
                                         title="Hackatime account not available"
                                     >
                                         Billy
@@ -1496,15 +1500,15 @@
                     </div>
 
                     <!-- Review Controls -->
-                    <div class="border-t border-gray-700 pt-4 space-y-4">
-                        <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400">Review Controls</h4>
+                    <div class="border-t border-ds-border pt-4 space-y-4">
+                        <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Review Controls</h4>
 
                         <div class="grid gap-4 md:grid-cols-3">
                             <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-300" for={statusIdFor(selectedSubmission.submissionId)}>Status</label>
+                                <label class="text-sm font-medium text-ds-text-secondary" for={statusIdFor(selectedSubmission.submissionId)}>Status</label>
                                 <select
                                     id={statusIdFor(selectedSubmission.submissionId)}
-                                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].approvalStatus}
                                 >
                                     {#each statusOptions as option}
@@ -1513,41 +1517,41 @@
                                 </select>
                             </div>
                             <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-300" for={hoursIdFor(selectedSubmission.submissionId)}>Approved Hours</label>
+                                <label class="text-sm font-medium text-ds-text-secondary" for={hoursIdFor(selectedSubmission.submissionId)}>Approved Hours</label>
                                 <input
                                     id={hoursIdFor(selectedSubmission.submissionId)}
                                     type="number"
                                     step="0.1"
                                     min="0"
-                                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].approvedHours}
                                 />
                             </div>
                             <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-300" for={userFeedbackIdFor(selectedSubmission.submissionId)}>User Feedback (sent via email)</label>
+                                <label class="text-sm font-medium text-ds-text-secondary" for={userFeedbackIdFor(selectedSubmission.submissionId)}>User Feedback (sent via email)</label>
                                 <textarea
                                     id={userFeedbackIdFor(selectedSubmission.submissionId)}
-                                    class="w-full min-w-0 rounded-lg border border-blue-600 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                                    class="w-full min-w-0 rounded-lg border border-blue-600 bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                                     rows="2"
                                     placeholder="Feedback to send to the user..."
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].userFeedback}
                                 ></textarea>
                             </div>
                             <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-300" for={justificationIdFor(selectedSubmission.submissionId)}>Hours Justification (admin only, synced to Airtable)</label>
+                                <label class="text-sm font-medium text-ds-text-secondary" for={justificationIdFor(selectedSubmission.submissionId)}>Hours Justification (admin only, synced to Airtable)</label>
                                 <textarea
                                     id={justificationIdFor(selectedSubmission.submissionId)}
-                                    class="w-full min-w-0 rounded-lg border border-purple-600 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-y"
+                                    class="w-full min-w-0 rounded-lg border border-purple-600 bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent resize-y"
                                     rows="2"
                                     placeholder="Internal justification for Airtable..."
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].hoursJustification}
                                 ></textarea>
                             </div>
                             <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-300" for="submission-{selectedSubmission.submissionId}-admin-comment">Admin Comment (internal, logged in timeline)</label>
+                                <label class="text-sm font-medium text-ds-text-secondary" for="submission-{selectedSubmission.submissionId}-admin-comment">Admin Comment (internal, logged in timeline)</label>
                                 <textarea
                                     id="submission-{selectedSubmission.submissionId}-admin-comment"
-                                    class="w-full min-w-0 rounded-lg border border-orange-600 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-y"
+                                    class="w-full min-w-0 rounded-lg border border-orange-600 bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-y"
                                     rows="2"
                                     placeholder="Internal comment (visible to admins only)..."
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].adminComment}
@@ -1559,10 +1563,10 @@
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    class="w-4 h-4 rounded border-gray-700 bg-gray-800 text-purple-600 focus:ring-2 focus:ring-purple-500 focus:ring-offset-gray-900"
+                                    class="w-4 h-4 rounded border-ds-border bg-ds-surface2 text-purple-600 focus:ring-2 focus:ring-ds-accent focus:ring-offset-ds-surface"
                                     bind:checked={submissionDrafts[selectedSubmission.submissionId].sendEmailNotification}
                                 />
-                                <span class="text-sm font-medium text-gray-300">Send email notification on status change</span>
+                                <span class="text-sm font-medium text-ds-text-secondary">Send email notification on status change</span>
                             </label>
                         </div>
 
@@ -1570,7 +1574,7 @@
                             <div class="flex flex-wrap gap-2">
                                 {#if selectedSubmission.approvalStatus !== 'approved'}
                                     <button
-                                        class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 border border-green-400 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                        class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 border border-green-400 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
                                         onclick={() => quickApprove(selectedSubmission)}
                                         disabled={submissionSaving[selectedSubmission.submissionId]}
                                     >
@@ -1579,7 +1583,7 @@
                                 {/if}
                                 {#if selectedSubmission.approvalStatus !== 'rejected'}
                                     <button
-                                        class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 border border-red-400 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                        class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 border border-red-400 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
                                         onclick={() => quickDeny(selectedSubmission.submissionId)}
                                         disabled={submissionSaving[selectedSubmission.submissionId]}
                                     >
@@ -1587,14 +1591,14 @@
                                     </button>
                                 {/if}
                                 <button
-                                    class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                    class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
                                     onclick={() => saveSubmission(selectedSubmission.submissionId)}
                                     disabled={submissionSaving[selectedSubmission.submissionId]}
                                 >
                                     {submissionSaving[selectedSubmission.submissionId] ? 'Saving...' : 'Save Changes'}
                                 </button>
                                 <button
-                                    class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                                    class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
                                     onclick={() => setSubmissionDraft(selectedSubmission, true)}
                                 >
                                     Reset
@@ -1602,18 +1606,18 @@
                             </div>
                             <div class="text-sm">
                                 {#if submissionErrors[selectedSubmission.submissionId]}
-                                    <span class="text-red-400">{submissionErrors[selectedSubmission.submissionId]}</span>
+                                    <span class="text-red-600">{submissionErrors[selectedSubmission.submissionId]}</span>
                                 {:else if submissionSuccess[selectedSubmission.submissionId]}
-                                    <span class="text-green-400">{submissionSuccess[selectedSubmission.submissionId]}</span>
+                                    <span class="text-green-700">{submissionSuccess[selectedSubmission.submissionId]}</span>
                                 {/if}
                             </div>
                         </div>
                     </div>
 
                     <!-- Timeline Section -->
-                    <div class="border-t border-gray-700 pt-4">
+                    <div class="border-t border-ds-border pt-4">
                         <button
-                            class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-400 hover:text-gray-200 transition-colors"
+                            class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ds-text-secondary hover:text-ds-text transition-colors"
                             onclick={() => loadTimeline(selectedSubmission.project.projectId)}
                         >
                             {#if timelineLoading[selectedSubmission.project.projectId]}
@@ -1628,24 +1632,24 @@
                             {@const timeline = timelineByProject[selectedSubmission.project.projectId].timeline}
                             <div class="mt-4 relative ml-3">
                                 <!-- Vertical line -->
-                                <div class="absolute left-1 top-0 bottom-0 w-0.5 bg-gray-700"></div>
+                                <div class="absolute left-1 top-0 bottom-0 w-0.5 bg-ds-surface-inactive"></div>
 
                                 <div class="space-y-3">
                                     {#each timeline as event, i}
                                         <div class="relative pl-6">
                                             <!-- Dot -->
-                                            <div class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full {timelineDotColor(event.type)} ring-2 ring-gray-900"></div>
+                                            <div class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full {timelineDotColor(event.type)} ring-2 ring-ds-surface"></div>
 
                                             <div class="rounded-lg border p-3 {timelineEventColor(event.type)}">
                                                 <div class="flex flex-wrap items-center gap-2 mb-1">
-                                                    <span class="text-xs font-bold uppercase tracking-wide text-gray-200">
+                                                    <span class="text-xs font-bold uppercase tracking-wide text-ds-text">
                                                         {timelineEventLabel(event.type)}
                                                     </span>
-                                                    <span class="text-xs text-gray-400">
+                                                    <span class="text-xs text-ds-text-secondary">
                                                         {formatDate(event.timestamp)}
                                                     </span>
                                                     {#if event.actor}
-                                                        <span class="text-xs text-gray-400">
+                                                        <span class="text-xs text-ds-text-secondary">
                                                             by {event.actor.firstName ?? ''} {event.actor.lastName ?? ''} ({event.actor.email})
                                                         </span>
                                                     {/if}
@@ -1654,30 +1658,30 @@
                                                 {#if event.type === 'admin_review' && (event.details as any).newStatus}
                                                     <div class="flex items-center gap-2 text-xs">
                                                         {#if (event.details as any).changes?.previousStatus}
-                                                            <span class="px-1.5 py-0.5 rounded {(event.details as any).changes.previousStatus === 'approved' ? 'bg-green-500/20 text-green-300' : (event.details as any).changes.previousStatus === 'rejected' ? 'bg-red-500/20 text-red-300' : 'bg-yellow-500/20 text-yellow-300'}">
+                                                            <span class="px-1.5 py-0.5 rounded {(event.details as any).changes.previousStatus === 'approved' ? 'bg-green-500/20 text-green-700' : (event.details as any).changes.previousStatus === 'rejected' ? 'bg-red-500/20 text-red-600' : 'bg-yellow-500/20 text-yellow-600'}">
                                                                 {(event.details as any).changes.previousStatus}
                                                             </span>
-                                                            <span class="text-gray-500">&rarr;</span>
+                                                            <span class="text-ds-text-placeholder">&rarr;</span>
                                                         {/if}
-                                                        <span class="px-1.5 py-0.5 rounded {(event.details as any).newStatus === 'approved' ? 'bg-green-500/20 text-green-300' : (event.details as any).newStatus === 'rejected' ? 'bg-red-500/20 text-red-300' : 'bg-yellow-500/20 text-yellow-300'}">
+                                                        <span class="px-1.5 py-0.5 rounded {(event.details as any).newStatus === 'approved' ? 'bg-green-500/20 text-green-700' : (event.details as any).newStatus === 'rejected' ? 'bg-red-500/20 text-red-600' : 'bg-yellow-500/20 text-yellow-600'}">
                                                             {(event.details as any).newStatus}
                                                         </span>
                                                         {#if (event.details as any).approvedHours != null}
-                                                            <span class="text-gray-400">({(event.details as any).approvedHours}h)</span>
+                                                            <span class="text-ds-text-secondary">({(event.details as any).approvedHours}h)</span>
                                                         {/if}
                                                         {#if (event.details as any).changes?.quickApprove}
-                                                            <span class="px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-600 text-[10px]">Quick Approve</span>
+                                                            <span class="px-1.5 py-0.5 rounded bg-green-500/10 text-green-700 border border-green-600 text-[10px]">Quick Approve</span>
                                                         {/if}
                                                     </div>
                                                 {/if}
 
                                                 {#if event.type === 'admin_update' && (event.details as any).changes}
-                                                    <div class="text-xs text-gray-300 space-y-0.5">
+                                                    <div class="text-xs text-ds-text-secondary space-y-0.5">
                                                         {#if (event.details as any).changes.adminComment !== undefined}
-                                                            <p>Comment: <span class="text-gray-100">"{(event.details as any).changes.adminComment}"</span></p>
+                                                            <p>Comment: <span class="text-ds-text">"{(event.details as any).changes.adminComment}"</span></p>
                                                         {/if}
                                                         {#if (event.details as any).changes.approvedHours !== undefined}
-                                                            <p>Approved hours set to <span class="font-semibold text-gray-100">{(event.details as any).changes.approvedHours}</span></p>
+                                                            <p>Approved hours set to <span class="font-semibold text-ds-text">{(event.details as any).changes.approvedHours}</span></p>
                                                         {/if}
                                                         {#if (event.details as any).changes.userFeedback !== undefined}
                                                             <p>User feedback updated</p>
@@ -1689,19 +1693,19 @@
                                                 {/if}
 
                                                 {#if (event.details as any).changes?.adminComment !== undefined && event.type === 'admin_review'}
-                                                    <p class="text-xs text-gray-300 mt-1">Comment: <span class="text-gray-100">"{(event.details as any).changes.adminComment}"</span></p>
+                                                    <p class="text-xs text-ds-text-secondary mt-1">Comment: <span class="text-ds-text">"{(event.details as any).changes.adminComment}"</span></p>
                                                 {/if}
 
                                                 {#if event.type === 'project_updated' && (event.details as any).changedFields}
-                                                    <div class="text-xs text-gray-300 space-y-0.5">
+                                                    <div class="text-xs text-ds-text-secondary space-y-0.5">
                                                         {#each Object.entries((event.details as any).changedFields) as [field, change]}
-                                                            <p><span class="text-gray-400">{field}:</span> changed</p>
+                                                            <p><span class="text-ds-text-secondary">{field}:</span> changed</p>
                                                         {/each}
                                                     </div>
                                                 {/if}
 
                                                 {#if (event.type === 'submission' || event.type === 'resubmission') && (event.details as any).hackatimeHours != null}
-                                                    <p class="text-xs text-gray-400">Hackatime hours at submission: <span class="text-gray-200 font-semibold">{(event.details as any).hackatimeHours}</span></p>
+                                                    <p class="text-xs text-ds-text-secondary">Hackatime hours at submission: <span class="text-ds-text font-semibold">{(event.details as any).hackatimeHours}</span></p>
                                                 {/if}
                                             </div>
                                         </div>
@@ -1715,3 +1719,4 @@
         </div>
     {/if}
 </section>
+</div></div>

@@ -40,6 +40,7 @@
 
 	let userName = $derived($userStore.userName);
 	let referralCode = $derived($userStore.referralCode);
+	let isAdmin = $derived($userStore.role === 'admin');
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 	let pinnedEventConfig = $state<EventConfig | null>(null);
 	let pinnedEventSlug = $state<string | null>(null);
@@ -81,6 +82,7 @@
 		['/app/shop?back'],
 		['/app/community'],
 		['/faq?from=app'],
+		['/admin'],
 	];
 
 	// Projects (0,0), Events (0,1), Shop (1,0), Community (2,0), FAQ (3,0) are enabled
@@ -115,7 +117,7 @@
 	}
 
 	const nav = createGridNav({
-		columns: () => [2, 1, 1, 1],
+		columns: () => isAdmin ? [2, 1, 1, 1, 1] : [2, 1, 1, 1],
 		onSelect: (col, row) => {
 			if (isDisabled(col, row)) {
 				triggerShake(col, row);
@@ -351,6 +353,29 @@
 						{/if}
 					</a>
 				</div>
+
+				<!-- Admin (only visible for admins) -->
+				{#if isAdmin}
+					<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="150ms" style:--enter-delay="300ms" style:--exit-right-delay="150ms">
+						<a href="/admin" class="card nav-card admin-card"
+							class:selected={nav.isSelected(4, 0)}
+							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(4, 0); }}
+							onclick={(e) => { e.preventDefault(); window.location.href = '/admin'; }}>
+							<!-- Shield icon -->
+							<div class="card-bg-icon" style="right: 20px; top: 50%; transform: translateY(-50%); width: 145px; height: 145px;">
+								<svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+									<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.83-3.13 9.37-7 10.5-3.87-1.13-7-5.67-7-10.5V6.3l7-3.12zM10 12l-2-2-1.41 1.41L10 14.83l7-7L15.59 6.4 10 12z"/>
+								</svg>
+							</div>
+							<div class="card-text z-10">
+								<p class="font-cook text-[40px] font-semibold text-black m-0">ADMIN</p>
+								<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
+									MANAGE HORIZONS
+								</p>
+							</div>
+						</a>
+					</div>
+				{/if}
 				</div>
 		</div>
 
@@ -581,6 +606,12 @@
 		width: 372px;
 		height: 100%;
 		background-color: #ff8b6f;
+	}
+
+	.admin-card {
+		width: 372px;
+		height: 100%;
+		background-color: #5cb85c;
 	}
 
 	.community-card {

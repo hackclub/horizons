@@ -22,9 +22,9 @@ const createServiceProxy = (serviceName: string, targetUrl: string) => {
     target: targetUrl,
     changeOrigin: true,
     logLevel: 'debug',
-    pathRewrite: (path, req) => {
-      // Don't rewrite the path - keep the full API path for the unified service
-      return path;
+    pathRewrite: (path) => {
+      // Express strips /api from the path, so we need to add it back
+      return '/api' + path;
     },
     onProxyReq: (proxyReq, req, res) => {
       console.log(`[${serviceName.toUpperCase()} →] ${req.method} ${req.url} -> ${targetUrl}${req.url}`);
@@ -62,13 +62,13 @@ app.use('/admin', createProxyMiddleware({
   target: ADMIN_UI_SERVICE_URL,
   changeOrigin: true,
   ws: true,
-  logLevel: 'silent',
-  onError: (err, req, res) => {
-    console.error('[ADMIN UI PROXY ERROR]', err);
-    res.writeHead(500, {
-      'Content-Type': 'text/html',
-    });
-    res.end('<h1>Admin UI service unavailable</h1>');
+  pathRewrite: (path) => '/admin' + path,
+  on: {
+    error: (err: any, req: any, res: any) => {
+      console.error('[ADMIN UI PROXY ERROR]', err);
+      res.writeHead(500, { 'Content-Type': 'text/html' });
+      res.end('<h1>Admin UI service unavailable</h1>');
+    },
   },
 }));
 
