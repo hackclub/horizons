@@ -21,37 +21,39 @@ const createServiceProxy = (serviceName: string, targetUrl: string) => {
   return createProxyMiddleware({
     target: targetUrl,
     changeOrigin: true,
-    logLevel: 'debug',
+    logger: console,
     pathRewrite: (path) => {
       // Express strips /api from the path, so we need to add it back
       return '/api' + path;
     },
-    onProxyReq: (proxyReq, req, res) => {
-      console.log(`[${serviceName.toUpperCase()} →] ${req.method} ${req.url} -> ${targetUrl}${req.url}`);
-      
-      if (req.body && Object.keys(req.body).length > 0) {
-        const bodyData = JSON.stringify(req.body);
-        proxyReq.setHeader('Content-Type', 'application/json');
-        proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-        proxyReq.write(bodyData);
-        console.log(`[${serviceName.toUpperCase()}] Body:`, req.body);
-      }
-    },
-    onProxyRes: (proxyRes, req, res) => {
-      const statusCode = proxyRes.statusCode || 0;
-      if (statusCode >= 400) {
-        console.log(`[${serviceName.toUpperCase()} ←] ${req.method} ${req.url} <- ${statusCode} ❌ Error`);
-      } else {
-        console.log(`[${serviceName.toUpperCase()} ←] ${req.method} ${req.url} <- ${statusCode} ✓ Success`);
-      }
-    },
-    onError: (err, req, res) => {
-      console.error(`[${serviceName.toUpperCase()} ERROR] ❌`, err.message);
-      console.error(`[${serviceName.toUpperCase()} ERROR] Is the service running at ${targetUrl}?`);
-      res.writeHead(500, {
-        'Content-Type': 'application/json',
-      });
-      res.end(JSON.stringify({ error: `${serviceName} service unavailable` }));
+    on: {
+      proxyReq: (proxyReq, req: any, res) => {
+        console.log(`[${serviceName.toUpperCase()} →] ${req.method} ${req.url} -> ${targetUrl}${req.url}`);
+
+        if (req.body && Object.keys(req.body).length > 0) {
+          const bodyData = JSON.stringify(req.body);
+          proxyReq.setHeader('Content-Type', 'application/json');
+          proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+          proxyReq.write(bodyData);
+          console.log(`[${serviceName.toUpperCase()}] Body:`, req.body);
+        }
+      },
+      proxyRes: (proxyRes, req: any, res) => {
+        const statusCode = proxyRes.statusCode || 0;
+        if (statusCode >= 400) {
+          console.log(`[${serviceName.toUpperCase()} ←] ${req.method} ${req.url} <- ${statusCode} ❌ Error`);
+        } else {
+          console.log(`[${serviceName.toUpperCase()} ←] ${req.method} ${req.url} <- ${statusCode} ✓ Success`);
+        }
+      },
+      error: (err, req: any, res: any) => {
+        console.error(`[${serviceName.toUpperCase()} ERROR] ❌`, err.message);
+        console.error(`[${serviceName.toUpperCase()} ERROR] Is the service running at ${targetUrl}?`);
+        res.writeHead(500, {
+          'Content-Type': 'application/json',
+        });
+        res.end(JSON.stringify({ error: `${serviceName} service unavailable` }));
+      },
     },
   });
 };
@@ -76,13 +78,14 @@ app.use('/', createProxyMiddleware({
   target: UI_SERVICE_URL,
   changeOrigin: true,
   ws: true,
-  logLevel: 'silent',
-  onError: (err, req, res) => {
-    console.error('[UI PROXY ERROR]', err);
-    res.writeHead(500, {
-      'Content-Type': 'text/html',
-    });
-    res.end('<h1>UI service unavailable</h1>');
+  on: {
+    error: (err: any, req: any, res: any) => {
+      console.error('[UI PROXY ERROR]', err);
+      res.writeHead(500, {
+        'Content-Type': 'text/html',
+      });
+      res.end('<h1>UI service unavailable</h1>');
+    },
   },
 }));
 
