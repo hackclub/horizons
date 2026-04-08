@@ -86,7 +86,7 @@ importers:
         version: 4.1.1
       lucide-svelte:
         specifier: 0.469.0
-        version: 0.469.0(svelte@5.49.2)
+        version: 0.469.0(svelte@5.55.1)
       marked:
         specifier: ^17.0.5
         version: 17.0.5
@@ -1866,7 +1866,7 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.0.0
       '@sveltejs/vite-plugin-svelte': ^3.0.0 || ^4.0.0-next.1 || ^5.0.0 || ^6.0.0-next.0 || ^7.0.0
-      svelte: '>=5.51.5'
+      svelte: '>=5.53.5'
       typescript: ^5.3.3
       vite: ^5.0.3 || ^6.0.0 || ^7.0.0-beta.0 || ^8.0.0
     peerDependenciesMeta:
@@ -4282,7 +4282,8 @@ packages:
   lucide-svelte@0.469.0:
     resolution: {integrity: sha512-PMIJ8jrFqVUsXJz4d1yfAQplaGhNOahwwkzbunha8DhpiD73xqX24n8dE1dPpUk3vcrdWVsHc1y/liHHotOnGQ==}
     peerDependencies:
-      svelte: ^3 || ^4 || ^5.0.0-next.42
+      svelte: '>=5.51.5'
+
   luxon@3.7.2:
     resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
     engines: {node: '>=12'}
@@ -10013,9 +10014,10 @@ snapshots:
 
   lru.min@1.1.4: {}
 
-  lucide-svelte@0.469.0(svelte@5.49.2):
+  lucide-svelte@0.469.0(svelte@5.55.1):
     dependencies:
-      svelte: 5.49.2
+      svelte: 5.55.1
+
   luxon@3.7.2: {}
 
   magic-string@0.30.17:
