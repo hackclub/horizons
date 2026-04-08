@@ -78,7 +78,7 @@
 >
 	<!-- Logo + collapse toggle -->
 	<div class="flex items-center px-3 pb-2 pt-4 {collapsed ? 'justify-center' : 'justify-between'}">
-		<img src="{base}/logos/horizons_admin_icon.svg" alt="Horizons" class="size-6" />
+		<img src="{base}/logos/horizons_admin_icon.svg" alt="Horizons" class="size-6" class:invert={$theme === 'dark'} />
 		{#if !collapsed}
 			<button
 				class="rounded p-0.5 text-ds-text-placeholder hover:text-ds-text"
