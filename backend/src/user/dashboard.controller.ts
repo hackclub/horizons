@@ -1,7 +1,19 @@
-import { Controller, Get, Headers, HttpCode, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 // import { PrismaClient } from '../../generated/prisma/client';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/enums/role.enum';
 
 @Controller('admin/dashboard')
+@UseGuards(RolesGuard)
+@Roles(Role.Admin)
 export class DashboardController {
   // private mailServicePrisma: PrismaClient;
 
