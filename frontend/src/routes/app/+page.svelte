@@ -182,7 +182,7 @@
 				<!-- Left Column: Projects (top) + Events (bottom) -->
 				<div class="left-col shrink-0" bind:this={cardRefs[0]}>
 					<!-- Projects -->
-					<div class="enter-up flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms" style:--exit-right-delay="150ms">
+					<div class="enter-up flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms" style:--exit-right-delay="150ms">
 						<a href="/app/projects" class="card nav-card projects-card"
 							class:selected={nav.isSelected(0, 0)}
 							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(0, 0); }}
@@ -210,7 +210,7 @@
 					</div>
 
 					<!-- Events -->
-					<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
+					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
 						<a href="/app/events" class="card nav-card events-half-card"
 							class:selected={nav.isSelected(0, 1)}
 							class:disabled={isDisabled(0, 1)}
@@ -576,6 +576,7 @@
 		display: block;
 		width: 100%;
 		height: 100%;
+		overflow: hidden;
 		background-color: #ffa936;
 	}
 
@@ -584,6 +585,7 @@
 		display: block;
 		width: 100%;
 		height: 100%;
+		overflow: hidden;
 		background-color: #f86d95;
 	}
 
