@@ -5,7 +5,7 @@
 
     let { children } = $props();
 
-    let user = $state<{ email: string; role: string } | null>(null);
+    let user = $state<{ email: string; role: string; name?: string } | null>(null);
     let loading = $state(true);
     let sidebarCollapsed = $state(false);
 
@@ -15,7 +15,7 @@
             window.location.href = '/';
             return;
         }
-        if (userData.role !== 'admin') {
+        if (userData.role !== 'admin' && userData.role !== 'superadmin') {
             window.location.href = '/app/projects';
             return;
         }

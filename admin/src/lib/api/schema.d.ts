@@ -237,6 +237,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/user/auth/referrals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get list of users referred by current user */
+        get: operations["AuthController_getReferrals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/user/auth/sync": {
         parameters: {
             query?: never;
@@ -656,6 +673,38 @@ export interface paths {
         };
         get?: never;
         put: operations["AdminController_toggleSubmissionsFrozen"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/elevated-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getElevatedUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminController_updateUserRole"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1483,6 +1532,15 @@ export interface components {
         ReferralCodeResponse: {
             referralCode: string;
         };
+        ReferralUserResponse: {
+            username: string;
+            email: string;
+            onboardComplete: boolean;
+            createdAt: string;
+        };
+        ReferralsResponse: {
+            referrals: components["schemas"]["ReferralUserResponse"][];
+        };
         CreateProjectDto: {
             /** @description Project title */
             projectTitle: string;
@@ -1902,6 +1960,47 @@ export interface components {
         ToggleSubmissionsFrozenDto: {
             submissionsFrozen: boolean;
         };
+        ElevatedUserResponse: {
+            userId: number;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            role: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        UpdateUserRoleDto: {
+            /** @enum {string} */
+            role: "user" | "admin" | "reviewer" | "superadmin";
+        };
+        UpdateUserRoleResponse: {
+            userId: number;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            role: string;
+        };
+        LeaderboardEntry: {
+            reviewerId: string;
+            name: string;
+            count: number;
+        };
+        LeaderboardBreakdown: {
+            allTime: components["schemas"]["LeaderboardEntry"][];
+            week: components["schemas"]["LeaderboardEntry"][];
+            day: components["schemas"]["LeaderboardEntry"][];
+        };
+        GeneralStats: {
+            longestWaitLast30Days: number | null;
+            avgReviewTimeLast30Days: number | null;
+            medianReviewTimeLast30Days: number | null;
+            longestCurrentWait: number | null;
+            reviewsLast30Days: number;
+        };
+        ReviewStatsResponse: {
+            leaderboard: components["schemas"]["LeaderboardBreakdown"];
+            general: components["schemas"]["GeneralStats"];
+        };
         ScopedUserResponse: {
             userId: number;
             firstName: string;
@@ -1995,27 +2094,6 @@ export interface components {
         };
         SaveChecklistDto: {
             checkedItems: number[];
-        };
-        LeaderboardEntry: {
-            reviewerId: string;
-            name: string;
-            count: number;
-        };
-        LeaderboardBreakdown: {
-            allTime: components["schemas"]["LeaderboardEntry"][];
-            week: components["schemas"]["LeaderboardEntry"][];
-            day: components["schemas"]["LeaderboardEntry"][];
-        };
-        GeneralStats: {
-            longestWaitLast30Days: number | null;
-            avgReviewTimeLast30Days: number | null;
-            medianReviewTimeLast30Days: number | null;
-            longestCurrentWait: number | null;
-            reviewsLast30Days: number;
-        };
-        ReviewStatsResponse: {
-            leaderboard: components["schemas"]["LeaderboardBreakdown"];
-            general: components["schemas"]["GeneralStats"];
         };
         ShopResponse: {
             shopId: number;
@@ -2709,6 +2787,25 @@ export interface operations {
             };
         };
     };
+    AuthController_getReferrals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralsResponse"];
+                };
+            };
+        };
+    };
     AuthController_syncHcaData: {
         parameters: {
             query?: never;
@@ -3370,6 +3467,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GlobalSettingsResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getElevatedUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElevatedUserResponse"][];
+                };
+            };
+        };
+    };
+    AdminController_updateUserRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserRoleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateUserRoleResponse"];
                 };
             };
         };

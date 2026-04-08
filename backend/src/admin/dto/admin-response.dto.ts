@@ -436,6 +436,43 @@ export class DeleteProjectResponse {
   projectId: number;
 }
 
+export class ElevatedUserResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastName: string | null;
+
+  @ApiProperty()
+  role: string;
+
+  @ApiProperty()
+  createdAt: Date;
+}
+
+export class UpdateUserRoleResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastName: string | null;
+
+  @ApiProperty()
+  role: string;
+}
+
 class AuditLogAdminResponse {
   @ApiProperty()
   userId: number;

@@ -821,6 +821,49 @@ export class AdminService {
     }));
   }
 
+  async getElevatedUsers() {
+    return this.prisma.user.findMany({
+      where: {
+        role: { in: ['admin', 'reviewer', 'superadmin'] },
+      },
+      select: {
+        userId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateUserRole(userId: number, role: string, requestingUserId: number) {
+    if (userId === requestingUserId) {
+      throw new BadRequestException('Cannot change your own role');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.prisma.user.update({
+      where: { userId },
+      data: { role },
+      select: {
+        userId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+      },
+    });
+  }
+
   async getSubmissionAuditLogs(submissionId: number) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },

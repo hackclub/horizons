@@ -28,7 +28,13 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    const hasRole = requiredRoles.some((role) => user.role === role);
+    // Superadmin inherits all admin and reviewer permissions
+    const hasRole = requiredRoles.some(
+      (role) =>
+        user.role === role ||
+        (user.role === Role.Superadmin &&
+          (role === Role.Admin || role === Role.Reviewer)),
+    );
 
     if (!hasRole) {
       throw new ForbiddenException('Insufficient permissions');

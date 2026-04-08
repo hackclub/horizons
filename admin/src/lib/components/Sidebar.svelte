@@ -12,6 +12,7 @@
 		Gift,
 		ArrowRightLeft,
 		Settings,
+		ShieldCheck,
 		PanelLeftClose,
 		PanelLeftOpen,
 		Moon,
@@ -26,7 +27,7 @@
 	};
 
 	type Props = {
-		user?: { email?: string; name?: string } | null;
+		user?: { email?: string; name?: string; role?: string } | null;
 		collapsed?: boolean;
 		class?: string;
 	};
@@ -155,6 +156,24 @@
 					<span>{settingsItem.label}</span>
 				{/if}
 			</a>
+
+			<!-- Manage Admins (superadmin only) -->
+			{#if user?.role === 'superadmin'}
+				<a
+					href="{base}/manage-admins"
+					class="flex items-center rounded-lg border border-transparent transition-[border-color,box-shadow,background-color] duration-200
+						{collapsed ? 'justify-center p-2' : 'gap-1.5 p-2 text-xs'}
+						{isActive('/manage-admins')
+						? 'border-ds-border! bg-ds-surface font-medium text-ds-text shadow-(--color-ds-shadow)'
+						: 'border-ds-settings-bg! text-ds-settings hover:bg-ds-surface2'}"
+					title={collapsed ? 'Manage Admins' : undefined}
+				>
+					<ShieldCheck size={16} />
+					{#if !collapsed}
+						<span>Manage Admins</span>
+					{/if}
+				</a>
+			{/if}
 		</div>
 	</nav>
 
