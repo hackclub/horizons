@@ -8,7 +8,7 @@
 	import { api, type components } from '$lib/api';
 	import { timeAgo, formatDate } from '../../../review/utils';
 	import { ExternalLink, RefreshCcw, ChevronUp, Monitor, Star, GitFork, CircleAlert, GitPullRequest } from 'lucide-svelte';
-	import { Button, Tab, Accordion } from '$lib/components';
+	import { Button, Tab, Accordion, IconButtonGroup, TextField } from '$lib/components';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
@@ -383,28 +383,22 @@
 			<div class="flex flex-col" style="width: {splitPercent}%">
 				<!-- URL toolbar -->
 				<div class="flex gap-2 items-center p-2 bg-ds-zone-warm border-b border-ds-border-divider shrink-0">
-					<div class="flex-1 bg-ds-surface-inactive border border-ds-border rounded-lg p-2 text-xs text-ds-text-placeholder font-medium overflow-hidden text-ellipsis whitespace-nowrap shadow-[var(--color-ds-shadow)]">
-						{demoUrl ?? 'No demo URL'}
-					</div>
+					<TextField
+						value={demoUrl ?? 'No demo URL'}
+						readonly
+						class="flex-1 bg-ds-surface-inactive! p-2! text-xs! text-ds-text-placeholder! font-medium overflow-hidden text-ellipsis whitespace-nowrap shadow-(--color-ds-shadow)"
+					/>
 					{#if airlockUrl}
 						<a href={airlockUrl} target="_blank" rel="noopener noreferrer">
 							<Button class="bg-ds-tag-active no-underline shrink-0">Airlock</Button>
 						</a>
 					{/if}
-					<div class="flex self-stretch shrink-0 shadow-[var(--color-ds-shadow)] rounded-lg">
-						<button
-							class="bg-ds-surface border border-ds-border rounded-l-lg px-2 flex items-center justify-center -mr-px cursor-pointer hover:bg-ds-bg-secondary"
-							onclick={openExternal}
-							disabled={!demoUrl}
-							title="Open in new tab"
-						><ExternalLink size={12} /></button>
-						<button
-							class="bg-ds-surface border border-ds-border rounded-r-lg px-2 flex items-center justify-center cursor-pointer hover:bg-ds-bg-secondary"
-							onclick={reloadDemo}
-							disabled={!iframeLoaded}
-							title="Reload"
-						><RefreshCcw size={12} /></button>
-					</div>
+					{#snippet externalLinkIcon()}<ExternalLink size={12} />{/snippet}
+					{#snippet refreshIcon()}<RefreshCcw size={12} />{/snippet}
+					<IconButtonGroup buttons={[
+						{ icon: externalLinkIcon, onclick: openExternal, disabled: !demoUrl, title: 'Open in new tab' },
+						{ icon: refreshIcon, onclick: reloadDemo, disabled: !iframeLoaded, title: 'Reload' },
+					] as any} />
 				</div>
 
 				<!-- IFrame area -->
@@ -661,35 +655,37 @@
 									<div class="flex gap-4">
 										<div class="flex-1">
 											<label class="text-xs font-medium" for="rv-hours">Approved Hours</label>
-											<input
+											<TextField
 												id="rv-hours"
 												type="number"
 												step="0.5"
 												min="0"
 												bind:value={approvedHours}
-												class="block w-[80px] mt-1 bg-ds-surface border border-ds-border-divider rounded-lg p-1.5 text-sm font-bold outline-none focus:border-ds-border-strong"
+												class="w-20! mt-1 p-1.5! font-bold"
 											/>
 										</div>
 										<div class="flex-1">
 											<label class="text-xs font-medium" for="rv-justify">Hours Justification</label>
-											<textarea
+											<TextField
+												multiline
 												id="rv-justify"
 												bind:value={hoursJustification}
 												maxlength={500}
 												placeholder="Why approve these hours?"
-												class="block w-full mt-1 bg-ds-surface border border-ds-border-divider rounded-lg p-2 text-xs font-dm resize-y min-h-9 outline-none focus:border-ds-border-strong"
-											></textarea>
+												class="mt-1 p-2! text-xs! resize-y min-h-9"
+											/>
 										</div>
 									</div>
 									<div class="mt-3">
 										<label class="text-xs font-medium" for="rv-feedback">User Feedback</label>
-										<textarea
+										<TextField
+											multiline
 											id="rv-feedback"
 											bind:value={approveComment}
 											maxlength={500}
 											placeholder="Comment shown to user (optional)"
-											class="block w-full mt-1 bg-ds-surface border border-ds-border-divider rounded-lg p-2 text-xs font-dm resize-y min-h-9 outline-none focus:border-ds-border-strong"
-										></textarea>
+											class="mt-1 p-2! text-xs! resize-y min-h-9"
+										/>
 									</div>
 									<div class="flex items-center gap-2 mt-3">
 										<label class="flex items-center gap-1 text-[10px] text-ds-text-placeholder cursor-pointer">
@@ -703,13 +699,14 @@
 								{:else}
 									<div>
 										<label class="text-xs font-medium" for="rv-changes">What needs to change?</label>
-										<textarea
+										<TextField
+											multiline
 											id="rv-changes"
 											bind:value={changesComment}
 											maxlength={500}
 											placeholder="Describe what the user needs to fix..."
-											class="block w-full mt-1 bg-ds-surface border border-ds-border-divider rounded-lg p-2 text-xs font-dm resize-y min-h-12 outline-none focus:border-ds-border-strong"
-										></textarea>
+											class="mt-1 p-2! text-xs! resize-y min-h-12"
+										/>
 									</div>
 									<div class="flex items-center gap-2 mt-3">
 										<label class="flex items-center gap-1 text-[10px] text-ds-text-placeholder cursor-pointer">
@@ -757,12 +754,13 @@
 					</div>
 				</div>
 				<div class="p-3">
-					<textarea
-						class="w-full bg-ds-bg-secondary border border-ds-border rounded-lg p-2 text-xs font-dm resize-y min-h-[80px] outline-none focus:border-ds-border-strong"
+					<TextField
+						multiline
 						bind:value={userNote}
 						maxlength={1000}
 						placeholder="Notes about this user..."
-					></textarea>
+						class="p-2! text-xs! resize-y min-h-20"
+					/>
 				</div>
 			</div>
 		{/if}
@@ -801,12 +799,13 @@
 								{projectNoteSaving ? '...' : 'Save'}
 							</button>
 						</div>
-						<textarea
-							class="w-full bg-ds-bg-secondary border border-ds-border rounded-lg p-2 text-xs font-dm resize-y min-h-[80px] outline-none focus:border-ds-border-strong"
+						<TextField
+							multiline
 							bind:value={projectNote}
 							maxlength={1000}
 							placeholder="Notes about this project..."
-						></textarea>
+							class="p-2! text-xs! resize-y min-h-20"
+						/>
 					</div>
 				</div>
 			</div>

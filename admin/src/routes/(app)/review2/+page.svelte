@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
-	import { Button, FilterTag } from '$lib/components';
+	import { Button, FilterTag, TextField } from '$lib/components';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
 
@@ -90,9 +90,8 @@
 		</div>
 
 		<div class="flex flex-col gap-3 px-6 py-4 bg-ds-bg-secondary border-b border-ds-border-divider shrink-0">
-			<input
+			<TextField
 				type="text"
-				class="w-full py-2 px-3 bg-ds-bg border border-ds-border rounded-lg text-ds-text text-sm font-dm outline-none placeholder:text-ds-text-placeholder focus:border-ds-border-strong"
 				placeholder="Search by project or author name..."
 				bind:value={searchQuery}
 			/>

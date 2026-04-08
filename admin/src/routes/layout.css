@@ -11,6 +11,7 @@
 	--color-ds-surface: #ffffff;
 	--color-ds-surface2: #e4e4e4;
 	--color-ds-surface-inactive: #d5d5d5;
+	--color-ds-surface-deselected: #f0f0f0;
 	--color-ds-border: #a7a7a7;
 	--color-ds-border-divider: #b3b3b3;
 	--color-ds-border-strong: #666666;
@@ -111,6 +112,7 @@ button:active:not(:disabled) {
 	--color-ds-surface: #252525;
 	--color-ds-surface2: #2e2e2e;
 	--color-ds-surface-inactive: #333333;
+	--color-ds-surface-deselected: #2a2a2a;
 	--color-ds-border: #3a3a3a;
 	--color-ds-border-divider: #3a3a3a;
 	--color-ds-border-strong: #555555;
