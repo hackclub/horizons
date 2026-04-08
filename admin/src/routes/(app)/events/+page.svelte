@@ -320,7 +320,7 @@
                         {/if}
                         <span class="text-sm text-ds-text-secondary">{event.hourCost}h</span>
                         {#if event._count}
-                            <span class="px-2 py-0.5 text-xs bg-purple-900/50 text-purple-400 rounded">
+                            <span class="px-2 py-0.5 text-xs bg-ds-accent-bg text-ds-accent rounded">
                                 {event._count.pinnedBy} pinned
                             </span>
                         {/if}
