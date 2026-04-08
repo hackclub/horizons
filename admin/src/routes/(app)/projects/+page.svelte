@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { invalidateAll } from '$app/navigation';
     import { api, type components } from '$lib/api';
+    import { Button, Checkbox } from '$lib/components';
 
     type AdminProject = components['schemas']['AdminProjectResponse'];
     type ProjectTimeline = components['schemas']['ProjectTimelineResponse'];
@@ -277,28 +278,17 @@
         <div class="flex flex-wrap items-center gap-4">
             <div class="flex items-center gap-3">
                 <label class="flex items-center gap-2 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        bind:checked={showFraudProjects}
-                        class="w-4 h-4 rounded border-ds-border bg-ds-surface2 text-purple-600 focus:ring-ds-accent focus:ring-2"
-                    />
+                    <Checkbox bind:checked={showFraudProjects} />
                     <span class="text-sm text-ds-text-secondary">Show fraud projects</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        bind:checked={showSusProjects}
-                        class="w-4 h-4 rounded border-ds-border bg-ds-surface2 text-purple-600 focus:ring-ds-accent focus:ring-2"
-                    />
+                    <Checkbox bind:checked={showSusProjects} />
                     <span class="text-sm text-ds-text-secondary">Show sus projects</span>
                 </label>
             </div>
-            <button
-                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
-                onclick={async () => { await loadProjects(); }}
-            >
+            <Button variant="ghost" onclick={async () => { await loadProjects(); }}>
                 Refresh
-            </button>
+            </Button>
         </div>
     </div>
 
@@ -416,60 +406,42 @@
 
                         <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                             <div class="flex flex-wrap gap-3">
-                                <button
-                                    class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
-                                    onclick={() => recalculateProject(project.projectId)}
-                                    disabled={projectBusy[project.projectId]}
-                                >
+                                <Button variant="approve" onclick={() => recalculateProject(project.projectId)} disabled={projectBusy[project.projectId]}>
                                     {projectBusy[project.projectId] ? 'Processing...' : 'Recalculate hours'}
-                                </button>
-                                <button
-                                    class={`px-3 py-2 text-sm rounded-lg border transition-colors ${
-                                        project.user.isSus
-                                            ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
-                                            : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                                    }`}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    class={project.user.isSus
+                                        ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
+                                        : ''}
                                     onclick={() => toggleSusFlag(project.user.userId, project.user.isSus)}
                                 >
                                     {project.user.isSus ? '⚠️ Sus Flagged' : 'Flag as Sus'}
-                                </button>
-                                <button
-                                    class={`px-3 py-2 text-sm rounded-lg border transition-colors ${
-                                        project.isFraud
-                                            ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30'
-                                            : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                                    }`}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    class={project.isFraud
+                                        ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30'
+                                        : ''}
                                     onclick={() => toggleFraudFlag(project.projectId, project.isFraud)}
                                 >
                                     {project.isFraud ? '🚫 Fraud Flagged' : 'Flag as Fraud'}
-                                </button>
-                                <button
-                                    class="px-3 py-2 text-sm rounded-lg border border-ds-border bg-ds-surface2 text-ds-text-secondary hover:bg-ds-surface-inactive transition-colors"
-                                    onclick={() => loadTimeline(project.projectId)}
-                                    disabled={timelineLoading[project.projectId]}
-                                >
+                                </Button>
+                                <Button variant="ghost" onclick={() => loadTimeline(project.projectId)} disabled={timelineLoading[project.projectId]}>
                                     {#if timelineLoading[project.projectId]}
                                         Loading...
                                     {:else}
                                         <span>{timelineOpen[project.projectId] ? '▼' : '▶'}</span> Timeline
                                     {/if}
-                                </button>
+                                </Button>
                                 {#if project.isLocked}
-                                    <button
-                                        class="px-3 py-2 text-sm rounded-lg border border-ds-border bg-ds-surface2 text-ds-text-secondary hover:bg-ds-surface-inactive transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
-                                        onclick={() => unlockProject(project.projectId)}
-                                        disabled={projectBusy[project.projectId]}
-                                    >
+                                    <Button variant="ghost" onclick={() => unlockProject(project.projectId)} disabled={projectBusy[project.projectId]}>
                                         Unlock project
-                                    </button>
+                                    </Button>
                                 {/if}
-                                <button
-                                    class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
-                                    onclick={() => deleteProject(project.projectId)}
-                                    disabled={projectBusy[project.projectId]}
-                                >
+                                <Button variant="reject" onclick={() => deleteProject(project.projectId)} disabled={projectBusy[project.projectId]}>
                                     Delete project
-                                </button>
+                                </Button>
                             </div>
                             <div class="text-sm">
                                 {#if projectErrors[project.projectId]}

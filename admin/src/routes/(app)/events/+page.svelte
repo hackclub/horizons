@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
+    import { Button, TextField, Checkbox } from '$lib/components';
 
     type AdminEventResponse = components['schemas']['AdminEventResponse'];
 
@@ -171,12 +172,9 @@
 <section class="space-y-4">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 class="text-2xl font-semibold">Events Management</h2>
-        <button
-            class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
-            onclick={loadEvents}
-        >
+        <Button variant="ghost" onclick={loadEvents}>
             Refresh
-        </button>
+        </Button>
     </div>
 
     <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6">
@@ -186,107 +184,91 @@
         <div class="grid gap-4 md:grid-cols-2">
             <div class="space-y-2">
                 <label class="text-sm font-medium text-ds-text-secondary" for="event-slug">Slug *</label>
-                <input
+                <TextField
                     id="event-slug"
-                    type="text"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="my-event"
                     bind:value={eventForm.slug}
                 />
             </div>
             <div class="space-y-2">
                 <label class="text-sm font-medium text-ds-text-secondary" for="event-title">Title *</label>
-                <input
+                <TextField
                     id="event-title"
-                    type="text"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="Event title"
                     bind:value={eventForm.title}
                 />
             </div>
             <div class="space-y-2">
                 <label class="text-sm font-medium text-ds-text-secondary" for="event-description">Description</label>
-                <input
+                <TextField
                     id="event-description"
-                    type="text"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="Event description..."
                     bind:value={eventForm.description}
                 />
             </div>
             <div class="space-y-2">
                 <label class="text-sm font-medium text-ds-text-secondary" for="event-image">Image URL</label>
-                <input
+                <TextField
                     id="event-image"
-                    type="text"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="https://..."
                     bind:value={eventForm.imageUrl}
                 />
             </div>
             <div class="space-y-2">
                 <label class="text-sm font-medium text-ds-text-secondary" for="event-location">Location</label>
-                <input
+                <TextField
                     id="event-location"
-                    type="text"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="San Francisco, CA"
                     bind:value={eventForm.location}
                 />
             </div>
             <div class="space-y-2">
                 <label class="text-sm font-medium text-ds-text-secondary" for="event-start-date">Start Date *</label>
-                <input
+                <TextField
                     id="event-start-date"
                     type="date"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     bind:value={eventForm.startDate}
                 />
             </div>
             <div class="space-y-2">
                 <label class="text-sm font-medium text-ds-text-secondary" for="event-end-date">End Date *</label>
-                <input
+                <TextField
                     id="event-end-date"
                     type="date"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     bind:value={eventForm.endDate}
                 />
             </div>
             <div class="space-y-2">
                 <label class="text-sm font-medium text-ds-text-secondary" for="event-cost">Hour Cost *</label>
-                <input
+                <TextField
                     id="event-cost"
                     type="number"
                     step="0.1"
                     min="0"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="0"
                     bind:value={eventForm.hourCost}
                 />
             </div>
             <div class="flex items-center gap-4">
                 <label class="flex items-center gap-2 text-sm text-ds-text-secondary">
-                    <input type="checkbox" bind:checked={eventForm.isActive} class="rounded" />
+                    <Checkbox bind:checked={eventForm.isActive} />
                     Active
                 </label>
             </div>
         </div>
 
         <div class="flex flex-wrap gap-3 items-center">
-            <button
-                class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
+            <Button
+                variant="approve"
                 onclick={saveEvent}
                 disabled={eventFormSaving || !eventForm.slug || !eventForm.title || !eventForm.startDate || !eventForm.endDate || !eventForm.hourCost}
             >
                 {eventFormSaving ? 'Saving...' : editingEventSlug ? 'Update Event' : 'Create Event'}
-            </button>
+            </Button>
             {#if editingEventSlug}
-                <button
-                    class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
-                    onclick={resetEventForm}
-                >
+                <Button variant="ghost" onclick={resetEventForm}>
                     Cancel Edit
-                </button>
+                </Button>
             {/if}
             {#if eventFormError}
                 <span class="text-red-600 text-sm">{eventFormError}</span>
@@ -329,18 +311,12 @@
                         {/if}
                     </div>
                     <div class="flex gap-2">
-                        <button
-                            class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded transition-colors"
-                            onclick={() => startEditEvent(event)}
-                        >
+                        <Button variant="default" onclick={() => startEditEvent(event)}>
                             Edit
-                        </button>
-                        <button
-                            class="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 rounded transition-colors"
-                            onclick={() => deleteEvent(event.slug)}
-                        >
+                        </Button>
+                        <Button variant="reject" onclick={() => deleteEvent(event.slug)}>
                             Delete
-                        </button>
+                        </Button>
                     </div>
                 </div>
             {/each}

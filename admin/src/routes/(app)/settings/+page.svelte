@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
+    import { Button, Card } from '$lib/components';
 
     type ReviewerLeaderboardEntry = components['schemas']['ReviewerLeaderboardEntry'];
     type PriorityUserResponse = components['schemas']['PriorityUserResponse'];
@@ -105,7 +106,7 @@
     <h1 class="text-3xl font-bold">Settings</h1>
 
     <!-- Global Settings Section -->
-    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-4">
+    <Card class="p-6 space-y-4">
         <h2 class="text-xl font-semibold flex items-center gap-2">
             Global Settings
         </h2>
@@ -121,12 +122,11 @@
                             When enabled, users cannot submit or resubmit projects.
                         </p>
                     </div>
-                    <button
-                        class={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
-                            globalSettings.submissionsFrozen
-                                ? 'bg-blue-600/20 border-blue-500 text-ds-link hover:bg-blue-600/30'
-                                : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                        }`}
+                    <Button
+                        variant="ghost"
+                        class={globalSettings.submissionsFrozen
+                            ? 'bg-blue-600/20 border-blue-500 text-ds-link hover:bg-blue-600/30'
+                            : ''}
                         onclick={toggleGlobalSubmissionsFrozen}
                         disabled={globalSettingsLoading}
                     >
@@ -136,7 +136,7 @@
                             <span>{globalSettings.submissionsFrozen ? '🧊' : '▶️'}</span>
                         {/if}
                         {globalSettings.submissionsFrozen ? 'Submissions Frozen' : 'Freeze All Submissions'}
-                    </button>
+                    </Button>
                 </div>
 
                 {#if globalSettings.submissionsFrozen}
@@ -164,25 +164,21 @@
         {:else}
             <p class="text-ds-text-secondary text-sm">Failed to load settings.</p>
         {/if}
-    </div>
+    </Card>
 
     <!-- Reviewer Leaderboard Section -->
-    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-4">
+    <Card class="p-6 space-y-4">
         <div class="flex items-center justify-between">
             <h2 class="text-xl font-semibold flex items-center gap-2">
                 🏆 Reviewer Leaderboard
             </h2>
-            <button
-                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors text-sm"
-                onclick={loadReviewerLeaderboard}
-                disabled={leaderboardLoading}
-            >
+            <Button variant="ghost" onclick={loadReviewerLeaderboard} disabled={leaderboardLoading}>
                 {leaderboardLoading
                     ? 'Loading...'
                     : leaderboardLoaded
                       ? 'Refresh'
                       : 'Load Leaderboard'}
-            </button>
+            </Button>
         </div>
 
         {#if leaderboardLoaded && reviewerLeaderboard.length > 0}
@@ -256,25 +252,21 @@
                 Click "Load Leaderboard" to see reviewer stats.
             </p>
         {/if}
-    </div>
+    </Card>
 
     <!-- Priority Users Section -->
-    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-4">
+    <Card class="p-6 space-y-4">
         <div class="flex items-center justify-between">
             <h2 class="text-xl font-semibold flex items-center gap-2">
                 Priority Users (50+ approved hours)
             </h2>
-            <button
-                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors text-sm"
-                onclick={loadPriorityUsers}
-                disabled={priorityUsersLoading}
-            >
+            <Button variant="ghost" onclick={loadPriorityUsers} disabled={priorityUsersLoading}>
                 {priorityUsersLoading
                     ? 'Loading...'
                     : priorityUsersLoaded
                       ? 'Refresh'
                       : 'Load Priority Users'}
-            </button>
+            </Button>
         </div>
 
         {#if priorityUsersLoaded && priorityUsers.length > 0}
@@ -327,6 +319,6 @@
                 Click "Load Priority Users" to see users with 50+ approved hours.
             </p>
         {/if}
-    </div>
+    </Card>
 </div>
 </div></div>

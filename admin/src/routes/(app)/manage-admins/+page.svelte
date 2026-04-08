@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
+    import { Button, TextField, Card, Select } from '$lib/components';
 
     type ElevatedUser = components['schemas']['ElevatedUserResponse'];
 
@@ -108,14 +109,13 @@
         </p>
 
         <!-- Add User Section -->
-        <div class="rounded-lg border border-ds-border bg-ds-surface p-6 space-y-4">
+        <Card class="p-6 space-y-4">
             <h2 class="text-xl font-semibold">Add User</h2>
             <div class="flex gap-2">
-                <input
-                    type="text"
+                <TextField
                     bind:value={searchQuery}
                     placeholder="Search by name or email..."
-                    class="flex-1 rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm text-ds-text placeholder:text-ds-text-placeholder focus:border-ds-accent focus:outline-none"
+                    class="flex-1"
                     oninput={debouncedSearch}
                 />
             </div>
@@ -133,20 +133,20 @@
                                 <p class="text-xs text-ds-text-secondary">{result.email}</p>
                             </div>
                             <div class="flex gap-2">
-                                <button
-                                    class="rounded-lg border border-green-500 bg-green-600/20 px-3 py-1 text-xs text-green-400 hover:bg-green-600/30 transition-colors"
+                                <Button
+                                    variant="approve"
                                     onclick={() => updateRole(result.userId, 'reviewer')}
                                     disabled={pendingChange?.userId === result.userId}
                                 >
                                     Make Reviewer
-                                </button>
-                                <button
-                                    class="rounded-lg border border-blue-500 bg-blue-600/20 px-3 py-1 text-xs text-blue-400 hover:bg-blue-600/30 transition-colors"
+                                </Button>
+                                <Button
+                                    class="bg-blue-600/20 border-blue-500 text-blue-400 hover:bg-blue-600/30"
                                     onclick={() => updateRole(result.userId, 'admin')}
                                     disabled={pendingChange?.userId === result.userId}
                                 >
                                     Make Admin
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     {/each}
@@ -154,19 +154,15 @@
             {:else if searchQuery.trim()}
                 <p class="text-ds-text-placeholder text-sm">No regular users found matching "{searchQuery}"</p>
             {/if}
-        </div>
+        </Card>
 
         <!-- Elevated Users List -->
-        <div class="rounded-lg border border-ds-border bg-ds-surface p-6 space-y-4">
+        <Card class="p-6 space-y-4">
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-semibold">Elevated Users</h2>
-                <button
-                    class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors text-sm"
-                    onclick={loadElevatedUsers}
-                    disabled={loading}
-                >
+                <Button variant="default" onclick={loadElevatedUsers} disabled={loading}>
                     {loading ? 'Loading...' : 'Refresh'}
-                </button>
+                </Button>
             </div>
 
             {#if loading}
@@ -208,8 +204,7 @@
                                             <span class="text-xs text-ds-text-placeholder">—</span>
                                         {:else}
                                             <div class="flex justify-center gap-2">
-                                                <select
-                                                    class="rounded-lg border border-ds-border bg-ds-surface2 px-2 py-1 text-xs text-ds-text"
+                                                <Select
                                                     value={user.role}
                                                     onchange={(e) => {
                                                         const target = e.target as HTMLSelectElement;
@@ -222,7 +217,7 @@
                                                     {#each roleOptions as opt}
                                                         <option value={opt} selected={user.role === opt}>{opt}</option>
                                                     {/each}
-                                                </select>
+                                                </Select>
                                             </div>
                                         {/if}
                                     </td>
@@ -232,6 +227,6 @@
                     </table>
                 </div>
             {/if}
-        </div>
+        </Card>
     </div>
 </div>

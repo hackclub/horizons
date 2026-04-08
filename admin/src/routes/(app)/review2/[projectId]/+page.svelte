@@ -8,7 +8,7 @@
 	import { api, type components } from '$lib/api';
 	import { timeAgo, formatDate } from '../../../review/utils';
 	import { ExternalLink, RefreshCcw, ChevronUp, Monitor, Star, GitFork, CircleAlert, GitPullRequest } from 'lucide-svelte';
-	import { Button, Tab, Accordion, IconButtonGroup, TextField } from '$lib/components';
+	import { Button, Tab, Accordion, IconButtonGroup, TextField, Checkbox } from '$lib/components';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
@@ -689,7 +689,7 @@
 									</div>
 									<div class="flex items-center gap-2 mt-3">
 										<label class="flex items-center gap-1 text-[10px] text-ds-text-placeholder cursor-pointer">
-											<input type="checkbox" bind:checked={sendEmail} class="accent-[#4caf50]" />
+											<Checkbox bind:checked={sendEmail} class="accent-[#4caf50]" />
 											Send email
 										</label>
 										<Button variant="approve" class="ml-auto" onclick={submitApproval} disabled={submitting}>
@@ -710,7 +710,7 @@
 									</div>
 									<div class="flex items-center gap-2 mt-3">
 										<label class="flex items-center gap-1 text-[10px] text-ds-text-placeholder cursor-pointer">
-											<input type="checkbox" bind:checked={rejectSendEmail} class="accent-[#ef5350]" />
+											<Checkbox bind:checked={rejectSendEmail} class="accent-[#ef5350]" />
 											Send email
 										</label>
 										<Button variant="reject" class="ml-auto" onclick={submitChangesNeeded} disabled={submitting}>
@@ -787,7 +787,7 @@
 					<p class="text-xs font-medium mb-2">Checklist <span class="text-ds-text-placeholder">({checkedItems.length}/{CHECKLIST_ITEMS.length})</span></p>
 					{#each CHECKLIST_ITEMS as item, idx}
 						<label class="flex items-start gap-1.5 text-xs mb-1 cursor-pointer">
-							<input type="checkbox" checked={checkedItems.includes(idx)} onchange={() => toggleChecklist(idx)} class="mt-px accent-[#4caf50] shrink-0" />
+							<Checkbox checked={checkedItems.includes(idx)} onchange={() => toggleChecklist(idx)} class="mt-px accent-[#4caf50] shrink-0" />
 							<span class={checkedItems.includes(idx) ? 'line-through text-ds-text-placeholder' : ''}>{item}</span>
 						</label>
 					{/each}

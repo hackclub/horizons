@@ -4,6 +4,7 @@
     import { api, type components } from '$lib/api';
     import { env } from '$env/dynamic/public';
     import { Play, Snowflake, LoaderCircle } from 'lucide-svelte';
+    import { Button, TextField, Card, Checkbox, Select, FilterTag } from '$lib/components';
 
     type AdminSubmission = components['schemas']['AdminSubmissionResponse'];
     type AdminSubmissionUser = components['schemas']['AdminSubmissionProjectUserResponse'];
@@ -828,12 +829,11 @@
         <h2 class="text-2xl font-semibold">Submission Review Platform</h2>
         <div class="flex items-center gap-3">
             {#if globalSettings}
-                <button
-                    class={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
-                        globalSettings.submissionsFrozen
-                            ? 'bg-blue-600/20 border-blue-500 text-blue-700 hover:bg-blue-600/30'
-                            : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                    }`}
+                <Button
+                    variant="ghost"
+                    class={globalSettings.submissionsFrozen
+                        ? 'bg-blue-600/20 border-blue-500 text-blue-700 hover:bg-blue-600/30 flex items-center gap-2'
+                        : 'flex items-center gap-2'}
                     onclick={toggleGlobalSubmissionsFrozen}
                     disabled={globalSettingsLoading}
                 >
@@ -845,14 +845,11 @@
                         <Play size={16} />
                     {/if}
                     {globalSettings.submissionsFrozen ? 'Submissions Frozen' : 'Freeze All Submissions'}
-                </button>
+                </Button>
             {/if}
-            <button
-                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
-                onclick={() => loadSubmissions(false)}
-            >
+            <Button variant="default" onclick={() => loadSubmissions(false)}>
                 Refresh
-            </button>
+            </Button>
         </div>
     </div>
 
@@ -866,32 +863,30 @@
         </div>
     {/if}
 
-    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6">
+    <Card class="p-6 space-y-6 backdrop-blur">
         <div class="grid gap-4 md:grid-cols-2">
             <div>
                 <div class="text-sm font-medium text-ds-text-secondary mb-2">Date Range for Billy Links</div>
                 <div class="flex flex-col gap-3 md:flex-row md:items-end md:gap-4">
                     <div class="flex-1">
                         <label for="date-range-start" class="block text-xs text-ds-text-secondary mb-1">Start Date</label>
-                        <input
+                        <TextField
                             id="date-range-start"
                             type="date"
-                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm text-ds-text focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             bind:value={dateRangeStart}
                         />
                     </div>
                     <div class="flex-1">
                         <label for="date-range-end" class="block text-xs text-ds-text-secondary mb-1">End Date</label>
-                        <input
+                        <TextField
                             id="date-range-end"
                             type="date"
-                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm text-ds-text focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             bind:value={dateRangeEnd}
                         />
                     </div>
                     <div>
-                        <button
-                            class="px-4 py-2 rounded-lg border border-ds-border bg-ds-surface2 text-ds-text-secondary text-sm hover:bg-ds-surface-inactive transition-colors whitespace-nowrap"
+                        <Button
+                            variant="default"
                             onclick={() => {
                                 const defaultRange = getDefaultDateRange();
                                 dateRangeStart = defaultRange.startDate;
@@ -899,18 +894,17 @@
                             }}
                         >
                             Reset
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>
 
             <div>
                 <label for="search-submissions" class="block text-sm font-medium text-ds-text-secondary mb-2">Search</label>
-                <input
+                <TextField
                     id="search-submissions"
                     type="text"
                     placeholder="Search by project title, user name, email, or description..."
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-4 py-2 text-sm text-ds-text placeholder-ds-text-placeholder focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     bind:value={searchQuery}
                 />
             </div>
@@ -920,20 +914,16 @@
             <div>
                 <div class="block text-sm font-medium text-ds-text-secondary mb-2">Priority Filter</div>
                 <div class="flex flex-wrap gap-2">
-                    <button
-                        class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                            priorityFilterEnabled
-                                ? 'bg-yellow-600 border-yellow-400 text-ds-text'
-                                : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                        }`}
+                    <FilterTag
+                        active={priorityFilterEnabled}
+                        class={priorityFilterEnabled ? 'bg-yellow-600! border-yellow-400! text-black!' : ''}
                         onclick={togglePriorityFilter}
-                        disabled={priorityUsersLoading}
                     >
                         {priorityUsersLoading ? 'Loading...' : 'Priority (50+ hrs)'}
                         {#if priorityFilterEnabled}
                             <span class="ml-1">&#10003;</span>
                         {/if}
-                    </button>
+                    </FilterTag>
                     {#if priorityFilterEnabled && priorityUsersLoaded}
                         <span class="px-2 py-1.5 text-xs text-ds-text-secondary self-center">
                             ({priorityUsers.length} users)
@@ -944,67 +934,51 @@
             <div>
                 <div class="block text-sm font-medium text-ds-text-secondary mb-2">Filter by Submission Count</div>
                 <div class="flex flex-wrap gap-2">
-                    <button
-                        class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                            submissionCountFilter === 'all'
-                                ? 'bg-ds-accent border-ds-accent text-ds-text'
-                                : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                        }`}
+                    <FilterTag
+                        active={submissionCountFilter === 'all'}
                         onclick={() => (submissionCountFilter = 'all')}
                     >
                         All
-                    </button>
-                    <button
-                        class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                            submissionCountFilter === 'single'
-                                ? 'bg-ds-accent border-ds-accent text-ds-text'
-                                : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                        }`}
+                    </FilterTag>
+                    <FilterTag
+                        active={submissionCountFilter === 'single'}
                         onclick={() => (submissionCountFilter = 'single')}
                     >
                         Single
-                    </button>
-                    <button
-                        class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                            submissionCountFilter === 'multiple'
-                                ? 'bg-ds-accent border-ds-accent text-ds-text'
-                                : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                        }`}
+                    </FilterTag>
+                    <FilterTag
+                        active={submissionCountFilter === 'multiple'}
                         onclick={() => (submissionCountFilter = 'multiple')}
                     >
                         Multiple
-                    </button>
+                    </FilterTag>
                 </div>
             </div>
             <div>
                 <div class="block text-sm font-medium text-ds-text-secondary mb-2">Filter by Status</div>
                 <div class="flex flex-wrap gap-2">
                     {#each statusOptions as status}
-                        <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                                selectedStatuses.has(status)
-                                    ? status === 'pending'
-                                        ? 'bg-yellow-600 border-yellow-400 text-ds-text'
-                                        : status === 'approved'
-                                          ? 'bg-green-600 border-green-400 text-ds-text'
-                                          : 'bg-red-600 border-red-400 text-ds-text'
-                                    : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                            }`}
+                        <FilterTag
+                            active={selectedStatuses.has(status)}
+                            class={selectedStatuses.has(status)
+                                ? status === 'pending'
+                                    ? 'bg-yellow-600! border-yellow-400! text-black!'
+                                    : status === 'approved'
+                                      ? 'bg-green-600! border-green-400! text-black!'
+                                      : 'bg-red-600! border-red-400! text-black!'
+                                : ''}
                             onclick={() => toggleStatus(status)}
                         >
                             {status.charAt(0).toUpperCase() + status.slice(1)}
                             {#if selectedStatuses.has(status)}
                                 <span class="ml-1">&#10003;</span>
                             {/if}
-                        </button>
+                        </FilterTag>
                     {/each}
                     {#if selectedStatuses.size > 0}
-                        <button
-                            class="px-3 py-1.5 rounded-lg border border-ds-border bg-ds-surface2 text-ds-text-secondary text-sm hover:bg-ds-surface-inactive transition-colors"
-                            onclick={() => (selectedStatuses = new Set())}
-                        >
+                        <FilterTag onclick={() => (selectedStatuses = new Set())}>
                             Clear
-                        </button>
+                        </FilterTag>
                     {/if}
                 </div>
             </div>
@@ -1013,27 +987,20 @@
                 <div class="block text-sm font-medium text-ds-text-secondary mb-2">Filter by Project Type</div>
                 <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                     {#each projectTypes as projectType}
-                        <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                                selectedProjectTypes.has(projectType)
-                                    ? 'bg-ds-accent border-ds-accent text-ds-text'
-                                    : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                            }`}
+                        <FilterTag
+                            active={selectedProjectTypes.has(projectType)}
                             onclick={() => toggleProjectType(projectType)}
                         >
                             {formatProjectType(projectType)}
                             {#if selectedProjectTypes.has(projectType)}
                                 <span class="ml-1">&#10003;</span>
                             {/if}
-                        </button>
+                        </FilterTag>
                     {/each}
                     {#if selectedProjectTypes.size > 0}
-                        <button
-                            class="px-3 py-1.5 rounded-lg border border-ds-border bg-ds-surface2 text-ds-text-secondary text-sm hover:bg-ds-surface-inactive transition-colors"
-                            onclick={() => (selectedProjectTypes = new Set())}
-                        >
+                        <FilterTag onclick={() => (selectedProjectTypes = new Set())}>
                             Clear
-                        </button>
+                        </FilterTag>
                     {/if}
                 </div>
             </div>
@@ -1042,19 +1009,11 @@
                 <div class="block text-sm font-medium text-ds-text-secondary mb-2">Filter Fraud/Sus</div>
                 <div class="flex flex-col gap-2">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            bind:checked={showFraudSubmissions}
-                            class="w-4 h-4 rounded border-ds-border bg-ds-surface2 text-purple-600 focus:ring-ds-accent focus:ring-2"
-                        />
+                        <Checkbox bind:checked={showFraudSubmissions} />
                         <span class="text-sm text-ds-text-secondary">Show fraud</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            bind:checked={showSusSubmissions}
-                            class="w-4 h-4 rounded border-ds-border bg-ds-surface2 text-purple-600 focus:ring-ds-accent focus:ring-2"
-                        />
+                        <Checkbox bind:checked={showSusSubmissions} />
                         <span class="text-sm text-ds-text-secondary">Show sus</span>
                     </label>
                 </div>
@@ -1063,8 +1022,8 @@
             <div>
                 <div class="block text-sm font-medium text-ds-text-secondary mb-2">Sort By</div>
                 <div class="flex gap-2">
-                    <select
-                        class="flex-1 rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm text-ds-text focus:outline-none focus:ring-2 focus:ring-ds-accent"
+                    <Select
+                        class="flex-1"
                         bind:value={sortField}
                     >
                         <option value="createdAt">Date Created</option>
@@ -1073,14 +1032,14 @@
                         <option value="approvalStatus">Status</option>
                         <option value="nowHackatimeHours">Hackatime Hours</option>
                         <option value="approvedHours">Approved Hours</option>
-                    </select>
-                    <button
-                        class="px-3 py-2 rounded-lg border border-ds-border bg-ds-surface2 hover:bg-ds-surface-inactive text-ds-text transition-colors"
+                    </Select>
+                    <Button
+                        variant="default"
                         onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
                         title={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
                     >
                         {sortDirection === 'asc' ? '\u2191' : '\u2193'}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -1089,21 +1048,21 @@
             Showing {Object.keys(filteredGroupedSubmissions).length}
             project{Object.keys(filteredGroupedSubmissions).length === 1 ? '' : 's'} with {Object.values(filteredGroupedSubmissions).reduce((sum, subs) => sum + subs.length, 0)} submission{Object.values(filteredGroupedSubmissions).reduce((sum, subs) => sum + subs.length, 0) === 1 ? '' : 's'} of {submissions.length} total
         </div>
-    </div>
+    </Card>
 
     <!-- Reviewer Leaderboard -->
-    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-4">
+    <Card class="p-6 space-y-4 backdrop-blur">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold flex items-center gap-2">
                 Reviewer Leaderboard
             </h3>
-            <button
-                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors text-sm"
+            <Button
+                variant="default"
                 onclick={loadReviewerLeaderboard}
                 disabled={leaderboardLoading}
             >
                 {leaderboardLoading ? 'Loading...' : leaderboardLoaded ? 'Refresh' : 'Load Leaderboard'}
-            </button>
+            </Button>
         </div>
 
         {#if leaderboardLoaded && reviewerLeaderboard.length > 0}
@@ -1165,7 +1124,7 @@
         {:else}
             <p class="text-ds-text-placeholder text-sm">Click "Load Leaderboard" to see reviewer stats.</p>
         {/if}
-    </div>
+    </Card>
 
     <!-- Submissions List -->
     {#if submissionsLoading}
@@ -1212,16 +1171,15 @@
                             </h4>
                             <div class="flex flex-wrap gap-2">
                                 {#each projectSubmissions as sub}
-                                    <button
-                                        class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                                            selectedSubmissionId === sub.submissionId
-                                                ? selectedSubmission.project.user.isSus
-                                                    ? 'bg-yellow-600 border-yellow-400 text-ds-text'
-                                                    : 'bg-ds-accent border-ds-accent text-ds-text'
-                                                : selectedSubmission.project.user.isSus
-                                                  ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
-                                                  : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                                        }`}
+                                    <FilterTag
+                                        active={selectedSubmissionId === sub.submissionId}
+                                        class={selectedSubmissionId === sub.submissionId
+                                            ? selectedSubmission.project.user.isSus
+                                                ? 'bg-yellow-600! border-yellow-400! text-black!'
+                                                : ''
+                                            : selectedSubmission.project.user.isSus
+                                              ? 'bg-yellow-600/20! border-yellow-500! text-yellow-600!'
+                                              : ''}
                                         onclick={() =>
                                             (selectedSubmissionByProject = {
                                                 ...selectedSubmissionByProject,
@@ -1240,7 +1198,7 @@
                                         >
                                             {sub.approvalStatus}
                                         </span>
-                                    </button>
+                                    </FilterTag>
                                 {/each}
                             </div>
                         </div>
@@ -1304,16 +1262,15 @@
                                         {selectedSubmission.project.user.email}
                                     </p>
                                     <div class="flex items-center gap-2 mb-2">
-                                        <button
-                                            class={`px-3 py-1 text-xs rounded border transition-colors ${
-                                                selectedSubmission.project.user.isSus
-                                                    ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
-                                                    : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                                            }`}
+                                        <Button
+                                            variant="ghost"
+                                            class={selectedSubmission.project.user.isSus
+                                                ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
+                                                : ''}
                                             onclick={() => toggleSusFlag(selectedSubmission.project.user.userId, selectedSubmission.project.user.isSus)}
                                         >
                                             {selectedSubmission.project.user.isSus ? 'Sus Flagged' : 'Flag as Sus'}
-                                        </button>
+                                        </Button>
                                     </div>
                                     {#if selectedSubmission.project.user.hackatimeAccount}
                                         <p class="text-sm text-purple-600">
@@ -1326,12 +1283,13 @@
                                     <p class="text-sm text-ds-text-secondary">
                                         {selectedSubmission.project.user.city ? `${selectedSubmission.project.user.city}, ` : ''}{selectedSubmission.project.user.state}
                                     </p>
-                                    <button
-                                        class="text-xs text-left text-blue-600 hover:text-blue-700 transition-colors"
+                                    <Button
+                                        variant="ghost"
+                                        class="text-xs text-left text-blue-600 hover:text-blue-700 border-none"
                                         onclick={() => (addressExpanded[selectedSubmission.submissionId] = !addressExpanded[selectedSubmission.submissionId])}
                                     >
                                         {addressExpanded[selectedSubmission.submissionId] ? '\u25BC' : '\u25B6'} Full Address
-                                    </button>
+                                    </Button>
                                     {#if addressExpanded[selectedSubmission.submissionId]}
                                         <div class="mt-2 p-3 bg-ds-surface2/50 rounded-lg border border-ds-border text-xs text-ds-text-secondary space-y-1">
                                             {#if selectedSubmission.project.user.addressLine1}
@@ -1363,28 +1321,28 @@
                                 <div class="space-y-2">
                                     <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Project Info</h4>
                                     <div class="flex items-center gap-2 mb-2">
-                                        <button
-                                            class={`px-3 py-1 text-xs rounded border transition-colors ${
-                                                selectedSubmission.project.isFraud
-                                                    ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30'
-                                                    : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
-                                            }`}
+                                        <Button
+                                            variant="ghost"
+                                            class={selectedSubmission.project.isFraud
+                                                ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30'
+                                                : ''}
                                             onclick={() => toggleFraudFlag(selectedSubmission.project.projectId, selectedSubmission.project.isFraud)}
                                         >
                                             {selectedSubmission.project.isFraud ? 'Fraud Flagged' : 'Flag as Fraud'}
-                                        </button>
+                                        </Button>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <p class="text-sm text-ds-text-secondary">
                                             Hackatime hours: <span class="font-semibold text-purple-600">{formatHours(selectedSubmission.project.nowHackatimeHours)}</span>
                                         </p>
-                                        <button
-                                            class="px-2 py-1 text-xs rounded bg-ds-accent hover:bg-ds-accent/80 border border-ds-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        <Button
+                                            variant="default"
+                                            class="bg-ds-accent border-ds-accent hover:bg-ds-accent/80"
                                             onclick={() => recalculateSubmissionHours(selectedSubmission.submissionId, selectedSubmission.project.projectId)}
                                             disabled={submissionRecalculating[selectedSubmission.submissionId]}
                                         >
                                             {submissionRecalculating[selectedSubmission.submissionId] ? '\u27F3 Calculating...' : '\u27F3 Recalc'}
-                                        </button>
+                                        </Button>
                                     </div>
                                     {#if selectedSubmission.project.nowHackatimeProjects?.length}
                                         <p class="text-sm text-ds-text-secondary">
@@ -1506,66 +1464,64 @@
                         <div class="grid gap-4 md:grid-cols-3">
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-ds-text-secondary" for={statusIdFor(selectedSubmission.submissionId)}>Status</label>
-                                <select
+                                <Select
                                     id={statusIdFor(selectedSubmission.submissionId)}
-                                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
+                                    class="w-full"
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].approvalStatus}
                                 >
                                     {#each statusOptions as option}
                                         <option value={option}>{option}</option>
                                     {/each}
-                                </select>
+                                </Select>
                             </div>
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-ds-text-secondary" for={hoursIdFor(selectedSubmission.submissionId)}>Approved Hours</label>
-                                <input
+                                <TextField
                                     id={hoursIdFor(selectedSubmission.submissionId)}
                                     type="number"
                                     step="0.1"
                                     min="0"
-                                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].approvedHours}
                                 />
                             </div>
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-ds-text-secondary" for={userFeedbackIdFor(selectedSubmission.submissionId)}>User Feedback (sent via email)</label>
-                                <textarea
+                                <TextField
+                                    multiline
                                     id={userFeedbackIdFor(selectedSubmission.submissionId)}
-                                    class="w-full min-w-0 rounded-lg border border-blue-600 bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                                    rows="2"
+                                    class="min-w-0 border-blue-600 focus:border-blue-500 resize-y"
+                                    rows={2}
                                     placeholder="Feedback to send to the user..."
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].userFeedback}
-                                ></textarea>
+                                />
                             </div>
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-ds-text-secondary" for={justificationIdFor(selectedSubmission.submissionId)}>Hours Justification (admin only, synced to Airtable)</label>
-                                <textarea
+                                <TextField
+                                    multiline
                                     id={justificationIdFor(selectedSubmission.submissionId)}
-                                    class="w-full min-w-0 rounded-lg border border-purple-600 bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent resize-y"
-                                    rows="2"
+                                    class="min-w-0 border-purple-600 resize-y"
+                                    rows={2}
                                     placeholder="Internal justification for Airtable..."
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].hoursJustification}
-                                ></textarea>
+                                />
                             </div>
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-ds-text-secondary" for="submission-{selectedSubmission.submissionId}-admin-comment">Admin Comment (internal, logged in timeline)</label>
-                                <textarea
+                                <TextField
+                                    multiline
                                     id="submission-{selectedSubmission.submissionId}-admin-comment"
-                                    class="w-full min-w-0 rounded-lg border border-orange-600 bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-y"
-                                    rows="2"
+                                    class="min-w-0 border-orange-600 focus:border-orange-500 resize-y"
+                                    rows={2}
                                     placeholder="Internal comment (visible to admins only)..."
                                     bind:value={submissionDrafts[selectedSubmission.submissionId].adminComment}
-                                ></textarea>
+                                />
                             </div>
                         </div>
 
                         <div class="flex items-center gap-3 py-3">
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    class="w-4 h-4 rounded border-ds-border bg-ds-surface2 text-purple-600 focus:ring-2 focus:ring-ds-accent focus:ring-offset-ds-surface"
-                                    bind:checked={submissionDrafts[selectedSubmission.submissionId].sendEmailNotification}
-                                />
+                                <Checkbox bind:checked={submissionDrafts[selectedSubmission.submissionId].sendEmailNotification} />
                                 <span class="text-sm font-medium text-ds-text-secondary">Send email notification on status change</span>
                             </label>
                         </div>
@@ -1573,36 +1529,37 @@
                         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                             <div class="flex flex-wrap gap-2">
                                 {#if selectedSubmission.approvalStatus !== 'approved'}
-                                    <button
-                                        class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 border border-green-400 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
+                                    <Button
+                                        variant="approve"
                                         onclick={() => quickApprove(selectedSubmission)}
                                         disabled={submissionSaving[selectedSubmission.submissionId]}
                                     >
                                         Quick Approve
-                                    </button>
+                                    </Button>
                                 {/if}
                                 {#if selectedSubmission.approvalStatus !== 'rejected'}
-                                    <button
-                                        class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 border border-red-400 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
+                                    <Button
+                                        variant="reject"
                                         onclick={() => quickDeny(selectedSubmission.submissionId)}
                                         disabled={submissionSaving[selectedSubmission.submissionId]}
                                     >
                                         Quick Deny
-                                    </button>
+                                    </Button>
                                 {/if}
-                                <button
-                                    class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
+                                <Button
+                                    variant="default"
+                                    class="bg-ds-accent border-ds-accent hover:bg-ds-accent/80"
                                     onclick={() => saveSubmission(selectedSubmission.submissionId)}
                                     disabled={submissionSaving[selectedSubmission.submissionId]}
                                 >
                                     {submissionSaving[selectedSubmission.submissionId] ? 'Saving...' : 'Save Changes'}
-                                </button>
-                                <button
-                                    class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
+                                </Button>
+                                <Button
+                                    variant="default"
                                     onclick={() => setSubmissionDraft(selectedSubmission, true)}
                                 >
                                     Reset
-                                </button>
+                                </Button>
                             </div>
                             <div class="text-sm">
                                 {#if submissionErrors[selectedSubmission.submissionId]}
@@ -1616,8 +1573,9 @@
 
                     <!-- Timeline Section -->
                     <div class="border-t border-ds-border pt-4">
-                        <button
-                            class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ds-text-secondary hover:text-ds-text transition-colors"
+                        <Button
+                            variant="ghost"
+                            class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ds-text-secondary hover:text-ds-text border-none"
                             onclick={() => loadTimeline(selectedSubmission.project.projectId)}
                         >
                             {#if timelineLoading[selectedSubmission.project.projectId]}
@@ -1626,7 +1584,7 @@
                                 <span>{timelineOpen[selectedSubmission.project.projectId] ? '\u25BC' : '\u25B6'}</span>
                                 Project Timeline
                             {/if}
-                        </button>
+                        </Button>
 
                         {#if timelineOpen[selectedSubmission.project.projectId] && timelineByProject[selectedSubmission.project.projectId]}
                             {@const timeline = timelineByProject[selectedSubmission.project.projectId].timeline}

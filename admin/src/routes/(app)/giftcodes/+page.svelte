@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
+    import { Button, TextField, Card } from '$lib/components';
 
     type GiftCodeResponse = components['schemas']['GiftCodeResponse'];
     type SendGiftCodeResult = components['schemas']['SendGiftCodeResult'];
@@ -132,15 +133,12 @@
 <section class="space-y-4">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 class="text-2xl font-semibold">Gift Codes</h2>
-        <button
-            class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
-            onclick={loadGiftCodes}
-        >
+        <Button variant="ghost" onclick={loadGiftCodes}>
             Refresh
-        </button>
+        </Button>
     </div>
 
-    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6">
+    <Card class="p-6 space-y-6">
         <h3 class="text-lg font-semibold">Send Gift Code Emails</h3>
 
         <div class="grid gap-4 md:grid-cols-2">
@@ -148,22 +146,20 @@
                 <label class="text-sm font-medium text-ds-text-secondary" for="gift-emails"
                     >Email Addresses *</label
                 >
-                <textarea
+                <TextField
+                    multiline
                     id="gift-emails"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
-                    rows="4"
+                    rows={4}
                     placeholder="Enter email addresses (one per line, or comma/semicolon separated)&#10;example@email.com&#10;another@email.com"
                     bind:value={giftCodeForm.emails}
-                ></textarea>
+                />
             </div>
             <div class="space-y-2">
                 <label class="text-sm font-medium text-ds-text-secondary" for="gift-description"
                     >Item Description *</label
                 >
-                <input
+                <TextField
                     id="gift-description"
-                    type="text"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="e.g., Midnight Sticker Sheet"
                     bind:value={giftCodeForm.itemDescription}
                 />
@@ -172,10 +168,8 @@
                 <label class="text-sm font-medium text-ds-text-secondary" for="gift-image"
                     >Image URL *</label
                 >
-                <input
+                <TextField
                     id="gift-image"
-                    type="text"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="https://example.com/image.png"
                     bind:value={giftCodeForm.imageUrl}
                 />
@@ -184,10 +178,8 @@
                 <label class="text-sm font-medium text-ds-text-secondary" for="gift-fillout"
                     >Fillout Form URL *</label
                 >
-                <input
+                <TextField
                     id="gift-fillout"
-                    type="text"
-                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="https://forms.fillout.com/your-form"
                     bind:value={giftCodeForm.filloutUrl}
                 />
@@ -217,8 +209,8 @@
         {/if}
 
         <div class="flex flex-wrap gap-3 items-center">
-            <button
-                class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
+            <Button
+                variant="approve"
                 onclick={sendGiftCodes}
                 disabled={giftCodeSending ||
                     !giftCodeForm.emails ||
@@ -227,13 +219,13 @@
                     !giftCodeForm.filloutUrl}
             >
                 {giftCodeSending ? 'Sending...' : 'Send Gift Code Emails'}
-            </button>
-            <button
-                class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
+            </Button>
+            <Button
+                variant="default"
                 onclick={resetGiftCodeForm}
             >
                 Clear Form
-            </button>
+            </Button>
             {#if giftCodeError}
                 <span class="text-red-600 text-sm">{giftCodeError}</span>
             {/if}
@@ -264,7 +256,7 @@
                 </div>
             </div>
         {/if}
-    </div>
+    </Card>
 
     {#if giftCodesLoading}
         <div class="py-12 text-center text-ds-text-secondary">Loading gift codes...</div>

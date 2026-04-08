@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
+    import { Button, TextField, Card, Tab, Checkbox, Select } from '$lib/components';
 
     type Shop = components['schemas']['ShopResponse'];
     type ShopItemVariant = components['schemas']['ShopItemVariantResponse'];
@@ -600,8 +601,7 @@
         <h2 class="text-2xl font-semibold">Shop Management</h2>
         <div class="flex items-center gap-2">
             {#if shops.length > 0}
-                <select
-                    class="rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
+                <Select
                     value={selectedShopId}
                     onchange={(e) => {
                         const val = parseInt((e.target as HTMLSelectElement).value, 10);
@@ -615,29 +615,27 @@
                             {!shop.isPublic ? ' (hidden)' : ''}
                         </option>
                     {/each}
-                </select>
+                </Select>
             {/if}
-            <button
-                class={`px-4 py-2 rounded-lg border transition-colors ${showShopManager ? 'bg-yellow-600 border-yellow-400' : 'bg-ds-surface2 border-ds-border hover:bg-ds-surface-inactive'}`}
+            <Button
+                variant={showShopManager ? 'ghost' : 'default'}
                 onclick={() => (showShopManager = !showShopManager)}
             >
                 Manage Shops
-            </button>
+            </Button>
         </div>
     </div>
 
     {#if showShopManager}
-        <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6">
+        <Card class="p-6 space-y-6">
             <h3 class="text-lg font-semibold">
                 {editingShopId ? 'Edit Shop' : 'Create New Shop'}
             </h3>
             <div class="grid gap-4 md:grid-cols-2">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-ds-text-secondary" for="shop-slug">Slug *</label>
-                    <input
+                    <TextField
                         id="shop-slug"
-                        type="text"
-                        class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                         placeholder="my-shop"
                         bind:value={shopForm.slug}
                     />
@@ -646,41 +644,39 @@
                     <label class="text-sm font-medium text-ds-text-secondary" for="shop-description"
                         >Description</label
                     >
-                    <input
+                    <TextField
                         id="shop-description"
-                        type="text"
-                        class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                         placeholder="Shop description..."
                         bind:value={shopForm.description}
                     />
                 </div>
                 <div class="flex items-center gap-4">
                     <label class="flex items-center gap-2 text-sm text-ds-text-secondary">
-                        <input type="checkbox" bind:checked={shopForm.isActive} class="rounded" />
+                        <Checkbox bind:checked={shopForm.isActive} />
                         Active
                     </label>
                     <label class="flex items-center gap-2 text-sm text-ds-text-secondary">
-                        <input type="checkbox" bind:checked={shopForm.isPublic} class="rounded" />
+                        <Checkbox bind:checked={shopForm.isPublic} />
                         Public
                     </label>
                 </div>
             </div>
 
             <div class="flex flex-wrap gap-3 items-center">
-                <button
-                    class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
+                <Button
+                    variant="approve"
                     onclick={saveShop}
                     disabled={shopFormSaving || !shopForm.slug}
                 >
                     {shopFormSaving ? 'Saving...' : editingShopId ? 'Update Shop' : 'Create Shop'}
-                </button>
+                </Button>
                 {#if editingShopId}
-                    <button
-                        class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
+                    <Button
+                        variant="default"
                         onclick={resetShopForm}
                     >
                         Cancel Edit
-                    </button>
+                    </Button>
                 {/if}
                 {#if shopFormError}
                     <span class="text-red-600 text-sm">{shopFormError}</span>
@@ -715,24 +711,24 @@
                                 {/if}
                             </div>
                             <div class="flex gap-2">
-                                <button
-                                    class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+                                <Button
+                                    variant="default"
                                     onclick={() => startEditShop(shop)}
                                 >
                                     Edit
-                                </button>
-                                <button
-                                    class="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 rounded transition-colors"
+                                </Button>
+                                <Button
+                                    variant="reject"
                                     onclick={() => deleteShop(shop.shopId)}
                                 >
                                     Delete
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     {/each}
                 </div>
             {/if}
-        </div>
+        </Card>
     {/if}
 
     {#if !selectedShopId && shops.length === 0}
@@ -744,39 +740,24 @@
             Select a shop above to manage its items and transactions.
         </div>
     {:else}
-        <div class="flex gap-2">
-            <button
-                class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === 'items' ? 'bg-ds-accent border-ds-accent' : 'bg-ds-surface2 border-ds-border hover:bg-ds-surface-inactive'}`}
-                onclick={() => (shopSubTab = 'items')}
-            >
-                Items ({shopItems.length})
-            </button>
-            <button
-                class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === 'transactions' ? 'bg-ds-accent border-ds-accent' : 'bg-ds-surface2 border-ds-border hover:bg-ds-surface-inactive'}`}
-                onclick={() => (shopSubTab = 'transactions')}
-            >
-                Transactions ({shopTransactions.length})
-            </button>
-            <button
-                class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === 'transactions-by-user' ? 'bg-ds-accent border-ds-accent' : 'bg-ds-surface2 border-ds-border hover:bg-ds-surface-inactive'}`}
-                onclick={() => (shopSubTab = 'transactions-by-user')}
-            >
-                By User
-            </button>
-            <button
-                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
-                onclick={loadShopData}
-            >
+        <div class="flex gap-2 items-center">
+            <Tab
+                items={[
+                    { label: `Items (${shopItems.length})`, value: 'items' },
+                    { label: `Transactions (${shopTransactions.length})`, value: 'transactions' },
+                    { label: 'By User', value: 'transactions-by-user' }
+                ]}
+                bind:value={shopSubTab}
+            />
+            <Button variant="default" onclick={loadShopData}>
                 Refresh
-            </button>
+            </Button>
         </div>
 
         {#if shopLoading}
             <div class="py-12 text-center text-ds-text-secondary">Loading shop data...</div>
         {:else if shopSubTab === 'items'}
-            <div
-                class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6"
-            >
+            <Card class="p-6 space-y-6">
                 <h3 class="text-lg font-semibold">
                     {editingItemId ? 'Edit Item' : 'Create New Item'}
                 </h3>
@@ -786,10 +767,8 @@
                         <label class="text-sm font-medium text-ds-text-secondary" for="item-name"
                             >Name *</label
                         >
-                        <input
+                        <TextField
                             id="item-name"
-                            type="text"
-                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             placeholder="Item name"
                             bind:value={shopItemForm.name}
                         />
@@ -798,12 +777,11 @@
                         <label class="text-sm font-medium text-ds-text-secondary" for="item-cost"
                             >Cost (hours) *</label
                         >
-                        <input
+                        <TextField
                             id="item-cost"
                             type="number"
                             step="0.1"
                             min="0"
-                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             placeholder="0"
                             bind:value={shopItemForm.cost}
                         />
@@ -812,12 +790,11 @@
                         <label class="text-sm font-medium text-ds-text-secondary" for="item-max-per-user"
                             >Max per User</label
                         >
-                        <input
+                        <TextField
                             id="item-max-per-user"
                             type="number"
                             step="1"
                             min="1"
-                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             placeholder="Unlimited"
                             bind:value={shopItemForm.maxPerUser}
                         />
@@ -826,10 +803,8 @@
                         <label class="text-sm font-medium text-ds-text-secondary" for="item-image"
                             >Image URL</label
                         >
-                        <input
+                        <TextField
                             id="item-image"
-                            type="text"
-                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             placeholder="https://..."
                             bind:value={shopItemForm.imageUrl}
                         />
@@ -838,19 +813,19 @@
                         <label class="text-sm font-medium text-ds-text-secondary" for="item-description"
                             >Description</label
                         >
-                        <textarea
+                        <TextField
+                            multiline
                             id="item-description"
-                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
-                            rows="2"
+                            rows={2}
                             placeholder="Item description..."
                             bind:value={shopItemForm.description}
-                        ></textarea>
+                        />
                     </div>
                 </div>
 
                 <div class="flex flex-wrap gap-3 items-center">
-                    <button
-                        class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
+                    <Button
+                        variant="approve"
                         onclick={saveShopItem}
                         disabled={shopItemSaving || !shopItemForm.name || !shopItemForm.cost}
                     >
@@ -859,14 +834,14 @@
                             : editingItemId
                               ? 'Update Item'
                               : 'Create Item'}
-                    </button>
+                    </Button>
                     {#if editingItemId}
-                        <button
-                            class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
+                        <Button
+                            variant="default"
                             onclick={resetItemForm}
                         >
                             Cancel Edit
-                        </button>
+                        </Button>
                     {/if}
                     {#if shopItemError}
                         <span class="text-red-600 text-sm">{shopItemError}</span>
@@ -875,7 +850,7 @@
                         <span class="text-green-700 text-sm">{shopItemSuccess}</span>
                     {/if}
                 </div>
-            </div>
+            </Card>
 
             {#if shopItems.length === 0}
                 <div class="py-12 text-center text-ds-text-secondary">
@@ -884,9 +859,7 @@
             {:else}
                 <div class="grid gap-4">
                     {#each shopItems as item (item.itemId)}
-                        <div
-                            class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-4"
-                        >
+                        <Card class="p-6 space-y-4">
                             <div
                                 class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"
                             >
@@ -946,33 +919,33 @@
                                     </div>
                                 </div>
                                 <div class="flex flex-wrap gap-2">
-                                    <button
-                                        class="px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500 text-ds-link hover:bg-blue-600/30 text-sm transition-colors"
+                                    <Button
+                                        variant="ghost"
                                         onclick={() => {
                                             expandedItemVariants[item.itemId] =
                                                 !expandedItemVariants[item.itemId];
                                         }}
                                     >
                                         {expandedItemVariants[item.itemId] ? 'Hide' : 'Show'} Variants
-                                    </button>
-                                    <button
-                                        class="px-3 py-1.5 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive border border-ds-border text-sm transition-colors"
+                                    </Button>
+                                    <Button
+                                        variant="default"
                                         onclick={() => startEditItem(item)}
                                     >
                                         Edit
-                                    </button>
-                                    <button
-                                        class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${item.isActive ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30' : 'bg-green-600/20 border-green-500 text-green-700 hover:bg-green-600/30'}`}
+                                    </Button>
+                                    <Button
+                                        variant={item.isActive ? 'ghost' : 'approve'}
                                         onclick={() => toggleItemActive(item)}
                                     >
                                         {item.isActive ? 'Deactivate' : 'Activate'}
-                                    </button>
-                                    <button
-                                        class="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500 text-red-600 hover:bg-red-600/30 text-sm transition-colors"
+                                    </Button>
+                                    <Button
+                                        variant="reject"
                                         onclick={() => deleteShopItem(item.itemId)}
                                     >
                                         Delete
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
 
@@ -982,12 +955,12 @@
                                         <h4 class="text-sm font-semibold text-ds-text-secondary">
                                             Variants
                                         </h4>
-                                        <button
-                                            class="px-3 py-1 rounded-lg bg-ds-accent hover:bg-ds-accent/80 text-sm transition-colors"
+                                        <Button
+                                            variant="approve"
                                             onclick={() => startAddVariant(item.itemId)}
                                         >
                                             + Add Variant
-                                        </button>
+                                        </Button>
                                     </div>
 
                                     {#if addingVariantToItemId === item.itemId}
@@ -997,9 +970,7 @@
                                                     <label class="text-xs text-ds-text-secondary"
                                                         >Variant Name *</label
                                                     >
-                                                    <input
-                                                        type="text"
-                                                        class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
+                                                    <TextField
                                                         placeholder="e.g., XL, $200"
                                                         bind:value={variantForm.name}
                                                     />
@@ -1008,17 +979,16 @@
                                                     <label class="text-xs text-ds-text-secondary"
                                                         >Cost (hours) *</label
                                                     >
-                                                    <input
+                                                    <TextField
                                                         type="number"
                                                         step="0.1"
                                                         min="0"
-                                                        class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                                                         bind:value={variantForm.cost}
                                                     />
                                                 </div>
                                                 <div class="flex items-end gap-2">
-                                                    <button
-                                                        class="px-3 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 text-sm transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
+                                                    <Button
+                                                        variant="approve"
                                                         onclick={saveVariant}
                                                         disabled={variantSaving ||
                                                             !variantForm.name ||
@@ -1029,13 +999,13 @@
                                                             : editingVariantId
                                                               ? 'Update'
                                                               : 'Add'}
-                                                    </button>
-                                                    <button
-                                                        class="px-3 py-2 rounded-lg bg-ds-surface-inactive hover:bg-ds-surface-inactive text-sm transition-colors"
+                                                    </Button>
+                                                    <Button
+                                                        variant="default"
                                                         onclick={resetVariantForm}
                                                     >
                                                         Cancel
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             </div>
                                             {#if variantError}
@@ -1072,29 +1042,29 @@
                                                         {/if}
                                                     </div>
                                                     <div class="flex gap-2">
-                                                        <button
-                                                            class="px-2 py-1 rounded bg-ds-surface-inactive hover:bg-ds-surface-inactive text-xs transition-colors"
+                                                        <Button
+                                                            variant="default"
                                                             onclick={() =>
                                                                 startEditVariant(variant)}
                                                         >
                                                             Edit
-                                                        </button>
-                                                        <button
-                                                            class={`px-2 py-1 rounded text-xs transition-colors ${variant.isActive ? 'bg-yellow-600/20 text-yellow-600 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-700 hover:bg-green-600/30'}`}
+                                                        </Button>
+                                                        <Button
+                                                            variant={variant.isActive ? 'ghost' : 'approve'}
                                                             onclick={() =>
                                                                 toggleVariantActive(variant)}
                                                         >
                                                             {variant.isActive
                                                                 ? 'Deactivate'
                                                                 : 'Activate'}
-                                                        </button>
-                                                        <button
-                                                            class="px-2 py-1 rounded bg-red-600/20 text-red-600 hover:bg-red-600/30 text-xs transition-colors"
+                                                        </Button>
+                                                        <Button
+                                                            variant="reject"
                                                             onclick={() =>
                                                                 deleteVariant(variant.variantId)}
                                                         >
                                                             Delete
-                                                        </button>
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             {/each}
@@ -1106,7 +1076,7 @@
                                     {/if}
                                 </div>
                             {/if}
-                        </div>
+                        </Card>
                     {/each}
                 </div>
             {/if}
@@ -1116,40 +1086,23 @@
             {:else}
                 <div class="mb-4 flex items-center gap-3">
                     <label class="text-sm font-medium text-ds-text-secondary">Filter by Item:</label>
-                    <select
-                        class="rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
-                        bind:value={selectedItemFilter}
-                    >
+                    <Select bind:value={selectedItemFilter}>
                         <option value={null}>All Items</option>
                         {#each shopItems as item (item.itemId)}
                             <option value={item.itemId}>{item.name}</option>
                         {/each}
-                    </select>
+                    </Select>
                     <label class="text-sm font-medium text-ds-text-secondary">Status:</label>
-                    <div class="flex gap-2">
-                        <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'all' ? 'bg-ds-accent border-ds-accent text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
-                            onclick={() => (fulfillmentFilter = 'all')}
-                        >
-                            All
-                        </button>
-                        <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'fulfilled' ? 'bg-green-600 border-green-400 text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
-                            onclick={() => (fulfillmentFilter = 'fulfilled')}
-                        >
-                            Fulfilled
-                        </button>
-                        <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'unfulfilled' ? 'bg-yellow-600 border-yellow-400 text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
-                            onclick={() => (fulfillmentFilter = 'unfulfilled')}
-                        >
-                            Unfulfilled
-                        </button>
-                    </div>
+                    <Tab
+                        items={[
+                            { label: 'All', value: 'all' },
+                            { label: 'Fulfilled', value: 'fulfilled' },
+                            { label: 'Unfulfilled', value: 'unfulfilled' }
+                        ]}
+                        bind:value={fulfillmentFilter}
+                    />
                 </div>
-                <div
-                    class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur overflow-hidden"
-                >
+                <Card class="overflow-hidden">
                     <table class="w-full">
                         <thead class="bg-ds-surface2/50">
                             <tr>
@@ -1255,8 +1208,8 @@
                                     <td class="px-4 py-3">
                                         <div class="flex gap-2">
                                             {#if transaction.isFulfilled}
-                                                <button
-                                                    class="px-3 py-1.5 rounded-lg bg-yellow-600/20 border border-yellow-500 text-yellow-600 hover:bg-yellow-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                <Button
+                                                    variant="ghost"
                                                     onclick={() =>
                                                         handleUnfulfillTransaction(
                                                             transaction.transactionId
@@ -1268,10 +1221,10 @@
                                                     transaction.transactionId
                                                         ? 'Removing...'
                                                         : 'Unfulfill'}
-                                                </button>
+                                                </Button>
                                             {:else}
-                                                <button
-                                                    class="px-3 py-1.5 rounded-lg bg-green-600/20 border border-green-500 text-green-700 hover:bg-green-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                <Button
+                                                    variant="approve"
                                                     onclick={() =>
                                                         handleMarkFulfilled(
                                                             transaction.transactionId
@@ -1283,10 +1236,10 @@
                                                     transaction.transactionId
                                                         ? 'Marking...'
                                                         : 'Mark Fulfilled'}
-                                                </button>
+                                                </Button>
                                             {/if}
-                                            <button
-                                                class="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500 text-red-600 hover:bg-red-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            <Button
+                                                variant="reject"
                                                 onclick={() =>
                                                     handleRefundTransaction(
                                                         transaction.transactionId
@@ -1298,14 +1251,14 @@
                                                 transaction.transactionId
                                                     ? 'Refunding...'
                                                     : 'Refund'}
-                                            </button>
+                                            </Button>
                                         </div>
                                     </td>
                                 </tr>
                             {/each}
                         </tbody>
                     </table>
-                </div>
+                </Card>
             {/if}
         {:else if shopSubTab === 'transactions-by-user'}
             {#if shopTransactions.length === 0}
@@ -1313,42 +1266,25 @@
             {:else}
                 <div class="mb-4 flex items-center gap-3">
                     <label class="text-sm font-medium text-ds-text-secondary">Filter by Item:</label>
-                    <select
-                        class="rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
-                        bind:value={selectedItemFilter}
-                    >
+                    <Select bind:value={selectedItemFilter}>
                         <option value={null}>All Items</option>
                         {#each shopItems as item (item.itemId)}
                             <option value={item.itemId}>{item.name}</option>
                         {/each}
-                    </select>
+                    </Select>
                     <label class="text-sm font-medium text-ds-text-secondary">Status:</label>
-                    <div class="flex gap-2">
-                        <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'all' ? 'bg-ds-accent border-ds-accent text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
-                            onclick={() => (fulfillmentFilter = 'all')}
-                        >
-                            All
-                        </button>
-                        <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'fulfilled' ? 'bg-green-600 border-green-400 text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
-                            onclick={() => (fulfillmentFilter = 'fulfilled')}
-                        >
-                            Fulfilled
-                        </button>
-                        <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'unfulfilled' ? 'bg-yellow-600 border-yellow-400 text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
-                            onclick={() => (fulfillmentFilter = 'unfulfilled')}
-                        >
-                            Unfulfilled
-                        </button>
-                    </div>
+                    <Tab
+                        items={[
+                            { label: 'All', value: 'all' },
+                            { label: 'Fulfilled', value: 'fulfilled' },
+                            { label: 'Unfulfilled', value: 'unfulfilled' }
+                        ]}
+                        bind:value={fulfillmentFilter}
+                    />
                 </div>
                 <div class="space-y-4">
                     {#each transactionsByUser() as userGroup (userGroup.user.userId)}
-                        <div
-                            class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur overflow-hidden"
-                        >
+                        <Card class="overflow-hidden">
                             <div class="bg-ds-surface2/50 px-6 py-4 border-b border-ds-border">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -1482,8 +1418,8 @@
                                             <td class="px-4 py-3">
                                                 <div class="flex gap-2">
                                                     {#if transaction.isFulfilled}
-                                                        <button
-                                                            class="px-3 py-1.5 rounded-lg bg-yellow-600/20 border border-yellow-500 text-yellow-600 hover:bg-yellow-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        <Button
+                                                            variant="ghost"
                                                             onclick={() =>
                                                                 handleUnfulfillTransaction(
                                                                     transaction.transactionId
@@ -1495,10 +1431,10 @@
                                                             transaction.transactionId
                                                                 ? 'Removing...'
                                                                 : 'Unfulfill'}
-                                                        </button>
+                                                        </Button>
                                                     {:else}
-                                                        <button
-                                                            class="px-3 py-1.5 rounded-lg bg-green-600/20 border border-green-500 text-green-700 hover:bg-green-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        <Button
+                                                            variant="approve"
                                                             onclick={() =>
                                                                 handleMarkFulfilled(
                                                                     transaction.transactionId
@@ -1510,10 +1446,10 @@
                                                             transaction.transactionId
                                                                 ? 'Marking...'
                                                                 : 'Mark Fulfilled'}
-                                                        </button>
+                                                        </Button>
                                                     {/if}
-                                                    <button
-                                                        class="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500 text-red-600 hover:bg-red-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    <Button
+                                                        variant="reject"
                                                         onclick={() =>
                                                             handleRefundTransaction(
                                                                 transaction.transactionId
@@ -1525,7 +1461,7 @@
                                                         transaction.transactionId
                                                             ? 'Refunding...'
                                                             : 'Refund'}
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -1557,7 +1493,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </Card>
                     {/each}
                 </div>
             {/if}

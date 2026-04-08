@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
+    import { Button, TextField, Card } from '$lib/components';
 
     type AdminUserResponse = components['schemas']['AdminUserResponse'];
     type AdminUserProjectResponse = components['schemas']['AdminUserProjectResponse'];
@@ -193,18 +194,13 @@
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 class="text-2xl font-semibold">Users</h2>
         <div class="flex items-center gap-3">
-            <input
-                type="text"
-                class="rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
+            <TextField
                 placeholder="Search users..."
                 bind:value={userSearch}
             />
-            <button
-                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
-                onclick={loadUsers}
-            >
+            <Button variant="default" onclick={loadUsers}>
                 Refresh
-            </button>
+            </Button>
         </div>
     </div>
 
@@ -227,9 +223,8 @@
             </p>
             <div class="grid gap-6">
                 {#each filteredUsers() as user (user.userId)}
-                    <div
-                        class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-4"
-                    >
+                    <Card class="p-6 space-y-4 backdrop-blur">
+
                         <div
                             class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between"
                         >
@@ -301,14 +296,13 @@
                                         class="space-y-2 p-3 bg-ds-surface2 rounded-lg border border-ds-border"
                                     >
                                         <div class="flex gap-2">
-                                            <input
-                                                type="text"
-                                                class="flex-1 rounded-lg border border-ds-border bg-ds-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ds-accent"
+                                            <TextField
+                                                class="flex-1 text-xs"
                                                 placeholder="Slack User ID (e.g., U12345678)"
                                                 bind:value={slackEditValue}
                                             />
-                                            <button
-                                                class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded transition-colors disabled:opacity-50"
+                                            <Button
+                                                class="bg-blue-600 hover:bg-blue-500 text-white border-none"
                                                 onclick={() =>
                                                     lookupSlackByEmail(
                                                         user.email,
@@ -318,7 +312,7 @@
                                                 {slackLookupLoading
                                                     ? '...'
                                                     : 'Lookup'}
-                                            </button>
+                                            </Button>
                                         </div>
                                         {#if slackLookupResult}
                                             <p
@@ -339,8 +333,8 @@
                                             </p>
                                         {/if}
                                         <div class="flex gap-2">
-                                            <button
-                                                class="px-2 py-1 text-xs bg-green-600 hover:bg-green-500 rounded transition-colors disabled:opacity-50"
+                                            <Button
+                                                variant="approve"
                                                 onclick={() =>
                                                     saveSlackId(
                                                         user.userId,
@@ -350,13 +344,13 @@
                                                 {slackSaving
                                                     ? 'Saving...'
                                                     : 'Save'}
-                                            </button>
-                                            <button
-                                                class="px-2 py-1 text-xs bg-ds-surface-inactive hover:bg-ds-surface-inactive rounded transition-colors"
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
                                                 onclick={cancelSlackEdit}
                                             >
                                                 Cancel
-                                            </button>
+                                            </Button>
                                         </div>
                                     </div>
                                 {:else}
@@ -372,13 +366,13 @@
                                                 ? user.slackUserId
                                                 : 'Not linked'}
                                         </span>
-                                        <button
-                                            class="px-2 py-0.5 text-xs bg-ds-surface-inactive hover:bg-ds-surface-inactive rounded transition-colors"
+                                        <Button
+                                            variant="ghost"
                                             onclick={() =>
                                                 startSlackEdit(user)}
                                         >
                                             Edit
-                                        </button>
+                                        </Button>
                                     </div>
                                 {/if}
                             </div>
@@ -386,8 +380,8 @@
 
                         <!-- Fraud / Sus flag toggles -->
                         <div class="flex flex-wrap gap-3">
-                            <button
-                                class={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+                            <Button
+                                class={`px-3 py-2 text-sm transition-colors ${
                                     user.isFraud
                                         ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30'
                                         : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
@@ -401,9 +395,9 @@
                                 {user.isFraud
                                     ? 'Fraud Flagged'
                                     : 'Flag as Fraud'}
-                            </button>
-                            <button
-                                class={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+                            </Button>
+                            <Button
+                                class={`px-3 py-2 text-sm transition-colors ${
                                     user.isSus
                                         ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
                                         : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
@@ -417,7 +411,7 @@
                                 {user.isSus
                                     ? 'Sus Flagged'
                                     : 'Flag as Sus'}
-                            </button>
+                            </Button>
                         </div>
 
                         {#if user.projects.length > 0}
@@ -490,7 +484,7 @@
                                 </div>
                             </div>
                         {/if}
-                    </div>
+                    </Card>
                 {/each}
             </div>
         {/if}
