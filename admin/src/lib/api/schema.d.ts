@@ -680,6 +680,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/search": {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_searchUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/elevated-users": {
         parameters: {
             query?: never;
@@ -1971,7 +1989,7 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "user" | "admin" | "reviewer" | "superadmin";
+            role: "user" | "admin" | "reviewer";
         };
         UpdateUserRoleResponse: {
             userId: number;
@@ -3467,6 +3485,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GlobalSettingsResponse"];
+                };
+            };
+        };
+    };
+    AdminController_searchUsers: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElevatedUserResponse"][];
                 };
             };
         };

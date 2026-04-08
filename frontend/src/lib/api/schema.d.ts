@@ -1971,7 +1971,7 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "user" | "admin" | "reviewer" | "superadmin";
+            role: "user" | "admin" | "reviewer";
         };
         UpdateUserRoleResponse: {
             userId: number;

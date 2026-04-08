@@ -16,7 +16,7 @@
     // Pending role change
     let pendingChange = $state<{ userId: number; role: string } | null>(null);
 
-    const roleOptions = ['user', 'admin', 'reviewer', 'superadmin'] as const;
+    const roleOptions = ['user', 'admin', 'reviewer'] as const;
 
     const roleBadgeClass: Record<string, string> = {
         superadmin: 'bg-purple-600/20 border-purple-500 text-purple-400',
@@ -42,32 +42,35 @@
         }
     }
 
+    let searchTimeout: ReturnType<typeof setTimeout>;
+
+    function debouncedSearch() {
+        clearTimeout(searchTimeout);
+        if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+            searchResults = [];
+            return;
+        }
+        searchTimeout = setTimeout(searchUsers, 300);
+    }
+
     async function searchUsers() {
-        if (!searchQuery.trim()) {
+        if (!searchQuery.trim() || searchQuery.trim().length < 2) {
             searchResults = [];
             return;
         }
         searchLoading = true;
         try {
-            const { data, error: err } = await api.GET('/api/admin/users');
+            const { data, error: err } = await api.GET('/api/admin/users/search', {
+                params: { query: { q: searchQuery.trim() } }
+            });
             if (err || !data) return;
-            const query = searchQuery.toLowerCase();
-            searchResults = data
-                .filter(
-                    (u: any) =>
-                        (u.email?.toLowerCase().includes(query) ||
-                            u.firstName?.toLowerCase().includes(query) ||
-                            u.lastName?.toLowerCase().includes(query)) &&
-                        u.role === 'user'
-                )
-                .slice(0, 10)
-                .map((u: any) => ({
-                    userId: u.userId,
-                    email: u.email,
-                    firstName: u.firstName,
-                    lastName: u.lastName,
-                    role: u.role
-                }));
+            searchResults = (data as any[]).map((u) => ({
+                userId: u.userId,
+                email: u.email,
+                firstName: u.firstName,
+                lastName: u.lastName,
+                role: u.role
+            }));
         } finally {
             searchLoading = false;
         }
@@ -113,7 +116,7 @@
                     bind:value={searchQuery}
                     placeholder="Search by name or email..."
                     class="flex-1 rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm text-ds-text placeholder:text-ds-text-placeholder focus:border-ds-accent focus:outline-none"
-                    oninput={searchUsers}
+                    oninput={debouncedSearch}
                 />
             </div>
 
@@ -143,13 +146,6 @@
                                     disabled={pendingChange?.userId === result.userId}
                                 >
                                     Make Admin
-                                </button>
-                                <button
-                                    class="rounded-lg border border-purple-500 bg-purple-600/20 px-3 py-1 text-xs text-purple-400 hover:bg-purple-600/30 transition-colors"
-                                    onclick={() => updateRole(result.userId, 'superadmin')}
-                                    disabled={pendingChange?.userId === result.userId}
-                                >
-                                    Make Superadmin
                                 </button>
                             </div>
                         </div>
@@ -208,23 +204,27 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <div class="flex justify-center gap-2">
-                                            <select
-                                                class="rounded-lg border border-ds-border bg-ds-surface2 px-2 py-1 text-xs text-ds-text"
-                                                value={user.role}
-                                                onchange={(e) => {
-                                                    const target = e.target as HTMLSelectElement;
-                                                    if (target.value !== user.role) {
-                                                        updateRole(user.userId, target.value);
-                                                    }
-                                                }}
-                                                disabled={pendingChange?.userId === user.userId}
-                                            >
-                                                {#each roleOptions as opt}
-                                                    <option value={opt} selected={user.role === opt}>{opt}</option>
-                                                {/each}
-                                            </select>
-                                        </div>
+                                        {#if user.role === 'superadmin'}
+                                            <span class="text-xs text-ds-text-placeholder">—</span>
+                                        {:else}
+                                            <div class="flex justify-center gap-2">
+                                                <select
+                                                    class="rounded-lg border border-ds-border bg-ds-surface2 px-2 py-1 text-xs text-ds-text"
+                                                    value={user.role}
+                                                    onchange={(e) => {
+                                                        const target = e.target as HTMLSelectElement;
+                                                        if (target.value !== user.role) {
+                                                            updateRole(user.userId, target.value);
+                                                        }
+                                                    }}
+                                                    disabled={pendingChange?.userId === user.userId}
+                                                >
+                                                    {#each roleOptions as opt}
+                                                        <option value={opt} selected={user.role === opt}>{opt}</option>
+                                                    {/each}
+                                                </select>
+                                            </div>
+                                        {/if}
                                     </td>
                                 </tr>
                             {/each}

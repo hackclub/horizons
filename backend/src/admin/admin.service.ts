@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
@@ -821,6 +822,35 @@ export class AdminService {
     }));
   }
 
+  async searchUsers(query: string) {
+    if (!query || query.trim().length < 2) {
+      return [];
+    }
+
+    const searchTerm = query.trim();
+
+    return this.prisma.user.findMany({
+      where: {
+        role: 'user',
+        OR: [
+          { email: { contains: searchTerm, mode: 'insensitive' } },
+          { firstName: { contains: searchTerm, mode: 'insensitive' } },
+          { lastName: { contains: searchTerm, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        userId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+      },
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async getElevatedUsers() {
     return this.prisma.user.findMany({
       where: {
@@ -849,6 +879,14 @@ export class AdminService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (user.role === 'superadmin') {
+      throw new ForbiddenException('Cannot modify another superadmin\'s role');
+    }
+
+    if (role === 'superadmin') {
+      throw new ForbiddenException('Cannot promote users to superadmin');
     }
 
     return this.prisma.user.update({

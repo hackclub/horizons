@@ -4,6 +4,7 @@ import {
   Put,
   Body,
   Param,
+  Query,
   UseGuards,
   Req,
   ParseIntPipe,
@@ -236,6 +237,14 @@ export class AdminController {
       body.submissionsFrozen,
       req.user.userId,
     );
+  }
+
+  @Get('users/search')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiOkResponse({ type: [ElevatedUserResponse] })
+  async searchUsers(@Query('q') query: string) {
+    return this.adminService.searchUsers(query);
   }
 
   @Get('elevated-users')

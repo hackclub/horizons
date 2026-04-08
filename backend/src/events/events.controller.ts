@@ -24,7 +24,7 @@ import {
 import { Public } from '../auth/public.decorator';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
-import { Role } from '../enums/role.enum';
+import { Role } from '../auth/enums/role.enum';
 
 @Controller('api/events')
 @Public()

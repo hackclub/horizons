@@ -27,8 +27,8 @@ export class ToggleSubmissionsFrozenDto {
 }
 
 export class UpdateUserRoleDto {
-  @ApiProperty({ enum: ['user', 'admin', 'reviewer', 'superadmin'] })
+  @ApiProperty({ enum: ['user', 'admin', 'reviewer'] })
   @IsString()
-  @IsIn(['user', 'admin', 'reviewer', 'superadmin'])
-  role: string;
+  @IsIn(['user', 'admin', 'reviewer'])
+  role: 'user' | 'admin' | 'reviewer';
 }
