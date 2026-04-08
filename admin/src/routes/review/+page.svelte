@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 
 	// How often to auto-poll the fraud review platform and refresh the queue (ms)
 	const FRAUD_POLL_INTERVAL_MS = 5 * 60 * 1000;
@@ -66,7 +67,7 @@
 			goto('/login');
 			return;
 		}
-		if (data.role !== 'admin' && data.role !== 'reviewer') {
+		if (data.role !== 'admin' && data.role !== 'superadmin' && data.role !== 'reviewer') {
 			goto('/app/projects');
 			return;
 		}
@@ -200,11 +201,9 @@
 		}
 	}
 
-	async function selectFromGallery(index: number) {
+	function selectFromGallery(index: number) {
 		if (index < 0 || index >= queue.length) return;
-		currentIndex = index;
-		galleryMode = false;
-		await loadSubmissionDetail(queue[index].submissionId);
+		goto(`${base}/review/${queue[index].projectId}`);
 	}
 
 	function returnToGallery() {

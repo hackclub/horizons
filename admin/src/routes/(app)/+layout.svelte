@@ -15,7 +15,7 @@
             window.location.href = '/';
             return;
         }
-        if (userData.role !== 'admin' && userData.role !== 'superadmin') {
+        if (userData.role !== 'admin' && userData.role !== 'superadmin' && userData.role !== 'reviewer') {
             window.location.href = '/app/projects';
             return;
         }
