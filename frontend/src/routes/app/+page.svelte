@@ -108,6 +108,7 @@
 
 	let navigating = $state(false);
 	let exitRight = $state(false);
+	let hasInteracted = $state(false);
 
 	async function navigateTo(href: string, opts: { exitRight?: boolean } = {}) {
 		navigating = true;
@@ -157,7 +158,7 @@
 	});
 </script>
 
-<svelte:window onkeydown={nav.handleKeydown} />
+<svelte:window onkeydown={(e) => { nav.handleKeydown(e); hasInteracted = true; }} onmousemove={() => { hasInteracted = true; }} />
 
 {#if !hideCirc}
 	<CircleIn />
@@ -181,7 +182,7 @@
 				<!-- Left Column: Projects (top) + Events (bottom) -->
 				<div class="left-col shrink-0" bind:this={cardRefs[0]}>
 					<!-- Projects -->
-					<div class="enter-up flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms" style:--exit-right-delay="150ms">
+					<div class="enter-up flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms" style:--exit-right-delay="150ms">
 						<a href="/app/projects" class="card nav-card projects-card"
 							class:selected={nav.isSelected(0, 0)}
 							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(0, 0); }}
@@ -209,7 +210,7 @@
 					</div>
 
 					<!-- Events -->
-					<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
+					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
 						<a href="/app/events" class="card nav-card events-half-card"
 							class:selected={nav.isSelected(0, 1)}
 							class:disabled={isDisabled(0, 1)}
@@ -241,34 +242,51 @@
 				<!-- Middle Column -->
 				<div class="middle-col shrink-0">
 					<!-- Event / Nexus Card (informational, not navigable) -->
-					<div class="enter-up" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
+					<div class="event-card-wrapper enter-up flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
 						<div class="card event-card relative" style="background-color: {pinnedEventSlug === 'nexus' || !pinnedEventConfig ? '#fac393' : pinnedEventConfig.colors.primary};">
-							<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0">PROGRESS</p>
-							<div class="flex flex-col gap-3 w-full">
-								<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left" />
-								<div class="card progress-card">
-									<div class="progress-bar">
-										{#if approvedPct > 0}
-											<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.colors.primary ?? '#ffa936'};">
-												<span class="progress-label">{approvedHours} HOURS APPROVED</span>
-											</div>
-										{/if}
-										{#if completedPct > 0}
-											<div class="progress-segment" style="width: {completedPct}%; background-color: {pinnedEventConfig?.colors.secondary ?? '#f86d95'};">
-												<span class="progress-label">{completedHours - approvedHours} HOURS COMPLETED</span>
-											</div>
-										{/if}
-										<div class="flex-1" style="background-color: {pinnedEventConfig?.colors.tertiary ?? '#46467c'};"></div>
-									</div>
-									{#if pinnedEventSlug === 'nexus'}
-										<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
-											{#if remainingHours > 0}
-												{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO`}
-											{:else}
-												GOAL REACHED!
+							<!-- Full progress view -->
+							<div class="full-progress">
+								<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0">PROGRESS</p>
+								<div class="flex flex-col gap-3 w-full">
+									<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left" />
+									<div class="card progress-card">
+										<div class="progress-bar">
+											{#if approvedPct > 0}
+												<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.colors.primary ?? '#ffa936'};">
+													<span class="progress-label">{approvedHours} HOURS APPROVED</span>
+												</div>
 											{/if}
-										</p>
-									{/if}
+											{#if completedPct > 0}
+												<div class="progress-segment" style="width: {completedPct}%; background-color: {pinnedEventConfig?.colors.secondary ?? '#f86d95'};">
+													<span class="progress-label">{completedHours - approvedHours} HOURS COMPLETED</span>
+												</div>
+											{/if}
+											<div class="flex-1" style="background-color: {pinnedEventConfig?.colors.tertiary ?? '#46467c'};"></div>
+										</div>
+										{#if pinnedEventSlug === 'nexus'}
+											<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
+												{#if remainingHours > 0}
+													{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO`}
+												{:else}
+													GOAL REACHED!
+												{/if}
+											</p>
+										{/if}
+									</div>
+								</div>
+							</div>
+							<!-- Compact progress view -->
+							<div class="compact-progress">
+								<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left shrink-0" />
+								<div class="text-right text-[24px] text-black tracking-[0.24px]">
+									<p class="font-cook m-0">PROGRESS</p>
+									<p class="font-bricolage font-semibold m-0">
+										{#if remainingHours > 0}
+											{remainingHours} hours to go!
+										{:else}
+											Goal reached!
+										{/if}
+									</p>
 								</div>
 							</div>
 						</div>
@@ -381,7 +399,7 @@
 
 		<!-- Bottom Info Row -->
 		<div class="info-row enter-down" class:exiting={navigating && !exitRight} style:--exit-delay="0ms" style:--enter-delay="300ms">
-			<div class="card nav-hint-card">
+			<div class="card nav-hint-card" class:nav-hint-hidden={hasInteracted}>
 				<div class="flex items-center gap-5">
 					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">USE</p>
 					<InputPrompt type="WASD" />
@@ -480,6 +498,24 @@
 		flex-shrink: 0;
 	}
 
+	@media (max-height: 700px) {
+		.page-content {
+			padding-bottom: 32px;
+		}
+		.info-row {
+			position: absolute;
+			bottom: 32px;
+			left: 40px;
+			right: 40px;
+			width: auto;
+			z-index: 20;
+		}
+		.nav-hint-card.nav-hint-hidden {
+			opacity: 0;
+			transition: opacity 0.3s ease;
+		}
+	}
+
 	/* Base card */
 	.card {
 		border: 4px solid black;
@@ -540,6 +576,7 @@
 		display: block;
 		width: 100%;
 		height: 100%;
+		overflow: hidden;
 		background-color: #ffa936;
 	}
 
@@ -548,7 +585,12 @@
 		display: block;
 		width: 100%;
 		height: 100%;
+		overflow: hidden;
 		background-color: #f86d95;
+	}
+
+	.event-card-wrapper {
+		container-type: size;
 	}
 
 	.event-card {
@@ -557,9 +599,34 @@
 		align-items: flex-start;
 		justify-content: center;
 		padding: 24px 24px 28px;
-		flex-shrink: 0;
-		min-height: 200px;
+		height: 100%;
+		overflow: hidden;
 		background-color: #fac393;
+	}
+
+	.full-progress {
+		display: contents;
+	}
+
+	.compact-progress {
+		display: none;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		gap: 24px;
+	}
+
+	@container (max-height: 200px) {
+		.full-progress {
+			display: none;
+		}
+		.compact-progress {
+			display: flex;
+		}
+		.event-card {
+			justify-content: center;
+			padding: 24px;
+		}
 	}
 
 	.progress-card {
@@ -569,14 +636,13 @@
 		align-items: flex-start;
 		justify-content: flex-end;
 		padding: 16px;
-		height: 108px;
 		background-color: #f3e8d8;
 	}
 
 	.progress-bar {
 		display: flex;
 		width: 100%;
-		flex: 1;
+		height: 40px;
 		border-radius: 4px;
 		overflow: hidden;
 	}
