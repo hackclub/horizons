@@ -921,7 +921,7 @@
                                             {/if}
                                             {#if item.variants && item.variants.length > 0}
                                                 <span
-                                                    class="px-2 py-0.5 text-xs rounded bg-blue-500/20 border border-blue-400 text-blue-300"
+                                                    class="px-2 py-0.5 text-xs rounded bg-blue-500/20 border border-blue-400 text-ds-link"
                                                     >{item.variants.length} variant{item.variants
                                                         .length > 1
                                                         ? 's'
@@ -929,7 +929,7 @@
                                                 >
                                             {/if}
                                         </h3>
-                                        <p class="text-sm text-purple-300 font-semibold">
+                                        <p class="text-sm text-ds-accent font-semibold">
                                             {item.cost} hours {item.variants &&
                                             item.variants.length > 0
                                                 ? '(base)'
@@ -947,7 +947,7 @@
                                 </div>
                                 <div class="flex flex-wrap gap-2">
                                     <button
-                                        class="px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500 text-blue-300 hover:bg-blue-600/30 text-sm transition-colors"
+                                        class="px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500 text-ds-link hover:bg-blue-600/30 text-sm transition-colors"
                                         onclick={() => {
                                             expandedItemVariants[item.itemId] =
                                                 !expandedItemVariants[item.itemId];
@@ -1061,7 +1061,7 @@
                                                         <span class="font-medium text-ds-text"
                                                             >{variant.name}</span
                                                         >
-                                                        <span class="text-purple-300 text-sm"
+                                                        <span class="text-ds-accent text-sm"
                                                             >{variant.cost} hours</span
                                                         >
                                                         {#if !variant.isActive}
@@ -1220,14 +1220,14 @@
                                         <p class="text-sm font-medium text-ds-text">
                                             {transaction.item.name}
                                             {#if transaction.variant}
-                                                <span class="text-blue-300">
+                                                <span class="text-ds-link">
                                                     ({transaction.variant.name})</span
                                                 >
                                             {/if}
                                         </p>
                                     </td>
                                     <td
-                                        class="px-4 py-3 text-sm font-semibold text-purple-300"
+                                        class="px-4 py-3 text-sm font-semibold text-ds-accent"
                                         >{transaction.cost} hours</td
                                     >
                                     <td class="px-4 py-3">
@@ -1391,7 +1391,7 @@
                                         </div>
                                         <div class="text-right">
                                             <p class="text-ds-text-secondary">Total Cost</p>
-                                            <p class="text-lg font-semibold text-purple-300">
+                                            <p class="text-lg font-semibold text-ds-accent">
                                                 {userGroup.totalCost} hours
                                             </p>
                                         </div>
@@ -1447,14 +1447,14 @@
                                                 <p class="text-sm font-medium text-ds-text">
                                                     {transaction.item.name}
                                                     {#if transaction.variant}
-                                                        <span class="text-blue-300">
+                                                        <span class="text-ds-link">
                                                             ({transaction.variant.name})</span
                                                         >
                                                     {/if}
                                                 </p>
                                             </td>
                                             <td
-                                                class="px-4 py-3 text-sm font-semibold text-purple-300"
+                                                class="px-4 py-3 text-sm font-semibold text-ds-accent"
                                                 >{transaction.cost} hours</td
                                             >
                                             <td class="px-4 py-3">
@@ -1542,7 +1542,7 @@
                                     <div class="flex gap-6 text-sm">
                                         <div class="text-right">
                                             <p class="text-ds-text-secondary">Hours</p>
-                                            <p class="text-lg font-bold text-purple-300">
+                                            <p class="text-lg font-bold text-ds-accent">
                                                 {userGroup.totalCost}
                                             </p>
                                         </div>

@@ -388,7 +388,7 @@
                                     {@const normalizedPlayableUrl = normalizeUrl(project.playableUrl)}
                                     {#if normalizedPlayableUrl}
                                         <a
-                                            class="text-purple-300 hover:text-purple-200 text-sm break-words"
+                                            class="text-ds-link hover:underline text-sm break-words"
                                             href={normalizedPlayableUrl}
                                             target="_blank"
                                             rel="noreferrer"
@@ -397,7 +397,7 @@
                                 {/if}
                                 {#if project.repoUrl}
                                     <a
-                                        class="text-purple-300 hover:text-purple-200 text-sm break-words"
+                                        class="text-ds-link hover:underline text-sm break-words"
                                         href={project.repoUrl}
                                         target="_blank"
                                         rel="noreferrer"
@@ -405,7 +405,7 @@
                                 {/if}
                                 {#if project.screenshotUrl}
                                     <a
-                                        class="text-purple-300 hover:text-purple-200 text-sm break-words"
+                                        class="text-ds-link hover:underline text-sm break-words"
                                         href={project.screenshotUrl}
                                         target="_blank"
                                         rel="noreferrer"

@@ -578,7 +578,7 @@
 								<p class="text-xs text-ds-link m-0">
 									by {currentSubmission.project.user.firstName} {currentSubmission.project.user.lastName}
 									{#if currentSubmission.project.user.age != null}
-										<span class="opacity-70">({currentSubmission.project.user.age}yo)</span>
+										<span class="opacity-80">({currentSubmission.project.user.age}yo)</span>
 									{/if}
 									{#if currentSubmission.project.user.slackUserId}
 										&middot; <a href="https://hackclub.slack.com/team/{currentSubmission.project.user.slackUserId}" target="_blank" rel="noopener noreferrer" class="text-ds-link underline hover:text-black">Slack DM</a>

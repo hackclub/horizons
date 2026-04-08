@@ -311,7 +311,7 @@
                                 {/if}
                             </td>
                             <td class="px-4 py-3">
-                                <span class="font-mono text-sm text-purple-300"
+                                <span class="font-mono text-sm text-ds-text-secondary"
                                     >{giftCode.code}</span
                                 >
                             </td>
@@ -337,7 +337,7 @@
                                     >
                                 {:else if giftCode.emailSentAt}
                                     <span
-                                        class="px-2 py-1 text-xs rounded bg-blue-500/20 border border-blue-400 text-blue-300"
+                                        class="px-2 py-1 text-xs rounded bg-blue-500/20 border border-blue-400 text-blue-700"
                                         >Sent</span
                                     >
                                 {:else}

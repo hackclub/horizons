@@ -124,7 +124,7 @@
                     <button
                         class={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
                             globalSettings.submissionsFrozen
-                                ? 'bg-blue-600/20 border-blue-500 text-blue-300 hover:bg-blue-600/30'
+                                ? 'bg-blue-600/20 border-blue-500 text-ds-link hover:bg-blue-600/30'
                                 : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                         }`}
                         onclick={toggleGlobalSubmissionsFrozen}
@@ -143,7 +143,7 @@
                     <div class="rounded-xl border border-blue-500 bg-blue-600/10 p-4 flex items-center gap-3">
                         <span class="text-2xl">🧊</span>
                         <div>
-                            <p class="font-semibold text-blue-300">
+                            <p class="font-semibold text-ds-link">
                                 Submissions are currently frozen
                             </p>
                             <p class="text-sm text-blue-400">
