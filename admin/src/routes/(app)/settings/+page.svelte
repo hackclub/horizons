@@ -100,6 +100,7 @@
     });
 </script>
 
+<div class="p-6"><div class="mx-auto max-w-6xl space-y-6">
 <div class="space-y-8">
     <h1 class="text-3xl font-bold">Settings</h1>
 
@@ -328,3 +329,4 @@
         {/if}
     </div>
 </div>
+</div></div>

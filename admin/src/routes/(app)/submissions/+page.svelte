@@ -822,6 +822,7 @@
     <title>Submissions - Admin Panel</title>
 </svelte:head>
 
+<div class="p-6"><div class="mx-auto max-w-6xl space-y-6">
 <section class="space-y-4 font-dm">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 class="text-2xl font-semibold">Submission Review Platform</h2>
@@ -1718,3 +1719,4 @@
         </div>
     {/if}
 </section>
+</div></div>

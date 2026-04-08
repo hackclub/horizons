@@ -34,7 +34,7 @@
 	let { user = null, collapsed = $bindable(false), class: className = '' }: Props = $props();
 
 	const navItems: NavItem[] = [
-		{ href: '/', label: 'Home', icon: Home },
+		{ href: '/home', label: 'Home', icon: Home },
 		{ href: '/review-select', label: 'Review', icon: PlaySquare, tint: 'accent' },
 		{ href: '/submissions', label: 'Submissions', icon: FileText },
 		{ href: '/projects', label: 'Projects', icon: FolderKanban },
