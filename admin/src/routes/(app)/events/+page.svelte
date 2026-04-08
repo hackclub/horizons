@@ -171,100 +171,100 @@
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 class="text-2xl font-semibold">Events Management</h2>
         <button
-            class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
+            class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
             onclick={loadEvents}
         >
             Refresh
         </button>
     </div>
 
-    <div class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-6">
+    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6">
         <h3 class="text-lg font-semibold">
             {editingEventSlug ? 'Edit Event' : 'Create New Event'}
         </h3>
         <div class="grid gap-4 md:grid-cols-2">
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="event-slug">Slug *</label>
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-slug">Slug *</label>
                 <input
                     id="event-slug"
                     type="text"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="my-event"
                     bind:value={eventForm.slug}
                 />
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="event-title">Title *</label>
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-title">Title *</label>
                 <input
                     id="event-title"
                     type="text"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="Event title"
                     bind:value={eventForm.title}
                 />
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="event-description">Description</label>
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-description">Description</label>
                 <input
                     id="event-description"
                     type="text"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="Event description..."
                     bind:value={eventForm.description}
                 />
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="event-image">Image URL</label>
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-image">Image URL</label>
                 <input
                     id="event-image"
                     type="text"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="https://..."
                     bind:value={eventForm.imageUrl}
                 />
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="event-location">Location</label>
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-location">Location</label>
                 <input
                     id="event-location"
                     type="text"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="San Francisco, CA"
                     bind:value={eventForm.location}
                 />
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="event-start-date">Start Date *</label>
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-start-date">Start Date *</label>
                 <input
                     id="event-start-date"
                     type="date"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     bind:value={eventForm.startDate}
                 />
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="event-end-date">End Date *</label>
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-end-date">End Date *</label>
                 <input
                     id="event-end-date"
                     type="date"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     bind:value={eventForm.endDate}
                 />
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-300" for="event-cost">Hour Cost *</label>
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-cost">Hour Cost *</label>
                 <input
                     id="event-cost"
                     type="number"
                     step="0.1"
                     min="0"
-                    class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     placeholder="0"
                     bind:value={eventForm.hourCost}
                 />
             </div>
             <div class="flex items-center gap-4">
-                <label class="flex items-center gap-2 text-sm text-gray-300">
+                <label class="flex items-center gap-2 text-sm text-ds-text-secondary">
                     <input type="checkbox" bind:checked={eventForm.isActive} class="rounded" />
                     Active
                 </label>
@@ -273,7 +273,7 @@
 
         <div class="flex flex-wrap gap-3 items-center">
             <button
-                class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
                 onclick={saveEvent}
                 disabled={eventFormSaving || !eventForm.slug || !eventForm.title || !eventForm.startDate || !eventForm.endDate || !eventForm.hourCost}
             >
@@ -281,50 +281,50 @@
             </button>
             {#if editingEventSlug}
                 <button
-                    class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                    class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
                     onclick={resetEventForm}
                 >
                     Cancel Edit
                 </button>
             {/if}
             {#if eventFormError}
-                <span class="text-red-400 text-sm">{eventFormError}</span>
+                <span class="text-red-600 text-sm">{eventFormError}</span>
             {/if}
             {#if eventFormSuccess}
-                <span class="text-green-400 text-sm">{eventFormSuccess}</span>
+                <span class="text-green-700 text-sm">{eventFormSuccess}</span>
             {/if}
         </div>
     </div>
 
     {#if eventsLoading}
-        <div class="py-12 text-center text-gray-300">
+        <div class="py-12 text-center text-ds-text-secondary">
             Loading events...
         </div>
     {:else if events.length === 0}
-        <div class="py-12 text-center text-gray-300">
+        <div class="py-12 text-center text-ds-text-secondary">
             No events yet. Create one above.
         </div>
     {:else}
         <div class="space-y-2">
             {#each events as event (event.eventId)}
-                <div class="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-4 py-3">
+                <div class="flex items-center justify-between rounded-lg border border-ds-border bg-ds-surface2 px-4 py-3">
                     <div class="flex items-center gap-3 flex-wrap">
                         <span class="font-medium">{event.title}</span>
-                        <span class="text-sm text-gray-400">{event.slug}</span>
-                        <span class="text-sm text-gray-400">
+                        <span class="text-sm text-ds-text-secondary">{event.slug}</span>
+                        <span class="text-sm text-ds-text-secondary">
                             {new Date(event.startDate).toLocaleDateString()} – {event.endDate ? new Date(event.endDate).toLocaleDateString() : ''}
                         </span>
                         {#if event.location}
-                            <span class="text-sm text-gray-400">{event.location}</span>
+                            <span class="text-sm text-ds-text-secondary">{event.location}</span>
                         {/if}
-                        <span class="text-sm text-gray-400">{event.hourCost}h</span>
+                        <span class="text-sm text-ds-text-secondary">{event.hourCost}h</span>
                         {#if event._count}
                             <span class="px-2 py-0.5 text-xs bg-purple-900/50 text-purple-400 rounded">
                                 {event._count.pinnedBy} pinned
                             </span>
                         {/if}
                         {#if !event.isActive}
-                            <span class="px-2 py-0.5 text-xs bg-red-900/50 text-red-400 rounded">Inactive</span>
+                            <span class="px-2 py-0.5 text-xs bg-red-900/50 text-red-600 rounded">Inactive</span>
                         {/if}
                     </div>
                     <div class="flex gap-2">

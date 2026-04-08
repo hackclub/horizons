@@ -5,7 +5,9 @@
 	import DOMPurify from 'dompurify';
 	import { api, type components } from '$lib/api';
 	import { timeAgo, formatDate, parseGitHubUrl } from '../review/utils';
-	import { ExternalLink, RefreshCcw, ChevronDown, ChevronUp, Monitor, Star, GitFork, CircleAlert, GitPullRequest, Moon, Sun } from 'lucide-svelte';
+	import { ExternalLink, RefreshCcw, ChevronUp, Monitor, Star, GitFork, CircleAlert, GitPullRequest, Moon, Sun } from 'lucide-svelte';
+	import { Button, Tab, FilterTag, Accordion } from '$lib/components';
+	import { theme, toggleTheme } from '$lib/themeStore';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
@@ -42,7 +44,7 @@
 	let reviewPanelOpen = $state(true);
 	let userNotesOpen = $state(false);
 	let checklistOpen = $state(false);
-	let darkMode = $state(true);
+	let darkMode = $derived($theme === 'dark');
 
 	// ── Panel resize ──
 	let splitPercent = $state(50);
@@ -389,50 +391,47 @@
 </script>
 
 <svelte:head>
-	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
 	<title>Horizons — Project Review</title>
 </svelte:head>
 
 {#if queueLoading}
-	<div class="rv2-theme flex items-center justify-center h-screen bg-white font-['DM_Sans',sans-serif] text-[#808080]" class:rv2-dark={darkMode}>
+	<div class="rv2-theme flex items-center justify-center h-screen bg-white font-dm text-ds-text-placeholder" class:rv2-dark={darkMode}>
 		<p>Loading review queue...</p>
 	</div>
 {:else if queueError}
-	<div class="rv2-theme flex flex-col items-center justify-center h-screen gap-2 bg-white font-['DM_Sans',sans-serif] text-[#e90000]" class:rv2-dark={darkMode}>
+	<div class="rv2-theme flex flex-col items-center justify-center h-screen gap-2 bg-white font-dm text-[#e90000]" class:rv2-dark={darkMode}>
 		<p>Failed to load review queue</p>
-		<p class="text-xs text-[#808080] max-w-[400px] text-center">{queueError}</p>
-		<button class="mt-3 bg-white border border-[#a7a7a7] text-black px-5 py-2 rounded-lg cursor-pointer font-['DM_Sans',sans-serif] text-sm shadow-sm hover:bg-[#f5f5f5]" onclick={() => loadQueue()}>Retry</button>
+		<p class="text-xs text-ds-text-placeholder max-w-[400px] text-center">{queueError}</p>
+		<Button class="mt-3 px-5 py-2 text-sm" onclick={() => loadQueue()}>Retry</Button>
 	</div>
 {:else if queueLength === 0}
-	<div class="rv2-theme flex items-center justify-center h-screen bg-white font-['DM_Sans',sans-serif] text-[#808080]" class:rv2-dark={darkMode}>
+	<div class="rv2-theme flex items-center justify-center h-screen bg-white font-dm text-ds-text-placeholder" class:rv2-dark={darkMode}>
 		<p>No pending submissions to review.</p>
 	</div>
 {:else if galleryMode}
 	<!-- ═══ GALLERY MODE ═══ -->
-	<div class="rv2-theme flex flex-col h-screen bg-white font-['DM_Sans',sans-serif]" class:rv2-dark={darkMode}>
-		<div class="flex items-center justify-between px-6 py-3 bg-[#eaeaea] border-b border-[#b3b3b3] shrink-0">
+	<div class="rv2-theme flex flex-col h-screen bg-white font-dm" class:rv2-dark={darkMode}>
+		<div class="flex items-center justify-between px-6 py-3 bg-ds-bg border-b border-ds-border-divider shrink-0">
 			<img src="/admin/logos/horizons.svg" alt="Horizons" class="h-5" />
 			<div class="flex items-center gap-3">
-				<p class="text-xs text-[#999] m-0">{filteredItems.length} of {queue.length} projects</p>
-				<button
-					class="bg-white border border-[#a7a7a7] rounded-lg p-1.5 cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#f5f5f5] flex items-center justify-center"
-					onclick={() => (darkMode = !darkMode)}
-					title="Toggle dark mode"
-				>{#if darkMode}<Sun size={14} />{:else}<Moon size={14} />{/if}</button>
+				<p class="text-xs text-ds-text-tertiary m-0">{filteredItems.length} of {queue.length} projects</p>
+				<Button class="p-1.5" onclick={() => toggleTheme()} title="Toggle dark mode">
+					{#if darkMode}<Sun size={14} />{:else}<Moon size={14} />{/if}
+				</Button>
 			</div>
 		</div>
 
-		<div class="flex flex-col gap-3 px-6 py-4 bg-[#f5f5f5] border-b border-[#b3b3b3] shrink-0">
+		<div class="flex flex-col gap-3 px-6 py-4 bg-ds-bg-secondary border-b border-ds-border-divider shrink-0">
 			<input
 				type="text"
-				class="w-full py-2 px-3 bg-white border border-[#a7a7a7] rounded-lg text-black text-sm font-['DM_Sans',sans-serif] outline-none placeholder:text-[#808080] focus:border-[#666]"
+				class="w-full py-2 px-3 bg-white border border-ds-border rounded-lg text-black text-sm font-dm outline-none placeholder:text-ds-text-placeholder focus:border-ds-border-strong"
 				placeholder="Search by project or author name..."
 				bind:value={searchQuery}
 			/>
 			<div class="flex flex-wrap gap-2 items-center">
 				{#each PROJECT_TYPES as type}
-					<button
-						class="py-1.5 px-3.5 rounded-full border text-xs font-['DM_Sans',sans-serif] cursor-pointer transition-all duration-150 {selectedTypes.has(type) ? 'bg-[#fce3c5] border-[#cabc96] text-black' : 'bg-white border-[#a7a7a7] text-[#808080] hover:border-[#666]'}"
+					<FilterTag
+						active={selectedTypes.has(type)}
 						onclick={() => {
 							const next = new Set(selectedTypes);
 							if (next.has(type)) next.delete(type); else next.add(type);
@@ -440,53 +439,44 @@
 						}}
 					>
 						{formatTypeName(type)}
-					</button>
+					</FilterTag>
 				{/each}
 				{#if selectedTypes.size > 0}
-					<button class="py-1.5 px-3.5 rounded-full border border-[#a7a7a7] bg-transparent text-[#808080] text-xs font-['DM_Sans',sans-serif] cursor-pointer underline hover:text-black" onclick={() => (selectedTypes = new Set())}>Clear</button>
+					<FilterTag class="underline hover:text-black" onclick={() => (selectedTypes = new Set())}>Clear</FilterTag>
 				{/if}
 			</div>
 		</div>
 
 		<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4 p-6 overflow-y-auto flex-1">
 			{#each filteredItems as { item, index } (item.submissionId)}
-				<button class="flex flex-col gap-1.5 p-5 bg-white border border-[#a7a7a7] rounded-lg cursor-pointer transition-all duration-150 text-left font-['DM_Sans',sans-serif] shadow-sm hover:border-[#666] hover:shadow-md" onclick={() => selectFromGallery(index)}>
+				<button class="flex flex-col gap-1.5 p-5 bg-white border border-ds-border rounded-lg cursor-pointer transition-all duration-150 text-left font-dm shadow-sm hover:border-ds-border-strong hover:shadow-md" onclick={() => selectFromGallery(index)}>
 					<p class="text-[15px] font-medium text-black m-0">{item.project.projectTitle}</p>
-					<p class="text-[13px] text-[#808080] m-0">{item.project.user.firstName} {item.project.user.lastName}</p>
-					<span class="inline-block mt-1 py-0.5 px-2.5 bg-[#fce3c5] text-black rounded-full text-xs font-medium self-start">{formatTypeName(item.project.projectType)}</span>
+					<p class="text-[13px] text-ds-text-placeholder m-0">{item.project.user.firstName} {item.project.user.lastName}</p>
+					<span class="inline-block mt-1 py-0.5 px-2.5 bg-ds-tag-active text-black rounded-full text-xs font-medium self-start">{formatTypeName(item.project.projectType)}</span>
 				</button>
 			{:else}
-				<p class="col-span-full text-center text-[#808080] py-10 text-sm">No projects match your filters.</p>
+				<p class="col-span-full text-center text-ds-text-placeholder py-10 text-sm">No projects match your filters.</p>
 			{/each}
 		</div>
 	</div>
 {:else}
 	<!-- ═══ REVIEW DETAIL MODE ═══ -->
-	<div class="rv2-theme flex flex-col h-screen bg-white font-['DM_Sans',sans-serif] text-black overflow-hidden" class:rv2-dark={darkMode}>
+	<div class="rv2-theme flex flex-col h-screen bg-white font-dm text-black overflow-hidden" class:rv2-dark={darkMode}>
 
 		<!-- ── TOP BAR ── -->
-		<div class="flex items-center justify-between p-2 h-12 bg-[#eaeaea] border-b border-[#b3b3b3] shrink-0 relative">
-			<button
-				class="bg-white border border-[#a7a7a7] rounded-lg p-2 text-xs font-medium cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#f5f5f5]"
-				onclick={returnToGallery}
-			>← Gallery</button>
+		<div class="flex items-center justify-between p-2 h-12 bg-ds-bg border-b border-ds-border-divider shrink-0 relative">
+			<Button onclick={returnToGallery}>← Gallery</Button>
 
 			<img src="/admin/logos/horizons.svg" alt="Horizons" class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-5" />
 
 			<div class="flex items-center gap-2">
-				<span class="text-xs text-[#999]">
+				<span class="text-xs text-ds-text-tertiary">
 					Reviewing <strong class="text-black">{currentIndex + 1}</strong> of <strong class="text-black">{queueLength}</strong> pending
 				</span>
-				<button
-					class="bg-white border border-[#a7a7a7] rounded-lg p-2 text-xs font-medium cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#f5f5f5]"
-					onclick={navigateNext}
-					disabled={currentIndex >= queueLength - 1}
-				>Skip</button>
-					<button
-						class="bg-white border border-[#a7a7a7] rounded-lg p-1.5 cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#f5f5f5] flex items-center justify-center"
-						onclick={() => (darkMode = !darkMode)}
-						title="Toggle dark mode"
-					>{#if darkMode}<Sun size={14} />{:else}<Moon size={14} />{/if}</button>
+				<Button onclick={navigateNext} disabled={currentIndex >= queueLength - 1}>Skip</Button>
+				<Button class="p-1.5" onclick={() => toggleTheme()} title="Toggle dark mode">
+					{#if darkMode}<Sun size={14} />{:else}<Moon size={14} />{/if}
+				</Button>
 			</div>
 		</div>
 
@@ -497,27 +487,24 @@
 			<!-- ═══ LEFT: DEMO IFRAME ═══ -->
 			<div class="flex flex-col" style="width: {splitPercent}%">
 				<!-- URL toolbar -->
-				<div class="flex gap-2 items-center p-2 bg-[#d8bfa1] border-b border-[#b3b3b3] shrink-0">
-					<div class="flex-1 bg-[#d5d5d5] border border-[#a7a7a7] rounded-lg p-2 text-xs text-[#808080] font-medium overflow-hidden text-ellipsis whitespace-nowrap shadow-[0_1px_4px_rgba(0,0,0,0.1)]">
+				<div class="flex gap-2 items-center p-2 bg-ds-zone-warm border-b border-ds-border-divider shrink-0">
+					<div class="flex-1 bg-ds-surface-inactive border border-ds-border rounded-lg p-2 text-xs text-ds-text-placeholder font-medium overflow-hidden text-ellipsis whitespace-nowrap shadow-[var(--color-ds-shadow)]">
 						{demoUrl ?? 'No demo URL'}
 					</div>
 					{#if airlockUrl}
-						<a
-							href={airlockUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="bg-[#fce3c5] border border-[#a7a7a7] rounded-lg p-2 flex items-center justify-center text-xs font-medium text-black no-underline shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#f5d4a8] shrink-0"
-						>Airlock</a>
+						<a href={airlockUrl} target="_blank" rel="noopener noreferrer">
+							<Button class="bg-ds-tag-active hover:bg-[#f5d4a8] no-underline shrink-0">Airlock</Button>
+						</a>
 					{/if}
-					<div class="flex self-stretch shrink-0 shadow-[0_1px_4px_rgba(0,0,0,0.1)] rounded-lg">
+					<div class="flex self-stretch shrink-0 shadow-[var(--color-ds-shadow)] rounded-lg">
 						<button
-							class="bg-white border border-[#a7a7a7] rounded-l-lg px-2 flex items-center justify-center -mr-px cursor-pointer hover:bg-[#f5f5f5]"
+							class="bg-white border border-ds-border rounded-l-lg px-2 flex items-center justify-center -mr-px cursor-pointer hover:bg-ds-bg-secondary"
 							onclick={openExternal}
 							disabled={!demoUrl}
 							title="Open in new tab"
 						><ExternalLink size={12} /></button>
 						<button
-							class="bg-white border border-[#a7a7a7] rounded-r-lg px-2 flex items-center justify-center cursor-pointer hover:bg-[#f5f5f5]"
+							class="bg-white border border-ds-border rounded-r-lg px-2 flex items-center justify-center cursor-pointer hover:bg-ds-bg-secondary"
 							onclick={reloadDemo}
 							disabled={!iframeLoaded}
 							title="Reload"
@@ -526,7 +513,7 @@
 				</div>
 
 				<!-- IFrame area -->
-				<div class="flex-1 bg-[#eee1d2] flex items-center justify-center overflow-hidden">
+				<div class="flex-1 bg-ds-zone-warm-body flex items-center justify-center overflow-hidden">
 					{#if iframeLoaded && demoUrl}
 						<iframe
 							class="w-full h-full border-none"
@@ -564,10 +551,10 @@
 			<div class="flex flex-col overflow-hidden" style="width: {100 - splitPercent}%">
 
 				<!-- Right top toolbar -->
-				<div class="flex items-center justify-end gap-2 px-2 h-[51px] box-border bg-[#a1a8d8] border-b border-[#b3b3b3] shrink-0">
+				<div class="flex items-center justify-end gap-2 px-2 h-[51px] box-border bg-ds-zone-cool border-b border-ds-border-divider shrink-0">
 					<!-- "Flagged as Sus" indicator would show here if the user is flagged -->
 					<button
-						class="bg-[#bfc3e6] border border-[#a7a7c8] rounded-lg p-2 text-xs font-medium cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.1)] flex items-center gap-1 hover:bg-[#aaafda]"
+						class="bg-ds-zone-cool-btn border border-[#a7a7c8] rounded-lg p-2 text-xs font-medium cursor-pointer shadow-[var(--color-ds-shadow)] flex items-center gap-1 hover:bg-[#aaafda]"
 						onclick={() => (userNotesOpen = !userNotesOpen)}
 					>
 						User Notes
@@ -578,7 +565,7 @@
 				</div>
 
 				<!-- Content area -->
-				<div class="flex-1 bg-[#d2d5ee] overflow-y-auto">
+				<div class="flex-1 bg-ds-zone-cool-body overflow-y-auto">
 					{#if submissionLoading}
 						<div class="flex items-center justify-center h-full text-[#6b71a0] text-xs">Loading submission...</div>
 					{:else if currentSubmission}
@@ -588,114 +575,97 @@
 								<h2 class="text-2xl font-medium m-0 mb-0.5">
 									{currentSubmission.project.projectTitle ?? 'Untitled'}
 								</h2>
-								<p class="text-xs text-[#3a3a6a] m-0">
+								<p class="text-xs text-ds-link m-0">
 									by {currentSubmission.project.user.firstName} {currentSubmission.project.user.lastName}
 									{#if currentSubmission.project.user.age != null}
 										<span class="opacity-70">({currentSubmission.project.user.age}yo)</span>
 									{/if}
 									{#if currentSubmission.project.user.slackUserId}
-										&middot; <a href="https://hackclub.slack.com/team/{currentSubmission.project.user.slackUserId}" target="_blank" rel="noopener noreferrer" class="text-[#3a3a6a] underline hover:text-black">Slack DM</a>
+										&middot; <a href="https://hackclub.slack.com/team/{currentSubmission.project.user.slackUserId}" target="_blank" rel="noopener noreferrer" class="text-ds-link underline hover:text-black">Slack DM</a>
 									{/if}
 								</p>
 								{#if currentSubmission.hackatimeHours != null}
-									<p class="text-xs text-[#3a3a6a] m-0 mt-0.5">
+									<p class="text-xs text-ds-link m-0 mt-0.5">
 										<strong>{currentSubmission.hackatimeHours.toFixed(1)}h</strong> Hackatime hours
 									</p>
 								{/if}
 								{#if currentSubmission.project.description}
-									<p class="text-xs text-[#3a3a6a] m-0 mt-1">{currentSubmission.project.description}</p>
+									<p class="text-xs text-ds-link m-0 mt-1">{currentSubmission.project.description}</p>
 								{/if}
 							</div>
 
 							<!-- Accordion: Readme -->
-							<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
-								<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
-									<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
-									Readme
-								</summary>
-								<div class="readme-content border-t border-[#a7a7a7] p-3 text-xs leading-relaxed max-h-[400px] overflow-y-auto">
-									{#if sanitizedReadme}
-										{@html sanitizedReadme}
-									{:else}
-										<p class="text-[#808080] italic">No README content available.</p>
-									{/if}
-								</div>
-							</details>
+							<Accordion title="Readme" class="mb-2" contentClass="readme-content leading-relaxed max-h-[400px] overflow-y-auto">
+								{#if sanitizedReadme}
+									{@html sanitizedReadme}
+								{:else}
+									<p class="text-ds-text-placeholder italic">No README content available.</p>
+								{/if}
+							</Accordion>
 
 							<!-- Accordion: Github -->
-							<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
-								<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
-									<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
-									Github
-								</summary>
-								<div class="border-t border-[#a7a7a7] p-3 text-xs">
+							<Accordion title="Github" class="mb-2">
 									{#if githubLoading}
-										<p class="text-[#808080]">Loading GitHub data...</p>
+										<p class="text-ds-text-placeholder">Loading GitHub data...</p>
 									{:else if githubError}
 										<p class="text-[#e90000]">{githubError}</p>
 									{:else if githubRepo}
 										<div class="flex items-center gap-3 mb-3">
-											<a class="font-bold text-[#3a3a6a] no-underline hover:underline" href={repoUrl} target="_blank" rel="noopener noreferrer">
+											<a class="font-bold text-ds-link no-underline hover:underline" href={repoUrl} target="_blank" rel="noopener noreferrer">
 												{githubRepo.fullName} ↗
 											</a>
 											{#if githubRepo.language}
-												<span class="bg-[#eee1d2] text-xs font-medium px-2 py-0.5 rounded">{githubRepo.language}</span>
+												<span class="bg-ds-zone-warm-body text-xs font-medium px-2 py-0.5 rounded">{githubRepo.language}</span>
 											{/if}
 										</div>
-										<div class="flex gap-4 text-xs text-[#808080] mb-3">
+										<div class="flex gap-4 text-xs text-ds-text-placeholder mb-3">
 											<span class="flex items-center gap-1"><Star size={12} /> {githubRepo.stars}</span>
 											<span class="flex items-center gap-1"><GitFork size={12} /> {githubRepo.forks}</span>
 											<span class="flex items-center gap-1"><CircleAlert size={12} /> {githubRepo.openIssues} issues</span>
 											<span class="flex items-center gap-1"><GitPullRequest size={12} /> {githubRepo.pullRequests} PRs</span>
 										</div>
-										<div class="flex gap-4 text-xs text-[#808080] mb-3">
+										<div class="flex gap-4 text-xs text-ds-text-placeholder mb-3">
 											<span>Created {timeAgo(githubRepo.createdAt)}</span>
 											<span>Pushed {timeAgo(githubRepo.pushedAt)}</span>
 										</div>
 										{#if githubRepo.commits.length > 0}
-											<div class="border-t border-[#e0e0e0] pt-2 mt-2">
-												<p class="text-xs font-medium text-[#808080] mb-1">Recent commits</p>
+											<div class="border-t border-ds-border-light pt-2 mt-2">
+												<p class="text-xs font-medium text-ds-text-placeholder mb-1">Recent commits</p>
 												{#each githubRepo.commits.slice(0, 5) as commit}
 													<div class="flex items-start gap-2 py-1 text-xs">
-														<a href={commit.url} target="_blank" rel="noopener noreferrer" class="text-[#3a3a6a] font-mono shrink-0">{commit.sha.slice(0, 7)}</a>
-														<span class="text-[#808080] truncate flex-1">{commit.message.split('\n')[0]}</span>
+														<a href={commit.url} target="_blank" rel="noopener noreferrer" class="text-ds-link font-mono shrink-0">{commit.sha.slice(0, 7)}</a>
+														<span class="text-ds-text-placeholder truncate flex-1">{commit.message.split('\n')[0]}</span>
 														<span class="text-[10px] text-[#aaa] shrink-0">{timeAgo(commit.date)}</span>
 													</div>
 												{/each}
 											</div>
 										{/if}
 									{:else}
-										<p class="text-[#808080]">No GitHub data available.</p>
+										<p class="text-ds-text-placeholder">No GitHub data available.</p>
 									{/if}
-								</div>
-							</details>
+							</Accordion>
 
 							<!-- Accordion: Review History -->
-							<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
-								<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
-									<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
-									Review History
-								</summary>
-								<div class="border-t border-[#a7a7a7] p-3 text-xs">
+							<Accordion title="Review History" class="mb-2">
 									{#if currentSubmission.timeline.length === 0}
-										<p class="text-[#808080] italic">No review history yet.</p>
+										<p class="text-ds-text-placeholder italic">No review history yet.</p>
 									{/if}
 									{#each currentSubmission.timeline as event, i}
-										{#if i > 0}<hr class="border-none border-t border-[#e0e0e0] my-2" />{/if}
+										{#if i > 0}<hr class="border-none border-t border-ds-border-light my-2" />{/if}
 										{#if event.type === 'submitted' || event.type === 'resubmitted'}
-											<div class="flex items-center gap-2 text-xs text-[#808080]">
+											<div class="flex items-center gap-2 text-xs text-ds-text-placeholder">
 												<span class="w-1.5 h-1.5 rounded-full shrink-0 {event.type === 'submitted' ? 'bg-[#42a5f5]' : 'bg-[#f5a623]'}"></span>
 												{event.type === 'submitted' ? 'Submitted' : 'Re-submitted'} with <strong class="text-black">{event.hours ?? '?'}h</strong>
 												<span class="border-b border-dotted border-[#808080]" title={formatDate(event.timestamp)}>{timeAgo(event.timestamp)}</span>
 											</div>
 										{:else if event.type === 'approved'}
 											<div>
-												<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#e8f5e9] text-[#4caf50] mb-1">✓ Approved</span>
+												<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-ds-green-bg text-ds-green mb-1">✓ Approved</span>
 												{#if event.approvedHours != null && event.submittedHours != null && event.approvedHours !== event.submittedHours}
 													<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#fff3e0] text-[#ff9800] ml-1">{event.submittedHours}h → {event.approvedHours}h</span>
 												{/if}
 												{#if event.userFeedback}<p class="text-xs mt-1 mb-0">{event.userFeedback}</p>{/if}
-												<p class="text-xs text-[#808080] mt-1 mb-0">by @{event.reviewerName} · <span title={formatDate(event.timestamp)}>{timeAgo(event.timestamp)}</span></p>
+												<p class="text-xs text-ds-text-placeholder mt-1 mb-0">by @{event.reviewerName} · <span title={formatDate(event.timestamp)}>{timeAgo(event.timestamp)}</span></p>
 												{#if event.hoursJustification}
 													<div class="bg-[#fdf8f0] border-l-2 border-[#f5a623] rounded-r px-2 py-1.5 mt-1.5">
 														<p class="text-[10px] font-bold text-[#f5a623] uppercase mb-0.5">Justification</p>
@@ -705,80 +675,67 @@
 											</div>
 										{:else if event.type === 'rejected'}
 											<div>
-												<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffebee] text-[#ef5350] mb-1">↻ Changes Needed</span>
+												<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-ds-red-bg text-ds-red mb-1">↻ Changes Needed</span>
 												{#if event.userFeedback}<p class="text-xs mt-1 mb-0">{event.userFeedback}</p>{/if}
-												<p class="text-xs text-[#808080] mt-1 mb-0">by @{event.reviewerName} · <span title={formatDate(event.timestamp)}>{timeAgo(event.timestamp)}</span></p>
+												<p class="text-xs text-ds-text-placeholder mt-1 mb-0">by @{event.reviewerName} · <span title={formatDate(event.timestamp)}>{timeAgo(event.timestamp)}</span></p>
 											</div>
 										{/if}
 									{/each}
-								</div>
-							</details>
+							</Accordion>
 
 								<!-- Accordion: Hours Breakdown -->
 								{#if currentSubmission.hackatimeHours != null}
-									<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
-										<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
-											<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
-											Hours Breakdown
-											<span class="text-[#808080] ml-auto">{currentSubmission.hackatimeHours.toFixed(1)}h total</span>
-										</summary>
-										<div class="border-t border-[#a7a7a7] p-3 text-xs">
+									<Accordion title="Hours Breakdown" class="mb-2">
+										{#snippet trailing()}<span class="text-ds-text-placeholder">{currentSubmission?.hackatimeHours?.toFixed(1)}h total</span>{/snippet}
 											{#if hackatimeProjects.length > 1}
 												<p class="text-xs font-medium mb-2">Per-project hours</p>
 												{#each hackatimeProjects as project}
 													<div class="flex items-center gap-2 mb-1.5">
-														<span class="text-[#808080] truncate flex-1">{project}</span>
+														<span class="text-ds-text-placeholder truncate flex-1">{project}</span>
 														<span class="font-bold">{(currentSubmission.hackatimeHours / hackatimeProjects.length).toFixed(1)}h</span>
 													</div>
 												{/each}
-												<div class="flex items-center gap-2 pt-2 mt-2 border-t border-[#a7a7a7]">
+												<div class="flex items-center gap-2 pt-2 mt-2 border-t border-ds-border">
 													<span class="font-medium">Total</span>
 													<span class="font-bold ml-auto">{currentSubmission.hackatimeHours.toFixed(1)}h</span>
 												</div>
 											{:else if hackatimeProjects.length === 1}
 												<div class="flex items-center gap-2">
-													<span class="text-[#808080]">{hackatimeProjects[0]}</span>
+													<span class="text-ds-text-placeholder">{hackatimeProjects[0]}</span>
 													<span class="font-bold ml-auto">{currentSubmission.hackatimeHours.toFixed(1)}h</span>
 												</div>
 											{:else}
-												<p class="text-[#808080]">No linked Hackatime projects.</p>
+												<p class="text-ds-text-placeholder">No linked Hackatime projects.</p>
 											{/if}
-										</div>
-									</details>
+									</Accordion>
 								{/if}
 
 								<!-- Accordion: Project Card -->
-								<details class="accordion mb-2 bg-white border border-[#a7a7a7] rounded-lg overflow-hidden">
-									<summary class="p-2 flex items-center gap-1 text-xs font-medium cursor-pointer hover:bg-black/5 dark-hover list-none [&::-webkit-details-marker]:hidden">
-										<ChevronDown size={12} class="text-[#808080] transition-transform accordion-chevron" />
-										Project Card
-									</summary>
-									<div class="border-t border-[#a7a7a7]">
+								<Accordion title="Project Card" class="mb-2" contentClass="p-0">
 										{#if currentSubmission.screenshotUrl}
 											<img
-												class="w-full max-h-[200px] object-cover block border-b border-[#a7a7a7]"
+												class="w-full max-h-[200px] object-cover block border-b border-ds-border"
 												src={currentSubmission.screenshotUrl}
 												alt="{currentSubmission.project.projectTitle ?? 'Project'} screenshot"
 											/>
 										{:else}
-											<div class="w-full h-[100px] flex items-center justify-center text-[#808080] text-xs bg-[#f5f5f5] border-b border-[#a7a7a7]">No screenshot</div>
+											<div class="w-full h-[100px] flex items-center justify-center text-ds-text-placeholder text-xs bg-ds-bg-secondary border-b border-ds-border">No screenshot</div>
 										{/if}
 										<div class="p-3">
 											<h4 class="text-[15px] font-bold m-0 mb-1.5">{currentSubmission.project.projectTitle ?? 'Untitled Project'}</h4>
-											<p class="text-xs text-[#808080] m-0 leading-relaxed whitespace-pre-wrap">
+											<p class="text-xs text-ds-text-placeholder m-0 leading-relaxed whitespace-pre-wrap">
 												{currentSubmission.project.description ?? 'No description provided.'}
 											</p>
 										</div>
-									</div>
-								</details>
+								</Accordion>
 						</div>
 					{/if}
 				</div>
 
 				<!-- ── REVIEW PANEL (bottom) ── -->
-				<div class="bg-[#eed2dc] shrink-0">
+				<div class="bg-ds-zone-pink-body shrink-0">
 					<!-- Review header -->
-					<div class="flex items-center gap-1 p-2 bg-[#d8a1b4] border-y border-[#b3b3b3]">
+					<div class="flex items-center gap-1 p-2 bg-ds-zone-pink border-y border-ds-border-divider">
 						<button
 							class="flex items-center gap-1 cursor-pointer text-xs font-medium text-black bg-transparent border-none p-0 hover:opacity-70"
 							onclick={() => (reviewPanelOpen = !reviewPanelOpen)}
@@ -788,27 +745,23 @@
 						</button>
 						<div class="ml-auto">
 							<button
-								class="bg-[#e0bcc9] border border-[#c8a7b3] rounded-lg p-2 text-xs font-medium cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.1)] flex items-center gap-1 hover:bg-[#d4aebb]"
+								class="bg-ds-zone-pink-btn border border-[#c8a7b3] rounded-lg p-2 text-xs font-medium cursor-pointer shadow-[var(--color-ds-shadow)] flex items-center gap-1 hover:bg-[#d4aebb]"
 								onclick={() => (checklistOpen = !checklistOpen)}
 							>
 								Project Checklist
-								<span class="text-[#808080]">({checkedItems.length}/{CHECKLIST_ITEMS.length})</span>
+								<span class="text-ds-text-placeholder">({checkedItems.length}/{CHECKLIST_ITEMS.length})</span>
 							</button>
 						</div>
 					</div>
 
 					<div class="review-panel-body" class:review-panel-open={reviewPanelOpen && !!currentSubmission}><div class="overflow-hidden">
 						<!-- Tabs -->
-						<div class="flex gap-1 items-center justify-center p-1 mx-4 mt-3 bg-[#eaebf8] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.1)]">
-							<button
-								class="flex-1 px-2 py-1 rounded text-xs font-medium cursor-pointer border-none {activeForm === 'approve' ? 'bg-[#e8f5e9] text-[#4caf50] border border-[#4caf50]/30 shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#c8e6c9]' : 'bg-transparent text-[#4c4c4c] hover:bg-white/10'}"
-								onclick={() => (activeForm = 'approve')}
-							>Approve</button>
-							<button
-								class="flex-1 px-2 py-1 rounded text-xs font-medium cursor-pointer border-none {activeForm === 'changes' ? 'bg-[#ffebee] text-[#ef5350] border border-[#ef5350]/30 shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:bg-[#ffcdd2]' : 'bg-transparent text-[#4c4c4c] hover:bg-white/10'}"
-								onclick={() => (activeForm = 'changes')}
-							>Changes Needed</button>
-						</div>
+						<Tab
+							items={[{ label: 'Approve', value: 'approve' }, { label: 'Changes Needed', value: 'changes' }]}
+							bind:value={activeForm}
+							variant="approve-reject"
+							class="mx-4 mt-3"
+						/>
 
 						<!-- Tab content -->
 						{#key activeForm}
@@ -823,7 +776,7 @@
 											step="0.5"
 											min="0"
 											bind:value={approvedHours}
-											class="block w-[80px] mt-1 bg-white border border-[#b3b3b3] rounded-lg p-1.5 text-sm font-bold outline-none focus:border-[#666]"
+											class="block w-[80px] mt-1 bg-white border border-ds-border-divider rounded-lg p-1.5 text-sm font-bold outline-none focus:border-ds-border-strong"
 										/>
 									</div>
 									<div class="flex-1">
@@ -833,7 +786,7 @@
 											bind:value={hoursJustification}
 											maxlength={500}
 											placeholder="Why approve these hours?"
-											class="block w-full mt-1 bg-white border border-[#b3b3b3] rounded-lg p-2 text-xs text-black font-['DM_Sans',sans-serif] resize-y min-h-9 outline-none focus:border-[#666]"
+											class="block w-full mt-1 bg-white border border-ds-border-divider rounded-lg p-2 text-xs text-black font-dm resize-y min-h-9 outline-none focus:border-ds-border-strong"
 										></textarea>
 									</div>
 								</div>
@@ -844,19 +797,17 @@
 										bind:value={approveComment}
 										maxlength={500}
 										placeholder="Comment shown to user (optional)"
-										class="block w-full mt-1 bg-white border border-[#b3b3b3] rounded-lg p-2 text-xs text-black font-['DM_Sans',sans-serif] resize-y min-h-9 outline-none focus:border-[#666]"
+										class="block w-full mt-1 bg-white border border-ds-border-divider rounded-lg p-2 text-xs text-black font-dm resize-y min-h-9 outline-none focus:border-ds-border-strong"
 									></textarea>
 								</div>
 								<div class="flex items-center gap-2 mt-3">
-									<label class="flex items-center gap-1 text-[10px] text-[#808080] cursor-pointer">
+									<label class="flex items-center gap-1 text-[10px] text-ds-text-placeholder cursor-pointer">
 										<input type="checkbox" bind:checked={sendEmail} class="accent-[#4caf50]" />
 										Send email
 									</label>
-									<button
-										class="ml-auto px-4 py-2 rounded-lg text-xs font-bold cursor-pointer border-none bg-[#4caf50] text-white hover:bg-[#43a047] disabled:opacity-50"
-										onclick={submitApproval}
-										disabled={submitting}
-									>{submitting ? '...' : 'Submit Approval'}</button>
+									<Button variant="approve" class="ml-auto" onclick={submitApproval} disabled={submitting}>
+										{submitting ? '...' : 'Submit Approval'}
+									</Button>
 								</div>
 							{:else}
 								<div>
@@ -866,19 +817,17 @@
 										bind:value={changesComment}
 										maxlength={500}
 										placeholder="Describe what the user needs to fix..."
-										class="block w-full mt-1 bg-white border border-[#b3b3b3] rounded-lg p-2 text-xs text-black font-['DM_Sans',sans-serif] resize-y min-h-12 outline-none focus:border-[#666]"
+										class="block w-full mt-1 bg-white border border-ds-border-divider rounded-lg p-2 text-xs text-black font-dm resize-y min-h-12 outline-none focus:border-ds-border-strong"
 									></textarea>
 								</div>
 								<div class="flex items-center gap-2 mt-3">
-									<label class="flex items-center gap-1 text-[10px] text-[#808080] cursor-pointer">
+									<label class="flex items-center gap-1 text-[10px] text-ds-text-placeholder cursor-pointer">
 										<input type="checkbox" bind:checked={rejectSendEmail} class="accent-[#ef5350]" />
 										Send email
 									</label>
-									<button
-										class="ml-auto px-4 py-2 rounded-lg text-xs font-bold cursor-pointer border-none bg-[#ef5350] text-white hover:bg-[#e53935] disabled:opacity-50"
-										onclick={submitChangesNeeded}
-										disabled={submitting}
-									>{submitting ? '...' : 'Submit Changes Needed'}</button>
+									<Button variant="reject" class="ml-auto" onclick={submitChangesNeeded} disabled={submitting}>
+										{submitting ? '...' : 'Submit Changes Needed'}
+									</Button>
 								</div>
 							{/if}
 						</div>
@@ -892,26 +841,26 @@
 		{#if userNotesOpen}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="fixed z-50 w-[320px] bg-[#d2d5ee] border border-[#a7a7a7] rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.2)] font-['DM_Sans',sans-serif] flex flex-col"
+				class="fixed z-50 w-[320px] bg-ds-zone-cool-body border border-ds-border rounded-lg shadow-[var(--color-ds-shadow-popout)] font-dm flex flex-col"
 				style="left: {notesPosX}px; top: {notesPosY}px;"
 			>
 				<!-- Drag handle / title bar -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
-					class="flex items-center justify-between px-3 py-2 bg-[#a1a8d8] border-b border-[#a7a7a7] rounded-t-lg cursor-grab active:cursor-grabbing select-none"
+					class="flex items-center justify-between px-3 py-2 bg-ds-zone-cool border-b border-ds-border rounded-t-lg cursor-grab active:cursor-grabbing select-none"
 					onmousedown={startDrag('notes')}
 				>
 					<span class="text-xs font-medium text-black">User Notes</span>
 					<div class="flex items-center gap-2">
 						<button
-							class="text-[10px] text-[#808080] border border-[#a7a7a7] rounded px-1.5 py-0.5 cursor-pointer bg-white hover:bg-[#f5f5f5]"
+							class="text-[10px] text-ds-text-placeholder border border-ds-border rounded px-1.5 py-0.5 cursor-pointer bg-white hover:bg-ds-bg-secondary"
 							onclick={saveUserNote}
 							disabled={userNoteSaving}
 						>
 							{userNoteSaving ? 'Saving...' : 'Save'}
 						</button>
 						<button
-							class="text-[#808080] hover:text-black cursor-pointer bg-transparent border-none text-sm leading-none p-0"
+							class="text-ds-text-placeholder hover:text-black cursor-pointer bg-transparent border-none text-sm leading-none p-0"
 							onclick={() => (userNotesOpen = false)}
 						>×</button>
 					</div>
@@ -919,7 +868,7 @@
 				<!-- Content -->
 				<div class="p-3">
 					<textarea
-						class="w-full bg-[#f5f5f5] border border-[#a7a7a7] rounded-lg p-2 text-xs text-black font-['DM_Sans',sans-serif] resize-y min-h-[80px] outline-none focus:border-[#666]"
+						class="w-full bg-ds-bg-secondary border border-ds-border rounded-lg p-2 text-xs text-black font-dm resize-y min-h-[80px] outline-none focus:border-ds-border-strong"
 						bind:value={userNote}
 						maxlength={1000}
 						placeholder="Notes about this user..."
@@ -932,38 +881,38 @@
 		{#if checklistOpen && currentSubmission}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="fixed z-50 w-[360px] bg-[#eed2dc] border border-[#a7a7a7] rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.2)] font-['DM_Sans',sans-serif] flex flex-col"
+				class="fixed z-50 w-[360px] bg-ds-zone-pink-body border border-ds-border rounded-lg shadow-[var(--color-ds-shadow-popout)] font-dm flex flex-col"
 				style="left: {checklistPosX}px; top: {checklistPosY}px;"
 			>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
-					class="flex items-center justify-between px-3 py-2 bg-[#d8a1b4] border-b border-[#a7a7a7] rounded-t-lg cursor-grab active:cursor-grabbing select-none"
+					class="flex items-center justify-between px-3 py-2 bg-ds-zone-pink border-b border-ds-border rounded-t-lg cursor-grab active:cursor-grabbing select-none"
 					onmousedown={startDrag('checklist')}
 				>
 					<span class="text-xs font-medium text-black">Project Checklist & Notes</span>
 					<button
-						class="text-[#808080] hover:text-black cursor-pointer bg-transparent border-none text-sm leading-none p-0"
+						class="text-ds-text-placeholder hover:text-black cursor-pointer bg-transparent border-none text-sm leading-none p-0"
 						onclick={() => (checklistOpen = false)}
 					>×</button>
 				</div>
 				<div class="p-3 max-h-[400px] overflow-y-auto">
-					<p class="text-xs font-medium mb-2">Checklist <span class="text-[#808080]">({checkedItems.length}/{CHECKLIST_ITEMS.length})</span></p>
+					<p class="text-xs font-medium mb-2">Checklist <span class="text-ds-text-placeholder">({checkedItems.length}/{CHECKLIST_ITEMS.length})</span></p>
 					{#each CHECKLIST_ITEMS as item, idx}
 						<label class="flex items-start gap-1.5 text-xs mb-1 cursor-pointer">
 							<input type="checkbox" checked={checkedItems.includes(idx)} onchange={() => toggleChecklist(idx)} class="mt-px accent-[#4caf50] shrink-0" />
-							<span class={checkedItems.includes(idx) ? 'line-through text-[#808080]' : ''}>{item}</span>
+							<span class={checkedItems.includes(idx) ? 'line-through text-ds-text-placeholder' : ''}>{item}</span>
 						</label>
 					{/each}
 
 					<div class="mt-3">
 						<div class="flex items-center justify-between mb-1">
 							<p class="text-xs font-medium m-0">Project Notes</p>
-							<button class="text-[10px] text-[#808080] border border-[#a7a7a7] rounded px-1.5 py-0.5 cursor-pointer bg-white hover:bg-[#f5f5f5]" onclick={saveProjectNote} disabled={projectNoteSaving}>
+							<button class="text-[10px] text-ds-text-placeholder border border-ds-border rounded px-1.5 py-0.5 cursor-pointer bg-white hover:bg-ds-bg-secondary" onclick={saveProjectNote} disabled={projectNoteSaving}>
 								{projectNoteSaving ? '...' : 'Save'}
 							</button>
 						</div>
 						<textarea
-							class="w-full bg-[#f5f5f5] border border-[#a7a7a7] rounded-lg p-2 text-xs text-black font-['DM_Sans',sans-serif] resize-y min-h-[80px] outline-none focus:border-[#666]"
+							class="w-full bg-ds-bg-secondary border border-ds-border rounded-lg p-2 text-xs text-black font-dm resize-y min-h-[80px] outline-none focus:border-ds-border-strong"
 							bind:value={projectNote}
 							maxlength={1000}
 							placeholder="Notes about this project..."
@@ -979,45 +928,16 @@
 <svelte:window onmousemove={onMouseMove} onmouseup={onMouseUp} />
 
 <style>
-	.readme-content :global(h1) { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-	.readme-content :global(h2) { font-size: 16px; font-weight: 700; margin-top: 14px; margin-bottom: 6px; }
-	.readme-content :global(p) { margin-bottom: 8px; }
-	.readme-content :global(code) { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-size: 12px; }
-	.readme-content :global(pre) { background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; margin-bottom: 10px; overflow-x: auto; }
-	.readme-content :global(pre code) { background: none; padding: 0; }
-	.readme-content :global(ul) { padding-left: 20px; margin-bottom: 8px; }
-	.readme-content :global(li) { margin-bottom: 4px; }
-	.readme-content :global(a) { color: #3a3a6a; }
-	.readme-content :global(img) { max-width: 100%; }
-	/* Accordion animations */
-	.accordion :global(.accordion-chevron) { transition: transform 0.2s ease; }
-	.accordion[open] :global(.accordion-chevron) { transform: rotate(180deg); }
-	.accordion[open] > :global(:not(summary)) {
-		animation: accordion-open 0.2s ease;
-	}
-	@keyframes accordion-open {
-		from { opacity: 0; transform: translateY(-4px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-
-	/* Button hover animations */
-	:global(.rv2-theme) button,
-	:global(.rv2-theme) a[href],
-	:global(.rv2-theme) summary {
-		transition: all 0.15s ease;
-	}
-	:global(.rv2-theme) button:active:not(:disabled) {
-		transform: scale(0.97);
-	}
-
-	/* Tab switching animation */
-	:global(.tab-content) {
-		animation: tab-fade-in 0.15s ease;
-	}
-	@keyframes tab-fade-in {
-		from { opacity: 0; transform: translateY(4px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
+	:global(.readme-content h1) { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+	:global(.readme-content h2) { font-size: 16px; font-weight: 700; margin-top: 14px; margin-bottom: 6px; }
+	:global(.readme-content p) { margin-bottom: 8px; }
+	:global(.readme-content code) { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-size: 12px; }
+	:global(.readme-content pre) { background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; margin-bottom: 10px; overflow-x: auto; }
+	:global(.readme-content pre code) { background: none; padding: 0; }
+	:global(.readme-content ul) { padding-left: 20px; margin-bottom: 8px; }
+	:global(.readme-content li) { margin-bottom: 4px; }
+	:global(.readme-content a) { color: #3a3a6a; }
+	:global(.readme-content img) { max-width: 100%; }
 
 	/* Review panel collapse animation */
 	.review-panel-body {
@@ -1038,20 +958,20 @@
 	}
 
 	/* Readme dark mode */
-	:global(.rv2-dark) .readme-content :global(code) { background: #2a2a2a; color: #e0e0e0; }
-	:global(.rv2-dark) .readme-content :global(pre) { background: #222; border-color: #3a3a3a; }
-	:global(.rv2-dark) .readme-content :global(a) { color: #8a8ac8; }
-	:global(.rv2-dark) .readme-content :global(h1),
-	:global(.rv2-dark) .readme-content :global(h2),
-	:global(.rv2-dark) .readme-content :global(h3),
-	:global(.rv2-dark) .readme-content :global(p),
-	:global(.rv2-dark) .readme-content :global(li),
-	:global(.rv2-dark) .readme-content :global(td),
-	:global(.rv2-dark) .readme-content :global(th),
-	:global(.rv2-dark) .readme-content :global(blockquote) { color: #d0d0d0; }
-	:global(.rv2-dark) .readme-content :global(hr) { border-color: #3a3a3a; }
-	:global(.rv2-dark) .readme-content :global(table) { border-color: #3a3a3a; }
-	:global(.rv2-dark) .readme-content :global(th) { background: #2a2a2a; }
+	:global(.rv2-dark .readme-content code) { background: #2a2a2a; color: #e0e0e0; }
+	:global(.rv2-dark .readme-content pre) { background: #222; border-color: #3a3a3a; }
+	:global(.rv2-dark .readme-content a) { color: #8a8ac8; }
+	:global(.rv2-dark .readme-content h1),
+	:global(.rv2-dark .readme-content h2),
+	:global(.rv2-dark .readme-content h3),
+	:global(.rv2-dark .readme-content p),
+	:global(.rv2-dark .readme-content li),
+	:global(.rv2-dark .readme-content td),
+	:global(.rv2-dark .readme-content th),
+	:global(.rv2-dark .readme-content blockquote) { color: #d0d0d0; }
+	:global(.rv2-dark .readme-content hr) { border-color: #3a3a3a; }
+	:global(.rv2-dark .readme-content table) { border-color: #3a3a3a; }
+	:global(.rv2-dark .readme-content th) { background: #2a2a2a; }
 
 	/* ── Dark mode overrides ── */
 	:global(.rv2-dark) {

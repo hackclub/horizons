@@ -1,5 +1,6 @@
 <script lang="ts">
 	import './layout.css';
+	import '$lib/themeStore';
 
 	let { children } = $props();
 </script>

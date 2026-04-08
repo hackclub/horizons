@@ -600,7 +600,7 @@
         <div class="flex items-center gap-2">
             {#if shops.length > 0}
                 <select
-                    class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    class="rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                     value={selectedShopId}
                     onchange={(e) => {
                         const val = parseInt((e.target as HTMLSelectElement).value, 10);
@@ -617,7 +617,7 @@
                 </select>
             {/if}
             <button
-                class={`px-4 py-2 rounded-lg border transition-colors ${showShopManager ? 'bg-yellow-600 border-yellow-400' : 'bg-gray-800 border-gray-700 hover:bg-gray-700'}`}
+                class={`px-4 py-2 rounded-lg border transition-colors ${showShopManager ? 'bg-yellow-600 border-yellow-400' : 'bg-ds-surface2 border-ds-border hover:bg-ds-surface-inactive'}`}
                 onclick={() => (showShopManager = !showShopManager)}
             >
                 Manage Shops
@@ -626,39 +626,39 @@
     </div>
 
     {#if showShopManager}
-        <div class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-6">
+        <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6">
             <h3 class="text-lg font-semibold">
                 {editingShopId ? 'Edit Shop' : 'Create New Shop'}
             </h3>
             <div class="grid gap-4 md:grid-cols-2">
                 <div class="space-y-2">
-                    <label class="text-sm font-medium text-gray-300" for="shop-slug">Slug *</label>
+                    <label class="text-sm font-medium text-ds-text-secondary" for="shop-slug">Slug *</label>
                     <input
                         id="shop-slug"
                         type="text"
-                        class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                         placeholder="my-shop"
                         bind:value={shopForm.slug}
                     />
                 </div>
                 <div class="space-y-2">
-                    <label class="text-sm font-medium text-gray-300" for="shop-description"
+                    <label class="text-sm font-medium text-ds-text-secondary" for="shop-description"
                         >Description</label
                     >
                     <input
                         id="shop-description"
                         type="text"
-                        class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                         placeholder="Shop description..."
                         bind:value={shopForm.description}
                     />
                 </div>
                 <div class="flex items-center gap-4">
-                    <label class="flex items-center gap-2 text-sm text-gray-300">
+                    <label class="flex items-center gap-2 text-sm text-ds-text-secondary">
                         <input type="checkbox" bind:checked={shopForm.isActive} class="rounded" />
                         Active
                     </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-300">
+                    <label class="flex items-center gap-2 text-sm text-ds-text-secondary">
                         <input type="checkbox" bind:checked={shopForm.isPublic} class="rounded" />
                         Public
                     </label>
@@ -667,7 +667,7 @@
 
             <div class="flex flex-wrap gap-3 items-center">
                 <button
-                    class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                    class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
                     onclick={saveShop}
                     disabled={shopFormSaving || !shopForm.slug}
                 >
@@ -675,17 +675,17 @@
                 </button>
                 {#if editingShopId}
                     <button
-                        class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                        class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
                         onclick={resetShopForm}
                     >
                         Cancel Edit
                     </button>
                 {/if}
                 {#if shopFormError}
-                    <span class="text-red-400 text-sm">{shopFormError}</span>
+                    <span class="text-red-600 text-sm">{shopFormError}</span>
                 {/if}
                 {#if shopFormSuccess}
-                    <span class="text-green-400 text-sm">{shopFormSuccess}</span>
+                    <span class="text-green-700 text-sm">{shopFormSuccess}</span>
                 {/if}
             </div>
 
@@ -693,22 +693,22 @@
                 <div class="space-y-2">
                     {#each shops as shop (shop.shopId)}
                         <div
-                            class="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-4 py-3"
+                            class="flex items-center justify-between rounded-lg border border-ds-border bg-ds-surface2 px-4 py-3"
                         >
                             <div class="flex items-center gap-3">
                                 <span class="font-medium">{shop.slug}</span>
                                 {#if shop.description}
-                                    <span class="text-sm text-gray-400">{shop.description}</span>
+                                    <span class="text-sm text-ds-text-secondary">{shop.description}</span>
                                 {/if}
                                 {#if !shop.isActive}
                                     <span
-                                        class="px-2 py-0.5 text-xs bg-red-900/50 text-red-400 rounded"
+                                        class="px-2 py-0.5 text-xs bg-red-900/50 text-red-600 rounded"
                                         >Inactive</span
                                     >
                                 {/if}
                                 {#if !shop.isPublic}
                                     <span
-                                        class="px-2 py-0.5 text-xs bg-yellow-900/50 text-yellow-400 rounded"
+                                        class="px-2 py-0.5 text-xs bg-yellow-900/50 text-yellow-600 rounded"
                                         >Hidden</span
                                     >
                                 {/if}
@@ -735,35 +735,35 @@
     {/if}
 
     {#if !selectedShopId && shops.length === 0}
-        <div class="py-12 text-center text-gray-300">
+        <div class="py-12 text-center text-ds-text-secondary">
             No shops yet. Create one using "Manage Shops" above.
         </div>
     {:else if !selectedShopId}
-        <div class="py-12 text-center text-gray-300">
+        <div class="py-12 text-center text-ds-text-secondary">
             Select a shop above to manage its items and transactions.
         </div>
     {:else}
         <div class="flex gap-2">
             <button
-                class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === 'items' ? 'bg-purple-600 border-purple-400' : 'bg-gray-800 border-gray-700 hover:bg-gray-700'}`}
+                class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === 'items' ? 'bg-ds-accent border-ds-accent' : 'bg-ds-surface2 border-ds-border hover:bg-ds-surface-inactive'}`}
                 onclick={() => (shopSubTab = 'items')}
             >
                 Items ({shopItems.length})
             </button>
             <button
-                class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === 'transactions' ? 'bg-purple-600 border-purple-400' : 'bg-gray-800 border-gray-700 hover:bg-gray-700'}`}
+                class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === 'transactions' ? 'bg-ds-accent border-ds-accent' : 'bg-ds-surface2 border-ds-border hover:bg-ds-surface-inactive'}`}
                 onclick={() => (shopSubTab = 'transactions')}
             >
                 Transactions ({shopTransactions.length})
             </button>
             <button
-                class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === 'transactions-by-user' ? 'bg-purple-600 border-purple-400' : 'bg-gray-800 border-gray-700 hover:bg-gray-700'}`}
+                class={`px-4 py-2 rounded-lg border transition-colors ${shopSubTab === 'transactions-by-user' ? 'bg-ds-accent border-ds-accent' : 'bg-ds-surface2 border-ds-border hover:bg-ds-surface-inactive'}`}
                 onclick={() => (shopSubTab = 'transactions-by-user')}
             >
                 By User
             </button>
             <button
-                class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
+                class="px-4 py-2 bg-ds-surface2 hover:bg-ds-surface-inactive rounded-lg border border-ds-border transition-colors"
                 onclick={loadShopData}
             >
                 Refresh
@@ -771,10 +771,10 @@
         </div>
 
         {#if shopLoading}
-            <div class="py-12 text-center text-gray-300">Loading shop data...</div>
+            <div class="py-12 text-center text-ds-text-secondary">Loading shop data...</div>
         {:else if shopSubTab === 'items'}
             <div
-                class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-6"
+                class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6"
             >
                 <h3 class="text-lg font-semibold">
                     {editingItemId ? 'Edit Item' : 'Create New Item'}
@@ -782,19 +782,19 @@
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <div class="space-y-2">
-                        <label class="text-sm font-medium text-gray-300" for="item-name"
+                        <label class="text-sm font-medium text-ds-text-secondary" for="item-name"
                             >Name *</label
                         >
                         <input
                             id="item-name"
                             type="text"
-                            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             placeholder="Item name"
                             bind:value={shopItemForm.name}
                         />
                     </div>
                     <div class="space-y-2">
-                        <label class="text-sm font-medium text-gray-300" for="item-cost"
+                        <label class="text-sm font-medium text-ds-text-secondary" for="item-cost"
                             >Cost (hours) *</label
                         >
                         <input
@@ -802,13 +802,13 @@
                             type="number"
                             step="0.1"
                             min="0"
-                            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             placeholder="0"
                             bind:value={shopItemForm.cost}
                         />
                     </div>
                     <div class="space-y-2">
-                        <label class="text-sm font-medium text-gray-300" for="item-max-per-user"
+                        <label class="text-sm font-medium text-ds-text-secondary" for="item-max-per-user"
                             >Max per User</label
                         >
                         <input
@@ -816,30 +816,30 @@
                             type="number"
                             step="1"
                             min="1"
-                            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             placeholder="Unlimited"
                             bind:value={shopItemForm.maxPerUser}
                         />
                     </div>
                     <div class="space-y-2">
-                        <label class="text-sm font-medium text-gray-300" for="item-image"
+                        <label class="text-sm font-medium text-ds-text-secondary" for="item-image"
                             >Image URL</label
                         >
                         <input
                             id="item-image"
                             type="text"
-                            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             placeholder="https://..."
                             bind:value={shopItemForm.imageUrl}
                         />
                     </div>
                     <div class="space-y-2">
-                        <label class="text-sm font-medium text-gray-300" for="item-description"
+                        <label class="text-sm font-medium text-ds-text-secondary" for="item-description"
                             >Description</label
                         >
                         <textarea
                             id="item-description"
-                            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                             rows="2"
                             placeholder="Item description..."
                             bind:value={shopItemForm.description}
@@ -849,7 +849,7 @@
 
                 <div class="flex flex-wrap gap-3 items-center">
                     <button
-                        class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                        class="px-4 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
                         onclick={saveShopItem}
                         disabled={shopItemSaving || !shopItemForm.name || !shopItemForm.cost}
                     >
@@ -861,30 +861,30 @@
                     </button>
                     {#if editingItemId}
                         <button
-                            class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                            class="px-4 py-2 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive transition-colors"
                             onclick={resetItemForm}
                         >
                             Cancel Edit
                         </button>
                     {/if}
                     {#if shopItemError}
-                        <span class="text-red-400 text-sm">{shopItemError}</span>
+                        <span class="text-red-600 text-sm">{shopItemError}</span>
                     {/if}
                     {#if shopItemSuccess}
-                        <span class="text-green-400 text-sm">{shopItemSuccess}</span>
+                        <span class="text-green-700 text-sm">{shopItemSuccess}</span>
                     {/if}
                 </div>
             </div>
 
             {#if shopItems.length === 0}
-                <div class="py-12 text-center text-gray-300">
+                <div class="py-12 text-center text-ds-text-secondary">
                     No shop items yet. Create one above!
                 </div>
             {:else}
                 <div class="grid gap-4">
                     {#each shopItems as item (item.itemId)}
                         <div
-                            class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur p-6 space-y-4"
+                            class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-4"
                         >
                             <div
                                 class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"
@@ -894,11 +894,11 @@
                                         <img
                                             src={item.imageUrl}
                                             alt={item.name}
-                                            class="w-20 h-20 object-cover rounded-lg border border-gray-700"
+                                            class="w-20 h-20 object-cover rounded-lg border border-ds-border"
                                         />
                                     {:else}
                                         <div
-                                            class="w-20 h-20 bg-gray-800 rounded-lg border border-gray-700 flex items-center justify-center text-2xl"
+                                            class="w-20 h-20 bg-ds-surface2 rounded-lg border border-ds-border flex items-center justify-center text-2xl"
                                         >
                                             🛍️
                                         </div>
@@ -908,7 +908,7 @@
                                             {item.name}
                                             {#if !item.isActive}
                                                 <span
-                                                    class="px-2 py-0.5 text-xs rounded bg-red-500/20 border border-red-400 text-red-300"
+                                                    class="px-2 py-0.5 text-xs rounded bg-red-500/20 border border-red-400 text-red-600"
                                                     >Inactive</span
                                                 >
                                             {/if}
@@ -935,11 +935,11 @@
                                                 : ''}
                                         </p>
                                         {#if item.description}
-                                            <p class="text-sm text-gray-400 mt-1">
+                                            <p class="text-sm text-ds-text-secondary mt-1">
                                                 {item.description}
                                             </p>
                                         {/if}
-                                        <p class="text-xs text-gray-500 mt-2">
+                                        <p class="text-xs text-ds-text-placeholder mt-2">
                                             Updated {formatDate(item.updatedAt)}
                                         </p>
                                     </div>
@@ -955,19 +955,19 @@
                                         {expandedItemVariants[item.itemId] ? 'Hide' : 'Show'} Variants
                                     </button>
                                     <button
-                                        class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm transition-colors"
+                                        class="px-3 py-1.5 rounded-lg bg-ds-surface2 hover:bg-ds-surface-inactive border border-ds-border text-sm transition-colors"
                                         onclick={() => startEditItem(item)}
                                     >
                                         Edit
                                     </button>
                                     <button
-                                        class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${item.isActive ? 'bg-yellow-600/20 border-yellow-500 text-yellow-300 hover:bg-yellow-600/30' : 'bg-green-600/20 border-green-500 text-green-300 hover:bg-green-600/30'}`}
+                                        class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${item.isActive ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30' : 'bg-green-600/20 border-green-500 text-green-700 hover:bg-green-600/30'}`}
                                         onclick={() => toggleItemActive(item)}
                                     >
                                         {item.isActive ? 'Deactivate' : 'Activate'}
                                     </button>
                                     <button
-                                        class="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500 text-red-300 hover:bg-red-600/30 text-sm transition-colors"
+                                        class="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500 text-red-600 hover:bg-red-600/30 text-sm transition-colors"
                                         onclick={() => deleteShopItem(item.itemId)}
                                     >
                                         Delete
@@ -976,13 +976,13 @@
                             </div>
 
                             {#if expandedItemVariants[item.itemId]}
-                                <div class="border-t border-gray-700 pt-4 space-y-3">
+                                <div class="border-t border-ds-border pt-4 space-y-3">
                                     <div class="flex items-center justify-between">
-                                        <h4 class="text-sm font-semibold text-gray-300">
+                                        <h4 class="text-sm font-semibold text-ds-text-secondary">
                                             Variants
                                         </h4>
                                         <button
-                                            class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-sm transition-colors"
+                                            class="px-3 py-1 rounded-lg bg-ds-accent hover:bg-ds-accent/80 text-sm transition-colors"
                                             onclick={() => startAddVariant(item.itemId)}
                                         >
                                             + Add Variant
@@ -990,34 +990,34 @@
                                     </div>
 
                                     {#if addingVariantToItemId === item.itemId}
-                                        <div class="bg-gray-800/50 rounded-lg p-4 space-y-3">
+                                        <div class="bg-ds-surface2/50 rounded-lg p-4 space-y-3">
                                             <div class="grid gap-3 md:grid-cols-3">
                                                 <div>
-                                                    <label class="text-xs text-gray-400"
+                                                    <label class="text-xs text-ds-text-secondary"
                                                         >Variant Name *</label
                                                     >
                                                     <input
                                                         type="text"
-                                                        class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                        class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                                                         placeholder="e.g., XL, $200"
                                                         bind:value={variantForm.name}
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label class="text-xs text-gray-400"
+                                                    <label class="text-xs text-ds-text-secondary"
                                                         >Cost (hours) *</label
                                                     >
                                                     <input
                                                         type="number"
                                                         step="0.1"
                                                         min="0"
-                                                        class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                        class="w-full rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                                                         bind:value={variantForm.cost}
                                                     />
                                                 </div>
                                                 <div class="flex items-end gap-2">
                                                     <button
-                                                        class="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-sm transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                                        class="px-3 py-2 rounded-lg bg-ds-accent hover:bg-ds-accent/80 text-sm transition-colors disabled:bg-ds-surface-inactive disabled:cursor-not-allowed"
                                                         onclick={saveVariant}
                                                         disabled={variantSaving ||
                                                             !variantForm.name ||
@@ -1030,7 +1030,7 @@
                                                               : 'Add'}
                                                     </button>
                                                     <button
-                                                        class="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm transition-colors"
+                                                        class="px-3 py-2 rounded-lg bg-ds-surface-inactive hover:bg-ds-surface-inactive text-sm transition-colors"
                                                         onclick={resetVariantForm}
                                                     >
                                                         Cancel
@@ -1038,12 +1038,12 @@
                                                 </div>
                                             </div>
                                             {#if variantError}
-                                                <p class="text-red-400 text-xs">
+                                                <p class="text-red-600 text-xs">
                                                     {variantError}
                                                 </p>
                                             {/if}
                                             {#if variantSuccess}
-                                                <p class="text-green-400 text-xs">
+                                                <p class="text-green-700 text-xs">
                                                     {variantSuccess}
                                                 </p>
                                             {/if}
@@ -1054,10 +1054,10 @@
                                         <div class="space-y-2">
                                             {#each item.variants as variant (variant.variantId)}
                                                 <div
-                                                    class="flex items-center justify-between bg-gray-800/30 rounded-lg px-4 py-2"
+                                                    class="flex items-center justify-between bg-ds-surface2/30 rounded-lg px-4 py-2"
                                                 >
                                                     <div class="flex items-center gap-3">
-                                                        <span class="font-medium text-white"
+                                                        <span class="font-medium text-ds-text"
                                                             >{variant.name}</span
                                                         >
                                                         <span class="text-purple-300 text-sm"
@@ -1065,21 +1065,21 @@
                                                         >
                                                         {#if !variant.isActive}
                                                             <span
-                                                                class="px-2 py-0.5 text-xs rounded bg-red-500/20 border border-red-400 text-red-300"
+                                                                class="px-2 py-0.5 text-xs rounded bg-red-500/20 border border-red-400 text-red-600"
                                                                 >Inactive</span
                                                             >
                                                         {/if}
                                                     </div>
                                                     <div class="flex gap-2">
                                                         <button
-                                                            class="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs transition-colors"
+                                                            class="px-2 py-1 rounded bg-ds-surface-inactive hover:bg-ds-surface-inactive text-xs transition-colors"
                                                             onclick={() =>
                                                                 startEditVariant(variant)}
                                                         >
                                                             Edit
                                                         </button>
                                                         <button
-                                                            class={`px-2 py-1 rounded text-xs transition-colors ${variant.isActive ? 'bg-yellow-600/20 text-yellow-300 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-300 hover:bg-green-600/30'}`}
+                                                            class={`px-2 py-1 rounded text-xs transition-colors ${variant.isActive ? 'bg-yellow-600/20 text-yellow-600 hover:bg-yellow-600/30' : 'bg-green-600/20 text-green-700 hover:bg-green-600/30'}`}
                                                             onclick={() =>
                                                                 toggleVariantActive(variant)}
                                                         >
@@ -1088,7 +1088,7 @@
                                                                 : 'Activate'}
                                                         </button>
                                                         <button
-                                                            class="px-2 py-1 rounded bg-red-600/20 text-red-300 hover:bg-red-600/30 text-xs transition-colors"
+                                                            class="px-2 py-1 rounded bg-red-600/20 text-red-600 hover:bg-red-600/30 text-xs transition-colors"
                                                             onclick={() =>
                                                                 deleteVariant(variant.variantId)}
                                                         >
@@ -1099,7 +1099,7 @@
                                             {/each}
                                         </div>
                                     {:else}
-                                        <p class="text-gray-500 text-sm">
+                                        <p class="text-ds-text-placeholder text-sm">
                                             No variants yet. Add one to offer different options.
                                         </p>
                                     {/if}
@@ -1111,12 +1111,12 @@
             {/if}
         {:else if shopSubTab === 'transactions'}
             {#if shopTransactions.length === 0}
-                <div class="py-12 text-center text-gray-300">No transactions yet.</div>
+                <div class="py-12 text-center text-ds-text-secondary">No transactions yet.</div>
             {:else}
                 <div class="mb-4 flex items-center gap-3">
-                    <label class="text-sm font-medium text-gray-300">Filter by Item:</label>
+                    <label class="text-sm font-medium text-ds-text-secondary">Filter by Item:</label>
                     <select
-                        class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        class="rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                         bind:value={selectedItemFilter}
                     >
                         <option value={null}>All Items</option>
@@ -1124,22 +1124,22 @@
                             <option value={item.itemId}>{item.name}</option>
                         {/each}
                     </select>
-                    <label class="text-sm font-medium text-gray-300">Status:</label>
+                    <label class="text-sm font-medium text-ds-text-secondary">Status:</label>
                     <div class="flex gap-2">
                         <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'all' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'all' ? 'bg-ds-accent border-ds-accent text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
                             onclick={() => (fulfillmentFilter = 'all')}
                         >
                             All
                         </button>
                         <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'fulfilled' ? 'bg-green-600 border-green-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'fulfilled' ? 'bg-green-600 border-green-400 text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
                             onclick={() => (fulfillmentFilter = 'fulfilled')}
                         >
                             Fulfilled
                         </button>
                         <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'unfulfilled' ? 'bg-yellow-600 border-yellow-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'unfulfilled' ? 'bg-yellow-600 border-yellow-400 text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
                             onclick={() => (fulfillmentFilter = 'unfulfilled')}
                         >
                             Unfulfilled
@@ -1147,53 +1147,53 @@
                     </div>
                 </div>
                 <div
-                    class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur overflow-hidden"
+                    class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur overflow-hidden"
                 >
                     <table class="w-full">
-                        <thead class="bg-gray-800/50">
+                        <thead class="bg-ds-surface2/50">
                             <tr>
                                 <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                     >Date</th
                                 >
                                 <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                     >User</th
                                 >
                                 <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                     >Item</th
                                 >
                                 <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                     >Cost</th
                                 >
                                 <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                     >Status</th
                                 >
                                 <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                     >Actions</th
                                 >
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-700">
+                        <tbody class="divide-y divide-ds-border">
                             {#each filteredTransactions() as transaction (transaction.transactionId)}
-                                <tr class="hover:bg-gray-800/30">
-                                    <td class="px-4 py-3 text-sm text-gray-300"
+                                <tr class="hover:bg-ds-surface2/30">
+                                    <td class="px-4 py-3 text-sm text-ds-text-secondary"
                                         >{formatDate(transaction.createdAt)}</td
                                     >
                                     <td class="px-4 py-3">
-                                        <p class="text-sm font-medium text-white">
+                                        <p class="text-sm font-medium text-ds-text">
                                             {transaction.user.firstName}
                                             {transaction.user.lastName}
                                         </p>
-                                        <p class="text-xs text-gray-400">
+                                        <p class="text-xs text-ds-text-secondary">
                                             {transaction.user.email}
                                         </p>
                                         {#if transaction.user.addressLine1 || transaction.user.city || transaction.user.state}
-                                            <div class="text-xs text-gray-500 mt-1">
+                                            <div class="text-xs text-ds-text-placeholder mt-1">
                                                 {#if transaction.user.addressLine1}
                                                     <p>{transaction.user.addressLine1}</p>
                                                 {/if}
@@ -1216,7 +1216,7 @@
                                         {/if}
                                     </td>
                                     <td class="px-4 py-3">
-                                        <p class="text-sm font-medium text-white">
+                                        <p class="text-sm font-medium text-ds-text">
                                             {transaction.item.name}
                                             {#if transaction.variant}
                                                 <span class="text-blue-300">
@@ -1233,11 +1233,11 @@
                                         {#if transaction.isFulfilled}
                                             <div class="flex flex-col gap-1">
                                                 <span
-                                                    class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-300 w-fit"
+                                                    class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 w-fit"
                                                     >Fulfilled</span
                                                 >
                                                 {#if transaction.fulfilledAt}
-                                                    <span class="text-xs text-gray-500"
+                                                    <span class="text-xs text-ds-text-placeholder"
                                                         >{formatDate(
                                                             transaction.fulfilledAt
                                                         )}</span
@@ -1246,7 +1246,7 @@
                                             </div>
                                         {:else}
                                             <span
-                                                class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-300"
+                                                class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-600"
                                                 >Pending</span
                                             >
                                         {/if}
@@ -1255,7 +1255,7 @@
                                         <div class="flex gap-2">
                                             {#if transaction.isFulfilled}
                                                 <button
-                                                    class="px-3 py-1.5 rounded-lg bg-yellow-600/20 border border-yellow-500 text-yellow-300 hover:bg-yellow-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    class="px-3 py-1.5 rounded-lg bg-yellow-600/20 border border-yellow-500 text-yellow-600 hover:bg-yellow-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                     onclick={() =>
                                                         handleUnfulfillTransaction(
                                                             transaction.transactionId
@@ -1270,7 +1270,7 @@
                                                 </button>
                                             {:else}
                                                 <button
-                                                    class="px-3 py-1.5 rounded-lg bg-green-600/20 border border-green-500 text-green-300 hover:bg-green-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    class="px-3 py-1.5 rounded-lg bg-green-600/20 border border-green-500 text-green-700 hover:bg-green-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                     onclick={() =>
                                                         handleMarkFulfilled(
                                                             transaction.transactionId
@@ -1285,7 +1285,7 @@
                                                 </button>
                                             {/if}
                                             <button
-                                                class="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500 text-red-300 hover:bg-red-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                class="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500 text-red-600 hover:bg-red-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 onclick={() =>
                                                     handleRefundTransaction(
                                                         transaction.transactionId
@@ -1308,12 +1308,12 @@
             {/if}
         {:else if shopSubTab === 'transactions-by-user'}
             {#if shopTransactions.length === 0}
-                <div class="py-12 text-center text-gray-300">No transactions yet.</div>
+                <div class="py-12 text-center text-ds-text-secondary">No transactions yet.</div>
             {:else}
                 <div class="mb-4 flex items-center gap-3">
-                    <label class="text-sm font-medium text-gray-300">Filter by Item:</label>
+                    <label class="text-sm font-medium text-ds-text-secondary">Filter by Item:</label>
                     <select
-                        class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        class="rounded-lg border border-ds-border bg-ds-surface2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ds-accent"
                         bind:value={selectedItemFilter}
                     >
                         <option value={null}>All Items</option>
@@ -1321,22 +1321,22 @@
                             <option value={item.itemId}>{item.name}</option>
                         {/each}
                     </select>
-                    <label class="text-sm font-medium text-gray-300">Status:</label>
+                    <label class="text-sm font-medium text-ds-text-secondary">Status:</label>
                     <div class="flex gap-2">
                         <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'all' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'all' ? 'bg-ds-accent border-ds-accent text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
                             onclick={() => (fulfillmentFilter = 'all')}
                         >
                             All
                         </button>
                         <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'fulfilled' ? 'bg-green-600 border-green-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'fulfilled' ? 'bg-green-600 border-green-400 text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
                             onclick={() => (fulfillmentFilter = 'fulfilled')}
                         >
                             Fulfilled
                         </button>
                         <button
-                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'unfulfilled' ? 'bg-yellow-600 border-yellow-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                            class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${fulfillmentFilter === 'unfulfilled' ? 'bg-yellow-600 border-yellow-400 text-ds-text' : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'}`}
                             onclick={() => (fulfillmentFilter = 'unfulfilled')}
                         >
                             Unfulfilled
@@ -1346,20 +1346,20 @@
                 <div class="space-y-4">
                     {#each transactionsByUser() as userGroup (userGroup.user.userId)}
                         <div
-                            class="rounded-2xl border border-gray-700 bg-gray-900/70 backdrop-blur overflow-hidden"
+                            class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur overflow-hidden"
                         >
-                            <div class="bg-gray-800/50 px-6 py-4 border-b border-gray-700">
+                            <div class="bg-ds-surface2/50 px-6 py-4 border-b border-ds-border">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <h3 class="text-lg font-semibold text-white">
+                                        <h3 class="text-lg font-semibold text-ds-text">
                                             {userGroup.user.firstName}
                                             {userGroup.user.lastName}
                                         </h3>
-                                        <p class="text-sm text-gray-400">
+                                        <p class="text-sm text-ds-text-secondary">
                                             {userGroup.user.email}
                                         </p>
                                         {#if userGroup.user.addressLine1 || userGroup.user.city || userGroup.user.state}
-                                            <div class="text-xs text-gray-500 mt-1">
+                                            <div class="text-xs text-ds-text-placeholder mt-1">
                                                 {#if userGroup.user.addressLine1}
                                                     <p>{userGroup.user.addressLine1}</p>
                                                 {/if}
@@ -1383,26 +1383,26 @@
                                     </div>
                                     <div class="flex gap-4 text-sm">
                                         <div class="text-right">
-                                            <p class="text-gray-400">Total Orders</p>
-                                            <p class="text-lg font-semibold text-white">
+                                            <p class="text-ds-text-secondary">Total Orders</p>
+                                            <p class="text-lg font-semibold text-ds-text">
                                                 {userGroup.transactions.length}
                                             </p>
                                         </div>
                                         <div class="text-right">
-                                            <p class="text-gray-400">Total Cost</p>
+                                            <p class="text-ds-text-secondary">Total Cost</p>
                                             <p class="text-lg font-semibold text-purple-300">
                                                 {userGroup.totalCost} hours
                                             </p>
                                         </div>
                                         <div class="text-right">
-                                            <p class="text-gray-400">Status</p>
+                                            <p class="text-ds-text-secondary">Status</p>
                                             <p class="text-sm">
-                                                <span class="text-green-300"
+                                                <span class="text-green-700"
                                                     >{userGroup.fulfilledCount} fulfilled</span
                                                 >
                                                 {#if userGroup.pendingCount > 0}
-                                                    <span class="text-gray-500"> / </span>
-                                                    <span class="text-yellow-300"
+                                                    <span class="text-ds-text-placeholder"> / </span>
+                                                    <span class="text-yellow-600"
                                                         >{userGroup.pendingCount} pending</span
                                                     >
                                                 {/if}
@@ -1412,38 +1412,38 @@
                                 </div>
                             </div>
                             <table class="w-full">
-                                <thead class="bg-gray-800/30">
+                                <thead class="bg-ds-surface2/30">
                                     <tr>
                                         <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                             >Date</th
                                         >
                                         <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                             >Item</th
                                         >
                                         <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                             >Cost</th
                                         >
                                         <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                             >Status</th
                                         >
                                         <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-gray-300"
+                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
                                             >Actions</th
                                         >
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-700">
+                                <tbody class="divide-y divide-ds-border">
                                     {#each userGroup.transactions as transaction (transaction.transactionId)}
-                                        <tr class="hover:bg-gray-800/30">
-                                            <td class="px-4 py-3 text-sm text-gray-300"
+                                        <tr class="hover:bg-ds-surface2/30">
+                                            <td class="px-4 py-3 text-sm text-ds-text-secondary"
                                                 >{formatDate(transaction.createdAt)}</td
                                             >
                                             <td class="px-4 py-3">
-                                                <p class="text-sm font-medium text-white">
+                                                <p class="text-sm font-medium text-ds-text">
                                                     {transaction.item.name}
                                                     {#if transaction.variant}
                                                         <span class="text-blue-300">
@@ -1460,11 +1460,11 @@
                                                 {#if transaction.isFulfilled}
                                                     <div class="flex flex-col gap-1">
                                                         <span
-                                                            class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-300 w-fit"
+                                                            class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 w-fit"
                                                             >Fulfilled</span
                                                         >
                                                         {#if transaction.fulfilledAt}
-                                                            <span class="text-xs text-gray-500"
+                                                            <span class="text-xs text-ds-text-placeholder"
                                                                 >{formatDate(
                                                                     transaction.fulfilledAt
                                                                 )}</span
@@ -1473,7 +1473,7 @@
                                                     </div>
                                                 {:else}
                                                     <span
-                                                        class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-300"
+                                                        class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-600"
                                                         >Pending</span
                                                     >
                                                 {/if}
@@ -1482,7 +1482,7 @@
                                                 <div class="flex gap-2">
                                                     {#if transaction.isFulfilled}
                                                         <button
-                                                            class="px-3 py-1.5 rounded-lg bg-yellow-600/20 border border-yellow-500 text-yellow-300 hover:bg-yellow-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            class="px-3 py-1.5 rounded-lg bg-yellow-600/20 border border-yellow-500 text-yellow-600 hover:bg-yellow-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                             onclick={() =>
                                                                 handleUnfulfillTransaction(
                                                                     transaction.transactionId
@@ -1497,7 +1497,7 @@
                                                         </button>
                                                     {:else}
                                                         <button
-                                                            class="px-3 py-1.5 rounded-lg bg-green-600/20 border border-green-500 text-green-300 hover:bg-green-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            class="px-3 py-1.5 rounded-lg bg-green-600/20 border border-green-500 text-green-700 hover:bg-green-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                             onclick={() =>
                                                                 handleMarkFulfilled(
                                                                     transaction.transactionId
@@ -1512,7 +1512,7 @@
                                                         </button>
                                                     {/if}
                                                     <button
-                                                        class="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500 text-red-300 hover:bg-red-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        class="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500 text-red-600 hover:bg-red-600/30 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                         onclick={() =>
                                                             handleRefundTransaction(
                                                                 transaction.transactionId
@@ -1532,24 +1532,24 @@
                                 </tbody>
                             </table>
                             <div
-                                class="bg-gray-800/30 px-6 py-4 border-t border-gray-700"
+                                class="bg-ds-surface2/30 px-6 py-4 border-t border-ds-border"
                             >
                                 <div class="flex items-center justify-between">
-                                    <span class="text-sm font-semibold text-gray-300"
+                                    <span class="text-sm font-semibold text-ds-text-secondary"
                                         >Total</span
                                     >
                                     <div class="flex gap-6 text-sm">
                                         <div class="text-right">
-                                            <p class="text-gray-400">Hours</p>
+                                            <p class="text-ds-text-secondary">Hours</p>
                                             <p class="text-lg font-bold text-purple-300">
                                                 {userGroup.totalCost}
                                             </p>
                                         </div>
                                         <div class="text-right">
-                                            <p class="text-gray-400">
+                                            <p class="text-ds-text-secondary">
                                                 Money Cost (only leo should use this - guesstimate)
                                             </p>
-                                            <p class="text-lg font-bold text-green-300">
+                                            <p class="text-lg font-bold text-green-700">
                                                 ${(userGroup.totalCost * 10).toFixed(2)}
                                             </p>
                                         </div>
