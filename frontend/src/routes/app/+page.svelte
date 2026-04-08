@@ -108,6 +108,7 @@
 
 	let navigating = $state(false);
 	let exitRight = $state(false);
+	let hasInteracted = $state(false);
 
 	async function navigateTo(href: string, opts: { exitRight?: boolean } = {}) {
 		navigating = true;
@@ -157,7 +158,7 @@
 	});
 </script>
 
-<svelte:window onkeydown={nav.handleKeydown} />
+<svelte:window onkeydown={(e) => { nav.handleKeydown(e); hasInteracted = true; }} onmousemove={() => { hasInteracted = true; }} />
 
 {#if !hideCirc}
 	<CircleIn />
@@ -398,7 +399,7 @@
 
 		<!-- Bottom Info Row -->
 		<div class="info-row enter-down" class:exiting={navigating && !exitRight} style:--exit-delay="0ms" style:--enter-delay="300ms">
-			<div class="card nav-hint-card">
+			<div class="card nav-hint-card" class:nav-hint-hidden={hasInteracted}>
 				<div class="flex items-center gap-5">
 					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">USE</p>
 					<InputPrompt type="WASD" />
@@ -508,6 +509,10 @@
 			right: 40px;
 			width: auto;
 			z-index: 20;
+		}
+		.nav-hint-card.nav-hint-hidden {
+			opacity: 0;
+			transition: opacity 0.3s ease;
 		}
 	}
 
