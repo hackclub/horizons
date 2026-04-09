@@ -1,5 +1,6 @@
 -- Daily Active Users (from historical snapshots)
 -- Visualization: Line chart (date x-axis, DAU y-axis)
+-- DAU is computed via Hackatime /api/summary endpoint: users with >0 coding seconds that day.
 -- Requires historical_metrics to be populated by the daily cron or backfill.
 
 SELECT

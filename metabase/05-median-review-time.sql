@@ -1,17 +1,17 @@
--- Median Review Time Over the Past 30 Days
--- Visualization: Line chart (date x-axis, median hours y-axis)
--- Computes the daily median time between submission creation and review.
+-- Median Review Time — Weekly Average
+-- Visualization: Line chart (week x-axis, avg median hours y-axis)
+-- Groups daily median review times by ISO week and averages them.
 
 SELECT
-  DATE(reviewed_at) AS review_date,
+  DATE_TRUNC('week', reviewed_at)::DATE AS week_start,
   ROUND(
-    PERCENTILE_CONT(0.5) WITHIN GROUP (
-      ORDER BY EXTRACT(EPOCH FROM (reviewed_at - created_at)) / 3600.0
+    AVG(
+      EXTRACT(EPOCH FROM (reviewed_at - created_at)) / 3600.0
     )::NUMERIC, 2
-  ) AS median_review_hours,
-  COUNT(*) AS reviews_that_day
+  ) AS avg_median_review_hours,
+  COUNT(*) AS reviews_that_week
 FROM submissions
 WHERE reviewed_at IS NOT NULL
   AND reviewed_at >= CURRENT_DATE - INTERVAL '30 days'
-GROUP BY DATE(reviewed_at)
-ORDER BY review_date ASC;
+GROUP BY DATE_TRUNC('week', reviewed_at)
+ORDER BY week_start ASC;
