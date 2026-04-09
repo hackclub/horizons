@@ -6,6 +6,8 @@
 	import { theme } from '$lib/themeStore';
 	import * as echarts from 'echarts';
 	import { getCountryCoords } from '$lib/geo';
+	let leafletMap: any = null;
+	let L: any = null;
 
 	type Stats = components['schemas']['AdminStatsResponse'];
 	type DataPoint = { date: string; value: number };
@@ -41,6 +43,7 @@
 	onDestroy(() => {
 		charts.forEach((c) => c.dispose());
 		charts = [];
+		if (leafletMap) { leafletMap.remove(); leafletMap = null; }
 		if (typeof window !== 'undefined') window.removeEventListener('resize', handleResize);
 	});
 
@@ -439,166 +442,160 @@
 		});
 	}
 
-	function renderSignupMap() {
+	async function renderSignupMap() {
 		if (!signupMapEl || !stats) return;
-		signupMapEl.innerHTML = '';
+
+		if (!L) L = (await import('leaflet')).default;
 
 		const routes = stats.signups.routes;
 		const dark = isDark();
-		const w = signupMapEl.clientWidth;
-		const h = signupMapEl.clientHeight || 400;
+		const tileUrl = dark
+			? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+			: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
-		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		svg.setAttribute('width', String(w));
-		svg.setAttribute('height', String(h));
-		svg.setAttribute('viewBox', '-180 -90 360 180');
-		svg.style.display = 'block';
-		signupMapEl.appendChild(svg);
-
-		const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-		bgRect.setAttribute('x', '-180');
-		bgRect.setAttribute('y', '-90');
-		bgRect.setAttribute('width', '360');
-		bgRect.setAttribute('height', '180');
-		bgRect.setAttribute('fill', dark ? '#1e293b' : '#f1f5f9');
-		bgRect.setAttribute('rx', '4');
-		svg.appendChild(bgRect);
-
-		// Simple grid lines for reference
-		for (const lat of [-60, -30, 0, 30, 60]) {
-			const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-			line.setAttribute('x1', '-180');
-			line.setAttribute('y1', String(-lat));
-			line.setAttribute('x2', '180');
-			line.setAttribute('y2', String(-lat));
-			line.setAttribute('stroke', dark ? '#334155' : '#e2e8f0');
-			line.setAttribute('stroke-width', '0.3');
-			svg.appendChild(line);
+		// Destroy previous map
+		if (leafletMap) {
+			leafletMap.remove();
+			leafletMap = null;
 		}
-		for (const lng of [-120, -60, 0, 60, 120]) {
-			const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-			line.setAttribute('x1', String(lng));
-			line.setAttribute('y1', '-90');
-			line.setAttribute('x2', String(lng));
-			line.setAttribute('y2', '90');
-			line.setAttribute('stroke', dark ? '#334155' : '#e2e8f0');
-			line.setAttribute('stroke-width', '0.3');
-			svg.appendChild(line);
-		}
+		signupMapEl.innerHTML = '';
 
-		// Collect unique origins and destinations
-		const origins = new Map<string, { coords: [number, number]; total: number }>();
-		const destinations = new Map<string, { coords: [number, number]; total: number; title: string }>();
+		leafletMap = L.map(signupMapEl, {
+			center: [20, 0],
+			zoom: 2,
+			minZoom: 2,
+			maxZoom: 6,
+			zoomControl: true,
+			attributionControl: false,
+		});
+
+		L.tileLayer(tileUrl, {
+			attribution: '&copy; OpenStreetMap &copy; CARTO',
+			detectRetina: true,
+		}).addTo(leafletMap);
+
+		// Collect origins and destinations
+		const originsMap = new Map<string, { coords: [number, number]; total: number }>();
+		const destsMap = new Map<string, { coords: [number, number]; total: number; title: string }>();
+
+		const unmatchedCountries: string[] = [];
 
 		for (const route of routes) {
 			const oCoords = getCountryCoords(route.originCountry);
 			const dCoords = getCountryCoords(route.eventCountry);
+			if (!oCoords) unmatchedCountries.push(`origin: "${route.originCountry}"`);
+			if (!dCoords) unmatchedCountries.push(`event: "${route.eventCountry}"`);
 			if (!oCoords || !dCoords) continue;
 
 			const oKey = route.originCountry.toLowerCase();
+			if (!originsMap.has(oKey)) originsMap.set(oKey, { coords: oCoords, total: 0 });
+			originsMap.get(oKey)!.total += route.count;
+
 			const dKey = route.eventCountry.toLowerCase();
-
-			if (!origins.has(oKey)) origins.set(oKey, { coords: oCoords, total: 0 });
-			origins.get(oKey)!.total += route.count;
-
-			if (!destinations.has(dKey)) destinations.set(dKey, { coords: dCoords, total: 0, title: route.eventTitle });
-			destinations.get(dKey)!.total += route.count;
+			if (!destsMap.has(dKey)) destsMap.set(dKey, { coords: dCoords, total: 0, title: route.eventTitle });
+			destsMap.get(dKey)!.total += route.count;
 		}
 
-		const maxCount = Math.max(...[...origins.values(), ...destinations.values()].map((v) => v.total), 1);
+		if (unmatchedCountries.length > 0) {
+			console.warn('[Signup Map] Unmatched countries:', unmatchedCountries);
+		}
 
-		// Draw route lines (arcs)
+		const maxCount = Math.max(...[...originsMap.values(), ...destsMap.values()].map((v) => v.total), 1);
+
+		// Draw route arcs
 		for (const route of routes) {
 			const oCoords = getCountryCoords(route.originCountry);
 			const dCoords = getCountryCoords(route.eventCountry);
 			if (!oCoords || !dCoords) continue;
 
-			const x1 = oCoords[0], y1 = -oCoords[1];
-			const x2 = dCoords[0], y2 = -dCoords[1];
-			const midX = (x1 + x2) / 2;
-			const midY = (y1 + y2) / 2 - Math.abs(x2 - x1) * 0.15;
+			const fromLat = oCoords[1], fromLng = oCoords[0];
+			const toLat = dCoords[1], toLng = dCoords[0];
+			const sameCountry = route.originCountry.toLowerCase().trim() === route.eventCountry.toLowerCase().trim()
+				|| (oCoords[0] === dCoords[0] && oCoords[1] === dCoords[1]);
+			const weight = Math.max(1.5, Math.min(4, (route.count / maxCount) * 5));
+			const color = dark ? 'rgba(96,165,250,0.6)' : 'rgba(37,99,235,0.5)';
+			const tooltip = `${route.originCountry} → ${route.eventTitle}<br/>${route.count} user${route.count !== 1 ? 's' : ''}`;
 
-			const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-			path.setAttribute('d', `M ${x1} ${y1} Q ${midX} ${midY} ${x2} ${y2}`);
-			path.setAttribute('fill', 'none');
-			path.setAttribute('stroke', dark ? 'rgba(96,165,250,0.3)' : 'rgba(37,99,235,0.25)');
-			path.setAttribute('stroke-width', String(Math.max(0.3, Math.min(1.5, route.count / maxCount * 3))));
-			svg.appendChild(path);
+			const points: [number, number][] = [];
+
+			if (sameCountry) {
+				// Same country — skip the line, info shown in destination tooltip
+				continue;
+			} else {
+				// Quadratic bezier curve
+				const midLat = (fromLat + toLat) / 2 + Math.abs(fromLng - toLng) * 0.12;
+				const midLng = (fromLng + toLng) / 2;
+				for (let t = 0; t <= 1; t += 0.04) {
+					const lat = (1 - t) * (1 - t) * fromLat + 2 * (1 - t) * t * midLat + t * t * toLat;
+					const lng = (1 - t) * (1 - t) * fromLng + 2 * (1 - t) * t * midLng + t * t * toLng;
+					points.push([lat, lng]);
+				}
+			}
+
+			L.polyline(points, { color, weight, opacity: 0.7 })
+				.bindTooltip(tooltip, { sticky: true })
+				.addTo(leafletMap);
 		}
 
-		// Draw origin dots (blue)
-		for (const [, { coords, total }] of origins) {
-			const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-			circle.setAttribute('cx', String(coords[0]));
-			circle.setAttribute('cy', String(-coords[1]));
-			const r = Math.max(1.5, Math.min(5, (total / maxCount) * 6));
-			circle.setAttribute('r', String(r));
-			circle.setAttribute('fill', dark ? '#60a5fa' : '#3b82f6');
-			circle.setAttribute('opacity', '0.8');
-			svg.appendChild(circle);
+		// Origin markers (blue)
+		for (const [name, { coords, total }] of originsMap) {
+			const r = Math.max(5, Math.min(14, (total / maxCount) * 16));
+			L.circleMarker([coords[1], coords[0]], {
+				radius: r,
+				fillColor: dark ? '#60a5fa' : '#3b82f6',
+				fillOpacity: 0.85,
+				color: '#fff',
+				weight: 1,
+			})
+				.bindTooltip(`${name} — ${total} user${total !== 1 ? 's' : ''}`)
+				.addTo(leafletMap);
 		}
 
-		// Draw destination dots (orange, larger)
-		for (const [, { coords, total, title }] of destinations) {
-			const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-			circle.setAttribute('cx', String(coords[0]));
-			circle.setAttribute('cy', String(-coords[1]));
-			const r = Math.max(2.5, Math.min(7, (total / maxCount) * 8));
-			circle.setAttribute('r', String(r));
-			circle.setAttribute('fill', dark ? '#fb923c' : '#ea580c');
-			circle.setAttribute('opacity', '0.9');
-			circle.setAttribute('stroke', dark ? '#fdba74' : '#f97316');
-			circle.setAttribute('stroke-width', '0.5');
-			svg.appendChild(circle);
-
-			// Label for destination
-			const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-			label.setAttribute('x', String(coords[0]));
-			label.setAttribute('y', String(-coords[1] - r - 1.5));
-			label.setAttribute('text-anchor', 'middle');
-			label.setAttribute('fill', dark ? '#fdba74' : '#c2410c');
-			label.setAttribute('font-size', '4');
-			label.setAttribute('font-weight', '600');
-			label.textContent = title;
-			svg.appendChild(label);
+		// Build per-event breakdown by origin country
+		const eventBreakdown = new Map<string, { origin: string; count: number }[]>();
+		for (const route of routes) {
+			const dKey = route.eventCountry.toLowerCase().trim();
+			if (!eventBreakdown.has(dKey)) eventBreakdown.set(dKey, []);
+			eventBreakdown.get(dKey)!.push({ origin: route.originCountry, count: route.count });
 		}
 
-		// Legend
-		const legendY = 80;
-		const legendItems = [
-			{ color: dark ? '#60a5fa' : '#3b82f6', label: 'Origin (user country)' },
-			{ color: dark ? '#fb923c' : '#ea580c', label: 'Destination (event)' },
-		];
-		for (let i = 0; i < legendItems.length; i++) {
-			const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-			circle.setAttribute('cx', String(-170));
-			circle.setAttribute('cy', String(legendY + i * 8));
-			circle.setAttribute('r', '2');
-			circle.setAttribute('fill', legendItems[i].color);
-			svg.appendChild(circle);
+		// Destination markers (orange, larger) with breakdown tooltip
+		for (const [dKey, { coords, total, title }] of destsMap) {
+			const r = Math.max(8, Math.min(18, (total / maxCount) * 20));
+			const breakdown = (eventBreakdown.get(dKey) || [])
+				.sort((a, b) => b.count - a.count)
+				.map((r) => `From ${r.origin}: ${r.count}`)
+				.join('<br/>');
+			const tooltipHtml = `<b>${title}</b> — ${total} attendee${total !== 1 ? 's' : ''}<br/><hr style="margin:4px 0;border-color:${dark ? '#475569' : '#e2e8f0'}">${breakdown}`;
 
-			const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-			text.setAttribute('x', String(-166));
-			text.setAttribute('y', String(legendY + i * 8));
-			text.setAttribute('dominant-baseline', 'middle');
-			text.setAttribute('fill', dark ? '#94a3b8' : '#64748b');
-			text.setAttribute('font-size', '4');
-			text.textContent = legendItems[i].label;
-			svg.appendChild(text);
+			L.circleMarker([coords[1], coords[0]], {
+				radius: r,
+				fillColor: dark ? '#fb923c' : '#ea580c',
+				fillOpacity: 0.9,
+				color: '#fff',
+				weight: 2,
+			})
+				.bindTooltip(`${title} (${total})`, {
+					permanent: true,
+					direction: 'top',
+					className: 'map-event-label',
+				})
+				.bindPopup(tooltipHtml)
+				.addTo(leafletMap);
 		}
 
-		// No data message
-		if (routes.length === 0 || origins.size === 0) {
-			const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-			text.setAttribute('x', '0');
-			text.setAttribute('y', '0');
-			text.setAttribute('text-anchor', 'middle');
-			text.setAttribute('dominant-baseline', 'middle');
-			text.setAttribute('fill', dark ? '#94a3b8' : '#64748b');
-			text.setAttribute('font-size', '6');
-			text.textContent = 'No signup route data yet';
-			svg.appendChild(text);
-		}
+		// Legend control
+		const legend = new L.Control({ position: 'bottomleft' });
+		legend.onAdd = () => {
+			const div = L.DomUtil.create('div', 'leaflet-legend');
+			div.style.cssText = `background:${dark ? 'rgba(15,23,42,0.85)' : 'rgba(255,255,255,0.9)'};padding:8px 12px;border-radius:6px;font-size:11px;line-height:1.8;color:${dark ? '#cbd5e1' : '#475569'};`;
+			div.innerHTML = `
+				<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dark ? '#60a5fa' : '#3b82f6'};margin-right:6px;vertical-align:middle;"></span>Origin<br>
+				<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dark ? '#fb923c' : '#ea580c'};margin-right:6px;vertical-align:middle;"></span>Event
+			`;
+			return div;
+		};
+		legend.addTo(leafletMap);
 	}
 
 	function renderUtmChart() {
@@ -650,6 +647,26 @@
 		if (stats) tick().then(() => renderAll());
 	});
 </script>
+
+<svelte:head>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</svelte:head>
+
+<style>
+	:global(.map-event-label) {
+		background: none !important;
+		border: none !important;
+		box-shadow: none !important;
+		font-weight: 600;
+		font-size: 11px;
+		color: #c2410c;
+		text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+	}
+	:global(.dark .map-event-label) {
+		color: #fdba74;
+		text-shadow: 0 0 3px #0f172a, 0 0 3px #0f172a;
+	}
+</style>
 
 <!-- Program Header -->
 <div class="relative h-[160px] w-full overflow-hidden bg-ds-banner">
@@ -880,7 +897,7 @@
 				</div>
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Signup Origins → Event Destinations</p>
-					<div bind:this={signupMapEl} style="height: 400px;"></div>
+					<div bind:this={signupMapEl} style="width: 100%; height: 400px;"></div>
 				</div>
 			</section>
 
