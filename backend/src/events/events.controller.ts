@@ -22,8 +22,8 @@ import {
   RemovedEventResponse,
 } from './dto/events-response.dto';
 import { Public } from '../auth/public.decorator';
-import { RolesGuard } from '../guards/roles.guard';
-import { Roles } from '../decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 
 @Controller('api/events')
