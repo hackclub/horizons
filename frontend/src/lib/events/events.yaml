@@ -72,9 +72,9 @@ equinox:
 
 europa:
   name: Horizons Europa
-  tagline: "50+ PERSON HACKATHON IN CENTRAL EUROPE \u2022 JULY 24-26"
+  tagline: "50+ PERSON HACKATHON IN BERLIN, GERMANY \u2022 JULY 24-26"
   headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
-  logo: /logos/horizons-europa.svg
+  logo: /logos/horizons-europa.png
   logoMaxWidth: 600px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
