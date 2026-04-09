@@ -41,6 +41,7 @@ model User {
   referredBy      User?         @relation("Referrals", fields: [referredByUserId], references: [userId])
   referrals       User[]        @relation("Referrals")
   rafflePos       String?       @map("raffle_pos")
+  utmSource       String?       @map("utm_source")
 
   isFraud         Boolean       @default(false) @map("is_fraud")
   isSus           Boolean       @default(false) @map("is_sus")
@@ -373,4 +374,16 @@ model GlobalSettings {
   updatedAt             DateTime @updatedAt @map("updated_at")
 
   @@map("global_settings")
+}
+
+model HistoricalMetric {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @db.Date
+  metric    String   @db.VarChar(100)
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([date, metric])
+  @@index([metric])
+  @@map("historical_metrics")
 }

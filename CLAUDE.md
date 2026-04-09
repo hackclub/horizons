@@ -88,3 +88,6 @@ The admin app is mounted at `/admin` via `svelte.config.js` `paths.base`. All ad
 ## Documentation
 
 When making changes, update the relevant documentation: `README.md`, `frontend/FRONTEND.md`, `admin/ADMIN.md`, `backend/BACKEND.md`, and files in `docs/`. Create new docs in `docs/` when a feature, flow, or integration is complex enough to warrant its own explanation.
+
+## IMPORTANT: DO NOT WRITE YOUR OWN MIGRATIONS
+ONLY USE PRISMA CLI. This is to avoid conflicts in production. You are allowed to use Prisma CLI --create-only to create migrations. 
