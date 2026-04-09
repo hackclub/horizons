@@ -791,7 +791,7 @@
 					</div>
 				</div>
 				<div class="mt-3 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Median Review Time (30d)</p>
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Median Review Time — Weekly Avg</p>
 					<div bind:this={medianReviewEl} style="height: 180px;"></div>
 					{#if stats.historical.medianReviewTimeHours.length === 0}
 						<p class="text-[10px] text-ds-text-secondary text-center mt-1">No historical data yet</p>

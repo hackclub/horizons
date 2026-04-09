@@ -86,8 +86,10 @@ export class MetricsSnapshotService implements OnModuleInit {
     const dateRange = { gte: dayStart, lte: dayEnd };
     const beforeEnd = { lte: dayEnd };
 
+    // Single Hackatime API call for both DAU and daily hours
+    const hackatimeDaily = await this.computeHackatimeDaily(dayStart);
+
     const [
-      dau,
       newSignups,
       submissionsCreated,
       reviewsCompleted,
@@ -102,7 +104,6 @@ export class MetricsSnapshotService implements OnModuleInit {
       signupPerEvent,
       utmSources,
     ] = await Promise.all([
-      this.computeDau(dayStart, dayEnd),
       this.prisma.user.count({ where: { createdAt: dateRange } }),
       this.prisma.submission.count({ where: { createdAt: dateRange } }),
       this.prisma.submission.count({ where: { reviewedAt: dateRange } }),
@@ -119,7 +120,7 @@ export class MetricsSnapshotService implements OnModuleInit {
     ]);
 
     return {
-      dau,
+      dau: hackatimeDaily.dau,
       new_signups: newSignups,
       submissions_created: submissionsCreated,
       reviews_completed: reviewsCompleted,
@@ -128,6 +129,7 @@ export class MetricsSnapshotService implements OnModuleInit {
       total_projects: totalProjects,
       total_tracked_hours: trackedHoursAgg._sum.nowHackatimeHours ?? 0,
       total_approved_hours: approvedHoursAgg._sum.approvedHours ?? 0,
+      daily_hours_logged: hackatimeDaily.totalHours,
       funnel: funnelData,
       review_hours: reviewHoursData,
       review_projects: reviewProjectsData,
@@ -136,8 +138,15 @@ export class MetricsSnapshotService implements OnModuleInit {
     };
   }
 
-  private async computeDau(dayStart: Date, dayEnd: Date): Promise<number> {
-    // Query Hackatime API for each linked user to check if they had activity on this day
+  /**
+   * Compute DAU and total daily hours using the Hackatime /api/summary endpoint.
+   * Returns { dau, totalHours } for the given day.
+   * Uses /api/summary?user={account}&start={date}&end={date} which returns
+   * total_seconds for that specific day (not cumulative).
+   */
+  private async computeHackatimeDaily(
+    dayStart: Date,
+  ): Promise<{ dau: number; totalHours: number }> {
     const linkedUsers = await this.prisma.user.findMany({
       where: { hackatimeAccount: { not: null } },
       select: { hackatimeAccount: true },
@@ -146,39 +155,53 @@ export class MetricsSnapshotService implements OnModuleInit {
     const dateStr = dayStart.toISOString().split('T')[0];
     const apiKey = process.env.HACKATIME_API_KEY;
     let activeCount = 0;
+    let totalSeconds = 0;
 
-    // Process in batches of 10 to avoid overwhelming the API
     const batchSize = 10;
     for (let i = 0; i < linkedUsers.length; i += batchSize) {
       const batch = linkedUsers.slice(i, i + batchSize);
       const results = await Promise.allSettled(
         batch.map(async (user) => {
           try {
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            const headers: Record<string, string> = { Accept: 'application/json' };
             if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
-            const url = `https://hackatime.hackclub.com/api/v1/users/${user.hackatimeAccount}/stats?features=projects&start_date=${dateStr}&end_date=${dateStr}`;
+            // Use /api/summary which returns actual daily coding time, not cumulative
+            const url = `https://hackatime.hackclub.com/api/summary?user=${encodeURIComponent(user.hackatimeAccount!)}&start=${dateStr}&end=${dateStr}`;
             const response = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
 
-            if (!response.ok) return false;
+            if (!response.ok) return 0;
             const data = await response.json();
-            const totalSeconds = data?.data?.total_seconds ?? 0;
-            return totalSeconds > 0;
+
+            // Sum total_seconds across all projects for this user on this day
+            const projects = data?.projects;
+            let userSeconds = 0;
+            if (Array.isArray(projects)) {
+              for (const p of projects) {
+                userSeconds += p?.total_seconds ?? 0;
+              }
+            }
+            return userSeconds;
           } catch {
-            return false;
+            return 0;
           }
         }),
       );
 
       for (const result of results) {
-        if (result.status === 'fulfilled' && result.value) {
-          activeCount++;
+        if (result.status === 'fulfilled' && typeof result.value === 'number') {
+          if (result.value > 0) activeCount++;
+          totalSeconds += result.value;
         }
       }
     }
 
-    return activeCount;
+    return {
+      dau: activeCount,
+      totalHours: Math.round((totalSeconds / 3600) * 10) / 10,
+    };
   }
+
 
   private async computeMedianReviewTime(
     dayStart: Date,

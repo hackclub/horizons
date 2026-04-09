@@ -546,7 +546,11 @@ export class AdminService {
   }
 
   private async computeHistorical(thirtyDaysAgo: Date) {
-    const timeSeriesMetrics = ['dau', 'new_signups', 'submissions_created', 'reviews_completed', 'median_review_time_hours', 'total_tracked_hours'];
+    const timeSeriesMetrics = [
+      'dau', 'new_signups', 'submissions_created', 'reviews_completed',
+      'median_review_time_hours', 'daily_hours_logged',
+      'total_users', 'total_projects',
+    ];
 
     const rows = await this.prisma.historicalMetric.findMany({
       where: {
@@ -558,30 +562,78 @@ export class AdminService {
 
     const result: Record<string, Array<{ date: string; value: number }>> = {
       dau: [],
-      newSignups: [],
-      submissionsCreated: [],
-      reviewsCompleted: [],
+      newSignups: [],           // cumulative (total_users)
+      submissionsCreated: [],   // cumulative running sum
+      reviewsCompleted: [],     // cumulative running sum
       medianReviewTimeHours: [],
       dailyHoursLogged: [],
     };
 
+    // First pass: collect raw daily values
+    const rawDaily: Record<string, Array<{ date: string; value: number }>> = {
+      new_signups: [],
+      submissions_created: [],
+      reviews_completed: [],
+      median_review_time_hours: [],
+    };
     const metricKeyMap: Record<string, string> = {
       dau: 'dau',
-      new_signups: 'newSignups',
-      submissions_created: 'submissionsCreated',
-      reviews_completed: 'reviewsCompleted',
-      median_review_time_hours: 'medianReviewTimeHours',
-      total_tracked_hours: 'dailyHoursLogged',
+      daily_hours_logged: 'dailyHoursLogged',
     };
 
     for (const row of rows) {
-      const key = metricKeyMap[row.metric];
-      if (key) {
-        result[key].push({
-          date: row.date.toISOString().split('T')[0],
-          value: typeof row.value === 'number' ? row.value : Number(row.value) || 0,
-        });
+      const val = typeof row.value === 'number' ? row.value : Number(row.value) || 0;
+      const dateStr = row.date.toISOString().split('T')[0];
+
+      // Non-cumulative metrics: pass through directly
+      const directKey = metricKeyMap[row.metric];
+      if (directKey) {
+        result[directKey].push({ date: dateStr, value: val });
+        continue;
       }
+
+      // Cumulative: use total_users snapshot directly for signups
+      if (row.metric === 'total_users') {
+        result.newSignups.push({ date: dateStr, value: val });
+        continue;
+      }
+
+      // Collect daily counts for aggregation
+      if (rawDaily[row.metric]) {
+        rawDaily[row.metric].push({ date: dateStr, value: val });
+      }
+    }
+
+    // Aggregate median review time into weekly averages
+    const weekBuckets = new Map<string, number[]>();
+    for (const d of rawDaily.median_review_time_hours) {
+      if (d.value === 0) continue;
+      // Get the Monday of this date's week
+      const date = new Date(d.date);
+      const day = date.getUTCDay();
+      const monday = new Date(date);
+      monday.setUTCDate(date.getUTCDate() - ((day + 6) % 7));
+      const weekKey = monday.toISOString().split('T')[0];
+      if (!weekBuckets.has(weekKey)) weekBuckets.set(weekKey, []);
+      weekBuckets.get(weekKey)!.push(d.value);
+    }
+    for (const [weekStart, values] of weekBuckets) {
+      const avg = Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 100) / 100;
+      result.medianReviewTimeHours.push({ date: weekStart, value: avg });
+    }
+    result.medianReviewTimeHours.sort((a, b) => a.date.localeCompare(b.date));
+
+    // Convert daily submissions_created and reviews_completed to cumulative running sums
+    let submissionSum = 0;
+    for (const d of rawDaily.submissions_created) {
+      submissionSum += d.value;
+      result.submissionsCreated.push({ date: d.date, value: submissionSum });
+    }
+
+    let reviewSum = 0;
+    for (const d of rawDaily.reviews_completed) {
+      reviewSum += d.value;
+      result.reviewsCompleted.push({ date: d.date, value: reviewSum });
     }
 
     return result;
