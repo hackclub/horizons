@@ -5,7 +5,6 @@
 	import { Button } from '$lib/components';
 	import { theme } from '$lib/themeStore';
 	import * as echarts from 'echarts';
-	import { getCountryCoords } from '$lib/geo';
 	let leafletMap: any = null;
 	let L: any = null;
 
@@ -454,62 +453,50 @@
 			detectRetina: true,
 		}).addTo(leafletMap);
 
-		// Collect origins and destinations
-		const originsMap = new Map<string, { coords: [number, number]; total: number }>();
-		const destsMap = new Map<string, { coords: [number, number]; total: number; title: string }>();
-
-		const unmatchedCountries: string[] = [];
+		// Collect origins and destinations from API-provided coordinates
+		const originsMap = new Map<string, { lat: number; lng: number; total: number }>();
+		const destsMap = new Map<string, { lat: number; lng: number; total: number; title: string }>();
 
 		for (const route of routes) {
-			const oCoords = getCountryCoords(route.originCountry);
-			const dCoords = getCountryCoords(route.eventCountry);
-			if (!oCoords) unmatchedCountries.push(`origin: "${route.originCountry}"`);
-			if (!dCoords) unmatchedCountries.push(`event: "${route.eventCountry}"`);
-			if (!oCoords || !dCoords) continue;
+			if (route.originLat == null || route.originLng == null) continue;
+			if (route.eventLat == null || route.eventLng == null) continue;
 
 			const oKey = route.originCountry.toLowerCase();
-			if (!originsMap.has(oKey)) originsMap.set(oKey, { coords: oCoords, total: 0 });
+			if (!originsMap.has(oKey)) originsMap.set(oKey, { lat: route.originLat, lng: route.originLng, total: 0 });
 			originsMap.get(oKey)!.total += route.count;
 
 			const dKey = route.eventCountry.toLowerCase();
-			if (!destsMap.has(dKey)) destsMap.set(dKey, { coords: dCoords, total: 0, title: route.eventTitle });
+			if (!destsMap.has(dKey)) destsMap.set(dKey, { lat: route.eventLat, lng: route.eventLng, total: 0, title: route.eventTitle });
 			destsMap.get(dKey)!.total += route.count;
-		}
-
-		if (unmatchedCountries.length > 0) {
-			console.warn('[Signup Map] Unmatched countries:', unmatchedCountries);
 		}
 
 		const maxCount = Math.max(...[...originsMap.values(), ...destsMap.values()].map((v) => v.total), 1);
 
 		// Draw route arcs
 		for (const route of routes) {
-			const oCoords = getCountryCoords(route.originCountry);
-			const dCoords = getCountryCoords(route.eventCountry);
-			if (!oCoords || !dCoords) continue;
+			if (route.originLat == null || route.originLng == null) continue;
+			if (route.eventLat == null || route.eventLng == null) continue;
 
-			const fromLat = oCoords[1], fromLng = oCoords[0];
-			const toLat = dCoords[1], toLng = dCoords[0];
+			const fromLat = route.originLat, fromLng = route.originLng;
+			const toLat = route.eventLat, toLng = route.eventLng;
 			const sameCountry = route.originCountry.toLowerCase().trim() === route.eventCountry.toLowerCase().trim()
-				|| (oCoords[0] === dCoords[0] && oCoords[1] === dCoords[1]);
+				|| (fromLat === toLat && fromLng === toLng);
+
+			// Same country — skip the line, info shown in destination popup
+			if (sameCountry) continue;
+
 			const weight = Math.max(1.5, Math.min(4, (route.count / maxCount) * 5));
 			const color = dark ? 'rgba(96,165,250,0.6)' : 'rgba(37,99,235,0.5)';
 			const tooltip = `${route.originCountry} → ${route.eventTitle}<br/>${route.count} user${route.count !== 1 ? 's' : ''}`;
 
+			// Quadratic bezier curve
+			const midLat = (fromLat + toLat) / 2 + Math.abs(fromLng - toLng) * 0.12;
+			const midLng = (fromLng + toLng) / 2;
 			const points: [number, number][] = [];
-
-			if (sameCountry) {
-				// Same country — skip the line, info shown in destination tooltip
-				continue;
-			} else {
-				// Quadratic bezier curve
-				const midLat = (fromLat + toLat) / 2 + Math.abs(fromLng - toLng) * 0.12;
-				const midLng = (fromLng + toLng) / 2;
-				for (let t = 0; t <= 1; t += 0.04) {
-					const lat = (1 - t) * (1 - t) * fromLat + 2 * (1 - t) * t * midLat + t * t * toLat;
-					const lng = (1 - t) * (1 - t) * fromLng + 2 * (1 - t) * t * midLng + t * t * toLng;
-					points.push([lat, lng]);
-				}
+			for (let t = 0; t <= 1; t += 0.04) {
+				const lat = (1 - t) * (1 - t) * fromLat + 2 * (1 - t) * t * midLat + t * t * toLat;
+				const lng = (1 - t) * (1 - t) * fromLng + 2 * (1 - t) * t * midLng + t * t * toLng;
+				points.push([lat, lng]);
 			}
 
 			L.polyline(points, { color, weight, opacity: 0.7 })
@@ -518,9 +505,9 @@
 		}
 
 		// Origin markers (blue)
-		for (const [name, { coords, total }] of originsMap) {
+		for (const [name, { lat, lng, total }] of originsMap) {
 			const r = Math.max(5, Math.min(14, (total / maxCount) * 16));
-			L.circleMarker([coords[1], coords[0]], {
+			L.circleMarker([lat, lng], {
 				radius: r,
 				fillColor: dark ? '#60a5fa' : '#3b82f6',
 				fillOpacity: 0.85,
@@ -540,7 +527,7 @@
 		}
 
 		// Destination markers (orange, larger) with breakdown tooltip
-		for (const [dKey, { coords, total, title }] of destsMap) {
+		for (const [dKey, { lat, lng, total, title }] of destsMap) {
 			const r = Math.max(8, Math.min(18, (total / maxCount) * 20));
 			const breakdown = (eventBreakdown.get(dKey) || [])
 				.sort((a, b) => b.count - a.count)
@@ -548,7 +535,7 @@
 				.join('<br/>');
 			const tooltipHtml = `<b>${title}</b> — ${total} attendee${total !== 1 ? 's' : ''}<br/><hr style="margin:4px 0;border-color:${dark ? '#475569' : '#e2e8f0'}">${breakdown}`;
 
-			L.circleMarker([coords[1], coords[0]], {
+			L.circleMarker([lat, lng], {
 				radius: r,
 				fillColor: dark ? '#fb923c' : '#ea580c',
 				fillOpacity: 0.9,

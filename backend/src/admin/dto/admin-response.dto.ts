@@ -708,8 +708,20 @@ class StatsSignupRoute {
   @ApiProperty()
   originCountry: string;
 
+  @ApiProperty({ type: Number, nullable: true })
+  originLat: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  originLng: number | null;
+
   @ApiProperty()
   eventCountry: string;
+
+  @ApiProperty({ type: Number, nullable: true })
+  eventLat: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  eventLng: number | null;
 
   @ApiProperty()
   eventTitle: string;

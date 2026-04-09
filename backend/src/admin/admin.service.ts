@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
+import { GeocodingService } from './geocoding.service';
 
 const projectAdminInclude = {
   user: {
@@ -40,6 +41,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private slackService: SlackService,
+    private geocodingService: GeocodingService,
   ) {}
 
   async getAllSubmissions() {
@@ -493,6 +495,28 @@ export class AdminService {
       ORDER BY count DESC
     `;
 
+    // Geocode all unique countries
+    const allCountries = [
+      ...routesResult.map((r) => r.origin_country),
+      ...routesResult.map((r) => r.event_country),
+    ];
+    const coords = await this.geocodingService.geocodeMany(allCountries);
+
+    const routes = routesResult.map((r) => {
+      const originCoords = coords.get(r.origin_country.toLowerCase().trim());
+      const eventCoords = coords.get(r.event_country.toLowerCase().trim());
+      return {
+        originCountry: r.origin_country,
+        originLat: originCoords?.lat ?? null,
+        originLng: originCoords?.lng ?? null,
+        eventCountry: r.event_country,
+        eventLat: eventCoords?.lat ?? null,
+        eventLng: eventCoords?.lng ?? null,
+        eventTitle: r.event_title,
+        count: Number(r.count),
+      };
+    });
+
     return {
       total,
       perEvent: perEventResult.map((r) => ({
@@ -501,12 +525,7 @@ export class AdminService {
         slug: r.slug,
         count: Number(r.count),
       })),
-      routes: routesResult.map((r) => ({
-        originCountry: r.origin_country,
-        eventCountry: r.event_country,
-        eventTitle: r.event_title,
-        count: Number(r.count),
-      })),
+      routes,
     };
   }
 
