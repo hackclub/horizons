@@ -392,7 +392,9 @@ export class AuthService {
             ? { referredBy: { connect: { userId: referredByUserId } } }
             : {}),
           rafflePos,
-          utmSource: utmSource || null,
+          utmSource: referredByUserId
+            ? (utmSource ? `${utmSource}+referral` : 'referral')
+            : utmSource || null,
         },
       });
 
