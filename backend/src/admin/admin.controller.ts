@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   Delete,
   Post,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -40,6 +41,7 @@ import {
   UpdateUserRoleResponse,
   AdminStatsResponse,
   BackfillResponse,
+  EventStatsResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -162,6 +164,16 @@ export class AdminController {
     const end = new Date(endDate || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     const results = await this.metricsSnapshotService.backfill(start, end);
     return { results };
+  }
+
+  @Get('events/:slug/stats')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: EventStatsResponse })
+  async getEventStats(@Param('slug') slug: string) {
+    const stats = await this.adminService.getEventStats(slug);
+    if (!stats) throw new NotFoundException('Event not found');
+    return stats;
   }
 
   @Get('reviewer-leaderboard')

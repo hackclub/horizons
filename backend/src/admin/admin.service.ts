@@ -639,6 +639,114 @@ export class AdminService {
     return result;
   }
 
+  async getEventStats(slug: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { slug },
+      include: { _count: { select: { pinnedBy: true } } },
+    });
+    if (!event) return null;
+
+    const eventId = event.eventId;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+
+    // Pinned users who have/haven't met the hour goal
+    const pinnedUsers = await this.prisma.pinnedEvent.findMany({
+      where: { eventId },
+      include: {
+        user: {
+          include: {
+            projects: { select: { approvedHours: true } },
+          },
+        },
+      },
+    });
+
+    let metGoal = 0;
+    let notMetGoal = 0;
+    for (const pin of pinnedUsers) {
+      const totalApproved = pin.user.projects.reduce(
+        (sum, p) => sum + (p.approvedHours ?? 0),
+        0,
+      );
+      if (totalApproved >= event.hourCost) {
+        metGoal++;
+      } else {
+        notMetGoal++;
+      }
+    }
+
+    // DAU for this event (users with project activity today who are pinned to this event)
+    const dauResult = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(DISTINCT p.user_id) as count
+      FROM projects p
+      INNER JOIN pinned_events pe ON pe.user_id = p.user_id
+      WHERE pe.event_id = ${eventId}
+        AND p.updated_at >= ${todayStart}
+    `;
+    const dauToday = Number(dauResult[0]?.count ?? 0);
+
+    // Pinned over the last 30 days (daily counts from pinned_events.created_at)
+    const pinnedOverTime = await this.prisma.$queryRaw<
+      Array<{ date: Date; count: bigint }>
+    >`
+      SELECT DATE(pe.created_at) as date, COUNT(*) as count
+      FROM pinned_events pe
+      WHERE pe.event_id = ${eventId}
+        AND pe.created_at >= ${thirtyDaysAgo}
+      GROUP BY DATE(pe.created_at)
+      ORDER BY date ASC
+    `;
+
+    // Cumulative pinned count over time
+    let cumulative = event._count.pinnedBy - pinnedOverTime.reduce((s, d) => s + Number(d.count), 0);
+    const pinnedTimeline = pinnedOverTime.map((d) => {
+      cumulative += Number(d.count);
+      return {
+        date: d.date.toISOString().split('T')[0],
+        value: cumulative,
+      };
+    });
+
+    // DAU per event over 30 days from historical_metrics
+    const dauRows = await this.prisma.historicalMetric.findMany({
+      where: {
+        metric: `dau_event.${slug}`,
+        date: { gte: thirtyDaysAgo },
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    const dauTimeline = dauRows.map((r) => ({
+      date: r.date.toISOString().split('T')[0],
+      value: typeof r.value === 'number' ? r.value : Number(r.value) || 0,
+    }));
+
+    return {
+      event: {
+        eventId: event.eventId,
+        slug: event.slug,
+        title: event.title,
+        description: event.description,
+        imageUrl: event.imageUrl,
+        location: event.location,
+        country: event.country,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        hourCost: event.hourCost,
+        isActive: event.isActive,
+      },
+      pinnedCount: event._count.pinnedBy,
+      metHourGoal: metGoal,
+      notMetHourGoal: notMetGoal,
+      dauToday,
+      pinnedTimeline,
+      dauTimeline,
+    };
+  }
+
   async deleteProject(projectId: number) {
     const project = await this.prisma.project.findUnique({
       where: { projectId },

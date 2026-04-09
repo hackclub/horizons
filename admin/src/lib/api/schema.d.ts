@@ -552,6 +552,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/events/{slug}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getEventStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/reviewer-leaderboard": {
         parameters: {
             query?: never;
@@ -1976,7 +1992,11 @@ export interface components {
         };
         StatsSignupRoute: {
             originCountry: string;
+            originLat: number | null;
+            originLng: number | null;
             eventCountry: string;
+            eventLat: number | null;
+            eventLng: number | null;
             eventTitle: string;
             count: number;
         };
@@ -2033,6 +2053,33 @@ export interface components {
         };
         BackfillResponse: {
             results: components["schemas"]["BackfillEntry"][];
+        };
+        EventStatsEventDetail: {
+            eventId: number;
+            slug: string;
+            title: string;
+            description?: string | null;
+            imageUrl?: string | null;
+            location?: string | null;
+            country?: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string;
+            hourCost: number;
+            isActive: boolean;
+        };
+        EventStatsPinnedTimelineEntry: {
+            date: string;
+            value: number;
+        };
+        EventStatsResponse: {
+            event: components["schemas"]["EventStatsEventDetail"];
+            pinnedCount: number;
+            metHourGoal: number;
+            notMetHourGoal: number;
+            dauToday: number;
+            pinnedTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
         };
         ReviewerLeaderboardEntry: {
             reviewerId: string;
@@ -2419,6 +2466,7 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             location: string | null;
+            country: string | null;
             /** Format: date-time */
             startDate: string;
             /** Format: date-time */
@@ -2439,6 +2487,7 @@ export interface components {
             description?: string;
             imageUrl?: string;
             location?: string;
+            country?: string;
             startDate: string;
             endDate: string;
             hourCost: number;
@@ -2451,6 +2500,7 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             location: string | null;
+            country: string | null;
             /** Format: date-time */
             startDate: string;
             /** Format: date-time */
@@ -2468,6 +2518,7 @@ export interface components {
             description?: string;
             imageUrl?: string;
             location?: string;
+            country?: string;
             startDate?: string;
             endDate?: string;
             hourCost?: number;
@@ -3437,6 +3488,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BackfillResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getEventStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventStatsResponse"];
                 };
             };
         };

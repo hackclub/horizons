@@ -119,7 +119,10 @@ export class MetricsSnapshotService implements OnModuleInit {
       this.computeUtmSources(dayEnd),
     ]);
 
-    return {
+    // Per-event DAU (users with project activity that day, grouped by pinned event)
+    const dauPerEvent = await this.computeDauPerEvent(dayStart, dayEnd);
+
+    const metrics: Record<string, unknown> = {
       dau: hackatimeDaily.dau,
       new_signups: newSignups,
       submissions_created: submissionsCreated,
@@ -136,6 +139,13 @@ export class MetricsSnapshotService implements OnModuleInit {
       signup_per_event: signupPerEvent,
       utm_sources: utmSources,
     };
+
+    // Add per-event DAU as separate metric keys
+    for (const { slug, count } of dauPerEvent) {
+      metrics[`dau_event.${slug}`] = count;
+    }
+
+    return metrics;
   }
 
   /**
@@ -202,6 +212,24 @@ export class MetricsSnapshotService implements OnModuleInit {
     };
   }
 
+
+  private async computeDauPerEvent(
+    dayStart: Date,
+    dayEnd: Date,
+  ): Promise<Array<{ slug: string; count: number }>> {
+    const result = await this.prisma.$queryRaw<
+      Array<{ slug: string; count: bigint }>
+    >`
+      SELECT e.slug, COUNT(DISTINCT p.user_id) as count
+      FROM projects p
+      INNER JOIN pinned_events pe ON pe.user_id = p.user_id
+      INNER JOIN events e ON e.event_id = pe.event_id
+      WHERE p.updated_at >= ${dayStart} AND p.updated_at <= ${dayEnd}
+      GROUP BY e.slug
+    `;
+
+    return result.map((r) => ({ slug: r.slug, count: Number(r.count) }));
+  }
 
   private async computeMedianReviewTime(
     dayStart: Date,

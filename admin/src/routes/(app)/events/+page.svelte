@@ -1,340 +1,117 @@
 <script lang="ts">
+    import { base } from '$app/paths';
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
-    import { Button, TextField, Checkbox } from '$lib/components';
+    import { TextField } from '$lib/components';
+    import yaml from 'js-yaml';
 
     type AdminEventResponse = components['schemas']['AdminEventResponse'];
 
-    let eventsLoading = $state(false);
-    let events = $state<AdminEventResponse[]>([]);
+    interface EventConfig {
+        name: string;
+        logo: string;
+        colors: { primary: string; background: string };
+    }
 
-    let eventForm = $state<{
-        slug: string;
-        title: string;
-        description: string;
-        imageUrl: string;
-        location: string;
-        country: string;
-        startDate: string;
-        endDate: string;
-        hourCost: string;
-        isActive: boolean;
-    }>({
-        slug: '',
-        title: '',
-        description: '',
-        imageUrl: '',
-        location: '',
-        country: '',
-        startDate: '',
-        endDate: '',
-        hourCost: '',
-        isActive: true
+    let eventsLoading = $state(true);
+    let events = $state<AdminEventResponse[]>([]);
+    let eventConfigs = $state<Record<string, EventConfig>>({});
+    let search = $state('');
+
+    let filteredEvents = $derived(
+        search.trim()
+            ? events.filter((e) =>
+                e.title.toLowerCase().includes(search.toLowerCase()) ||
+                e.slug.toLowerCase().includes(search.toLowerCase())
+            )
+            : events,
+    );
+
+    onMount(async () => {
+        await Promise.all([loadEvents(), loadEventConfigs()]);
     });
-    let editingEventSlug = $state<string | null>(null);
-    let eventFormSaving = $state(false);
-    let eventFormError = $state('');
-    let eventFormSuccess = $state('');
 
     async function loadEvents() {
         eventsLoading = true;
         try {
             const { data, error } = await api.GET('/api/events/admin');
-            if (error) {
-                console.error('Failed to load events:', error);
-                return;
-            }
-            if (data) {
-                events = data;
-            }
-        } catch (err) {
-            console.error('Failed to load events:', err);
+            if (!error && data) events = data;
         } finally {
             eventsLoading = false;
         }
     }
 
-    function resetEventForm() {
-        eventForm = {
-            slug: '',
-            title: '',
-            description: '',
-            imageUrl: '',
-            location: '',
-            country: '',
-            startDate: '',
-            endDate: '',
-            hourCost: '',
-            isActive: true
-        };
-        editingEventSlug = null;
-        eventFormError = '';
-        eventFormSuccess = '';
-    }
-
-    function startEditEvent(event: AdminEventResponse) {
-        editingEventSlug = event.slug;
-        eventForm = {
-            slug: event.slug,
-            title: event.title,
-            description: event.description || '',
-            imageUrl: event.imageUrl || '',
-            location: event.location || '',
-            country: (event as any).country || '',
-            startDate: event.startDate ? new Date(event.startDate).toISOString().slice(0, 10) : '',
-            endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 10) : '',
-            hourCost: String(event.hourCost),
-            isActive: event.isActive
-        };
-        eventFormError = '';
-        eventFormSuccess = '';
-    }
-
-    async function saveEvent() {
-        eventFormSaving = true;
-        eventFormError = '';
-        eventFormSuccess = '';
-
+    async function loadEventConfigs() {
         try {
-            if (editingEventSlug) {
-                const { error } = await api.PUT('/api/events/admin/{slug}', {
-                    params: { path: { slug: editingEventSlug } },
-                    body: {
-                        slug: eventForm.slug,
-                        title: eventForm.title,
-                        description: eventForm.description || undefined,
-                        imageUrl: eventForm.imageUrl || undefined,
-                        location: eventForm.location || undefined,
-                        country: eventForm.country || undefined,
-                        startDate: eventForm.startDate || undefined,
-                        endDate: eventForm.endDate || undefined,
-                        hourCost: parseFloat(eventForm.hourCost),
-                        isActive: eventForm.isActive
-                    }
-                });
-
-                if (error) {
-                    eventFormError = (error as any)?.message ?? 'Failed to save event';
-                    return;
-                }
-
-                eventFormSuccess = 'Event updated successfully';
-            } else {
-                const { error } = await api.POST('/api/events/admin', {
-                    body: {
-                        slug: eventForm.slug,
-                        title: eventForm.title,
-                        description: eventForm.description || undefined,
-                        imageUrl: eventForm.imageUrl || undefined,
-                        location: eventForm.location || undefined,
-                        country: eventForm.country || undefined,
-                        startDate: eventForm.startDate,
-                        endDate: eventForm.endDate,
-                        hourCost: parseFloat(eventForm.hourCost)
-                    }
-                });
-
-                if (error) {
-                    eventFormError = (error as any)?.message ?? 'Failed to save event';
-                    return;
-                }
-
-                eventFormSuccess = 'Event created successfully';
+            const resp = await fetch(`${base}/events.yaml`);
+            if (resp.ok) {
+                const text = await resp.text();
+                eventConfigs = (yaml.load(text) as Record<string, EventConfig>) ?? {};
             }
-
-            resetEventForm();
-            await loadEvents();
-        } catch (err) {
-            eventFormError = err instanceof Error ? err.message : 'Failed to save event';
-        } finally {
-            eventFormSaving = false;
+        } catch {
+            // Event configs are optional — logos just won't show
         }
     }
 
-    async function deleteEvent(slug: string) {
-        const confirmDelete = window.confirm('Delete this event? This cannot be undone.');
-        if (!confirmDelete) return;
-
-        try {
-            const { error } = await api.DELETE('/api/events/admin/{slug}', {
-                params: { path: { slug } }
-            });
-            if (error) {
-                console.error('Failed to delete event:', error);
-                return;
-            }
-            await loadEvents();
-        } catch (err) {
-            console.error('Failed to delete event:', err);
-        }
+    function getEventLogo(slug: string): string | null {
+        const config = eventConfigs[slug];
+        if (!config?.logo) return null;
+        // Logos are in /admin/logos/ (copied from frontend)
+        return `${base}${config.logo}`;
     }
 
-    onMount(() => {
-        loadEvents();
-    });
+    function getPinnedCount(event: AdminEventResponse): number {
+        return (event as any)._count?.pinnedBy ?? 0;
+    }
 </script>
 
-<div class="p-6"><div class="mx-auto max-w-6xl space-y-6">
-<section class="space-y-4">
-    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h2 class="text-2xl font-semibold">Events Management</h2>
-        <Button variant="ghost" onclick={loadEvents}>
-            Refresh
-        </Button>
-    </div>
+<div class="p-6">
+    <div class="mx-auto max-w-3xl space-y-4">
+        <h1 class="text-2xl font-semibold text-ds-text">Events</h1>
 
-    <div class="rounded-lg border border-ds-border bg-ds-surface backdrop-blur p-6 space-y-6">
-        <h3 class="text-lg font-semibold">
-            {editingEventSlug ? 'Edit Event' : 'Create New Event'}
-        </h3>
-        <div class="grid gap-4 md:grid-cols-2">
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-slug">Slug *</label>
-                <TextField
-                    id="event-slug"
-                    placeholder="my-event"
-                    bind:value={eventForm.slug}
-                />
-            </div>
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-title">Title *</label>
-                <TextField
-                    id="event-title"
-                    placeholder="Event title"
-                    bind:value={eventForm.title}
-                />
-            </div>
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-description">Description</label>
-                <TextField
-                    id="event-description"
-                    placeholder="Event description..."
-                    bind:value={eventForm.description}
-                />
-            </div>
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-image">Image URL</label>
-                <TextField
-                    id="event-image"
-                    placeholder="https://..."
-                    bind:value={eventForm.imageUrl}
-                />
-            </div>
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-location">Location</label>
-                <TextField
-                    id="event-location"
-                    placeholder="San Francisco, CA"
-                    bind:value={eventForm.location}
-                />
-            </div>
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-country">Country</label>
-                <TextField
-                    id="event-country"
-                    placeholder="United States"
-                    bind:value={eventForm.country}
-                />
-            </div>
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-start-date">Start Date *</label>
-                <TextField
-                    id="event-start-date"
-                    type="date"
-                    bind:value={eventForm.startDate}
-                />
-            </div>
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-end-date">End Date *</label>
-                <TextField
-                    id="event-end-date"
-                    type="date"
-                    bind:value={eventForm.endDate}
-                />
-            </div>
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-cost">Hour Cost *</label>
-                <TextField
-                    id="event-cost"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    placeholder="0"
-                    bind:value={eventForm.hourCost}
-                />
-            </div>
-            <div class="flex items-center gap-4">
-                <label class="flex items-center gap-2 text-sm text-ds-text-secondary">
-                    <Checkbox bind:checked={eventForm.isActive} />
-                    Active
-                </label>
-            </div>
-        </div>
+        <TextField
+            placeholder="Search for an event..."
+            bind:value={search}
+        />
 
-        <div class="flex flex-wrap gap-3 items-center">
-            <Button
-                variant="approve"
-                onclick={saveEvent}
-                disabled={eventFormSaving || !eventForm.slug || !eventForm.title || !eventForm.startDate || !eventForm.endDate || !eventForm.hourCost}
-            >
-                {eventFormSaving ? 'Saving...' : editingEventSlug ? 'Update Event' : 'Create Event'}
-            </Button>
-            {#if editingEventSlug}
-                <Button variant="ghost" onclick={resetEventForm}>
-                    Cancel Edit
-                </Button>
-            {/if}
-            {#if eventFormError}
-                <span class="text-red-600 text-sm">{eventFormError}</span>
-            {/if}
-            {#if eventFormSuccess}
-                <span class="text-green-700 text-sm">{eventFormSuccess}</span>
-            {/if}
-        </div>
-    </div>
-
-    {#if eventsLoading}
-        <div class="py-12 text-center text-ds-text-secondary">
-            Loading events...
-        </div>
-    {:else if events.length === 0}
-        <div class="py-12 text-center text-ds-text-secondary">
-            No events yet. Create one above.
-        </div>
-    {:else}
-        <div class="space-y-2">
-            {#each events as event (event.eventId)}
-                <div class="flex items-center justify-between rounded-lg border border-ds-border bg-ds-surface2 px-4 py-3">
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <span class="font-medium">{event.title}</span>
-                        <span class="text-sm text-ds-text-secondary">{event.slug}</span>
-                        <span class="text-sm text-ds-text-secondary">
-                            {new Date(event.startDate).toLocaleDateString()} – {event.endDate ? new Date(event.endDate).toLocaleDateString() : ''}
-                        </span>
-                        {#if event.location}
-                            <span class="text-sm text-ds-text-secondary">{event.location}</span>
-                        {/if}
-                        <span class="text-sm text-ds-text-secondary">{event.hourCost}h</span>
-                        {#if event._count}
-                            <span class="px-2 py-0.5 text-xs bg-ds-accent-bg text-ds-accent rounded">
-                                {event._count.pinnedBy} pinned
+        {#if eventsLoading}
+            <p class="text-sm text-ds-text-secondary">Loading events...</p>
+        {:else if filteredEvents.length === 0}
+            <p class="text-sm text-ds-text-secondary">No events found.</p>
+        {:else}
+            <div class="space-y-3">
+                {#each filteredEvents as event}
+                    <a
+                        href="{base}/events/{event.slug}"
+                        class="block rounded-lg border border-ds-border bg-ds-surface2 p-3 shadow-[var(--color-ds-shadow)] hover:border-ds-text-secondary transition-colors"
+                    >
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex flex-col gap-2">
+                                {#if getEventLogo(event.slug)}
+                                    <img
+                                        src={getEventLogo(event.slug)}
+                                        alt={event.title}
+                                        class="h-7 w-auto object-contain object-left"
+                                    />
+                                {/if}
+                                <div class="flex items-center gap-2">
+                                    <span class="text-base font-semibold text-ds-text">{event.title}</span>
+                                    <span class="rounded-lg bg-neutral-700 px-1.5 py-0.5 text-xs text-neutral-400">{event.slug}</span>
+                                </div>
+                            </div>
+                            <span class="shrink-0 rounded-full border border-ds-border px-2.5 py-0.5 text-xs text-ds-text">
+                                Pinned by {getPinnedCount(event)} participant{getPinnedCount(event) !== 1 ? 's' : ''}
                             </span>
+                        </div>
+                        {#if event.description}
+                            <p class="mt-1 text-xs text-ds-text-secondary line-clamp-2">{event.description}</p>
                         {/if}
-                        {#if !event.isActive}
-                            <span class="px-2 py-0.5 text-xs bg-red-900/50 text-red-600 rounded">Inactive</span>
-                        {/if}
-                    </div>
-                    <div class="flex gap-2">
-                        <Button variant="default" onclick={() => startEditEvent(event)}>
-                            Edit
-                        </Button>
-                        <Button variant="reject" onclick={() => deleteEvent(event.slug)}>
-                            Delete
-                        </Button>
-                    </div>
-                </div>
-            {/each}
-        </div>
-    {/if}
-</section>
-</div></div>
+                        <div class="mt-3 flex justify-end">
+                            <span class="text-xs text-ds-text">View/Edit Event &rarr;</span>
+                        </div>
+                    </a>
+                {/each}
+            </div>
+        {/if}
+    </div>
+</div>

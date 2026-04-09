@@ -851,3 +851,71 @@ export class BackfillResponse {
   @ApiProperty({ type: [BackfillEntry] })
   results: BackfillEntry[];
 }
+
+// --- Event Stats DTOs ---
+
+class EventStatsEventDetail {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  description: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  imageUrl: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  location: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  country: string | null;
+
+  @ApiProperty()
+  startDate: Date;
+
+  @ApiProperty()
+  endDate: Date;
+
+  @ApiProperty()
+  hourCost: number;
+
+  @ApiProperty()
+  isActive: boolean;
+}
+
+class EventStatsPinnedTimelineEntry {
+  @ApiProperty()
+  date: string;
+
+  @ApiProperty()
+  value: number;
+}
+
+export class EventStatsResponse {
+  @ApiProperty({ type: EventStatsEventDetail })
+  event: EventStatsEventDetail;
+
+  @ApiProperty()
+  pinnedCount: number;
+
+  @ApiProperty()
+  metHourGoal: number;
+
+  @ApiProperty()
+  notMetHourGoal: number;
+
+  @ApiProperty()
+  dauToday: number;
+
+  @ApiProperty({ type: [EventStatsPinnedTimelineEntry] })
+  pinnedTimeline: EventStatsPinnedTimelineEntry[];
+
+  @ApiProperty({ type: [EventStatsPinnedTimelineEntry] })
+  dauTimeline: EventStatsPinnedTimelineEntry[];
+}
