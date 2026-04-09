@@ -16,6 +16,12 @@
     let recalcMessage = $state('');
     let recalcError = $state('');
 
+    // Backfill state
+    let backfillBusy = $state(false);
+    let backfillMessage = $state('');
+    let backfillError = $state('');
+    let backfillDays = $state('30');
+
     // Reviewer leaderboard state
     let reviewerLeaderboard = $state<ReviewerLeaderboardEntry[]>([]);
     let leaderboardLoading = $state(false);
@@ -96,6 +102,32 @@
             console.error('Failed to load priority users:', err);
         } finally {
             priorityUsersLoading = false;
+        }
+    }
+
+    async function runBackfill() {
+        if (backfillBusy) return;
+        backfillBusy = true;
+        backfillMessage = '';
+        backfillError = '';
+        try {
+            const days = parseInt(backfillDays) || 30;
+            const endDate = new Date();
+            endDate.setUTCDate(endDate.getUTCDate() - 1);
+            const startDate = new Date(endDate);
+            startDate.setUTCDate(startDate.getUTCDate() - days + 1);
+            const { data, error } = await api.POST('/api/admin/stats/backfill', {
+                params: { query: {
+                    startDate: startDate.toISOString().split('T')[0],
+                    endDate: endDate.toISOString().split('T')[0],
+                } },
+            });
+            if (error) { backfillError = 'Backfill failed'; return; }
+            backfillMessage = `Backfilled ${data?.results?.length ?? 0} days.`;
+        } catch (err) {
+            backfillError = err instanceof Error ? err.message : 'Backfill failed';
+        } finally {
+            backfillBusy = false;
         }
     }
 
@@ -204,6 +236,33 @@
         <p class="text-sm text-ds-text-secondary">
             Recalculates Hackatime hours for all projects by fetching the latest data from the Hackatime API.
         </p>
+    </Card>
+
+    <!-- Metrics Backfill -->
+    <Card class="p-6 space-y-4">
+        <h2 class="text-xl font-semibold">Metrics Backfill</h2>
+        <p class="text-sm text-ds-text-secondary">
+            Populate historical metrics for the stats dashboard charts. DAU will be 0 for backfilled dates since the Hackatime API cannot provide retroactive daily activity.
+        </p>
+        <div class="flex items-center gap-3">
+            <label class="text-sm text-ds-text-secondary" for="backfill-days">Days to backfill:</label>
+            <input
+                id="backfill-days"
+                type="number"
+                min="1"
+                max="365"
+                bind:value={backfillDays}
+                class="w-20 rounded-md border border-ds-border bg-ds-surface px-3 py-1.5 text-sm text-ds-text"
+            />
+            <Button onclick={runBackfill} disabled={backfillBusy}>
+                {backfillBusy ? 'Running...' : 'Run Backfill'}
+            </Button>
+            {#if backfillError}
+                <span class="text-xs text-red-600">{backfillError}</span>
+            {:else if backfillMessage}
+                <span class="text-xs text-green-700">{backfillMessage}</span>
+            {/if}
+        </div>
     </Card>
 
     <!-- Reviewer Leaderboard Section -->

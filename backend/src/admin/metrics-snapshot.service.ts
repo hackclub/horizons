@@ -1,12 +1,33 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
-export class MetricsSnapshotService {
+export class MetricsSnapshotService implements OnModuleInit {
   private readonly logger = new Logger(MetricsSnapshotService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  async onModuleInit() {
+    // On startup, snapshot yesterday if it doesn't exist yet
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    yesterday.setUTCHours(0, 0, 0, 0);
+
+    const existing = await this.prisma.historicalMetric.findFirst({
+      where: { date: yesterday, metric: 'dau' },
+    });
+
+    if (!existing) {
+      this.logger.log(`No snapshot for yesterday (${yesterday.toISOString().split('T')[0]}), running on startup...`);
+      // Run in background so it doesn't block startup
+      this.snapshotDate(yesterday).catch((err) =>
+        this.logger.error(`Startup snapshot failed: ${err.message}`),
+      );
+    } else {
+      this.logger.log('Yesterday snapshot already exists, skipping startup snapshot.');
+    }
+  }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleDailySnapshot() {
@@ -18,7 +39,7 @@ export class MetricsSnapshotService {
     await this.snapshotDate(yesterday);
   }
 
-  async snapshotDate(date: Date) {
+  async snapshotDate(date: Date): Promise<number> {
     const dayStart = new Date(date);
     dayStart.setUTCHours(0, 0, 0, 0);
     const dayEnd = new Date(date);
@@ -34,7 +55,9 @@ export class MetricsSnapshotService {
       });
     }
 
-    this.logger.log(`Snapshot complete for ${dayStart.toISOString().split('T')[0]}: ${Object.keys(metrics).length} metrics`);
+    const count = Object.keys(metrics).length;
+    this.logger.log(`Snapshot complete for ${dayStart.toISOString().split('T')[0]}: ${count} metrics`);
+    return count;
   }
 
   async backfill(startDate: Date, endDate: Date) {
@@ -45,13 +68,10 @@ export class MetricsSnapshotService {
     end.setUTCHours(0, 0, 0, 0);
 
     while (current <= end) {
-      await this.snapshotDate(new Date(current));
+      const count = await this.snapshotDate(new Date(current));
       results.push({
         date: current.toISOString().split('T')[0],
-        metricsCount: Object.keys(await this.computeMetrics(
-          new Date(current),
-          new Date(new Date(current).setUTCHours(23, 59, 59, 999)),
-        )).length,
+        metricsCount: count,
       });
       current.setUTCDate(current.getUTCDate() + 1);
     }
