@@ -343,6 +343,7 @@ model Event {
   description String?       @db.VarChar(1000)
   imageUrl    String?       @map("image_url")
   location    String?       @db.VarChar(300)
+  country     String?       @db.VarChar(100)
   startDate   DateTime      @db.Date @map("start_date")
   endDate     DateTime      @db.Date @map("end_date")
   hourCost    Float         @map("hour_cost")

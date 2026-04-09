@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components';
 	import { theme } from '$lib/themeStore';
 	import * as echarts from 'echarts';
+	import { getCountryCoords } from '$lib/geo';
 
 	type Stats = components['schemas']['AdminStatsResponse'];
 	type DataPoint = { date: string; value: number };
@@ -29,6 +30,7 @@
 	let projectFunnelEl = $state<HTMLDivElement | null>(null);
 	let projectsReviewedEl = $state<HTMLDivElement | null>(null);
 	let signupsEl = $state<HTMLDivElement | null>(null);
+	let signupMapEl = $state<HTMLDivElement | null>(null);
 	let utmEl = $state<HTMLDivElement | null>(null);
 
 	onMount(() => {
@@ -125,6 +127,7 @@
 		renderProjectFunnel();
 		renderLineChart(projectsReviewedEl, stats.historical.reviewsCompleted, '#3b82f6', 'rgba(59,130,246,0.15)');
 		renderLineChart(signupsEl, stats.historical.newSignups, '#22c55e', 'rgba(34,197,94,0.15)');
+		renderSignupMap();
 		renderUtmChart();
 	}
 
@@ -436,6 +439,168 @@
 		});
 	}
 
+	function renderSignupMap() {
+		if (!signupMapEl || !stats) return;
+		signupMapEl.innerHTML = '';
+
+		const routes = stats.signups.routes;
+		const dark = isDark();
+		const w = signupMapEl.clientWidth;
+		const h = signupMapEl.clientHeight || 400;
+
+		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		svg.setAttribute('width', String(w));
+		svg.setAttribute('height', String(h));
+		svg.setAttribute('viewBox', '-180 -90 360 180');
+		svg.style.display = 'block';
+		signupMapEl.appendChild(svg);
+
+		const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+		bgRect.setAttribute('x', '-180');
+		bgRect.setAttribute('y', '-90');
+		bgRect.setAttribute('width', '360');
+		bgRect.setAttribute('height', '180');
+		bgRect.setAttribute('fill', dark ? '#1e293b' : '#f1f5f9');
+		bgRect.setAttribute('rx', '4');
+		svg.appendChild(bgRect);
+
+		// Simple grid lines for reference
+		for (const lat of [-60, -30, 0, 30, 60]) {
+			const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+			line.setAttribute('x1', '-180');
+			line.setAttribute('y1', String(-lat));
+			line.setAttribute('x2', '180');
+			line.setAttribute('y2', String(-lat));
+			line.setAttribute('stroke', dark ? '#334155' : '#e2e8f0');
+			line.setAttribute('stroke-width', '0.3');
+			svg.appendChild(line);
+		}
+		for (const lng of [-120, -60, 0, 60, 120]) {
+			const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+			line.setAttribute('x1', String(lng));
+			line.setAttribute('y1', '-90');
+			line.setAttribute('x2', String(lng));
+			line.setAttribute('y2', '90');
+			line.setAttribute('stroke', dark ? '#334155' : '#e2e8f0');
+			line.setAttribute('stroke-width', '0.3');
+			svg.appendChild(line);
+		}
+
+		// Collect unique origins and destinations
+		const origins = new Map<string, { coords: [number, number]; total: number }>();
+		const destinations = new Map<string, { coords: [number, number]; total: number; title: string }>();
+
+		for (const route of routes) {
+			const oCoords = getCountryCoords(route.originCountry);
+			const dCoords = getCountryCoords(route.eventCountry);
+			if (!oCoords || !dCoords) continue;
+
+			const oKey = route.originCountry.toLowerCase();
+			const dKey = route.eventCountry.toLowerCase();
+
+			if (!origins.has(oKey)) origins.set(oKey, { coords: oCoords, total: 0 });
+			origins.get(oKey)!.total += route.count;
+
+			if (!destinations.has(dKey)) destinations.set(dKey, { coords: dCoords, total: 0, title: route.eventTitle });
+			destinations.get(dKey)!.total += route.count;
+		}
+
+		const maxCount = Math.max(...[...origins.values(), ...destinations.values()].map((v) => v.total), 1);
+
+		// Draw route lines (arcs)
+		for (const route of routes) {
+			const oCoords = getCountryCoords(route.originCountry);
+			const dCoords = getCountryCoords(route.eventCountry);
+			if (!oCoords || !dCoords) continue;
+
+			const x1 = oCoords[0], y1 = -oCoords[1];
+			const x2 = dCoords[0], y2 = -dCoords[1];
+			const midX = (x1 + x2) / 2;
+			const midY = (y1 + y2) / 2 - Math.abs(x2 - x1) * 0.15;
+
+			const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+			path.setAttribute('d', `M ${x1} ${y1} Q ${midX} ${midY} ${x2} ${y2}`);
+			path.setAttribute('fill', 'none');
+			path.setAttribute('stroke', dark ? 'rgba(96,165,250,0.3)' : 'rgba(37,99,235,0.25)');
+			path.setAttribute('stroke-width', String(Math.max(0.3, Math.min(1.5, route.count / maxCount * 3))));
+			svg.appendChild(path);
+		}
+
+		// Draw origin dots (blue)
+		for (const [, { coords, total }] of origins) {
+			const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+			circle.setAttribute('cx', String(coords[0]));
+			circle.setAttribute('cy', String(-coords[1]));
+			const r = Math.max(1.5, Math.min(5, (total / maxCount) * 6));
+			circle.setAttribute('r', String(r));
+			circle.setAttribute('fill', dark ? '#60a5fa' : '#3b82f6');
+			circle.setAttribute('opacity', '0.8');
+			svg.appendChild(circle);
+		}
+
+		// Draw destination dots (orange, larger)
+		for (const [, { coords, total, title }] of destinations) {
+			const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+			circle.setAttribute('cx', String(coords[0]));
+			circle.setAttribute('cy', String(-coords[1]));
+			const r = Math.max(2.5, Math.min(7, (total / maxCount) * 8));
+			circle.setAttribute('r', String(r));
+			circle.setAttribute('fill', dark ? '#fb923c' : '#ea580c');
+			circle.setAttribute('opacity', '0.9');
+			circle.setAttribute('stroke', dark ? '#fdba74' : '#f97316');
+			circle.setAttribute('stroke-width', '0.5');
+			svg.appendChild(circle);
+
+			// Label for destination
+			const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+			label.setAttribute('x', String(coords[0]));
+			label.setAttribute('y', String(-coords[1] - r - 1.5));
+			label.setAttribute('text-anchor', 'middle');
+			label.setAttribute('fill', dark ? '#fdba74' : '#c2410c');
+			label.setAttribute('font-size', '4');
+			label.setAttribute('font-weight', '600');
+			label.textContent = title;
+			svg.appendChild(label);
+		}
+
+		// Legend
+		const legendY = 80;
+		const legendItems = [
+			{ color: dark ? '#60a5fa' : '#3b82f6', label: 'Origin (user country)' },
+			{ color: dark ? '#fb923c' : '#ea580c', label: 'Destination (event)' },
+		];
+		for (let i = 0; i < legendItems.length; i++) {
+			const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+			circle.setAttribute('cx', String(-170));
+			circle.setAttribute('cy', String(legendY + i * 8));
+			circle.setAttribute('r', '2');
+			circle.setAttribute('fill', legendItems[i].color);
+			svg.appendChild(circle);
+
+			const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+			text.setAttribute('x', String(-166));
+			text.setAttribute('y', String(legendY + i * 8));
+			text.setAttribute('dominant-baseline', 'middle');
+			text.setAttribute('fill', dark ? '#94a3b8' : '#64748b');
+			text.setAttribute('font-size', '4');
+			text.textContent = legendItems[i].label;
+			svg.appendChild(text);
+		}
+
+		// No data message
+		if (routes.length === 0 || origins.size === 0) {
+			const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+			text.setAttribute('x', '0');
+			text.setAttribute('y', '0');
+			text.setAttribute('text-anchor', 'middle');
+			text.setAttribute('dominant-baseline', 'middle');
+			text.setAttribute('fill', dark ? '#94a3b8' : '#64748b');
+			text.setAttribute('font-size', '6');
+			text.textContent = 'No signup route data yet';
+			svg.appendChild(text);
+		}
+	}
+
 	function renderUtmChart() {
 		if (!stats || stats.utm.sources.length === 0) return;
 		const chart = initChart(utmEl);
@@ -712,6 +877,10 @@
 							</table>
 						</div>
 					{/if}
+				</div>
+				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Signup Origins → Event Destinations</p>
+					<div bind:this={signupMapEl} style="height: 400px;"></div>
 				</div>
 			</section>
 

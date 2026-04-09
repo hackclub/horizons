@@ -475,12 +475,36 @@ export class AdminService {
       ORDER BY count DESC
     `;
 
+    // Origin country → destination event country routes for map
+    const routesResult = await this.prisma.$queryRaw<
+      Array<{
+        origin_country: string;
+        event_country: string;
+        event_title: string;
+        count: bigint;
+      }>
+    >`
+      SELECT u.country AS origin_country, e.country AS event_country, e.title AS event_title, COUNT(*) AS count
+      FROM pinned_events pe
+      INNER JOIN users u ON u.user_id = pe.user_id
+      INNER JOIN events e ON e.event_id = pe.event_id
+      WHERE u.country IS NOT NULL AND u.country != '' AND e.country IS NOT NULL AND e.country != ''
+      GROUP BY u.country, e.country, e.title
+      ORDER BY count DESC
+    `;
+
     return {
       total,
       perEvent: perEventResult.map((r) => ({
         eventId: r.event_id,
         title: r.title,
         slug: r.slug,
+        count: Number(r.count),
+      })),
+      routes: routesResult.map((r) => ({
+        originCountry: r.origin_country,
+        eventCountry: r.event_country,
+        eventTitle: r.event_title,
         count: Number(r.count),
       })),
     };

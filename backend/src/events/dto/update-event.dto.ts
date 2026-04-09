@@ -38,6 +38,11 @@ export class UpdateEventDto {
   @MaxLength(300)
   location?: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  country?: string;
+
   @IsDateString()
   @IsOptional()
   startDate?: string;

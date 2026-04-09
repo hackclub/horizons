@@ -36,6 +36,11 @@ export class CreateEventDto {
   @MaxLength(300)
   location?: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  country?: string;
+
   @IsDateString()
   startDate: string;
 

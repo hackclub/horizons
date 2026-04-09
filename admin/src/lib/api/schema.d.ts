@@ -1974,9 +1974,16 @@ export interface components {
             slug: string;
             count: number;
         };
+        StatsSignupRoute: {
+            originCountry: string;
+            eventCountry: string;
+            eventTitle: string;
+            count: number;
+        };
         StatsSignups: {
             total: number;
             perEvent: components["schemas"]["StatsSignupEventEntry"][];
+            routes: components["schemas"]["StatsSignupRoute"][];
         };
         StatsUtmEntry: {
             source: string;

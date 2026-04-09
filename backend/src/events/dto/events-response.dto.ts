@@ -19,6 +19,9 @@ export class EventResponse {
   @ApiProperty({ type: String, nullable: true })
   location: string | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  country: string | null;
+
   @ApiProperty()
   startDate: Date;
 

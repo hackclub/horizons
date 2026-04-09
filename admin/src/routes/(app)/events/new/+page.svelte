@@ -9,6 +9,7 @@
         description: string;
         imageUrl: string;
         location: string;
+        country: string;
         startDate: string;
         endDate: string;
         hourCost: string;
@@ -19,6 +20,7 @@
         description: '',
         imageUrl: '',
         location: '',
+        country: '',
         startDate: '',
         endDate: '',
         hourCost: '',
@@ -41,6 +43,7 @@
                     description: eventForm.description || undefined,
                     imageUrl: eventForm.imageUrl || undefined,
                     location: eventForm.location || undefined,
+                    country: eventForm.country || undefined,
                     startDate: eventForm.startDate,
                     endDate: eventForm.endDate,
                     hourCost: parseFloat(eventForm.hourCost)
@@ -121,6 +124,14 @@
                     id="event-location"
                     placeholder="San Francisco, CA"
                     bind:value={eventForm.location}
+                />
+            </div>
+            <div class="space-y-2">
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-country">Country</label>
+                <TextField
+                    id="event-country"
+                    placeholder="United States"
+                    bind:value={eventForm.country}
                 />
             </div>
             <div class="space-y-2">

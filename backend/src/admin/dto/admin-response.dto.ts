@@ -704,12 +704,29 @@ class StatsSignupEventEntry {
   count: number;
 }
 
+class StatsSignupRoute {
+  @ApiProperty()
+  originCountry: string;
+
+  @ApiProperty()
+  eventCountry: string;
+
+  @ApiProperty()
+  eventTitle: string;
+
+  @ApiProperty()
+  count: number;
+}
+
 class StatsSignups {
   @ApiProperty()
   total: number;
 
   @ApiProperty({ type: [StatsSignupEventEntry] })
   perEvent: StatsSignupEventEntry[];
+
+  @ApiProperty({ type: [StatsSignupRoute] })
+  routes: StatsSignupRoute[];
 }
 
 class StatsUtmEntry {

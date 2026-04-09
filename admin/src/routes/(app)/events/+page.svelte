@@ -14,6 +14,7 @@
         description: string;
         imageUrl: string;
         location: string;
+        country: string;
         startDate: string;
         endDate: string;
         hourCost: string;
@@ -24,6 +25,7 @@
         description: '',
         imageUrl: '',
         location: '',
+        country: '',
         startDate: '',
         endDate: '',
         hourCost: '',
@@ -59,6 +61,7 @@
             description: '',
             imageUrl: '',
             location: '',
+            country: '',
             startDate: '',
             endDate: '',
             hourCost: '',
@@ -77,6 +80,7 @@
             description: event.description || '',
             imageUrl: event.imageUrl || '',
             location: event.location || '',
+            country: (event as any).country || '',
             startDate: event.startDate ? new Date(event.startDate).toISOString().slice(0, 10) : '',
             endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 10) : '',
             hourCost: String(event.hourCost),
@@ -101,6 +105,7 @@
                         description: eventForm.description || undefined,
                         imageUrl: eventForm.imageUrl || undefined,
                         location: eventForm.location || undefined,
+                        country: eventForm.country || undefined,
                         startDate: eventForm.startDate || undefined,
                         endDate: eventForm.endDate || undefined,
                         hourCost: parseFloat(eventForm.hourCost),
@@ -122,6 +127,7 @@
                         description: eventForm.description || undefined,
                         imageUrl: eventForm.imageUrl || undefined,
                         location: eventForm.location || undefined,
+                        country: eventForm.country || undefined,
                         startDate: eventForm.startDate,
                         endDate: eventForm.endDate,
                         hourCost: parseFloat(eventForm.hourCost)
@@ -220,6 +226,14 @@
                     id="event-location"
                     placeholder="San Francisco, CA"
                     bind:value={eventForm.location}
+                />
+            </div>
+            <div class="space-y-2">
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-country">Country</label>
+                <TextField
+                    id="event-country"
+                    placeholder="United States"
+                    bind:value={eventForm.country}
                 />
             </div>
             <div class="space-y-2">
