@@ -11,6 +11,11 @@
     let globalSettings = $state<GlobalSettingsResponse | null>(null);
     let globalSettingsLoading = $state(false);
 
+    // Recalculate state
+    let recalcAllBusy = $state(false);
+    let recalcMessage = $state('');
+    let recalcError = $state('');
+
     // Reviewer leaderboard state
     let reviewerLeaderboard = $state<ReviewerLeaderboardEntry[]>([]);
     let leaderboardLoading = $state(false);
@@ -94,6 +99,23 @@
         }
     }
 
+    async function recalculateAllProjects() {
+        if (recalcAllBusy) return;
+        recalcAllBusy = true;
+        recalcMessage = '';
+        recalcError = '';
+        try {
+            const { data: body, error } = await api.POST('/api/admin/projects/recalculate-all');
+            if (error) { recalcError = 'Failed to recalculate projects'; return; }
+            const updatedCount = body?.updated ?? 0;
+            recalcMessage = `Recalculated ${updatedCount} project${updatedCount === 1 ? '' : 's'}.`;
+        } catch (err) {
+            recalcError = err instanceof Error ? err.message : 'Failed to recalculate projects';
+        } finally {
+            recalcAllBusy = false;
+        }
+    }
+
     onMount(() => {
         loadGlobalSettings();
         loadReviewerLeaderboard();
@@ -164,6 +186,24 @@
         {:else}
             <p class="text-ds-text-secondary text-sm">Failed to load settings.</p>
         {/if}
+    </Card>
+
+    <!-- Project Actions -->
+    <Card class="p-6 space-y-4">
+        <h2 class="text-xl font-semibold">Project Actions</h2>
+        <div class="flex items-center gap-3">
+            <Button onclick={recalculateAllProjects} disabled={recalcAllBusy}>
+                {recalcAllBusy ? 'Recalculating...' : 'Recalculate all projects'}
+            </Button>
+            {#if recalcError}
+                <span class="text-xs text-red-600">{recalcError}</span>
+            {:else if recalcMessage}
+                <span class="text-xs text-green-700">{recalcMessage}</span>
+            {/if}
+        </div>
+        <p class="text-sm text-ds-text-secondary">
+            Recalculates Hackatime hours for all projects by fetching the latest data from the Hackatime API.
+        </p>
     </Card>
 
     <!-- Reviewer Leaderboard Section -->

@@ -16,9 +16,6 @@
 	let stats = $state<Stats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let recalcAllBusy = $state(false);
-	let bulkProjectMessage = $state('');
-	let bulkProjectError = $state('');
 
 	// Chart instances for cleanup
 	let charts: EChart[] = [];
@@ -87,23 +84,6 @@
 			error = err instanceof Error ? err.message : 'Failed to load stats';
 		} finally {
 			loading = false;
-		}
-	}
-
-	async function recalculateAllProjectsHours() {
-		if (recalcAllBusy) return;
-		recalcAllBusy = true;
-		bulkProjectMessage = '';
-		bulkProjectError = '';
-		try {
-			const { data: body, error } = await api.POST('/api/admin/projects/recalculate-all');
-			if (error) { bulkProjectError = 'Failed to recalculate projects'; return; }
-			const updatedCount = body?.updated ?? 0;
-			bulkProjectMessage = `Recalculated ${updatedCount} project${updatedCount === 1 ? '' : 's'}.`;
-		} catch (err) {
-			bulkProjectError = err instanceof Error ? err.message : 'Failed to recalculate projects';
-		} finally {
-			recalcAllBusy = false;
 		}
 	}
 
@@ -920,14 +900,6 @@
 				<Button onclick={loadStats} disabled={loading}>
 					{loading ? 'Refreshing...' : 'Refresh stats'}
 				</Button>
-				<Button onclick={recalculateAllProjectsHours} disabled={recalcAllBusy}>
-					{recalcAllBusy ? 'Recalculating...' : 'Recalculate all projects'}
-				</Button>
-				{#if bulkProjectError}
-					<span class="text-xs text-red-600">{bulkProjectError}</span>
-				{:else if bulkProjectMessage}
-					<span class="text-xs text-green-700">{bulkProjectMessage}</span>
-				{/if}
 			</div>
 		{/if}
 	</div>
