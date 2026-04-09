@@ -78,6 +78,7 @@ export class AuthService {
     referralCode: string | null;
     timestamp: number;
     redirectPath: string | null;
+    utmSource: string | null;
   } {
     try {
       const { data, signature } = JSON.parse(
@@ -113,6 +114,7 @@ export class AuthService {
     email?: string,
     referralCode?: string,
     redirectPath?: string,
+    utmSource?: string,
   ): { url: string } {
     const clientId = process.env.HACKCLUB_CLIENT_ID;
     const redirectUri = process.env.HACKCLUB_REDIRECT_URI;
@@ -128,6 +130,7 @@ export class AuthService {
       referralCode: referralCode || null,
       timestamp: Date.now(),
       redirectPath: redirectPath || null,
+      utmSource: utmSource || null,
     });
 
     const params = new URLSearchParams({
@@ -178,7 +181,7 @@ export class AuthService {
       throw new BadRequestException('Missing state parameter');
     }
 
-    const { referralCode, redirectPath } = this.verifyState(state);
+    const { referralCode, redirectPath, utmSource } = this.verifyState(state);
 
     const tokenResponse = await fetch(`${this.HACKCLUB_AUTH_URL}/oauth/token`, {
       method: 'POST',
@@ -242,6 +245,7 @@ export class AuthService {
     const { user, isNewUser } = await this.findOrCreateUser(
       claims,
       referralCode,
+      utmSource,
     );
 
     if (claims.ysws_eligible === false) {
@@ -307,6 +311,7 @@ export class AuthService {
   private async findOrCreateUser(
     claims: HackClubIdTokenClaims,
     referralCode: string | null,
+    utmSource: string | null,
   ) {
     const email = claims.email;
     const hcaId = claims.sub;
@@ -387,6 +392,7 @@ export class AuthService {
             ? { referredBy: { connect: { userId: referredByUserId } } }
             : {}),
           rafflePos,
+          utmSource: utmSource || null,
         },
       });
 

@@ -607,3 +607,218 @@ export class RecalculateAllResponse {
   @ApiProperty({ type: [RecalculateAllError] })
   errors: RecalculateAllError[];
 }
+
+// --- Stats Dashboard DTOs ---
+
+class StatsFunnel {
+  @ApiProperty()
+  totalUsers: number;
+
+  @ApiProperty()
+  hasHackatime: number;
+
+  @ApiProperty()
+  createdProject: number;
+
+  @ApiProperty()
+  project10PlusHours: number;
+
+  @ApiProperty()
+  atLeast1Submission: number;
+
+  @ApiProperty()
+  atLeast1ApprovedHour: number;
+
+  @ApiProperty()
+  approved10Plus: number;
+
+  @ApiProperty()
+  approved30Plus: number;
+
+  @ApiProperty()
+  approved60Plus: number;
+}
+
+class StatsUserGrowth {
+  @ApiProperty()
+  totalUsers: number;
+
+  @ApiProperty()
+  newLast30Days: number;
+
+  @ApiProperty()
+  newLast7Days: number;
+
+  @ApiProperty()
+  growthPercent: number;
+}
+
+class StatsReviewHours {
+  @ApiProperty()
+  trackedHours: number;
+
+  @ApiProperty()
+  unshippedHours: number;
+
+  @ApiProperty()
+  shippedHours: number;
+
+  @ApiProperty()
+  hoursInReview: number;
+
+  @ApiProperty()
+  approvedHours: number;
+
+  @ApiProperty()
+  weightedGrants: number;
+}
+
+class StatsReviewProjects {
+  @ApiProperty()
+  shipped: number;
+
+  @ApiProperty()
+  fraudChecked: number;
+
+  @ApiProperty()
+  inQueue: number;
+
+  @ApiProperty()
+  reviewed: number;
+
+  @ApiProperty()
+  approved: number;
+}
+
+class StatsSignupEventEntry {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  count: number;
+}
+
+class StatsSignups {
+  @ApiProperty()
+  total: number;
+
+  @ApiProperty({ type: [StatsSignupEventEntry] })
+  perEvent: StatsSignupEventEntry[];
+}
+
+class StatsUtmEntry {
+  @ApiProperty()
+  source: string;
+
+  @ApiProperty()
+  count: number;
+}
+
+class StatsUtm {
+  @ApiProperty({ type: [StatsUtmEntry] })
+  sources: StatsUtmEntry[];
+}
+
+class HistoricalDataPoint {
+  @ApiProperty()
+  date: string;
+
+  @ApiProperty()
+  value: number;
+}
+
+class StatsHistorical {
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  dau: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  newSignups: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  submissionsCreated: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  reviewsCompleted: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  medianReviewTimeHours: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  dailyHoursLogged: HistoricalDataPoint[];
+}
+
+class StatsDauEventEntry {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  count: number;
+}
+
+class StatsDau {
+  @ApiProperty()
+  today: number;
+
+  @ApiProperty()
+  avg7: number;
+
+  @ApiProperty()
+  avg30: number;
+
+  @ApiProperty()
+  growthPercent7: number;
+
+  @ApiProperty({ type: [StatsDauEventEntry] })
+  perEvent: StatsDauEventEntry[];
+}
+
+export class AdminStatsResponse {
+  @ApiProperty({ type: StatsFunnel })
+  funnel: StatsFunnel;
+
+  @ApiProperty({ type: StatsUserGrowth })
+  userGrowth: StatsUserGrowth;
+
+  @ApiProperty({ type: StatsReviewHours })
+  reviewStats: StatsReviewHours;
+
+  @ApiProperty({ type: StatsReviewProjects })
+  reviewProjects: StatsReviewProjects;
+
+  @ApiProperty({ type: StatsSignups })
+  signups: StatsSignups;
+
+  @ApiProperty({ type: StatsUtm })
+  utm: StatsUtm;
+
+  @ApiProperty({ type: StatsHistorical })
+  historical: StatsHistorical;
+
+  @ApiProperty({ type: StatsDau })
+  dau: StatsDau;
+}
+
+class BackfillEntry {
+  @ApiProperty()
+  date: string;
+
+  @ApiProperty()
+  metricsCount: number;
+}
+
+export class BackfillResponse {
+  @ApiProperty({ type: [BackfillEntry] })
+  results: BackfillEntry[];
+}

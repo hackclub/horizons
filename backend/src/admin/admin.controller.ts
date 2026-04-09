@@ -14,6 +14,7 @@ import {
 import { ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
+import { MetricsSnapshotService } from './metrics-snapshot.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -37,6 +38,8 @@ import {
   GlobalSettingsResponse,
   ElevatedUserResponse,
   UpdateUserRoleResponse,
+  AdminStatsResponse,
+  BackfillResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -45,10 +48,14 @@ import {
   ToggleSubmissionsFrozenDto,
   UpdateUserRoleDto,
 } from './dto/admin-request.dto';
+import { ApiQuery } from '@nestjs/swagger';
 
 @Controller('api/admin')
 export class AdminController {
-  constructor(private adminService: AdminService) {}
+  constructor(
+    private adminService: AdminService,
+    private metricsSnapshotService: MetricsSnapshotService,
+  ) {}
 
   @Get('submissions')
   @UseGuards(RolesGuard)
@@ -131,6 +138,30 @@ export class AdminController {
   @ApiOkResponse({ type: AdminMetricsResponse })
   async getTotals() {
     return this.adminService.getTotals();
+  }
+
+  @Get('stats')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminStatsResponse })
+  async getStats() {
+    return this.adminService.getStats();
+  }
+
+  @Post('stats/backfill')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiCreatedResponse({ type: BackfillResponse })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  async backfillStats(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const start = new Date(startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    const end = new Date(endDate || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    const results = await this.metricsSnapshotService.backfill(start, end);
+    return { results };
   }
 
   @Get('reviewer-leaderboard')

@@ -32,12 +32,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Get HCA OAuth login URL' })
   @ApiQuery({ name: 'referralCode', required: false })
   @ApiQuery({ name: 'email', required: false })
+  @ApiQuery({ name: 'utm_source', required: false })
   @ApiOkResponse({ type: AuthUrlResponse })
   async getAuthUrl(
     @Query('referralCode') referralCode?: string,
     @Query('email') email?: string,
+    @Query('utm_source') utmSource?: string,
   ): Promise<AuthUrlResponse> {
-    return this.authService.getAuthUrl(email, referralCode);
+    return this.authService.getAuthUrl(email, referralCode, undefined, utmSource);
   }
 
   @Get('callback')

@@ -243,6 +243,307 @@ export class AdminService {
     };
   }
 
+  async getStats() {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+
+    const [
+      funnel,
+      userGrowth,
+      reviewStats,
+      reviewProjects,
+      signups,
+      utm,
+      historical,
+    ] = await Promise.all([
+      this.computeFunnel(),
+      this.computeUserGrowth(thirtyDaysAgo, sevenDaysAgo),
+      this.computeReviewStats(),
+      this.computeReviewProjects(),
+      this.computeSignups(),
+      this.computeUtm(),
+      this.computeHistorical(thirtyDaysAgo),
+    ]);
+
+    // Compute DAU summary from historical data
+    const dauData = historical.dau;
+    const dauToday = dauData.length > 0 ? dauData[dauData.length - 1].value : 0;
+    const last7Dau = dauData.slice(-7);
+    const last30Dau = dauData;
+    const avg7 = last7Dau.length > 0 ? last7Dau.reduce((s, d) => s + d.value, 0) / last7Dau.length : 0;
+    const avg30 = last30Dau.length > 0 ? last30Dau.reduce((s, d) => s + d.value, 0) / last30Dau.length : 0;
+    const prev7Dau = dauData.slice(-14, -7);
+    const avgPrev7 = prev7Dau.length > 0 ? prev7Dau.reduce((s, d) => s + d.value, 0) / prev7Dau.length : 0;
+    const dauGrowthPercent = avgPrev7 > 0
+      ? Math.round(((avg7 - avgPrev7) / avgPrev7) * 10000) / 100
+      : 0;
+
+    const dauPerEvent = await this.computeDauPerEvent();
+
+    const dau = {
+      today: dauToday,
+      avg7: Math.round(avg7 * 10) / 10,
+      avg30: Math.round(avg30 * 10) / 10,
+      growthPercent7: dauGrowthPercent,
+      perEvent: dauPerEvent,
+    };
+
+    return { funnel, userGrowth, reviewStats, reviewProjects, signups, utm, historical, dau };
+  }
+
+  private async computeDauPerEvent() {
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+
+    const result = await this.prisma.$queryRaw<
+      Array<{ event_id: number; title: string; slug: string; count: bigint }>
+    >`
+      SELECT e.event_id, e.title, e.slug, COUNT(DISTINCT p.user_id) as count
+      FROM projects p
+      INNER JOIN pinned_events pe ON pe.user_id = p.user_id
+      INNER JOIN events e ON e.event_id = pe.event_id
+      WHERE p.updated_at >= ${todayStart}
+      GROUP BY e.event_id, e.title, e.slug
+      ORDER BY count DESC
+    `;
+
+    return result.map((r) => ({
+      eventId: r.event_id,
+      title: r.title,
+      slug: r.slug,
+      count: Number(r.count),
+    }));
+  }
+
+  private async computeFunnel() {
+    const [
+      totalUsers,
+      hasHackatime,
+      createdProject,
+      project10PlusHours,
+      atLeast1Submission,
+      atLeast1ApprovedHour,
+      approved10Plus,
+      approved30Plus,
+      approved60Plus,
+    ] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { hackatimeAccount: { not: null } } }),
+      this.prisma.user.count({ where: { projects: { some: {} } } }),
+      this.prisma.user.count({
+        where: { projects: { some: { nowHackatimeHours: { gte: 10 } } } },
+      }),
+      this.prisma.user.count({
+        where: { projects: { some: { submissions: { some: {} } } } },
+      }),
+      this.prisma.user.count({
+        where: { projects: { some: { approvedHours: { gte: 1 } } } },
+      }),
+      this.countUsersWithApprovedHoursGte(10),
+      this.countUsersWithApprovedHoursGte(30),
+      this.countUsersWithApprovedHoursGte(60),
+    ]);
+
+    return {
+      totalUsers,
+      hasHackatime,
+      createdProject,
+      project10PlusHours,
+      atLeast1Submission,
+      atLeast1ApprovedHour,
+      approved10Plus,
+      approved30Plus,
+      approved60Plus,
+    };
+  }
+
+  private async countUsersWithApprovedHoursGte(threshold: number): Promise<number> {
+    const result = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*) as count FROM (
+        SELECT u.user_id
+        FROM users u
+        INNER JOIN projects p ON p.user_id = u.user_id
+        GROUP BY u.user_id
+        HAVING COALESCE(SUM(p.approved_hours), 0) >= ${threshold}
+      ) sub
+    `;
+    return Number(result[0]?.count ?? 0);
+  }
+
+  private async computeUserGrowth(thirtyDaysAgo: Date, sevenDaysAgo: Date) {
+    const [totalUsers, newLast30Days, newLast7Days] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      this.prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+    ]);
+
+    const olderUsers = totalUsers - newLast7Days;
+    const growthPercent = olderUsers > 0
+      ? Math.round((newLast7Days / olderUsers) * 10000) / 100
+      : 0;
+
+    return { totalUsers, newLast30Days, newLast7Days, growthPercent };
+  }
+
+  private async computeReviewStats() {
+    const [trackedAgg, unshippedAgg, shippedAgg, hoursInReviewResult, approvedAgg] =
+      await Promise.all([
+        this.prisma.project.aggregate({ _sum: { nowHackatimeHours: true } }),
+        this.prisma.project.aggregate({
+          _sum: { nowHackatimeHours: true },
+          where: { submissions: { none: {} } },
+        }),
+        this.prisma.project.aggregate({
+          _sum: { nowHackatimeHours: true },
+          where: { submissions: { some: {} } },
+        }),
+        this.prisma.$queryRaw<Array<{ total_hours: number }>>`
+          SELECT COALESCE(SUM(p.now_hackatime_hours), 0) as total_hours
+          FROM projects p
+          WHERE EXISTS (
+            SELECT 1 FROM submissions s
+            WHERE s.project_id = p.project_id
+              AND s.approval_status = 'pending'
+              AND s.created_at = (
+                SELECT MAX(s2.created_at) FROM submissions s2
+                WHERE s2.project_id = p.project_id
+              )
+          )
+        `,
+        this.prisma.project.aggregate({ _sum: { approvedHours: true } }),
+      ]);
+
+    const approved = approvedAgg._sum.approvedHours ?? 0;
+
+    return {
+      trackedHours: trackedAgg._sum.nowHackatimeHours ?? 0,
+      unshippedHours: unshippedAgg._sum.nowHackatimeHours ?? 0,
+      shippedHours: shippedAgg._sum.nowHackatimeHours ?? 0,
+      hoursInReview: Number(hoursInReviewResult[0]?.total_hours ?? 0),
+      approvedHours: approved,
+      weightedGrants: Math.round((approved / 10) * 100) / 100,
+    };
+  }
+
+  private async computeReviewProjects() {
+    const [shipped, fraudChecked, inQueue, reviewed, approved] = await Promise.all([
+      // Projects with >= 1 submission
+      this.prisma.project.count({ where: { submissions: { some: {} } } }),
+      // Projects that passed fraud check (includes reviewed)
+      this.prisma.project.count({
+        where: {
+          joeFraudPassed: true,
+          submissions: { some: {} },
+        },
+      }),
+      // Fraud-checked projects with NO approved/rejected submissions (truly waiting for review)
+      this.prisma.project.count({
+        where: {
+          joeFraudPassed: true,
+          submissions: { some: { approvalStatus: 'pending' } },
+          NOT: {
+            submissions: { some: { approvalStatus: { in: ['approved', 'rejected'] } } },
+          },
+        },
+      }),
+      this.prisma.project.count({
+        where: {
+          submissions: { some: { approvalStatus: { in: ['approved', 'rejected'] } } },
+        },
+      }),
+      this.prisma.project.count({
+        where: { submissions: { some: { approvalStatus: 'approved' } } },
+      }),
+    ]);
+
+    return { shipped, fraudChecked, inQueue, reviewed, approved };
+  }
+
+  private async computeSignups() {
+    const total = await this.prisma.user.count();
+
+    const perEventResult = await this.prisma.$queryRaw<
+      Array<{ event_id: number; title: string; slug: string; count: bigint }>
+    >`
+      SELECT e.event_id, e.title, e.slug, COUNT(pe.id) as count
+      FROM pinned_events pe
+      INNER JOIN events e ON e.event_id = pe.event_id
+      GROUP BY e.event_id, e.title, e.slug
+      ORDER BY count DESC
+    `;
+
+    return {
+      total,
+      perEvent: perEventResult.map((r) => ({
+        eventId: r.event_id,
+        title: r.title,
+        slug: r.slug,
+        count: Number(r.count),
+      })),
+    };
+  }
+
+  private async computeUtm() {
+    const groups = await this.prisma.user.groupBy({
+      by: ['utmSource'],
+      _count: { _all: true },
+      where: { utmSource: { not: null } },
+      orderBy: { _count: { utmSource: 'desc' } },
+    });
+
+    return {
+      sources: groups.map((g) => ({
+        source: g.utmSource!,
+        count: g._count._all,
+      })),
+    };
+  }
+
+  private async computeHistorical(thirtyDaysAgo: Date) {
+    const timeSeriesMetrics = ['dau', 'new_signups', 'submissions_created', 'reviews_completed', 'median_review_time_hours', 'total_tracked_hours'];
+
+    const rows = await this.prisma.historicalMetric.findMany({
+      where: {
+        metric: { in: timeSeriesMetrics },
+        date: { gte: thirtyDaysAgo },
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    const result: Record<string, Array<{ date: string; value: number }>> = {
+      dau: [],
+      newSignups: [],
+      submissionsCreated: [],
+      reviewsCompleted: [],
+      medianReviewTimeHours: [],
+      dailyHoursLogged: [],
+    };
+
+    const metricKeyMap: Record<string, string> = {
+      dau: 'dau',
+      new_signups: 'newSignups',
+      submissions_created: 'submissionsCreated',
+      reviews_completed: 'reviewsCompleted',
+      median_review_time_hours: 'medianReviewTimeHours',
+      total_tracked_hours: 'dailyHoursLogged',
+    };
+
+    for (const row of rows) {
+      const key = metricKeyMap[row.metric];
+      if (key) {
+        result[key].push({
+          date: row.date.toISOString().split('T')[0],
+          value: typeof row.value === 'number' ? row.value : Number(row.value) || 0,
+        });
+      }
+    }
+
+    return result;
+  }
+
   async deleteProject(projectId: number) {
     const project = await this.prisma.project.findUnique({
       where: { projectId },
