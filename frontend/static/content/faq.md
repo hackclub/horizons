@@ -1,7 +1,9 @@
 # FAQ
 
 ## What is Horizons?
-Horizons is a series of hackathons happening in San Francisco, Toronto, Singapore, Central Europe, South America, Australia, and Africa. Horizons Nexus (the event in San Francisco) is on June 19-21st! (Dates and exact cities are TBA for the other events.)
+Horizons is a series of hackathons happening in San Francisco, [Toronto](https://horizons.hackclub.com/polaris), [Singapore](https://horizons.hackclub.com/arcana), [Central Europe](https://horizons.hackclub.com/europa), [South America](https://horizons.hackclub.com/sol), [Australia](https://horizons.hackclub.com/crux), and [Africa](https://horizons.hackclub.com/equinox). 
+
+Horizons Nexus (the event in San Francisco) is on June 19-21st! All other events run throughout June, July and August, and can be seen by visiting the [events page](https://horizons.hackclub.com/app/events) while logged in.
 
 ## What's a hackathon?
 
@@ -32,7 +34,7 @@ Yes, we want you to! This hackathon is for all skill levels. We'll be running wo
 Any kind of technical project is allowed - websites, games, hardware - anything!
 
 ## How do I qualify?
-For Horizons Nexus (San Francisco), you are required to code and ship 30 hours of projects. Hour requirements for the other events are TBA, but will be around 30 hours.
+For Horizons Nexus (San Francisco), you are required to code and ship 30 hours of projects. For all other Horizons events, you are required to code and ship 35 hours on projects. All Horizons events can be qualified for through submitting projects to this website!
 
 ## Can I use AI?
 
