@@ -11,6 +11,7 @@
 	import { quintOut } from 'svelte/easing';
 	import { api } from '$lib/api';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { createListNav, parseNavKey, isNavKey, clampIndex, navState } from '$lib/nav/wasd.svelte';
 
 	import hIcon from '$lib/assets/icons/h.svg';
@@ -45,6 +46,8 @@
 	let isMobile = $derived(windowWidth > 0 && windowWidth < 640);
 
 	let isAuthed = $state(false);
+	let referralCode = $derived($page.url.searchParams.get('ref') ?? undefined);
+	let utmSource = $derived($page.url.searchParams.get('utm_source') ?? undefined);
 
 	onMount(() => {
 		const stored = localStorage.getItem('disableAnimations');
@@ -76,7 +79,7 @@
 		}
 
 		const response = await api.GET('/api/user/auth/login', {
-			params: { query: { email } }
+			params: { query: { email, referralCode, utm_source: utmSource } }
 		});
 		const authURL = response.data?.url;
 
