@@ -150,19 +150,40 @@ export class MetricsSnapshotService implements OnModuleInit {
 
   /**
    * Compute DAU and total daily hours using the Hackatime /api/summary endpoint.
-   * The API identifies users by Slack UID, so we query users who have both
-   * a hackatime account and a slack user ID.
+   * Only counts time on Hackatime projects that are linked to Horizon projects
+   * (stored in project.nowHackatimeProjects), so non-Horizon coding activity
+   * is excluded from both DAU and daily hours metrics.
    */
   private async computeHackatimeDaily(
     dayStart: Date,
   ): Promise<{ dau: number; totalHours: number }> {
-    const linkedUsers = await this.prisma.user.findMany({
+    // Fetch users who have linked Hackatime projects in Horizon
+    const usersWithProjects = await this.prisma.user.findMany({
       where: {
         hackatimeAccount: { not: null },
         slackUserId: { not: null },
+        projects: {
+          some: {
+            nowHackatimeProjects: { isEmpty: false },
+          },
+        },
       },
-      select: { slackUserId: true },
+      select: {
+        slackUserId: true,
+        projects: {
+          where: { nowHackatimeProjects: { isEmpty: false } },
+          select: { nowHackatimeProjects: true },
+        },
+      },
     });
+
+    // Build a set of allowed Hackatime project names per user
+    const userProjectNames = usersWithProjects.map((user) => ({
+      slackUserId: user.slackUserId!,
+      allowedNames: new Set(
+        user.projects.flatMap((p) => p.nowHackatimeProjects),
+      ),
+    }));
 
     const dateStr = dayStart.toISOString().split('T')[0];
     const apiKey = process.env.HACKATIME_API_KEY;
@@ -170,27 +191,28 @@ export class MetricsSnapshotService implements OnModuleInit {
     let totalSeconds = 0;
 
     const batchSize = 10;
-    for (let i = 0; i < linkedUsers.length; i += batchSize) {
-      const batch = linkedUsers.slice(i, i + batchSize);
+    for (let i = 0; i < userProjectNames.length; i += batchSize) {
+      const batch = userProjectNames.slice(i, i + batchSize);
       const results = await Promise.allSettled(
-        batch.map(async (user) => {
+        batch.map(async ({ slackUserId, allowedNames }) => {
           try {
             const headers: Record<string, string> = { Accept: 'application/json' };
             if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
-            // Hackatime /api/summary uses Slack UID to identify users
-            const url = `https://hackatime.hackclub.com/api/summary?user=${encodeURIComponent(user.slackUserId!)}&start=${dateStr}&end=${dateStr}`;
+            const url = `https://hackatime.hackclub.com/api/summary?user=${encodeURIComponent(slackUserId)}&start=${dateStr}&end=${dateStr}`;
             const response = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
 
             if (!response.ok) return 0;
             const data = await response.json();
 
-            // Sum seconds across all projects — the API uses "total" not "total_seconds"
+            // Only sum seconds for Hackatime projects linked to Horizon projects
             const projects = data?.projects;
             let userSeconds = 0;
             if (Array.isArray(projects)) {
               for (const p of projects) {
-                userSeconds += p?.total ?? 0;
+                if (p?.name && allowedNames.has(p.name)) {
+                  userSeconds += p?.total ?? 0;
+                }
               }
             }
             return userSeconds;
