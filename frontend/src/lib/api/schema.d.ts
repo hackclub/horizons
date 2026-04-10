@@ -520,6 +520,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/stats/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_backfillStats"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/events/{slug}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getEventStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/reviewer-leaderboard": {
         parameters: {
             query?: never;
@@ -673,6 +721,22 @@ export interface paths {
         };
         get?: never;
         put: operations["AdminController_toggleSubmissionsFrozen"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_searchUsers"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1888,6 +1952,136 @@ export interface components {
         AdminMetricsResponse: {
             totals: components["schemas"]["MetricsTotals"];
         };
+        StatsFunnel: {
+            totalUsers: number;
+            hasHackatime: number;
+            createdProject: number;
+            project10PlusHours: number;
+            atLeast1Submission: number;
+            atLeast1ApprovedHour: number;
+            approved10Plus: number;
+            approved30Plus: number;
+            approved60Plus: number;
+        };
+        StatsUserGrowth: {
+            totalUsers: number;
+            newLast30Days: number;
+            newLast7Days: number;
+            growthPercent: number;
+        };
+        StatsReviewHours: {
+            trackedHours: number;
+            unshippedHours: number;
+            shippedHours: number;
+            hoursInReview: number;
+            approvedHours: number;
+            weightedGrants: number;
+        };
+        StatsReviewProjects: {
+            shipped: number;
+            fraudChecked: number;
+            inQueue: number;
+            reviewed: number;
+            approved: number;
+        };
+        StatsSignupEventEntry: {
+            eventId: number;
+            title: string;
+            slug: string;
+            count: number;
+        };
+        StatsSignupRoute: {
+            originCountry: string;
+            originLat: number | null;
+            originLng: number | null;
+            eventCountry: string;
+            eventLat: number | null;
+            eventLng: number | null;
+            eventTitle: string;
+            count: number;
+        };
+        StatsSignups: {
+            total: number;
+            perEvent: components["schemas"]["StatsSignupEventEntry"][];
+            routes: components["schemas"]["StatsSignupRoute"][];
+        };
+        StatsUtmEntry: {
+            source: string;
+            count: number;
+        };
+        StatsUtm: {
+            sources: components["schemas"]["StatsUtmEntry"][];
+        };
+        HistoricalDataPoint: {
+            date: string;
+            value: number;
+        };
+        StatsHistorical: {
+            dau: components["schemas"]["HistoricalDataPoint"][];
+            newSignups: components["schemas"]["HistoricalDataPoint"][];
+            submissionsCreated: components["schemas"]["HistoricalDataPoint"][];
+            reviewsCompleted: components["schemas"]["HistoricalDataPoint"][];
+            medianReviewTimeHours: components["schemas"]["HistoricalDataPoint"][];
+            dailyHoursLogged: components["schemas"]["HistoricalDataPoint"][];
+        };
+        StatsDauEventEntry: {
+            eventId: number;
+            title: string;
+            slug: string;
+            count: number;
+        };
+        StatsDau: {
+            today: number;
+            avg7: number;
+            avg30: number;
+            growthPercent7: number;
+            perEvent: components["schemas"]["StatsDauEventEntry"][];
+        };
+        AdminStatsResponse: {
+            funnel: components["schemas"]["StatsFunnel"];
+            userGrowth: components["schemas"]["StatsUserGrowth"];
+            reviewStats: components["schemas"]["StatsReviewHours"];
+            reviewProjects: components["schemas"]["StatsReviewProjects"];
+            signups: components["schemas"]["StatsSignups"];
+            utm: components["schemas"]["StatsUtm"];
+            historical: components["schemas"]["StatsHistorical"];
+            dau: components["schemas"]["StatsDau"];
+        };
+        BackfillEntry: {
+            date: string;
+            metricsCount: number;
+        };
+        BackfillResponse: {
+            results: components["schemas"]["BackfillEntry"][];
+        };
+        EventStatsEventDetail: {
+            eventId: number;
+            slug: string;
+            title: string;
+            description?: string | null;
+            imageUrl?: string | null;
+            location?: string | null;
+            country?: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string;
+            hourCost: number;
+            isActive: boolean;
+        };
+        EventStatsPinnedTimelineEntry: {
+            date: string;
+            value: number;
+        };
+        EventStatsResponse: {
+            event: components["schemas"]["EventStatsEventDetail"];
+            pinnedCount: number;
+            metHourGoal: number;
+            notMetHourGoal: number;
+            dauToday: number;
+            pinnedTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
+            dauTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
+        };
         ReviewerLeaderboardEntry: {
             reviewerId: string;
             firstName: string | null;
@@ -2273,6 +2467,7 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             location: string | null;
+            country: string | null;
             /** Format: date-time */
             startDate: string;
             /** Format: date-time */
@@ -2293,6 +2488,7 @@ export interface components {
             description?: string;
             imageUrl?: string;
             location?: string;
+            country?: string;
             startDate: string;
             endDate: string;
             hourCost: number;
@@ -2305,6 +2501,7 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             location: string | null;
+            country: string | null;
             /** Format: date-time */
             startDate: string;
             /** Format: date-time */
@@ -2322,6 +2519,7 @@ export interface components {
             description?: string;
             imageUrl?: string;
             location?: string;
+            country?: string;
             startDate?: string;
             endDate?: string;
             hourCost?: number;
@@ -2601,6 +2799,7 @@ export interface operations {
             query?: {
                 referralCode?: string;
                 email?: string;
+                utm_source?: string;
             };
             header?: never;
             path?: never;
@@ -3253,6 +3452,68 @@ export interface operations {
             };
         };
     };
+    AdminController_getStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStatsResponse"];
+                };
+            };
+        };
+    };
+    AdminController_backfillStats: {
+        parameters: {
+            query?: {
+                startDate?: string;
+                endDate?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackfillResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getEventStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventStatsResponse"];
+                };
+            };
+        };
+    };
     AdminController_getReviewerLeaderboard: {
         parameters: {
             query?: never;
@@ -3467,6 +3728,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GlobalSettingsResponse"];
+                };
+            };
+        };
+    };
+    AdminController_searchUsers: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElevatedUserResponse"][];
                 };
             };
         };

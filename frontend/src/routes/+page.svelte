@@ -36,6 +36,7 @@
 
     let isAuthed = $state(false);
     let referralCode = $derived($page.url.searchParams.get('ref') ?? undefined);
+    let utmSource = $derived($page.url.searchParams.get('utm_source') ?? undefined);
 
     // Sync disableAnimations with localStorage
     onMount(() => {
@@ -84,7 +85,8 @@
             params: {
                 query: {
                     email,
-                    referralCode
+                    referralCode,
+                    utm_source: utmSource
                 }
             }
          });
