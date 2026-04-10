@@ -149,10 +149,10 @@ export class MetricsSnapshotService implements OnModuleInit {
   }
 
   /**
-   * Compute DAU and total daily hours using the Hackatime /api/summary endpoint.
-   * Only counts time on Hackatime projects that are linked to Horizon projects
-   * (stored in project.nowHackatimeProjects), so non-Horizon coding activity
-   * is excluded from both DAU and daily hours metrics.
+   * Compute DAU and total daily hours using the Hackatime stats endpoint.
+   * Uses /api/v1/users/{hackatimeAccount}/stats?features=projects&start_date={date}
+   * which returns single-day data. Only counts time on Hackatime projects
+   * that are linked to Horizon projects (nowHackatimeProjects).
    */
   private async computeHackatimeDaily(
     dayStart: Date,
@@ -161,7 +161,6 @@ export class MetricsSnapshotService implements OnModuleInit {
     const usersWithProjects = await this.prisma.user.findMany({
       where: {
         hackatimeAccount: { not: null },
-        slackUserId: { not: null },
         projects: {
           some: {
             nowHackatimeProjects: { isEmpty: false },
@@ -169,7 +168,7 @@ export class MetricsSnapshotService implements OnModuleInit {
         },
       },
       select: {
-        slackUserId: true,
+        hackatimeAccount: true,
         projects: {
           where: { nowHackatimeProjects: { isEmpty: false } },
           select: { nowHackatimeProjects: true },
@@ -179,7 +178,7 @@ export class MetricsSnapshotService implements OnModuleInit {
 
     // Build a set of allowed Hackatime project names per user
     const userProjectNames = usersWithProjects.map((user) => ({
-      slackUserId: user.slackUserId!,
+      hackatimeAccount: user.hackatimeAccount!,
       allowedNames: new Set(
         user.projects.flatMap((p) => p.nowHackatimeProjects),
       ),
@@ -194,24 +193,29 @@ export class MetricsSnapshotService implements OnModuleInit {
     for (let i = 0; i < userProjectNames.length; i += batchSize) {
       const batch = userProjectNames.slice(i, i + batchSize);
       const results = await Promise.allSettled(
-        batch.map(async ({ slackUserId, allowedNames }) => {
+        batch.map(async ({ hackatimeAccount, allowedNames }) => {
           try {
-            const headers: Record<string, string> = { Accept: 'application/json' };
+            const headers: Record<string, string> = {
+              'Content-Type': 'application/json',
+            };
             if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
-            const url = `https://hackatime.hackclub.com/api/summary?user=${encodeURIComponent(slackUserId)}&start=${dateStr}&end=${dateStr}`;
+            const nextDay = new Date(dayStart);
+            nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+            const endDateStr = nextDay.toISOString().split('T')[0];
+            const url = `https://hackatime.hackclub.com/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${dateStr}&end_date=${endDateStr}`;
             const response = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
 
             if (!response.ok) return 0;
             const data = await response.json();
 
             // Only sum seconds for Hackatime projects linked to Horizon projects
-            const projects = data?.projects;
+            const projects = data?.data?.projects;
             let userSeconds = 0;
             if (Array.isArray(projects)) {
               for (const p of projects) {
                 if (p?.name && allowedNames.has(p.name)) {
-                  userSeconds += p?.total ?? 0;
+                  userSeconds += typeof p?.total_seconds === 'number' ? p.total_seconds : 0;
                 }
               }
             }
