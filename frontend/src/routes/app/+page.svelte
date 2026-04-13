@@ -47,11 +47,11 @@
 
 	let approvedHours = $state(0);
 	let completedHours = $state(0);
-	const TARGET_HOURS = 30;
+	let targetHours = $state(30);
 
-	let remainingHours = $derived(Math.round(Math.max(0, TARGET_HOURS - completedHours) * 10) / 10);
-	let approvedPct = $derived(TARGET_HOURS > 0 ? Math.min(100, (approvedHours / TARGET_HOURS) * 100) : 0);
-	let completedPct = $derived(TARGET_HOURS > 0 ? Math.min(100, ((completedHours - approvedHours) / TARGET_HOURS) * 100) : 0);
+	let remainingHours = $derived(Math.round(Math.max(0, targetHours - completedHours) * 10) / 10);
+	let approvedPct = $derived(targetHours > 0 ? Math.min(100, (approvedHours / targetHours) * 100) : 0);
+	let completedPct = $derived(targetHours > 0 ? Math.min(100, ((completedHours - approvedHours) / targetHours) * 100) : 0);
 
 	onMount(async () => {
 		const [, totalRes, approvedRes] = await Promise.all([
@@ -69,10 +69,14 @@
 
 		const pinnedRes = await api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null);
 		if (pinnedRes?.data) {
-			const slug = (pinnedRes.data as any).event?.slug;
+			const event = (pinnedRes.data as any).event;
+			const slug = event?.slug;
 			if (slug && eventsMap[slug]) {
 				pinnedEventSlug = slug;
 				pinnedEventConfig = eventsMap[slug];
+			}
+			if (event?.hourCost) {
+				targetHours = event.hourCost;
 			}
 		}
 	});
@@ -291,7 +295,7 @@
 										</div>
 										<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
 											{#if remainingHours > 0}
-												{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO (${TARGET_HOURS} needed)`}
+												{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO (${targetHours} needed)`}
 											{:else}
 												GOAL REACHED!
 											{/if}
