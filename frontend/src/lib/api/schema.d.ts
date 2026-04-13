@@ -2318,6 +2318,7 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             cost: number;
+            region: string | null;
             maxPerUser: number | null;
             isActive: boolean;
             /** Format: date-time */

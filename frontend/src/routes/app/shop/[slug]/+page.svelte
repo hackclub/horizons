@@ -16,6 +16,7 @@
 		description: string | null;
 		imageUrl: string | null;
 		cost: number;
+		region: string | null;
 		isActive: boolean;
 		variants: { variantId: number; name: string; cost: number }[];
 	}
@@ -24,12 +25,20 @@
 	let branding = $state<ShopBranding | null>(null);
 
 	let items = $state<ShopItem[]>([]);
+	let selectedRegion = $state('');
+	let filteredItems = $derived(
+		selectedRegion ? items.filter(item => item.region === selectedRegion) : items
+	);
+	let availableRegions = $derived(
+		[...new Set(items.map(item => item.region).filter((r): r is string => r !== null))]
+	);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
 	let entered = $state(false);
 	let navigating = $state(false);
 	let backExiting = $state(false);
+	let skipItemAnimation = $state(false);
 	let interacted = $state(false);
 
 	onMount(async () => {
@@ -59,7 +68,7 @@
 		goto(href);
 	}
 
-	let clickWasSelected = false;
+	let usingMouse = $state(true);
 	let gridEl: HTMLDivElement;
 
 	// Compute grid columns layout for createGridNav
@@ -68,10 +77,10 @@
 	const GAP = 16;
 
 	function getColumnsLayout(): number[] {
-		if (items.length === 0) return [];
+		if (filteredItems.length === 0) return [];
 		const containerW = gridEl?.clientWidth ?? 932;
 		const cols = Math.max(1, Math.floor((containerW + GAP) / (CARD_W + GAP)));
-		const rows = Math.ceil(items.length / cols);
+		const rows = Math.ceil(filteredItems.length / cols);
 		// Each "column" in gridNav is actually a visual row; each "row" is a cell in that row
 		// But gridNav uses col=horizontal, row=vertical
 		// We want: A/D = move horizontally (within a row), W/S = move vertically (between rows)
@@ -84,7 +93,7 @@
 			// gridNav col maps to visual col, row maps to visual row
 			let count = 0;
 			for (let r = 0; r < rows; r++) {
-				if (r * cols + c < items.length) count++;
+				if (r * cols + c < filteredItems.length) count++;
 			}
 			result.push(count);
 		}
@@ -96,7 +105,7 @@
 		onEscape: () => navigateTo('/app/shop?back', { exitBack: true }),
 		onSelect: () => {
 			const idx = getSelectedIndex();
-			const item = items[idx];
+			const item = filteredItems[idx];
 			if (item && item.isActive) {
 				navigateTo(`/app/shop/${slug}/${item.itemId}`);
 			}
@@ -143,7 +152,19 @@
 	// }
 </script>
 
-<svelte:window onkeydown={(e) => { nav.handleKeydown(e); interacted = true; }} onclick={() => { interacted = true; }} />
+<svelte:window onkeydown={(e) => {
+	if (usingMouse && ['w','a','s','d','W','A','S','D','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+		usingMouse = false;
+		nav.col = 0;
+		nav.row = 0;
+		e.preventDefault();
+		interacted = true;
+		return;
+	}
+	usingMouse = false;
+	nav.handleKeydown(e);
+	interacted = true;
+}} onpointermove={() => { usingMouse = true; }} />
 
 <div class="relative size-full overflow-y-auto" bind:this={scrollContainer} onscroll={() => { interacted = true; }}>
 	<!-- Shop info card -->
@@ -170,30 +191,54 @@
 		<!-- Status card (loading -> empty or fades out for items) -->
 		<div
 			class="status-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex items-center justify-center w-full max-w-[932px]"
-			class:hidden={!loading && !error && items.length > 0}
+			class:hidden={!loading && !error && filteredItems.length > 0}
 			style="background-color: #f3e8d8; height: 300px;"
 		>
 			<p class="font-bricolage font-semibold text-[28px] text-black/50 m-0">
-				{#if loading}LOADING...{:else if error}{error}{:else}Shop items coming soon{/if}
+				{#if loading}LOADING...{:else if error}{error}{:else if selectedRegion && items.length > 0}No items in this region{:else}Shop items coming soon{/if}
 			</p>
 		</div>
 
+		<!-- Region filter -->
+		{#if availableRegions.length > 0}
+			<div class="flex gap-2 w-full max-w-[932px]">
+				<button
+					class="region-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
+					class:active={selectedRegion === ''}
+					onclick={() => { selectedRegion = ''; skipItemAnimation = true; }}
+				>
+					All
+				</button>
+				{#each availableRegions as region}
+					<button
+						class="region-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
+						class:active={selectedRegion === region}
+						onclick={() => { selectedRegion = selectedRegion === region ? '' : region; skipItemAnimation = true; }}
+					>
+						{region}
+					</button>
+				{/each}
+			</div>
+		{/if}
+
 		<!-- Items -->
 		<div class="flex gap-4 flex-wrap w-full max-w-[932px]" bind:this={gridEl}>
-			{#if !loading && !error && items.length > 0}
-				{#each items as item, i (item.itemId)}
+			{#if !loading && !error && filteredItems.length > 0}
+				{#each filteredItems as item, i (item.itemId)}
 					{@const selected = i === getSelectedIndex()}
 					{@const inactive = !item.isActive}
 					<button
 						class="item-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative text-left outline-none shrink-0"
 						class:selected
+						class:skip-animation={skipItemAnimation}
 						class:exiting={navigating}
-						style="--card-index: {i}; width: 300px; height: 300px; background-color: {inactive ? '#d5d0c9' : selected ? 'var(--selected-color)' : '#f3e8d8'}; transition: background-color var(--selected-duration) ease; cursor: {inactive ? 'default' : 'pointer'}; opacity: {inactive ? 0.5 : 1};"
-						onpointerdown={() => { clickWasSelected = getSelectedIndex() === i; }}
+						style="--card-index: {i}; width: 300px; height: 300px; background-color: {inactive ? '#d5d0c9' : selected && !usingMouse ? 'var(--selected-color)' : '#f3e8d8'}; transition: background-color var(--selected-duration) ease, transform 0.15s ease; cursor: {inactive ? 'default' : 'pointer'}; opacity: {inactive ? 0.5 : 1};"
 						onfocus={() => { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); }}
-						onclick={() => { if (clickWasSelected && item.isActive) { navigateTo(`/app/shop/${slug}/${item.itemId}`); } else { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); } }}
+						onclick={() => { if (usingMouse && item.isActive) { setTimeout(() => navigateTo(`/app/shop/${slug}/${item.itemId}`), 200); } else if (!usingMouse) { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); } }}
 						onmouseenter={(e) => { if (!inactive) (e.currentTarget as HTMLElement).style.transform = 'scale(var(--juice-scale))'; }}
 						onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+						onpointerdown={(e) => { if (!inactive) (e.currentTarget as HTMLElement).style.transform = 'scale(0.95)'; }}
+						onpointerup={(e) => { if (!inactive) (e.currentTarget as HTMLElement).style.transform = 'scale(var(--juice-scale))'; }}
 					>
 						<!-- Item image -->
 						{#if item.imageUrl}
@@ -244,6 +289,8 @@
 		segments={[
 			{ type: 'text', value: 'USE' },
 			{ type: 'input', value: 'WASD' },
+			{ type: 'text', value: 'OR' },
+			{ type: 'input', value: 'mouse' },
 			{ type: 'text', value: 'TO NAVIGATE' }
 		]}
 		position="bottom-right"
@@ -290,8 +337,11 @@
 		to   { transform: translateY(0); opacity: 1; }
 	}
 	.item-card {
-		animation: item-enter var(--enter-duration) var(--enter-easing) both;
+		animation: item-enter var(--enter-duration) var(--enter-easing) backwards;
 		animation-delay: calc(var(--card-index, 0) * 75ms + 200ms);
+	}
+	.item-card.skip-animation {
+		animation: none;
 	}
 
 	@keyframes item-exit {
@@ -309,6 +359,19 @@
 		opacity: 1;
 		transition: opacity var(--enter-duration) ease;
 	}
+	.region-btn {
+		background-color: #f3e8d8;
+		color: black;
+		cursor: pointer;
+	}
+	.region-btn:hover {
+		background-color: #e8dac8;
+	}
+	.region-btn.active {
+		background-color: black;
+		color: #f3e8d8;
+	}
+
 	.fade-wrap.exiting {
 		opacity: 0;
 		transition: opacity 250ms ease;
