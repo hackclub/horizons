@@ -134,7 +134,7 @@
 	let cardRefs = $state<(HTMLElement | null)[]>([null, null, null, null, null]);
 	// cardRefs: [0]=projects, [1]=events, [2]=shop, [3]=community, [4]=faq
 
-	// Slide cards row so selected card is centered.
+	// Slide cards row so selected card is visible with a peek of the next card.
 	// Use offsetLeft (layout position, unaffected by transform) to avoid mid-transition jitter.
 	$effect(() => {
 		const el = cardRefs[nav.col];
@@ -150,8 +150,34 @@
 			}
 
 			const elWidth = el.offsetWidth;
-			const target = elLeft - (containerWidth - elWidth) / 2;
-			const maxShift = cardsRow.scrollWidth - containerWidth;
+			const totalWidth = cardsRow.scrollWidth;
+			const maxShift = totalWidth - containerWidth;
+
+			// If everything fits, no shift needed
+			if (maxShift <= 0) {
+				cardsRow.style.transform = `translateX(0px)`;
+				return;
+			}
+
+			// Show a peek of the next card (60px) by offsetting center to the left,
+			// and a peek of the previous card by offsetting to the right.
+			const peekAmount = 60;
+			const isFirst = nav.col === 0;
+			const colCount = isAdmin ? 5 : 4;
+			const isLast = nav.col === colCount - 1;
+
+			let target;
+			if (isFirst) {
+				// First card: align to left edge
+				target = 0;
+			} else if (isLast) {
+				// Last card: align to right edge
+				target = maxShift;
+			} else {
+				// Middle cards: center but offset left to peek the next card
+				target = elLeft - (containerWidth - elWidth) / 2 + peekAmount;
+			}
+
 			const clamped = Math.max(0, Math.min(target, maxShift));
 			cardsRow.style.transform = `translateX(${-clamped}px)`;
 		}
