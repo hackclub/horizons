@@ -40,6 +40,7 @@
 	let backExiting = $state(false);
 	let skipItemAnimation = $state(false);
 	let interacted = $state(false);
+	let itemsReady = $state(false);
 
 	onMount(async () => {
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
@@ -58,6 +59,9 @@
 			error = 'Failed to load items';
 		} finally {
 			loading = false;
+			// Wait for the last item's enter animation to finish before enabling hover effects
+			const lastDelay = (items.length - 1) * 75 + 200; // ms, matches CSS animation-delay
+			setTimeout(() => { itemsReady = true; }, lastDelay + 750); // 750ms = --enter-duration
 		}
 	});
 
@@ -232,13 +236,13 @@
 						class:selected
 						class:skip-animation={skipItemAnimation}
 						class:exiting={navigating}
-						style="--card-index: {i}; width: 300px; height: 300px; background-color: {inactive ? '#d5d0c9' : selected && !usingMouse ? 'var(--selected-color)' : '#f3e8d8'}; transition: background-color var(--selected-duration) ease, transform 0.15s ease; cursor: {inactive ? 'default' : 'pointer'}; opacity: {inactive ? 0.5 : 1};"
+						style="--card-index: {i}; width: 300px; height: 300px; background-color: {inactive ? '#d5d0c9' : selected && !usingMouse ? 'var(--selected-color)' : '#f3e8d8'}; transition: background-color var(--selected-duration) ease, transform var(--juice-duration) var(--juice-easing); cursor: {inactive ? 'default' : 'pointer'}; opacity: {inactive ? 0.5 : 1};"
 						onfocus={() => { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); }}
-						onclick={() => { if (usingMouse && item.isActive) { setTimeout(() => navigateTo(`/app/shop/${slug}/${item.itemId}`), 200); } else if (!usingMouse) { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); } }}
-						onmouseenter={(e) => { if (!inactive) (e.currentTarget as HTMLElement).style.transform = 'scale(var(--juice-scale))'; }}
-						onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
-						onpointerdown={(e) => { if (!inactive) (e.currentTarget as HTMLElement).style.transform = 'scale(0.95)'; }}
-						onpointerup={(e) => { if (!inactive) (e.currentTarget as HTMLElement).style.transform = 'scale(var(--juice-scale))'; }}
+						onclick={(e) => { if (usingMouse && item.isActive) { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; setTimeout(() => navigateTo(`/app/shop/${slug}/${item.itemId}`), 200); } else if (!usingMouse) { const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP))); nav.col = i % cols; nav.row = Math.floor(i / cols); } }}
+						onmouseenter={(e) => { if (!inactive && itemsReady) (e.currentTarget as HTMLElement).style.transform = 'scale(var(--juice-scale))'; }}
+						onmouseleave={(e) => { if (itemsReady) (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+						onpointerdown={() => {}}
+						onpointerup={() => {}}
 					>
 						<!-- Item image -->
 						{#if item.imageUrl}
@@ -345,8 +349,8 @@
 	}
 
 	@keyframes item-exit {
-		from { transform: translateY(0); opacity: 1; }
-		to   { transform: translateY(60px); opacity: 0; }
+		from { transform: translateY(0) scale(1); opacity: 1; }
+		to   { transform: translateY(60px) scale(1); opacity: 0; }
 	}
 	.item-card.exiting {
 		animation: item-exit var(--exit-duration) var(--exit-easing) both;
