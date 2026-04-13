@@ -29,19 +29,21 @@
     let shopFormError = $state('');
     let shopFormSuccess = $state('');
 
+    const AVAILABLE_REGIONS = ['International', 'North America'];
+
     let shopItemForm = $state<{
         name: string;
         description: string;
         imageUrl: string;
         cost: string;
-        region: string;
+        regions: string[];
         maxPerUser: string;
     }>({
         name: '',
         description: '',
         imageUrl: '',
         cost: '',
-        region: '',
+        regions: [],
         maxPerUser: ''
     });
     let editingItemId = $state<number | null>(null);
@@ -308,7 +310,7 @@
             description: '',
             imageUrl: '',
             cost: '',
-            region: '',
+            regions: [],
             maxPerUser: ''
         };
         editingItemId = null;
@@ -323,7 +325,7 @@
             description: item.description || '',
             imageUrl: item.imageUrl || '',
             cost: item.cost.toString(),
-            region: item.region || '',
+            regions: item.regions ?? [],
             maxPerUser: item.maxPerUser?.toString() || ''
         };
         shopItemError = '';
@@ -340,7 +342,7 @@
             description: shopItemForm.description || undefined,
             imageUrl: shopItemForm.imageUrl || undefined,
             cost: parseFloat(shopItemForm.cost),
-            region: shopItemForm.region || undefined,
+            regions: shopItemForm.regions.length > 0 ? shopItemForm.regions : undefined,
             maxPerUser: shopItemForm.maxPerUser ? parseInt(shopItemForm.maxPerUser) : undefined
         };
 
@@ -805,19 +807,26 @@
                         />
                     </div>
                     <div class="space-y-2">
-                        <label class="text-sm font-medium text-ds-text-secondary" for="item-region"
-                            >Region</label
+                        <label class="text-sm font-medium text-ds-text-secondary"
+                            >Regions</label
                         >
-                        <Select
-                            value={shopItemForm.region}
-                            onchange={(e) => {
-                                shopItemForm.region = (e.target as HTMLSelectElement).value;
-                            }}
-                        >
-                            <option value="">All Regions</option>
-                            <option value="International">International</option>
-                            <option value="North America">North America</option>
-                        </Select>
+                        <div class="flex flex-wrap gap-3">
+                            {#each AVAILABLE_REGIONS as region}
+                                <label class="flex items-center gap-1.5 text-sm text-ds-text-primary cursor-pointer">
+                                    <Checkbox
+                                        checked={shopItemForm.regions.includes(region)}
+                                        onchange={(e) => {
+                                            if ((e.target as HTMLInputElement).checked) {
+                                                shopItemForm.regions = [...shopItemForm.regions, region];
+                                            } else {
+                                                shopItemForm.regions = shopItemForm.regions.filter(r => r !== region);
+                                            }
+                                        }}
+                                    />
+                                    {region}
+                                </label>
+                            {/each}
+                        </div>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-ds-text-secondary" for="item-image"
@@ -906,11 +915,13 @@
                                                     >Inactive</span
                                                 >
                                             {/if}
-                                            {#if item.region}
-                                                <span
-                                                    class="px-2 py-0.5 text-xs rounded bg-purple-500/20 border border-purple-400 text-purple-300"
-                                                    >{item.region}</span
-                                                >
+                                            {#if item.regions?.length}
+                                                {#each item.regions as region}
+                                                    <span
+                                                        class="px-2 py-0.5 text-xs rounded bg-purple-500/20 border border-purple-400 text-purple-300"
+                                                        >{region}</span
+                                                    >
+                                                {/each}
                                             {/if}
                                             {#if item.maxPerUser}
                                                 <span

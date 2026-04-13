@@ -16,7 +16,7 @@
 		description: string | null;
 		imageUrl: string | null;
 		cost: number;
-		region: string | null;
+		regions: string[];
 		isActive: boolean;
 		variants: { variantId: number; name: string; cost: number }[];
 	}
@@ -27,10 +27,10 @@
 	let items = $state<ShopItem[]>([]);
 	let selectedRegion = $state('');
 	let filteredItems = $derived(
-		selectedRegion ? items.filter(item => item.region === selectedRegion) : items
+		selectedRegion ? items.filter(item => item.regions.includes(selectedRegion)) : items
 	);
 	let availableRegions = $derived(
-		[...new Set(items.map(item => item.region).filter((r): r is string => r !== null))]
+		[...new Set(items.flatMap(item => item.regions))]
 	);
 	let loading = $state(true);
 	let error = $state<string | null>(null);

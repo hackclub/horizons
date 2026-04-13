@@ -25,10 +25,9 @@ export class CreateItemDto {
   @Min(0)
   cost: number;
 
-  @IsString()
+  @IsString({ each: true })
   @IsOptional()
-  @MaxLength(100)
-  region?: string;
+  regions?: string[];
 
   @IsInt()
   @IsOptional()

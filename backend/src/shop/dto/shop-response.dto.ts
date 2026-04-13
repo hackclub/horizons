@@ -65,8 +65,8 @@ export class ShopItemResponse {
   @ApiProperty()
   cost: number;
 
-  @ApiProperty({ type: String, nullable: true })
-  region: string | null;
+  @ApiProperty({ type: [String] })
+  regions: string[];
 
   @ApiProperty({ type: Number, nullable: true })
   maxPerUser: number | null;

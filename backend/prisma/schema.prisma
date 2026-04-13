@@ -245,7 +245,7 @@ model ShopItem {
   description  String?           @db.VarChar(500)
   imageUrl     String?           @map("image_url")
   cost         Float
-  region       String?           @db.VarChar(100)
+  regions      String[]          @default([])
   maxPerUser   Int?              @map("max_per_user")
   isActive     Boolean           @default(true) @map("is_active")
   createdAt    DateTime          @default(now()) @map("created_at")

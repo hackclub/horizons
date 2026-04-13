@@ -120,7 +120,7 @@ export class ShopService {
         description: createItemDto.description,
         imageUrl: createItemDto.imageUrl,
         cost: createItemDto.cost,
-        region: createItemDto.region,
+        regions: createItemDto.regions ?? [],
       },
       include: {
         variants: true,

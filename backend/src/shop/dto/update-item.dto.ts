@@ -29,10 +29,9 @@ export class UpdateItemDto {
   @Min(0)
   cost?: number;
 
-  @IsString()
+  @IsString({ each: true })
   @IsOptional()
-  @MaxLength(100)
-  region?: string | null;
+  regions?: string[];
 
   @IsInt()
   @IsOptional()

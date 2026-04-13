@@ -12,7 +12,7 @@
 		description: string | null;
 		imageUrl: string | null;
 		cost: number;
-		region: string | null;
+		regions: string[];
 		isActive: boolean;
 		variants: { variantId: number; name: string; cost: number }[];
 	}
@@ -130,8 +130,12 @@
 				<div class="flex flex-col gap-6 items-start w-[447px]">
 					<div class="flex flex-col gap-2 text-black">
 						<p class="font-cook text-[36px] leading-normal m-0">{item.name}</p>
-						{#if item.region}
-							<span class="font-bricolage text-sm font-semibold text-black border-2 border-black rounded-lg px-2 py-0.5 bg-black/10 w-fit">{item.region}</span>
+						{#if item.regions.length > 0}
+							<div class="flex flex-wrap gap-1.5">
+								{#each item.regions as region}
+									<span class="font-bricolage text-sm font-semibold text-black border-2 border-black rounded-lg px-2 py-0.5 bg-black/10 w-fit">{region}</span>
+								{/each}
+							</div>
 						{/if}
 						{#if item.description}
 							<p class="font-bricolage text-[16px] leading-normal m-0 w-[415px]">{item.description}</p>
