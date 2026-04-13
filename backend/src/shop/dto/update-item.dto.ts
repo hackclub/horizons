@@ -8,6 +8,7 @@ import {
   Min,
 } from 'class-validator';
 
+
 export class UpdateItemDto {
   @IsString()
   @IsOptional()
@@ -27,6 +28,11 @@ export class UpdateItemDto {
   @IsOptional()
   @Min(0)
   cost?: number;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  region?: string | null;
 
   @IsInt()
   @IsOptional()
