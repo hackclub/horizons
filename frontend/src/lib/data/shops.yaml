@@ -11,7 +11,7 @@ the-shop:
   textColor: "FFFFFF"
   navHintColor: "white"
   tag:
-    text: Items on display
+    text: LIVE - ITEMS FOR SALE
     color: "#6BF570"
 
 pajamas:
