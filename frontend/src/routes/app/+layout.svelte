@@ -12,7 +12,7 @@
 	let authed = $state(false);
 
 	let windowWidth = $state(0);
-	let isMobile = $derived(windowWidth > 0 && windowWidth < 768);
+	let isMobile = $derived(windowWidth > 0 && windowWidth < 480);
 
 	let { children } = $props();
 

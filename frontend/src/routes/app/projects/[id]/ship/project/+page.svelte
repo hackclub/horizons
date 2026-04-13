@@ -483,13 +483,13 @@
 		</div>
 
 		<FormCard title="READY TO SUBMIT?" subtitle="Fill out this information and make sure it looks correct">
-			<div class="flex gap-4 w-full">
+			<div class="flex flex-col sm:flex-row gap-4 w-full">
 				<div class="flex-1 flex flex-col gap-2 min-w-0">
 					<div class={missingFields.has('title') ? 'error-wrapper' : ''}>
-						<FormField 
-							label="Title" 
-							id="title" 
-							placeholder="Horizons" 
+						<FormField
+							label="Title"
+							id="title"
+							placeholder="Horizons"
 							bind:value={title}
 							onblur={() => handleFieldBlur('title')}
 						/>
@@ -512,9 +512,9 @@
 						{/if}
 					</div>
 					<div class={missingFields.has('media') ? 'error-wrapper' : ''}>
-						<FileUpload 
-							bind:mediaUrl 
-							bind:mediaPreview 
+						<FileUpload
+							bind:mediaUrl
+							bind:mediaPreview
 							onerror={(msg) => errorMsg = msg}
 							onupload={() => handleFieldBlur('media')}
 						/>

@@ -424,7 +424,7 @@
 		</div>
 
 		<FormCard title="Edit Project" subtitle="Update your project details below.">
-			<div class="flex gap-4 w-full">
+			<div class="flex flex-col sm:flex-row gap-4 w-full">
 				<!-- Column 1 -->
 				<div class="flex-1 flex flex-col gap-2 min-w-0">
 					<FormField label="Title" id="title" placeholder="Horizons" bind:value={title} />
