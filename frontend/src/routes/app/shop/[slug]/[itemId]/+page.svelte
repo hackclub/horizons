@@ -130,6 +130,7 @@
 				<div class="flex flex-col gap-6 items-start w-[447px]">
 					<div class="flex flex-col gap-2 text-black">
 						<p class="font-cook text-[36px] leading-normal m-0">{item.name}</p>
+							<p class="font-bricolage text-[18px] text-black/60 leading-normal m-0">{item.cost}h</p>
 						{#if item.regions.length > 0}
 							<div class="flex flex-wrap gap-1.5">
 								{#each item.regions as region}
@@ -156,7 +157,7 @@
 									style="background-color: {selectedVariantId === variant.variantId ? 'var(--selected-color)' : '#f3e8d8'}; transition: background-color var(--selected-duration) ease;"
 									onclick={() => { selectedVariantId = variant.variantId; }}
 								>
-									{variant.name}
+									{variant.name} ({variant.cost}h)
 								</button>
 							{/each}
 						</div>

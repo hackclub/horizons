@@ -147,9 +147,9 @@
 		});
 	});
 
-	// function formatCost(cost: number): string {
-	// 	return `${cost} hours`;
-	// }
+	function formatCost(cost: number): string {
+		return `${cost}h`;
+	}
 </script>
 
 <svelte:window onkeydown={(e) => {
@@ -256,14 +256,14 @@
 						<div class="absolute left-3 bottom-3.5 w-[263px] flex flex-col gap-1.75">
 							<div class="font-bricolage font-semibold text-[24px] text-black leading-normal">
 								<p class="m-0">{item.name}</p>
-								<!-- <p class="m-0">{formatCost(item.cost)}</p> -->
+								<p class="m-0 text-[18px] text-black/60">{formatCost(item.cost)}</p>
 							</div>
 
 							{#if selected && item.variants.length > 0}
 								<div class="flex flex-wrap gap-1 mt-1">
 									{#each item.variants as variant (variant.variantId)}
 										<span class="font-bricolage text-sm font-semibold text-black bg-[#f3e8d8] border-2 border-black rounded-lg px-2 py-0.5">
-											{variant.name}<!-- ({variant.cost}h) -->
+											{variant.name} ({variant.cost}h)
 										</span>
 									{/each}
 								</div>
