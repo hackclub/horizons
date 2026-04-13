@@ -6,7 +6,7 @@
 
 	let windowWidth = $state(0);
 	let windowHeight = $state(0);
-	let isSmallViewport = $derived(windowWidth < 1024 || windowHeight < 700);
+	let isSmallViewport = $derived(windowWidth < 1280 || windowHeight < 800);
 </script>
 
 <style>
