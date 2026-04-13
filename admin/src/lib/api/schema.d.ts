@@ -2080,6 +2080,7 @@ export interface components {
             notMetHourGoal: number;
             dauToday: number;
             pinnedTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
+            dauTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
         };
         ReviewerLeaderboardEntry: {
             reviewerId: string;
@@ -2317,6 +2318,7 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             cost: number;
+            region: string | null;
             maxPerUser: number | null;
             isActive: boolean;
             /** Format: date-time */
