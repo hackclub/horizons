@@ -289,15 +289,13 @@
 											{/if}
 											<div class="flex-1" style="background-color: {pinnedEventConfig?.colors.tertiary ?? '#46467c'};"></div>
 										</div>
-										{#if pinnedEventSlug === 'nexus'}
-											<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
-												{#if remainingHours > 0}
-													{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO`}
-												{:else}
-													GOAL REACHED!
-												{/if}
-											</p>
-										{/if}
+										<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
+											{#if remainingHours > 0}
+												{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO (${TARGET_HOURS} needed)`}
+											{:else}
+												GOAL REACHED!
+											{/if}
+										</p>
 									</div>
 								</div>
 							</div>
