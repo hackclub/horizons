@@ -25,6 +25,11 @@ export class CreateItemDto {
   @Min(0)
   cost: number;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  region?: string;
+
   @IsInt()
   @IsOptional()
   @Min(1)
