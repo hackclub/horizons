@@ -96,6 +96,22 @@
 	// 	}
 	// }
 
+	function calcDays(hours: number): number {
+		const fullWeeks = Math.floor(hours / 27);
+		const rem = hours % 27;
+
+		const extra = rem <= 0 ? 0
+			: rem <= 3  ? 1
+			: rem <= 6  ? 2
+			: rem <= 9  ? 3
+			: rem <= 12 ? 4
+			: rem <= 15 ? 5
+			: rem <= 21 ? 6
+			: 7;
+
+		return fullWeeks * 7 + extra;
+	}
+
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
 			goBack();
@@ -130,7 +146,7 @@
 				<div class="flex flex-col gap-6 items-start w-[447px]">
 					<div class="flex flex-col gap-2 text-black">
 						<p class="font-cook text-[36px] leading-normal m-0">{item.name}</p>
-							<p class="font-bricolage text-[18px] text-black/60 leading-normal m-0">{item.cost}h</p>
+							<p class="font-bricolage text-[18px] text-black/60 leading-normal m-0">{item.cost}h · approx. {calcDays(item.cost)} days of coding</p>
 						{#if item.regions.length > 0}
 							<div class="flex flex-wrap gap-1.5">
 								{#each item.regions as region}
