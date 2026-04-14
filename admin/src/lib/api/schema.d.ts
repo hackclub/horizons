@@ -776,6 +776,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/import/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_importCsv"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/fraud-review/refresh": {
         parameters: {
             query?: never;
@@ -2174,6 +2190,24 @@ export interface components {
             lastName: string | null;
             role: string;
         };
+        ImportCsvSkipped: {
+            row: number;
+            email: string;
+            reason: string;
+        };
+        ImportCsvError: {
+            row: number;
+            email: string;
+            message: string;
+        };
+        ImportCsvResponse: {
+            total: number;
+            usersCreated: number;
+            projectsCreated: number;
+            skipped: number;
+            skippedDetails: components["schemas"]["ImportCsvSkipped"][];
+            errors: components["schemas"]["ImportCsvError"][];
+        };
         LeaderboardEntry: {
             reviewerId: string;
             name: string;
@@ -2318,7 +2352,7 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             cost: number;
-            region: string | null;
+            regions: string[];
             maxPerUser: number | null;
             isActive: boolean;
             /** Format: date-time */
@@ -3794,6 +3828,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateUserRoleResponse"];
+                };
+            };
+        };
+    };
+    AdminController_importCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportCsvResponse"];
                 };
             };
         };

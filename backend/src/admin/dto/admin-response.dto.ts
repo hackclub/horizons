@@ -839,6 +839,48 @@ export class AdminStatsResponse {
   dau: StatsDau;
 }
 
+class ImportCsvError {
+  @ApiProperty()
+  row: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  message: string;
+}
+
+class ImportCsvSkipped {
+  @ApiProperty()
+  row: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  reason: string;
+}
+
+export class ImportCsvResponse {
+  @ApiProperty()
+  total: number;
+
+  @ApiProperty()
+  usersCreated: number;
+
+  @ApiProperty()
+  projectsCreated: number;
+
+  @ApiProperty()
+  skipped: number;
+
+  @ApiProperty({ type: [ImportCsvSkipped] })
+  skippedDetails: ImportCsvSkipped[];
+
+  @ApiProperty({ type: [ImportCsvError] })
+  errors: ImportCsvError[];
+}
+
 class BackfillEntry {
   @ApiProperty()
   date: string;
