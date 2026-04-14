@@ -11,8 +11,12 @@ import {
   Delete,
   Post,
   NotFoundException,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiOkResponse, ApiCreatedResponse, ApiConsumes } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { MetricsSnapshotService } from './metrics-snapshot.service';
@@ -42,6 +46,7 @@ import {
   AdminStatsResponse,
   BackfillResponse,
   EventStatsResponse,
+  ImportCsvResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -308,5 +313,24 @@ export class AdminController {
     @Req() req: Request,
   ) {
     return this.adminService.updateUserRole(id, body.role, req.user.userId);
+  }
+
+  @Post('import/csv')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 50 * 1024 * 1024 },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiCreatedResponse({ type: ImportCsvResponse })
+  async importCsv(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return this.adminService.importCsv(file.buffer);
   }
 }

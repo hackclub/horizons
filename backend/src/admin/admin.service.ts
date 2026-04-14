@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
 import { GeocodingService } from './geocoding.service';
+import * as Papa from 'papaparse';
 
 const projectAdminInclude = {
   user: {
@@ -1611,5 +1612,225 @@ export class AdminService {
       user: project.user,
       timeline: events,
     };
+  }
+
+  private readonly HACKATIME_BASE_URL = 'https://hackatime.hackclub.com';
+
+  private async fetchHackatimeProjectNames(
+    slackId: string,
+  ): Promise<Set<string>> {
+    const startDate = new Date(
+      process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
+    )
+      .toISOString()
+      .split('T')[0];
+
+    try {
+      const response = await fetch(
+        `${this.HACKATIME_BASE_URL}/api/v1/users/${slackId}/stats?features=projects&start_date=${startDate}`,
+      );
+
+      if (!response.ok) return new Set();
+
+      const data = await response.json();
+      const names = new Set<string>();
+
+      const projects = data?.data?.projects;
+      if (Array.isArray(projects)) {
+        for (const p of projects) {
+          if (typeof p?.name === 'string') names.add(p.name);
+        }
+      }
+
+      return names;
+    } catch {
+      return new Set();
+    }
+  }
+
+  async importCsv(fileBuffer: Buffer) {
+    const csvString = fileBuffer.toString('utf-8');
+    const parsed = Papa.parse<Record<string, string>>(csvString, {
+      header: true,
+      skipEmptyLines: true,
+    });
+
+    if (parsed.errors.length > 0 && parsed.data.length === 0) {
+      throw new BadRequestException(
+        `CSV parsing failed: ${parsed.errors[0].message}`,
+      );
+    }
+
+    const results = {
+      total: parsed.data.length,
+      usersCreated: 0,
+      projectsCreated: 0,
+      skipped: 0,
+      skippedDetails: [] as { row: number; email: string; reason: string }[],
+      errors: [] as { row: number; email: string; message: string }[],
+    };
+
+    for (let i = 0; i < parsed.data.length; i++) {
+      const row = parsed.data[i];
+      const rowNum = i + 2; // 1-indexed + header row
+      const email = row['Email']?.trim();
+      const codeUrl = row['Code URL']?.trim();
+      const description = row['Description']?.trim();
+      const hackatimeProjectName = row['hackatime_project_name']?.trim();
+      const firstName = row['First Name']?.trim() || 'Imported';
+      const lastName = row['Last Name']?.trim() || 'User';
+      const slackId = row['Slack ID']?.trim();
+
+      if (!email) {
+        results.errors.push({
+          row: rowNum,
+          email: '',
+          message: 'Missing email',
+        });
+        continue;
+      }
+
+      try {
+        // 1. Resolve or create user
+        let user = await this.prisma.user.findUnique({
+          where: { email },
+          include: {
+            projects: {
+              select: {
+                repoUrl: true,
+                nowHackatimeProjects: true,
+                playableUrl: true,
+              },
+            },
+          },
+        });
+
+        let userCreated = false;
+        if (!user) {
+          user = await this.prisma.user.create({
+            data: {
+              hcaId: `import-${email}`,
+              email,
+              firstName,
+              lastName,
+              slackUserId: slackId || null,
+            },
+            include: {
+              projects: {
+                select: {
+                  repoUrl: true,
+                  nowHackatimeProjects: true,
+                  playableUrl: true,
+                },
+              },
+            },
+          });
+          userCreated = true;
+          results.usersCreated++;
+        }
+
+        // 2. Parse and verify hackatime project names
+        let hackatimeProjects: string[] = [];
+        if (hackatimeProjectName) {
+          const rawNames = hackatimeProjectName
+            .split(', ')
+            .map((n) => n.trim())
+            .filter(Boolean);
+
+          if (slackId) {
+            const validNames =
+              await this.fetchHackatimeProjectNames(slackId);
+            if (validNames.size > 0) {
+              hackatimeProjects = rawNames.filter((n) => validNames.has(n));
+            } else {
+              // API unreachable or no projects — use raw names as fallback
+              hackatimeProjects = rawNames;
+            }
+          } else {
+            hackatimeProjects = rawNames;
+          }
+        }
+
+        // 3. Overlap detection
+        const existingProjects = user.projects;
+        let hasOverlap = false;
+        let overlapReason = '';
+
+        for (const existing of existingProjects) {
+          // Check repoUrl overlap
+          if (codeUrl && existing.repoUrl && existing.repoUrl === codeUrl) {
+            hasOverlap = true;
+            overlapReason = `Matching repo URL: ${codeUrl}`;
+            break;
+          }
+
+          // Check hackatime project overlap
+          if (
+            hackatimeProjects.length > 0 &&
+            existing.nowHackatimeProjects?.length
+          ) {
+            const existingSet = new Set(existing.nowHackatimeProjects);
+            const overlap = hackatimeProjects.filter((n) =>
+              existingSet.has(n),
+            );
+            if (overlap.length > 0) {
+              hasOverlap = true;
+              overlapReason = `Matching hackatime project(s): ${overlap.join(', ')}`;
+              break;
+            }
+          }
+        }
+
+        if (hasOverlap) {
+          results.skipped++;
+          results.skippedDetails.push({
+            row: rowNum,
+            email,
+            reason: overlapReason,
+          });
+          continue;
+        }
+
+        // 4. Derive project title
+        let projectTitle = '';
+        if (hackatimeProjects.length > 0) {
+          projectTitle = hackatimeProjects[0];
+        } else if (codeUrl) {
+          // Extract repo name from GitHub URL
+          const match = codeUrl.match(
+            /github\.com\/[^/]+\/([^/?#]+)/,
+          );
+          projectTitle = match ? match[1] : 'Imported Project';
+        } else {
+          projectTitle = 'Imported Project';
+        }
+        projectTitle = projectTitle.substring(0, 30);
+
+        // 5. Create project
+        await this.prisma.project.create({
+          data: {
+            userId: user.userId,
+            projectTitle,
+            projectType: 'web_playable',
+            description: description
+              ? description.substring(0, 500)
+              : null,
+            repoUrl: codeUrl || null,
+            nowHackatimeProjects: hackatimeProjects,
+          },
+        });
+
+        results.projectsCreated++;
+      } catch (error) {
+        results.errors.push({
+          row: rowNum,
+          email,
+          message:
+            error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return results;
   }
 }

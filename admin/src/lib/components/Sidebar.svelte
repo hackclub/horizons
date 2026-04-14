@@ -13,6 +13,7 @@
 		ArrowRightLeft,
 		Settings,
 		ShieldCheck,
+		Upload,
 		PanelLeftClose,
 		PanelLeftOpen,
 		Moon,
@@ -157,7 +158,7 @@
 				{/if}
 			</a>
 
-			<!-- Manage Admins (superadmin only) -->
+			<!-- Superadmin-only links -->
 			{#if user?.role === 'superadmin'}
 				<a
 					href="{base}/manage-admins"
@@ -171,6 +172,20 @@
 					<ShieldCheck size={16} />
 					{#if !collapsed}
 						<span>Manage Admins</span>
+					{/if}
+				</a>
+				<a
+					href="{base}/import"
+					class="flex items-center rounded-lg border border-transparent transition-[border-color,box-shadow,background-color] duration-200
+						{collapsed ? 'justify-center p-2' : 'gap-1.5 p-2 text-xs'}
+						{isActive('/import')
+						? 'border-ds-border! bg-ds-surface font-medium text-ds-text shadow-(--color-ds-shadow)'
+						: 'border-ds-settings-bg! text-ds-settings hover:bg-ds-surface2'}"
+					title={collapsed ? 'Import CSV' : undefined}
+				>
+					<Upload size={16} />
+					{#if !collapsed}
+						<span>Import CSV</span>
 					{/if}
 				</a>
 			{/if}
