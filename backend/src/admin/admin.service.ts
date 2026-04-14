@@ -1833,4 +1833,99 @@ export class AdminService {
 
     return results;
   }
+
+  private async fetchCachetUsername(slackId: string): Promise<string | null> {
+    try {
+      const res = await fetch(
+        `https://cachet.dunkirk.sh/users/${slackId}`,
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.username ?? data?.name ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async exportCsv(): Promise<string> {
+    const users = await this.prisma.user.findMany({
+      select: {
+        userId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        slackUserId: true,
+        hackatimeAccount: true,
+        createdAt: true,
+        projects: {
+          select: { createdAt: true },
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+        },
+        pinnedEvent: {
+          select: {
+            event: { select: { title: true } },
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    // Get first submission per user via a single query
+    const firstSubmissions = await this.prisma.$queryRaw<
+      { user_id: number; first_submission_at: Date }[]
+    >`
+      SELECT p.user_id, MIN(s.created_at) AS first_submission_at
+      FROM submissions s
+      JOIN projects p ON p.project_id = s.project_id
+      GROUP BY p.user_id
+    `;
+    const submissionMap = new Map(
+      firstSubmissions.map((r) => [r.user_id, r.first_submission_at]),
+    );
+
+    // Get hackatime link time from OTPs (usedAt as proxy)
+    const hackatimeLinks = await this.prisma.hackatimeLinkOtp.findMany({
+      where: { usedAt: { not: null } },
+      select: { userId: true, usedAt: true },
+      orderBy: { usedAt: 'asc' },
+      distinct: ['userId'],
+    });
+    const hackatimeLinkMap = new Map(
+      hackatimeLinks.map((r) => [r.userId, r.usedAt]),
+    );
+
+    // Batch fetch Cachet usernames for users with Slack IDs
+    const slackUsers = users.filter((u) => u.slackUserId);
+    const cachetResults = await Promise.allSettled(
+      slackUsers.map(async (u) => ({
+        userId: u.userId,
+        username: await this.fetchCachetUsername(u.slackUserId!),
+      })),
+    );
+    const cachetMap = new Map<number, string>();
+    for (const result of cachetResults) {
+      if (result.status === 'fulfilled' && result.value.username) {
+        cachetMap.set(result.value.userId, result.value.username);
+      }
+    }
+
+    const rows = users.map((user) => ({
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      slackId: user.slackUserId ?? '',
+      username: cachetMap.get(user.userId) ?? '',
+      signedUpAt: user.createdAt.toISOString(),
+      hackatimeLinkedAt: hackatimeLinkMap.get(user.userId)?.toISOString() ?? '',
+      firstProjectAt:
+        user.projects[0]?.createdAt?.toISOString() ?? '',
+      firstSubmissionAt:
+        submissionMap.get(user.userId)?.toISOString() ?? '',
+      pinnedEvent: user.pinnedEvent?.event?.title ?? '',
+      pinnedEventAt: user.pinnedEvent?.createdAt?.toISOString() ?? '',
+    }));
+
+    return Papa.unparse(rows);
+  }
 }

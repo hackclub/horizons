@@ -8,12 +8,36 @@
     let uploading = $state(false);
     let result = $state<ImportCsvResponse | null>(null);
     let errorMessage = $state('');
+    let exporting = $state(false);
 
     function handleFileChange(e: Event) {
         const input = e.target as HTMLInputElement;
         file = input.files?.[0] ?? null;
         result = null;
         errorMessage = '';
+    }
+
+    async function handleExport() {
+        if (exporting) return;
+        exporting = true;
+        try {
+            const res = await fetch('/api/admin/export/csv', { credentials: 'include' });
+            if (!res.ok) {
+                errorMessage = `Export failed (${res.status})`;
+                return;
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'horizons-users-export.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            errorMessage = err instanceof Error ? err.message : 'Export failed';
+        } finally {
+            exporting = false;
+        }
     }
 
     async function handleUpload() {
@@ -53,6 +77,16 @@
         Upload a YSWS project submissions CSV to bulk-import users and projects.
         Rows with overlapping GitHub URLs or Hackatime projects will be skipped.
     </p>
+
+    <Card class="p-6 space-y-4">
+        <h2 class="text-xl font-semibold">Export Users CSV</h2>
+        <p class="text-sm text-ds-text-secondary">
+            Export all users with Cachet username, Slack ID, and lifecycle milestones (sign-up, Hackatime link, first project, first submission, pinned event).
+        </p>
+        <Button onclick={handleExport} disabled={exporting}>
+            {exporting ? 'Exporting...' : 'Export CSV'}
+        </Button>
+    </Card>
 
     <Card class="p-6 space-y-4">
         <h2 class="text-xl font-semibold">Upload CSV</h2>

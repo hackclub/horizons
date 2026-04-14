@@ -14,10 +14,12 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Res,
+  Header,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiOkResponse, ApiCreatedResponse, ApiConsumes } from '@nestjs/swagger';
-import { Request } from 'express';
+import { ApiOkResponse, ApiCreatedResponse, ApiConsumes, ApiProduces } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import { AdminService } from './admin.service';
 import { MetricsSnapshotService } from './metrics-snapshot.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -332,5 +334,16 @@ export class AdminController {
       throw new BadRequestException('No file uploaded');
     }
     return this.adminService.importCsv(file.buffer);
+  }
+
+  @Get('export/csv')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="horizons-users-export.csv"')
+  @ApiProduces('text/csv')
+  async exportCsv(@Res() res: Response) {
+    const csv = await this.adminService.exportCsv();
+    res.send(csv);
   }
 }
