@@ -5,6 +5,7 @@
 	import CircleIn from '$lib/components/anim/CircleIn.svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
+	import { EXIT_DURATION } from '$lib';
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 
@@ -12,10 +13,13 @@
 	let isAuthed = $state(false);
 	let scrollContainer: HTMLDivElement;
 	let disableAnimations = $state(false);
+	let navigating = $state(false);
+
+	let fromApp = $derived(page.url.searchParams.get('from') === 'app');
 
 	let backPath = $derived(() => {
 		const from = page.url.searchParams.get('from');
-		if (from === 'app') return '/app';
+		if (from === 'app') return '/app?noanimate';
 		if (from === 'home') return '/';
 		return isAuthed ? '/app' : '/';
 	});
@@ -64,7 +68,11 @@
 		});
 	});
 
-	function goBack() {
+	async function goBack() {
+		if (fromApp) {
+			navigating = true;
+			await new Promise(resolve => setTimeout(resolve, EXIT_DURATION + 350));
+		}
 		goto(backPath());
 	}
 
@@ -88,9 +96,27 @@
 <BG class="flex flex-col">
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="flex-1 overflow-auto" bind:this={scrollContainer} onclick={handleAnchorClick}>
-		<BackButton onclick={goBack} flyIn />
-		<div class="pt-24">
+		<BackButton onclick={goBack} exiting={navigating} flyIn />
+		<div class="pt-24 content-slide" class:from-app={fromApp} class:exiting={navigating}>
 			<FAQ {markdown} />
 		</div>
 	</div>
 </BG>
+
+<style>
+	@keyframes content-enter {
+		from { transform: translateX(-120vw); }
+		to   { transform: translateX(0); }
+	}
+	@keyframes content-exit {
+		from { transform: translateX(0); }
+		to   { transform: translateX(-120vw); }
+	}
+
+	.content-slide.from-app {
+		animation: content-enter var(--enter-duration) var(--enter-easing) both;
+	}
+	.content-slide.from-app.exiting {
+		animation: content-exit var(--exit-duration) var(--exit-easing) both;
+	}
+</style>

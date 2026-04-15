@@ -398,6 +398,7 @@
 						class:selected={nav.isSelected(3, 0)}
 						class:shaking={isShaking(3, 0)}
 						onmouseenter={() => { if (!nav.usingKeyboard) nav.select(3, 0); }}
+						onclick={(e) => { e.preventDefault(); navigateTo('/faq?from=app'); }}
 						onanimationend={() => { shakingKey = null; }}>
 						<!-- HUH icon -->
 						<div class="card-bg-icon" style="right: 20px; top: 50%; transform: translateY(-50%); width: 145px; height: 145px;">
