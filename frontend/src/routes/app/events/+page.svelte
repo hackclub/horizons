@@ -141,11 +141,13 @@
 	const heroSrc = $derived(selectedEvent?.api?.imageUrl ?? selectedEvent?.config.eventCard?.bgImage ?? null);
 
 	function getCardBg(event: MergedEvent): string {
-		return event.config.eventCard?.bgColor ?? event.config.colors.primary;
+		const color = event.config.eventCard?.bgColor ?? event.config.colors.primary;
+		return `color-mix(in srgb, ${color} 40%, #f3e8d8)`;
 	}
 
 	function getCardBgSelected(event: MergedEvent): string {
-		return event.config.eventCard?.bgColor ?? event.config.colors.primary;
+		const color = event.config.eventCard?.bgColor ?? event.config.colors.primary;
+		return `color-mix(in srgb, ${color} 60%, #f3e8d8)`;
 	}
 </script>
 
