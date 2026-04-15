@@ -2016,7 +2016,8 @@ export interface components {
         StatsReviewProjects: {
             shipped: number;
             fraudChecked: number;
-            inQueue: number;
+            fraudQueue: number;
+            reviewQueue: number;
             reviewed: number;
             approved: number;
             shippedThisWeek: number;

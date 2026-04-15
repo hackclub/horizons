@@ -535,7 +535,7 @@ export class AdminService {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
 
-    const [shipped, fraudChecked, inQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek] = await Promise.all([
+    const [shipped, fraudChecked, fraudQueue, reviewQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek] = await Promise.all([
       // Projects with >= 1 submission
       this.prisma.project.count({ where: { submissions: { some: {} } } }),
       // Projects that passed fraud check (includes reviewed)
@@ -545,7 +545,14 @@ export class AdminService {
           submissions: { some: {} },
         },
       }),
-      // Fraud-checked projects with NO approved/rejected submissions (truly waiting for review)
+      // Fraud queue: shipped but not yet fraud checked (joeFraudPassed is null)
+      this.prisma.project.count({
+        where: {
+          joeFraudPassed: null,
+          submissions: { some: {} },
+        },
+      }),
+      // Review queue: fraud-checked projects with NO approved/rejected submissions (waiting for review)
       this.prisma.project.count({
         where: {
           joeFraudPassed: true,
@@ -582,7 +589,7 @@ export class AdminService {
       }),
     ]);
 
-    return { shipped, fraudChecked, inQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek };
+    return { shipped, fraudChecked, fraudQueue, reviewQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek };
   }
 
   private async computeSignups() {

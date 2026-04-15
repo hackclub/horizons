@@ -933,7 +933,7 @@
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
 					<div bind:this={projectFunnelEl} style="height: 220px;"></div>
 				</div>
-				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-3">
+				<div class="grid gap-3 sm:grid-cols-3 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Shipped This Week</p>
 						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.shippedThisWeek)}</p>
@@ -946,9 +946,19 @@
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Reviewed This Week</p>
 						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewedThisWeek)}</p>
 					</div>
+				</div>
+				<div class="grid gap-3 sm:grid-cols-3 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">In Queue</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.inQueue)}</p>
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fraud Queue</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.fraudQueue)}</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Review Queue</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewQueue)}</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Reviewed</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewed)}</p>
 					</div>
 				</div>
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">

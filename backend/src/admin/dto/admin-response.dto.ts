@@ -693,7 +693,10 @@ class StatsReviewProjects {
   fraudChecked: number;
 
   @ApiProperty()
-  inQueue: number;
+  fraudQueue: number;
+
+  @ApiProperty()
+  reviewQueue: number;
 
   @ApiProperty()
   reviewed: number;
