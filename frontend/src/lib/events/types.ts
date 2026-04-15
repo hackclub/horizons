@@ -21,6 +21,17 @@ export interface EventConfig {
 		tertiary: string;
 		cardBg: string;
 	};
+	progressBar: {
+		approved: string;
+		completed: string;
+		remaining: string;
+	};
+	eventCard: {
+		bgColor: string;
+		bgImage?: string | null;
+		gradient?: string | null;
+		compactGradient?: string | null;
+	};
 	stripes: string[];
 	menu: EventMenuItem[];
 }

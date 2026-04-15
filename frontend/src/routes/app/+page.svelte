@@ -273,25 +273,30 @@
 				<div class="middle-col shrink-0">
 					<!-- Event / Nexus Card (informational, not navigable) -->
 					<div class="event-card-wrapper enter-up flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
-						<div class="card event-card relative" style="background-color: {pinnedEventSlug === 'nexus' || !pinnedEventConfig ? '#fac393' : pinnedEventConfig.colors.primary};">
+						<div class="card event-card relative" style="background-color: {pinnedEventConfig?.eventCard?.bgColor ?? '#fac393'}; {pinnedEventConfig?.eventCard?.bgImage ? `background-image: url(${pinnedEventConfig.eventCard.bgImage}); background-size: cover; background-position: center;` : ''}">
+							{#if pinnedEventConfig?.eventCard?.gradient}
+								<div class="event-card-gradient full-gradient" style="background: {pinnedEventConfig.eventCard.gradient};"></div>
+							{/if}
+							{#if pinnedEventConfig?.eventCard?.compactGradient}
+								<div class="event-card-gradient compact-gradient" style="background: {pinnedEventConfig.eventCard.compactGradient};"></div>
+							{/if}
 							<!-- Full progress view -->
 							<div class="full-progress">
-								<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0">PROGRESS</p>
-								<div class="flex flex-col gap-3 w-full">
+								<div class="flex flex-col gap-3 w-full relative">
 									<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left" />
 									<div class="card progress-card">
 										<div class="progress-bar">
 											{#if approvedPct > 0}
-												<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.colors.primary ?? '#ffa936'};">
+												<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.progressBar?.approved ?? '#ffa936'};">
 													<span class="progress-label">{approvedHours} HOURS APPROVED</span>
 												</div>
 											{/if}
 											{#if completedPct > 0}
-												<div class="progress-segment" style="width: {completedPct}%; background-color: {pinnedEventConfig?.colors.secondary ?? '#f86d95'};">
+												<div class="progress-segment" style="width: {completedPct}%; background-color: {pinnedEventConfig?.progressBar?.completed ?? '#f86d95'};">
 													<span class="progress-label">{completedHours - approvedHours} HOURS COMPLETED</span>
 												</div>
 											{/if}
-											<div class="flex-1" style="background-color: {pinnedEventConfig?.colors.tertiary ?? '#46467c'};"></div>
+											<div class="flex-1" style="background-color: {pinnedEventConfig?.progressBar?.remaining ?? '#46467c'};"></div>
 										</div>
 										<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
 											{#if remainingHours > 0}
@@ -305,8 +310,8 @@
 							</div>
 							<!-- Compact progress view -->
 							<div class="compact-progress">
-								<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left shrink-0" />
-								<div class="text-right text-[24px] text-black tracking-[0.24px]">
+								<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left shrink-0 relative" />
+								<div class="text-right text-[24px] text-white tracking-[0.24px] relative">
 									<p class="font-cook m-0">PROGRESS</p>
 									<p class="font-bricolage font-semibold m-0">
 										{#if remainingHours > 0}
@@ -625,11 +630,21 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		justify-content: center;
+		justify-content: flex-end;
 		padding: 24px 24px 28px;
 		height: 100%;
 		overflow: hidden;
 		background-color: #fac393;
+	}
+
+	.event-card-gradient {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
+
+	.compact-gradient {
+		display: none;
 	}
 
 	.full-progress {
@@ -647,6 +662,12 @@
 	@container (max-height: 200px) {
 		.full-progress {
 			display: none;
+		}
+		.full-gradient {
+			display: none;
+		}
+		.compact-gradient {
+			display: block;
 		}
 		.compact-progress {
 			display: flex;

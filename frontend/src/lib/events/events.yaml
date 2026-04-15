@@ -19,6 +19,15 @@ nexus:
     secondary: "#f86d95"
     tertiary: "#46467c"
     cardBg: "#f3e8d8"
+  progressBar:
+    approved: "#f48f09"
+    completed: "#fb036e"
+    remaining: "#09af91"
+  eventCard:
+    bgColor: "#fac393"
+    bgImage: /event-bgs/nexus-bg.webp
+    gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
+    compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.25) 50%)"
   stripes:
     - "#ffa936"
     - "#f86d95"
@@ -55,6 +64,15 @@ equinox:
     secondary: "#2d6a6a"
     tertiary: "#8b4513"
     cardBg: "#f4efe4"
+  progressBar:
+    approved: "#f8986c"
+    completed: "#6c77fe"
+    remaining: "#993613"
+  eventCard:
+    bgColor: "#8b4513"
+    bgImage: /event-bgs/equinox-bg.webp
+    gradient: null
+    compactGradient: null
   stripes:
     - "#c9a227"
     - "#2d6a6a"
@@ -91,6 +109,15 @@ europa:
     secondary: "#f86d95"
     tertiary: "#46467c"
     cardBg: "#f3e8d8"
+  progressBar:
+    approved: "#5976c4"
+    completed: "#edda65"
+    remaining: "#2d4b9b"
+  eventCard:
+    bgColor: "#8eadff"
+    bgImage: /event-bgs/europa-bg.webp
+    gradient: null
+    compactGradient: null
   stripes:
     - "#ffa936"
     - "#f86d95"
@@ -127,6 +154,15 @@ sol:
     secondary: "#2A53BE"
     tertiary: "#8AD05F"
     cardBg: "#0f2233"
+  progressBar:
+    approved: "#90fffe"
+    completed: "#ffcc60"
+    remaining: "#399df0"
+  eventCard:
+    bgColor: "#0f2233"
+    bgImage: /event-bgs/sol-bg.webp
+    gradient: "linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 75%)"
+    compactGradient: "linear-gradient(to right, rgba(0,0,0,0.9) 15%, rgba(0,0,0,0.45) 100%)"
   stripes:
     - "#2A53BE"
     - "#F9F035"
@@ -163,6 +199,15 @@ crux:
     secondary: "#b4befe"
     tertiary: "#f38ba8"
     cardBg: "#585b70"
+  progressBar:
+    approved: "#d3823e"
+    completed: "#927fb6"
+    remaining: "#305e5e"
+  eventCard:
+    bgColor: "#1e1e2e"
+    bgImage: /event-bgs/crux-bg.webp
+    gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
+    compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.45) 50%)"
   stripes:
     - "#ffa936"
     - "#f86d95"
@@ -199,6 +244,15 @@ arcana:
     secondary: "#080E1A"
     tertiary: "#0061C0"
     cardBg: "#101E38"
+  progressBar:
+    approved: "#6cc2f5"
+    completed: "#fde5b3"
+    remaining: "#e0b1ff"
+  eventCard:
+    bgColor: "#a8eeff"
+    bgImage: /event-bgs/arcana-bg.webp
+    gradient: "linear-gradient(to right, #a8eeff 0%, rgba(0,0,0,0) 50%)"
+    compactGradient: "linear-gradient(90deg, #a8eeff 0%, rgba(168,238,255,0) 38%, rgba(0,0,0,0.45) 77%)"
   stripes:
     - "#9679D9"
     - "#0061C0"
@@ -235,6 +289,15 @@ polaris:
     secondary: "#f86d95"
     tertiary: "#46467c"
     cardBg: "#f3e8d8"
+  progressBar:
+    approved: "#6eb8ff"
+    completed: "#7ff9dc"
+    remaining: "#e0b1ff"
+  eventCard:
+    bgColor: "#1a1a2e"
+    bgImage: /event-bgs/polaris-bg.webp
+    gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
+    compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.45) 50%)"
   stripes:
     - "#ffa936"
     - "#f86d95"
