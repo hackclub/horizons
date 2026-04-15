@@ -935,20 +935,6 @@
 				</div>
 				<div class="grid gap-3 sm:grid-cols-3 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Shipped This Week</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.shippedThisWeek)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fraud Checked This Week</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.fraudCheckedThisWeek)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Reviewed This Week</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewedThisWeek)}</p>
-					</div>
-				</div>
-				<div class="grid gap-3 sm:grid-cols-3 mb-3">
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fraud Queue</p>
 						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.fraudQueue)}</p>
 					</div>
@@ -959,6 +945,21 @@
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Reviewed</p>
 						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewed)}</p>
+					</div>
+				</div>
+				<hr class="my-4 border-ds-border opacity-50" />
+				<div class="grid gap-3 sm:grid-cols-3 mb-3">
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Shipped This Week</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.shippedThisWeek)}</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fraud Checked This Week</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.fraudCheckedThisWeek)}</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Reviewed This Week</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewedThisWeek)}</p>
 					</div>
 				</div>
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
