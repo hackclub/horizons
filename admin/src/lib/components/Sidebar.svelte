@@ -181,11 +181,11 @@
 						{isActive('/import')
 						? 'border-ds-border! bg-ds-surface font-medium text-ds-text shadow-(--color-ds-shadow)'
 						: 'border-ds-settings-bg! text-ds-settings hover:bg-ds-surface2'}"
-					title={collapsed ? 'Import CSV' : undefined}
+					title={collapsed ? 'Import/Export CSV' : undefined}
 				>
 					<Upload size={16} />
 					{#if !collapsed}
-						<span>Import CSV</span>
+						<span>Import/Export CSV</span>
 					{/if}
 				</a>
 			{/if}
