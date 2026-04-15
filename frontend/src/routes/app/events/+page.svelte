@@ -13,6 +13,7 @@
 	import type { components } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { setCachedPinnedEvent, clearCachedPinnedEvent } from '$lib/store/pinnedEventCache';
 
 	type EventResponse = components['schemas']['EventResponse'];
 
@@ -104,8 +105,11 @@
 		setTimeout(() => { pinnedSlug = null; pinnedDismissing = false; pinning = false; }, 2500);
 
 		if (wasAlreadyPinned) {
+			clearCachedPinnedEvent();
 			api.DELETE('/api/events/auth/pinned-event' as any, {}).catch(() => {});
 		} else {
+			const eventApi = apiEvents.find((e) => e.slug === slug);
+			setCachedPinnedEvent(slug, (eventApi as any)?.hourCost ?? 30);
 			api.POST('/api/events/auth/pinned-event' as any, {
 				body: { slug }
 			}).catch(() => {});

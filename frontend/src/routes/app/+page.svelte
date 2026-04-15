@@ -11,6 +11,7 @@
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
+	import { getCachedPinnedEvent, setCachedPinnedEvent } from '$lib/store/pinnedEventCache';
 	import { onMount } from 'svelte';
 	import yaml from 'js-yaml';
 	import type { EventConfig } from '$lib/events/types';
@@ -42,8 +43,8 @@
 	let referralCode = $derived($userStore.referralCode);
 	let isAdmin = $derived($userStore.role === 'admin' || $userStore.role === 'superadmin');
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
-	let pinnedEventConfig = $state<EventConfig | null>(null);
-	let pinnedEventSlug = $state<string | null>(null);
+	let pinnedEventConfig = $state<EventConfig>(eventsMap['nexus']);
+	let pinnedEventSlug = $state<string>('nexus');
 
 	let approvedHours = $state(0);
 	let completedHours = $state(0);
@@ -53,20 +54,31 @@
 	let approvedPct = $derived(targetHours > 0 ? Math.min(100, (approvedHours / targetHours) * 100) : 0);
 	let completedPct = $derived(targetHours > 0 ? Math.min(100, ((completedHours - approvedHours) / targetHours) * 100) : 0);
 
-	onMount(async () => {
-		const [, totalRes, approvedRes] = await Promise.all([
-			userStore.load(),
+	// Load cached pinned event instantly
+	const cached = getCachedPinnedEvent();
+	if (cached && eventsMap[cached.slug]) {
+		pinnedEventSlug = cached.slug;
+		pinnedEventConfig = eventsMap[cached.slug];
+		targetHours = cached.hourCost;
+	}
+
+	async function fetchHours() {
+		const [totalRes, approvedRes] = await Promise.all([
 			api.GET('/api/hackatime/hours/total'),
 			api.GET('/api/hackatime/hours/approved'),
 		]);
-
 		if (totalRes.data) {
 			completedHours = Math.round(((totalRes.data as any).totalNowHackatimeHours ?? 0) * 10) / 10;
 		}
 		if (approvedRes.data) {
 			approvedHours = Math.round(((approvedRes.data as any).totalApprovedHours ?? 0) * 10) / 10;
 		}
+	}
 
+	onMount(async () => {
+		await Promise.all([userStore.load(), fetchHours()]);
+
+		// Refresh from API and update cache
 		const pinnedRes = await api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null);
 		if (pinnedRes?.data) {
 			const event = (pinnedRes.data as any).event;
@@ -74,11 +86,12 @@
 			if (slug && eventsMap[slug]) {
 				pinnedEventSlug = slug;
 				pinnedEventConfig = eventsMap[slug];
-			}
-			if (event?.hourCost) {
-				targetHours = event.hourCost;
+				const hourCost = event?.hourCost ?? 30;
+				targetHours = hourCost;
+				setCachedPinnedEvent(slug, hourCost);
 			}
 		}
+
 	});
 
 	const hrefs = [
