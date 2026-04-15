@@ -24,7 +24,7 @@ nexus:
     completed: "#fb036e"
     remaining: "#09af91"
   eventCard:
-    bgColor: "#fac393"
+    bgColor: "#FB036E"
     bgImage: /event-bgs/nexus-bg.webp
     gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
     compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.25) 50%)"
@@ -69,7 +69,7 @@ equinox:
     completed: "#6c77fe"
     remaining: "#993613"
   eventCard:
-    bgColor: "#8b4513"
+    bgColor: "#F8986C"
     bgImage: /event-bgs/equinox-bg.webp
     gradient: null
     compactGradient: null
@@ -114,7 +114,7 @@ europa:
     completed: "#edda65"
     remaining: "#2d4b9b"
   eventCard:
-    bgColor: "#8eadff"
+    bgColor: "#8EADFF"
     bgImage: /event-bgs/europa-bg.webp
     gradient: null
     compactGradient: null
@@ -159,7 +159,7 @@ sol:
     completed: "#ffcc60"
     remaining: "#399df0"
   eventCard:
-    bgColor: "#0f2233"
+    bgColor: "#FFCC60"
     bgImage: /event-bgs/sol-bg.webp
     gradient: "linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 75%)"
     compactGradient: "linear-gradient(to right, rgba(0,0,0,0.9) 15%, rgba(0,0,0,0.45) 100%)"
@@ -204,7 +204,7 @@ crux:
     completed: "#927fb6"
     remaining: "#305e5e"
   eventCard:
-    bgColor: "#1e1e2e"
+    bgColor: "#423AAF"
     bgImage: /event-bgs/crux-bg.webp
     gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
     compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.45) 50%)"
@@ -249,7 +249,7 @@ arcana:
     completed: "#fde5b3"
     remaining: "#e0b1ff"
   eventCard:
-    bgColor: "#a8eeff"
+    bgColor: "#6CC2F5"
     bgImage: /event-bgs/arcana-bg.webp
     gradient: "linear-gradient(to right, #a8eeff 0%, rgba(0,0,0,0) 50%)"
     compactGradient: "linear-gradient(90deg, #a8eeff 0%, rgba(168,238,255,0) 38%, rgba(0,0,0,0.45) 77%)"
@@ -294,7 +294,7 @@ polaris:
     completed: "#7ff9dc"
     remaining: "#e0b1ff"
   eventCard:
-    bgColor: "#1a1a2e"
+    bgColor: "#262D47"
     bgImage: /event-bgs/polaris-bg.webp
     gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
     compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.45) 50%)"
