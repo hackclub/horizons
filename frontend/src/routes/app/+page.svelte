@@ -282,9 +282,10 @@
 							{/if}
 							<!-- Full progress view -->
 							<div class="full-progress">
-								<div class="flex flex-col gap-3 w-full relative">
-									<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left" />
-									<div class="card progress-card">
+								<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0 z-10">PROGRESS</p>
+								<div class="flex flex-col gap-3 w-full relative flex-1 min-h-0">
+									<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="flex-1 min-h-0 w-auto object-contain object-left" />
+									<div class="card progress-card shrink-0">
 										<div class="progress-bar">
 											{#if approvedPct > 0}
 												<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.progressBar?.approved ?? '#ffa936'};">
@@ -310,7 +311,7 @@
 							</div>
 							<!-- Compact progress view -->
 							<div class="compact-progress">
-								<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left shrink-0 relative" />
+								<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-auto w-auto object-contain object-left shrink-0 relative" />
 								<div class="text-right text-[24px] text-white tracking-[0.24px] relative">
 									<p class="font-cook m-0">PROGRESS</p>
 									<p class="font-bricolage font-semibold m-0">
