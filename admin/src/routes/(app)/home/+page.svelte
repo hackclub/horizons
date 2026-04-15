@@ -25,6 +25,7 @@
 	let dauEl = $state<HTMLDivElement | null>(null);
 	let dailyHoursEl = $state<HTMLDivElement | null>(null);
 	let medianReviewEl = $state<HTMLDivElement | null>(null);
+	let medianFraudCheckEl = $state<HTMLDivElement | null>(null);
 	let projectFunnelEl = $state<HTMLDivElement | null>(null);
 	let projectsReviewedEl = $state<HTMLDivElement | null>(null);
 	let signupsEl = $state<HTMLDivElement | null>(null);
@@ -106,6 +107,7 @@
 		renderLineChart(dauEl, stats.historical.dau, '#3b82f6', 'rgba(59,130,246,0.15)');
 		renderLineChart(dailyHoursEl, stats.historical.dailyHoursLogged, '#22c55e', 'rgba(34,197,94,0.15)', 'h');
 		renderLineChart(medianReviewEl, stats.historical.medianReviewTimeHours, '#f97316', 'rgba(249,115,22,0.15)', 'h');
+		renderLineChart(medianFraudCheckEl, stats.historical.medianFraudCheckTimeHours, '#ef4444', 'rgba(239,68,68,0.15)', 'h');
 		renderProjectFunnel();
 		renderProjectsMultiLine();
 		renderLineChart(signupsEl, stats.historical.newSignups, '#22c55e', 'rgba(34,197,94,0.15)');
@@ -888,6 +890,24 @@
 			<!-- 4b. Median Review Time -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Median Review Time</h2>
+				<div class="grid gap-3 sm:grid-cols-2 mb-3">
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Median Fraud Check Time This Week</p>
+						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.medianFraudCheckTimeThisWeek != null ? formatHours(stats.reviewStats.medianFraudCheckTimeThisWeek) + 'h' : '—'}</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Last Project Fraud Check Time</p>
+						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.lastProjectFraudCheckTime != null ? formatHours(stats.reviewStats.lastProjectFraudCheckTime) + 'h' : '—'}</p>
+					</div>
+				</div>
+				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Median Fraud Check Time — Weekly Avg</p>
+					<div bind:this={medianFraudCheckEl} style="height: 180px;"></div>
+					{#if stats.historical.medianFraudCheckTimeHours.length === 0}
+						<p class="text-[10px] text-ds-text-secondary text-center mt-1">No historical data yet</p>
+					{/if}
+				</div>
+				<hr class="my-4 border-ds-border opacity-50" />
 				<div class="grid gap-3 sm:grid-cols-2 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Median Review Time This Week</p>

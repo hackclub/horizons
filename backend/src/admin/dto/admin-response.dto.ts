@@ -676,7 +676,13 @@ class StatsReviewHours {
   medianReviewTimeThisWeek: number | null;
 
   @ApiProperty({ type: Number, nullable: true })
+  medianFraudCheckTimeThisWeek: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
   lastProjectReviewTime: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  lastProjectFraudCheckTime: number | null;
 }
 
 class StatsReviewProjects {
@@ -801,6 +807,9 @@ class StatsHistorical {
 
   @ApiProperty({ type: [HistoricalDataPoint] })
   projectsFraudChecked: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  medianFraudCheckTimeHours: HistoricalDataPoint[];
 }
 
 class StatsDauEventEntry {

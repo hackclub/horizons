@@ -449,6 +449,38 @@ export class AdminService {
       medianReviewTimeThisWeek = toHours(medianMs);
     }
 
+    // Median fraud check time this week (joeFraudReviewedAt - earliest submission createdAt)
+    const fraudCheckedProjects = await this.prisma.project.findMany({
+      where: {
+        joeFraudReviewedAt: { gte: weekStart },
+        joeFraudPassed: { not: null },
+        submissions: { some: {} },
+      },
+      select: {
+        joeFraudReviewedAt: true,
+        submissions: {
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+          select: { createdAt: true },
+        },
+      },
+    });
+
+    let medianFraudCheckTimeThisWeek: number | null = null;
+    const fraudDurations = fraudCheckedProjects
+      .filter((p) => p.joeFraudReviewedAt && p.submissions.length > 0)
+      .map((p) => p.joeFraudReviewedAt!.getTime() - p.submissions[0].createdAt.getTime())
+      .filter((d) => d >= 0)
+      .sort((a, b) => a - b);
+    if (fraudDurations.length > 0) {
+      const mid = Math.floor(fraudDurations.length / 2);
+      const medianMs =
+        fraudDurations.length % 2 === 1
+          ? fraudDurations[mid]
+          : (fraudDurations[mid - 1] + fraudDurations[mid]) / 2;
+      medianFraudCheckTimeThisWeek = toHours(medianMs);
+    }
+
     // Last reviewed project's review turnaround time
     const lastReviewed = await this.prisma.submission.findFirst({
       where: {
@@ -463,6 +495,28 @@ export class AdminService {
         ? toHours(lastReviewed.reviewedAt.getTime() - lastReviewed.createdAt.getTime())
         : null;
 
+    // Last fraud-checked project's turnaround time
+    const lastFraudChecked = await this.prisma.project.findFirst({
+      where: {
+        joeFraudReviewedAt: { not: null },
+        joeFraudPassed: { not: null },
+        submissions: { some: {} },
+      },
+      orderBy: { joeFraudReviewedAt: 'desc' },
+      select: {
+        joeFraudReviewedAt: true,
+        submissions: {
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+          select: { createdAt: true },
+        },
+      },
+    });
+    const lastProjectFraudCheckTime =
+      lastFraudChecked && lastFraudChecked.joeFraudReviewedAt && lastFraudChecked.submissions.length > 0
+        ? toHours(lastFraudChecked.joeFraudReviewedAt.getTime() - lastFraudChecked.submissions[0].createdAt.getTime())
+        : null;
+
     return {
       trackedHours: trackedAgg._sum.nowHackatimeHours ?? 0,
       unshippedHours: unshippedAgg._sum.nowHackatimeHours ?? 0,
@@ -471,7 +525,9 @@ export class AdminService {
       approvedHours: approved,
       weightedGrants: Math.round((approved / 10) * 100) / 100,
       medianReviewTimeThisWeek,
+      medianFraudCheckTimeThisWeek,
       lastProjectReviewTime,
+      lastProjectFraudCheckTime,
     };
   }
 
@@ -613,7 +669,7 @@ export class AdminService {
   private async computeHistorical(thirtyDaysAgo: Date) {
     const timeSeriesMetrics = [
       'dau', 'new_signups', 'submissions_created', 'reviews_completed',
-      'median_review_time_hours', 'daily_hours_logged',
+      'median_review_time_hours', 'median_fraud_check_time_hours', 'daily_hours_logged',
       'total_users', 'total_projects', 'review_projects',
     ];
 
@@ -631,6 +687,7 @@ export class AdminService {
       submissionsCreated: [],   // cumulative running sum
       reviewsCompleted: [],     // cumulative running sum
       medianReviewTimeHours: [],
+      medianFraudCheckTimeHours: [],
       dailyHoursLogged: [],
       projectsShipped: [],
       projectsFraudChecked: [],
@@ -642,6 +699,7 @@ export class AdminService {
       submissions_created: [],
       reviews_completed: [],
       median_review_time_hours: [],
+      median_fraud_check_time_hours: [],
     };
     const metricKeyMap: Record<string, string> = {
       dau: 'dau',
@@ -699,6 +757,24 @@ export class AdminService {
       result.medianReviewTimeHours.push({ date: weekStart, value: avg });
     }
     result.medianReviewTimeHours.sort((a, b) => a.date.localeCompare(b.date));
+
+    // Aggregate median fraud check time into weekly averages
+    const fraudWeekBuckets = new Map<string, number[]>();
+    for (const d of rawDaily.median_fraud_check_time_hours) {
+      if (d.value === 0) continue;
+      const date = new Date(d.date);
+      const day = date.getUTCDay();
+      const monday = new Date(date);
+      monday.setUTCDate(date.getUTCDate() - ((day + 6) % 7));
+      const weekKey = monday.toISOString().split('T')[0];
+      if (!fraudWeekBuckets.has(weekKey)) fraudWeekBuckets.set(weekKey, []);
+      fraudWeekBuckets.get(weekKey)!.push(d.value);
+    }
+    for (const [weekStart, values] of fraudWeekBuckets) {
+      const avg = Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 100) / 100;
+      result.medianFraudCheckTimeHours.push({ date: weekStart, value: avg });
+    }
+    result.medianFraudCheckTimeHours.sort((a, b) => a.date.localeCompare(b.date));
 
     // Convert daily submissions_created and reviews_completed to cumulative running sums
     let submissionSum = 0;

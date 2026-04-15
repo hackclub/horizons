@@ -2009,7 +2009,9 @@ export interface components {
             approvedHours: number;
             weightedGrants: number;
             medianReviewTimeThisWeek: number | null;
+            medianFraudCheckTimeThisWeek: number | null;
             lastProjectReviewTime: number | null;
+            lastProjectFraudCheckTime: number | null;
         };
         StatsReviewProjects: {
             shipped: number;
@@ -2062,6 +2064,7 @@ export interface components {
             dailyHoursLogged: components["schemas"]["HistoricalDataPoint"][];
             projectsShipped: components["schemas"]["HistoricalDataPoint"][];
             projectsFraudChecked: components["schemas"]["HistoricalDataPoint"][];
+            medianFraudCheckTimeHours: components["schemas"]["HistoricalDataPoint"][];
         };
         StatsDauEventEntry: {
             eventId: number;

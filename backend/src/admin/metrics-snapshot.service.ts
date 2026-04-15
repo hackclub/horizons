@@ -94,6 +94,7 @@ export class MetricsSnapshotService implements OnModuleInit {
       submissionsCreated,
       reviewsCompleted,
       medianReviewTime,
+      medianFraudCheckTime,
       totalUsers,
       totalProjects,
       trackedHoursAgg,
@@ -108,6 +109,7 @@ export class MetricsSnapshotService implements OnModuleInit {
       this.prisma.submission.count({ where: { createdAt: dateRange } }),
       this.prisma.submission.count({ where: { reviewedAt: dateRange } }),
       this.computeMedianReviewTime(dayStart, dayEnd),
+      this.computeMedianFraudCheckTime(dayStart, dayEnd),
       this.prisma.user.count({ where: { createdAt: beforeEnd } }),
       this.prisma.project.count({ where: { createdAt: beforeEnd } }),
       this.prisma.project.aggregate({ _sum: { nowHackatimeHours: true }, where: { createdAt: beforeEnd } }),
@@ -128,6 +130,7 @@ export class MetricsSnapshotService implements OnModuleInit {
       submissions_created: submissionsCreated,
       reviews_completed: reviewsCompleted,
       median_review_time_hours: medianReviewTime,
+      median_fraud_check_time_hours: medianFraudCheckTime,
       total_users: totalUsers,
       total_projects: totalProjects,
       total_tracked_hours: trackedHoursAgg._sum.nowHackatimeHours ?? 0,
@@ -273,6 +276,33 @@ export class MetricsSnapshotService implements OnModuleInit {
       WHERE reviewed_at >= ${dayStart}
         AND reviewed_at <= ${dayEnd}
         AND reviewed_at IS NOT NULL
+    `;
+
+    return result[0]?.median_hours != null
+      ? Math.round(Number(result[0].median_hours) * 100) / 100
+      : null;
+  }
+
+  private async computeMedianFraudCheckTime(
+    dayStart: Date,
+    dayEnd: Date,
+  ): Promise<number | null> {
+    const result = await this.prisma.$queryRaw<
+      Array<{ median_hours: number | null }>
+    >`
+      SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (
+        ORDER BY EXTRACT(EPOCH FROM (p.joe_fraud_reviewed_at - s.min_created_at)) / 3600.0
+      ) AS median_hours
+      FROM projects p
+      INNER JOIN (
+        SELECT project_id, MIN(created_at) as min_created_at
+        FROM submissions
+        GROUP BY project_id
+      ) s ON s.project_id = p.project_id
+      WHERE p.joe_fraud_reviewed_at >= ${dayStart}
+        AND p.joe_fraud_reviewed_at <= ${dayEnd}
+        AND p.joe_fraud_reviewed_at IS NOT NULL
+        AND p.joe_fraud_passed IS NOT NULL
     `;
 
     return result[0]?.median_hours != null
