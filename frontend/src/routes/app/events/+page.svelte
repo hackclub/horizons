@@ -190,7 +190,7 @@
 						style="--card-index: {i}; width: {selected ? '824px' : '649px'}; background-color: {selected ? getCardBgSelected(event) : getCardBg(event)}; gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
 					>
 						{#if currentPinnedSlug === event.slug}
-							<span class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black z-1" style="background-color: {event.config.eventCard?.bgColor ?? event.config.colors.primary};">
+							<span class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black z-1" style="background-color: {getCardBgSelected(event)};">
 								PINNED
 							</span>
 						{/if}
