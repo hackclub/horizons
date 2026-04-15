@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
+	import CircleIn from '$lib/components/anim/CircleIn.svelte';
 	import yaml from 'js-yaml';
 	import type { EventConfig } from '$lib/events/types';
 	import eventsRaw from '$lib/events/events.yaml?raw';
@@ -215,6 +216,8 @@
 		projectSubmitting = false;
 	}
 </script>
+
+<CircleIn />
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->

@@ -1,12 +1,26 @@
 <script lang="ts">
 	import texture from '$lib/assets/texture.png'
 	import './layout.css';
+	import { onMount } from 'svelte';
 
 	let { children } = $props();
 
 	let windowWidth = $state(0);
 	let windowHeight = $state(0);
 	let isSmallViewport = $derived(windowWidth < 1280 || windowHeight < 800);
+
+	onMount(() => {
+		const w = window as Record<string, any>;
+		if (w._lt) clearTimeout(w._lt);
+		const wrap = document.getElementById('global-loading-wrap');
+		const el = document.getElementById('global-loading');
+		if (wrap && wrap.style.opacity === '1') {
+			wrap.style.opacity = '0';
+			wrap.addEventListener('transitionend', () => el?.remove(), { once: true });
+		} else {
+			el?.remove();
+		}
+	});
 </script>
 
 <style>

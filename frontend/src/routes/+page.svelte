@@ -44,20 +44,26 @@
         if (stored !== null) {
             disableAnimations = stored === 'true';
         }
-        animationsReady = true;
 
-        api.GET('/api/user/auth/me').then(async response => {
-            if (response.data && response.data.hcaId) {
-                if (env.PUBLIC_ENABLE_ONBOARDING === 'true') {
-                    const { data } = await api.GET('/api/user/auth/onboarding-status');
-                    if (data && !data.onboardComplete) {
-                        window.location.href = '/app/onboarding';
-                        return;
-                    }
+        // Check auth and onboarding in parallel — only show page if user isn't redirected
+        Promise.all([
+            api.GET('/api/user/auth/me'),
+            env.PUBLIC_ENABLE_ONBOARDING === 'true'
+                ? api.GET('/api/user/auth/onboarding-status')
+                : Promise.resolve(null),
+        ]).then(([meRes, onboardingRes]) => {
+            if (meRes.data && meRes.data.hcaId) {
+                isAuthed = true;
+                if (onboardingRes && onboardingRes.data && !onboardingRes.data.onboardComplete) {
+                    goto('/app/onboarding');
+                } else {
+                    goto('/app');
                 }
-                window.location.href = '/app';
+                return;
             }
-        })
+            // User is not logged in — this is the right page, show it
+            animationsReady = true;
+        });
     });
 
     $effect(() => {
@@ -321,7 +327,7 @@
 <svelte:window onkeydown={handlePageKeydown} bind:innerWidth={windowWidth} />
 
 {#if !animationsReady}
-    <div class="fixed inset-0 bg-black z-[9999]"></div>
+    <div class="fixed inset-0 bg-black z-9999"></div>
 {:else if !disableAnimations}
     <CircleIn />
     {#if showSlideOut}
@@ -493,6 +499,7 @@
         color: black;
         margin: 0;
     }
+
 </style>
 
 
