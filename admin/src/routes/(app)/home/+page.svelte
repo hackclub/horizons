@@ -789,6 +789,14 @@
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Weighted Grants</p>
 						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.weightedGrants)}</p>
 					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Median Review Time This Week</p>
+						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.medianReviewTimeThisWeek != null ? formatHours(stats.reviewStats.medianReviewTimeThisWeek) + 'h' : '—'}</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Last Project Review Time</p>
+						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.lastProjectReviewTime != null ? formatHours(stats.reviewStats.lastProjectReviewTime) + 'h' : '—'}</p>
+					</div>
 				</div>
 				<div class="mt-3 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Median Review Time — Weekly Avg</p>
