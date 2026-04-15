@@ -421,6 +421,48 @@ export class AdminService {
 
     const approved = approvedAgg._sum.approvedHours ?? 0;
 
+    // Median review time this week
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekSubmissions = await this.prisma.submission.findMany({
+      where: {
+        reviewedAt: { gte: weekStart },
+        approvalStatus: { in: ['approved', 'rejected'] },
+      },
+      select: { reviewedAt: true, createdAt: true },
+    });
+
+    const toHours = (ms: number) => Math.round((ms / (1000 * 60 * 60)) * 10) / 10;
+
+    let medianReviewTimeThisWeek: number | null = null;
+    if (weekSubmissions.length > 0) {
+      const durations = weekSubmissions
+        .map((s) => s.reviewedAt!.getTime() - s.createdAt.getTime())
+        .sort((a, b) => a - b);
+      const mid = Math.floor(durations.length / 2);
+      const medianMs =
+        durations.length % 2 === 1
+          ? durations[mid]
+          : (durations[mid - 1] + durations[mid]) / 2;
+      medianReviewTimeThisWeek = toHours(medianMs);
+    }
+
+    // Last reviewed project's review turnaround time
+    const lastReviewed = await this.prisma.submission.findFirst({
+      where: {
+        reviewedAt: { not: null },
+        approvalStatus: { in: ['approved', 'rejected'] },
+      },
+      orderBy: { reviewedAt: 'desc' },
+      select: { reviewedAt: true, createdAt: true },
+    });
+    const lastProjectReviewTime =
+      lastReviewed && lastReviewed.reviewedAt
+        ? toHours(lastReviewed.reviewedAt.getTime() - lastReviewed.createdAt.getTime())
+        : null;
+
     return {
       trackedHours: trackedAgg._sum.nowHackatimeHours ?? 0,
       unshippedHours: unshippedAgg._sum.nowHackatimeHours ?? 0,
@@ -428,6 +470,8 @@ export class AdminService {
       hoursInReview: Number(hoursInReviewResult[0]?.total_hours ?? 0),
       approvedHours: approved,
       weightedGrants: Math.round((approved / 10) * 100) / 100,
+      medianReviewTimeThisWeek,
+      lastProjectReviewTime,
     };
   }
 

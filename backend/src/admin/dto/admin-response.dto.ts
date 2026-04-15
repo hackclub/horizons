@@ -671,6 +671,12 @@ class StatsReviewHours {
 
   @ApiProperty()
   weightedGrants: number;
+
+  @ApiProperty({ type: Number, nullable: true })
+  medianReviewTimeThisWeek: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  lastProjectReviewTime: number | null;
 }
 
 class StatsReviewProjects {
