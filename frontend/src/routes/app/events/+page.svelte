@@ -13,6 +13,7 @@
 	import type { components } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { setCachedPinnedEvent, clearCachedPinnedEvent } from '$lib/store/pinnedEventCache';
 
 	type EventResponse = components['schemas']['EventResponse'];
 
@@ -104,8 +105,11 @@
 		setTimeout(() => { pinnedSlug = null; pinnedDismissing = false; pinning = false; }, 2500);
 
 		if (wasAlreadyPinned) {
+			clearCachedPinnedEvent();
 			api.DELETE('/api/events/auth/pinned-event' as any, {}).catch(() => {});
 		} else {
+			const eventApi = apiEvents.find((e) => e.slug === slug);
+			setCachedPinnedEvent(slug, (eventApi as any)?.hourCost ?? 30);
 			api.POST('/api/events/auth/pinned-event' as any, {
 				body: { slug }
 			}).catch(() => {});
@@ -134,13 +138,14 @@
 	}
 
 	const selectedEvent = $derived(events[nav.selectedIndex] ?? null);
+	const heroSrc = $derived(selectedEvent?.api?.imageUrl ?? selectedEvent?.config.eventCard?.bgImage ?? null);
 
 	function getCardBg(event: MergedEvent): string {
-		return event.config.colors.primary + '66';
+		return event.config.eventCard?.bgColor ?? event.config.colors.primary;
 	}
 
 	function getCardBgSelected(event: MergedEvent): string {
-		return event.config.colors.primary + 'AA';
+		return event.config.eventCard?.bgColor ?? event.config.colors.primary;
 	}
 </script>
 
@@ -148,11 +153,11 @@
 
 <div class="relative size-full">
 	<!-- Hero image -->
-	<div style="opacity: {navigating || !entered ? 0 : selectedEvent?.api?.imageUrl ? 1 : 0}; transition: opacity 0.4s ease;">
-		{#if selectedEvent?.api?.imageUrl}
+	<div style="opacity: {navigating || !entered ? 0 : heroSrc ? 1 : 0}; transition: opacity 0.4s ease;">
+		{#if heroSrc}
 			<TurbulentImage
-				src={selectedEvent.api.imageUrl}
-				alt={selectedEvent.config.name}
+				src={heroSrc}
+				alt={selectedEvent?.config.name ?? ''}
 				inset="0 -40% 0 40%"
 				zIndex={0}
 			/>
@@ -183,7 +188,7 @@
 						style="--card-index: {i}; width: {selected ? '824px' : '649px'}; background-color: {selected ? getCardBgSelected(event) : getCardBg(event)}; gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
 					>
 						{#if currentPinnedSlug === event.slug}
-							<span class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black z-1" style="background-color: {event.config.colors.primary};">
+							<span class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black z-1" style="background-color: {event.config.eventCard?.bgColor ?? event.config.colors.primary};">
 								PINNED
 							</span>
 						{/if}

@@ -2,7 +2,7 @@ nexus:
   name: Horizons Nexus
   tagline: "300+ PERSON HACKATHON IN SF \u2022 JUNE 19-21"
   headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
-  logo: /logos/nexus-logo-constrained.svg
+  logo: /logos/nexus.webp
   logoMaxWidth: 600px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
@@ -19,6 +19,15 @@ nexus:
     secondary: "#f86d95"
     tertiary: "#46467c"
     cardBg: "#f3e8d8"
+  progressBar:
+    approved: "#f48f09"
+    completed: "#fb036e"
+    remaining: "#09af91"
+  eventCard:
+    bgColor: "#FB036E"
+    bgImage: /event-bgs/nexus-bg.webp
+    gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
+    compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.25) 50%)"
   stripes:
     - "#ffa936"
     - "#f86d95"
@@ -38,7 +47,7 @@ equinox:
   name: Horizons Equinox
   tagline: "60 PERSON HIGH SCHOOL HACKATHON IN EGYPT \u2022 AUG 14-16"
   headline: A HORIZONS EVENT IN AFRICA
-  logo: /logos/horizons-equinox.png
+  logo: /logos/equinox.webp
   logoMaxWidth: 650px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
@@ -55,6 +64,15 @@ equinox:
     secondary: "#2d6a6a"
     tertiary: "#8b4513"
     cardBg: "#f4efe4"
+  progressBar:
+    approved: "#f8986c"
+    completed: "#6c77fe"
+    remaining: "#993613"
+  eventCard:
+    bgColor: "#F8986C"
+    bgImage: /event-bgs/equinox-bg.webp
+    gradient: null
+    compactGradient: null
   stripes:
     - "#c9a227"
     - "#2d6a6a"
@@ -74,7 +92,7 @@ europa:
   name: Horizons Europa
   tagline: "100+ PERSON HACKATHON IN BERLIN, GERMANY \u2022 JULY 24-26"
   headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
-  logo: /logos/horizons-europa.png
+  logo: /logos/europa.webp
   logoMaxWidth: 600px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
@@ -91,6 +109,15 @@ europa:
     secondary: "#f86d95"
     tertiary: "#46467c"
     cardBg: "#f3e8d8"
+  progressBar:
+    approved: "#5976c4"
+    completed: "#edda65"
+    remaining: "#2d4b9b"
+  eventCard:
+    bgColor: "#8EADFF"
+    bgImage: /event-bgs/europa-bg.webp
+    gradient: null
+    compactGradient: null
   stripes:
     - "#ffa936"
     - "#f86d95"
@@ -110,7 +137,7 @@ sol:
   name: Horizons Sol
   tagline: "70+ PERSON HACKATHON IN SÃO PAULO! \u2022 JUNE 12-14"
   headline: A HORIZONS EVENT IN SAO PAULO, BRASIL!
-  logo: /logos/horizons-sol.png
+  logo: /logos/sol.webp
   logoMaxWidth: 600px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
@@ -127,6 +154,15 @@ sol:
     secondary: "#2A53BE"
     tertiary: "#8AD05F"
     cardBg: "#0f2233"
+  progressBar:
+    approved: "#90fffe"
+    completed: "#ffcc60"
+    remaining: "#399df0"
+  eventCard:
+    bgColor: "#FFCC60"
+    bgImage: /event-bgs/sol-bg.webp
+    gradient: "linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 75%)"
+    compactGradient: "linear-gradient(to right, rgba(0,0,0,0.9) 15%, rgba(0,0,0,0.45) 100%)"
   stripes:
     - "#2A53BE"
     - "#F9F035"
@@ -146,7 +182,7 @@ crux:
   name: Horizons Crux
   tagline: "100+ PERSON HACKATHON IN SYDNEY \u2022 JULY 10-12"
   headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
-  logo: /logos/crux.png
+  logo: /logos/crux.webp
   logoMaxWidth: 600px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
@@ -163,6 +199,15 @@ crux:
     secondary: "#b4befe"
     tertiary: "#f38ba8"
     cardBg: "#585b70"
+  progressBar:
+    approved: "#d3823e"
+    completed: "#927fb6"
+    remaining: "#305e5e"
+  eventCard:
+    bgColor: "#423AAF"
+    bgImage: /event-bgs/crux-bg.webp
+    gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
+    compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.45) 50%)"
   stripes:
     - "#ffa936"
     - "#f86d95"
@@ -182,7 +227,7 @@ arcana:
   name: Horizons Arcana
   tagline: "100+ PERSON HACKATHON IN SINGAPORE \u2022 JULY 31-AUGUST 2"
   headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
-  logo: /logos/arcana.png
+  logo: /logos/arcana.webp
   logoMaxWidth: 600px   # max width of the logo on the splash screen
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
@@ -199,6 +244,15 @@ arcana:
     secondary: "#080E1A"
     tertiary: "#0061C0"
     cardBg: "#101E38"
+  progressBar:
+    approved: "#6cc2f5"
+    completed: "#fde5b3"
+    remaining: "#e0b1ff"
+  eventCard:
+    bgColor: "#6CC2F5"
+    bgImage: /event-bgs/arcana-bg.webp
+    gradient: "linear-gradient(to right, #a8eeff 0%, rgba(0,0,0,0) 50%)"
+    compactGradient: "linear-gradient(90deg, #a8eeff 0%, rgba(168,238,255,0) 38%, rgba(0,0,0,0.45) 77%)"
   stripes:
     - "#9679D9"
     - "#0061C0"
@@ -218,7 +272,7 @@ polaris:
   name: Horizons Polaris
   tagline: "100+ PERSON HACKATHON IN TORONTO \u2022 AUG 7-9"
   headline: HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD
-  logo: /logos/polaris.png
+  logo: /logos/polaris.webp
   logoMaxWidth: 600px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
@@ -235,6 +289,15 @@ polaris:
     secondary: "#f86d95"
     tertiary: "#46467c"
     cardBg: "#f3e8d8"
+  progressBar:
+    approved: "#6eb8ff"
+    completed: "#7ff9dc"
+    remaining: "#e0b1ff"
+  eventCard:
+    bgColor: "#262D47"
+    bgImage: /event-bgs/polaris-bg.webp
+    gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
+    compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.45) 50%)"
   stripes:
     - "#ffa936"
     - "#f86d95"
