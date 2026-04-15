@@ -476,7 +476,10 @@ export class AdminService {
   }
 
   private async computeReviewProjects() {
-    const [shipped, fraudChecked, inQueue, reviewed, approved] = await Promise.all([
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+
+    const [shipped, fraudChecked, inQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek] = await Promise.all([
       // Projects with >= 1 submission
       this.prisma.project.count({ where: { submissions: { some: {} } } }),
       // Projects that passed fraud check (includes reviewed)
@@ -504,9 +507,26 @@ export class AdminService {
       this.prisma.project.count({
         where: { submissions: { some: { approvalStatus: 'approved' } } },
       }),
+      // Shipped in the past week (projects with a submission created in the past 7 days)
+      this.prisma.project.count({
+        where: { submissions: { some: { createdAt: { gte: sevenDaysAgo } } } },
+      }),
+      // Fraud checked in the past week
+      this.prisma.project.count({
+        where: {
+          joeFraudPassed: true,
+          submissions: { some: { createdAt: { gte: sevenDaysAgo } } },
+        },
+      }),
+      // Reviewed in the past week
+      this.prisma.project.count({
+        where: {
+          submissions: { some: { reviewedAt: { gte: sevenDaysAgo }, approvalStatus: { in: ['approved', 'rejected'] } } },
+        },
+      }),
     ]);
 
-    return { shipped, fraudChecked, inQueue, reviewed, approved };
+    return { shipped, fraudChecked, inQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek };
   }
 
   private async computeSignups() {
@@ -594,7 +614,7 @@ export class AdminService {
     const timeSeriesMetrics = [
       'dau', 'new_signups', 'submissions_created', 'reviews_completed',
       'median_review_time_hours', 'daily_hours_logged',
-      'total_users', 'total_projects',
+      'total_users', 'total_projects', 'review_projects',
     ];
 
     const rows = await this.prisma.historicalMetric.findMany({
@@ -612,6 +632,8 @@ export class AdminService {
       reviewsCompleted: [],     // cumulative running sum
       medianReviewTimeHours: [],
       dailyHoursLogged: [],
+      projectsShipped: [],
+      projectsFraudChecked: [],
     };
 
     // First pass: collect raw daily values
@@ -640,6 +662,16 @@ export class AdminService {
       // Cumulative: use total_users snapshot directly for signups
       if (row.metric === 'total_users') {
         result.newSignups.push({ date: dateStr, value: val });
+        continue;
+      }
+
+      // Extract review_projects JSON snapshot for shipped/fraudChecked series
+      if (row.metric === 'review_projects') {
+        const obj = typeof row.value === 'object' && row.value !== null ? row.value as Record<string, any> : {};
+        const shipped = Number(obj.shipped) || 0;
+        const fraudChecked = Number(obj.passingFraudInQueue) || 0;
+        result.projectsShipped.push({ date: dateStr, value: shipped });
+        result.projectsFraudChecked.push({ date: dateStr, value: fraudChecked });
         continue;
       }
 

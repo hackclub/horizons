@@ -107,7 +107,7 @@
 		renderLineChart(dailyHoursEl, stats.historical.dailyHoursLogged, '#22c55e', 'rgba(34,197,94,0.15)', 'h');
 		renderLineChart(medianReviewEl, stats.historical.medianReviewTimeHours, '#f97316', 'rgba(249,115,22,0.15)', 'h');
 		renderProjectFunnel();
-		renderLineChart(projectsReviewedEl, stats.historical.reviewsCompleted, '#3b82f6', 'rgba(59,130,246,0.15)');
+		renderProjectsMultiLine();
 		renderLineChart(signupsEl, stats.historical.newSignups, '#22c55e', 'rgba(34,197,94,0.15)');
 		renderSignupMap();
 		renderUtmChart();
@@ -418,6 +418,99 @@
 				itemStyle: { color },
 				areaStyle: { color: areaColor },
 			}],
+		});
+	}
+
+	function renderProjectsMultiLine() {
+		const chart = initChart(projectsReviewedEl);
+		if (!chart || !stats) return;
+
+		const reviewed = stats.historical.reviewsCompleted;
+		const shipped = stats.historical.projectsShipped;
+		const fraudChecked = stats.historical.projectsFraudChecked;
+		const hasData = (reviewed && reviewed.length > 0) || (shipped && shipped.length > 0) || (fraudChecked && fraudChecked.length > 0);
+
+		// Collect all unique dates
+		const allDates = new Set<string>();
+		[reviewed, shipped, fraudChecked].forEach((arr) => (arr || []).forEach((d) => allDates.add(d.date.slice(5))));
+		const dates = [...allDates].sort();
+
+		const emptyLabels = Array.from({ length: 30 }, (_, i) => {
+			const d = new Date();
+			d.setDate(d.getDate() - 29 + i);
+			return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+		});
+
+		const toMap = (arr: DataPoint[]) => {
+			const m = new Map<string, number>();
+			(arr || []).forEach((d) => m.set(d.date.slice(5), d.value));
+			return m;
+		};
+
+		const reviewedMap = toMap(reviewed);
+		const shippedMap = toMap(shipped);
+		const fraudCheckedMap = toMap(fraudChecked);
+		const xLabels = hasData ? dates : emptyLabels;
+
+		chart.setOption({
+			backgroundColor: bgColor(),
+			grid: { left: 45, right: 12, top: 30, bottom: 24 },
+			legend: {
+				top: 0,
+				textStyle: { color: dimColor(), fontSize: 10 },
+				itemWidth: 14,
+				itemHeight: 8,
+			},
+			xAxis: {
+				type: 'category',
+				data: xLabels,
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				axisLine: { lineStyle: { color: gridColor() } },
+				axisTick: { show: false },
+			},
+			yAxis: {
+				type: 'value',
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				splitLine: { lineStyle: { color: gridColor(), type: 'dashed' } },
+				axisLine: { show: false },
+				min: 0,
+				max: hasData ? undefined : 100,
+			},
+			tooltip: hasData ? {
+				trigger: 'axis',
+			} : { show: false },
+			series: [
+				{
+					name: 'Shipped',
+					type: 'line',
+					data: hasData ? xLabels.map((d) => shippedMap.get(d) ?? null) : [],
+					smooth: true,
+					symbol: 'circle',
+					symbolSize: 4,
+					lineStyle: { color: '#3b82f6', width: 2 },
+					itemStyle: { color: '#3b82f6' },
+				},
+				{
+					name: 'Fraud Checked',
+					type: 'line',
+					data: hasData ? xLabels.map((d) => fraudCheckedMap.get(d) ?? null) : [],
+					smooth: true,
+					symbol: 'circle',
+					symbolSize: 4,
+					lineStyle: { color: '#f97316', width: 2 },
+					itemStyle: { color: '#f97316' },
+				},
+				{
+					name: 'Reviewed',
+					type: 'line',
+					data: hasData ? xLabels.map((d) => reviewedMap.get(d) ?? null) : [],
+					smooth: true,
+					symbol: 'circle',
+					symbolSize: 4,
+					lineStyle: { color: '#22c55e', width: 2 },
+					itemStyle: { color: '#22c55e' },
+				},
+			],
 		});
 	}
 
@@ -789,6 +882,13 @@
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Weighted Grants</p>
 						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.weightedGrants)}</p>
 					</div>
+				</div>
+			</section>
+
+			<!-- 4b. Median Review Time -->
+			<section>
+				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Median Review Time</h2>
+				<div class="grid gap-3 sm:grid-cols-2 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Median Review Time This Week</p>
 						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.medianReviewTimeThisWeek != null ? formatHours(stats.reviewStats.medianReviewTimeThisWeek) + 'h' : '—'}</p>
@@ -798,7 +898,7 @@
 						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.lastProjectReviewTime != null ? formatHours(stats.reviewStats.lastProjectReviewTime) + 'h' : '—'}</p>
 					</div>
 				</div>
-				<div class="mt-3 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Median Review Time — Weekly Avg</p>
 					<div bind:this={medianReviewEl} style="height: 180px;"></div>
 					{#if stats.historical.medianReviewTimeHours.length === 0}
@@ -813,20 +913,28 @@
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
 					<div bind:this={projectFunnelEl} style="height: 220px;"></div>
 				</div>
-				<div class="grid gap-3 sm:grid-cols-2 mb-3">
+				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-3">
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Shipped This Week</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.shippedThisWeek)}</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fraud Checked This Week</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.fraudCheckedThisWeek)}</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Reviewed This Week</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewedThisWeek)}</p>
+					</div>
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">In Queue</p>
 						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.inQueue)}</p>
 					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Reviewed</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewed)}</p>
-					</div>
 				</div>
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Projects Reviewed (30d)</p>
-					<div bind:this={projectsReviewedEl} style="height: 180px;"></div>
-					{#if stats.historical.reviewsCompleted.length === 0}
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Projects (30d)</p>
+					<div bind:this={projectsReviewedEl} style="height: 200px;"></div>
+					{#if stats.historical.reviewsCompleted.length === 0 && (!stats.historical.projectsShipped || stats.historical.projectsShipped.length === 0)}
 						<p class="text-[10px] text-ds-text-secondary text-center mt-1">No historical data yet</p>
 					{/if}
 				</div>

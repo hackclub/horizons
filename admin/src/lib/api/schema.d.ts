@@ -2017,6 +2017,9 @@ export interface components {
             inQueue: number;
             reviewed: number;
             approved: number;
+            shippedThisWeek: number;
+            fraudCheckedThisWeek: number;
+            reviewedThisWeek: number;
         };
         StatsSignupEventEntry: {
             eventId: number;
@@ -2057,6 +2060,8 @@ export interface components {
             reviewsCompleted: components["schemas"]["HistoricalDataPoint"][];
             medianReviewTimeHours: components["schemas"]["HistoricalDataPoint"][];
             dailyHoursLogged: components["schemas"]["HistoricalDataPoint"][];
+            projectsShipped: components["schemas"]["HistoricalDataPoint"][];
+            projectsFraudChecked: components["schemas"]["HistoricalDataPoint"][];
         };
         StatsDauEventEntry: {
             eventId: number;

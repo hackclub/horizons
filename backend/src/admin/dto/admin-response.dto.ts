@@ -694,6 +694,15 @@ class StatsReviewProjects {
 
   @ApiProperty()
   approved: number;
+
+  @ApiProperty()
+  shippedThisWeek: number;
+
+  @ApiProperty()
+  fraudCheckedThisWeek: number;
+
+  @ApiProperty()
+  reviewedThisWeek: number;
 }
 
 class StatsSignupEventEntry {
@@ -786,6 +795,12 @@ class StatsHistorical {
 
   @ApiProperty({ type: [HistoricalDataPoint] })
   dailyHoursLogged: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  projectsShipped: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  projectsFraudChecked: HistoricalDataPoint[];
 }
 
 class StatsDauEventEntry {
