@@ -2093,6 +2093,7 @@ export interface components {
         BackfillEntry: {
             date: string;
             metricsCount: number;
+            skipped?: boolean;
         };
         BackfillResponse: {
             results: components["schemas"]["BackfillEntry"][];
@@ -3538,6 +3539,7 @@ export interface operations {
             query?: {
                 startDate?: string;
                 endDate?: string;
+                overwrite?: boolean;
             };
             header?: never;
             path?: never;

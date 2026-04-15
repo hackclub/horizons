@@ -60,14 +60,32 @@ export class MetricsSnapshotService implements OnModuleInit {
     return count;
   }
 
-  async backfill(startDate: Date, endDate: Date) {
-    const results: { date: string; metricsCount: number }[] = [];
+  async backfill(startDate: Date, endDate: Date, noOverwrite = false) {
+    const results: { date: string; metricsCount: number; skipped?: boolean }[] = [];
     const current = new Date(startDate);
     current.setUTCHours(0, 0, 0, 0);
     const end = new Date(endDate);
     end.setUTCHours(0, 0, 0, 0);
 
     while (current <= end) {
+      if (noOverwrite) {
+        const dayStart = new Date(current);
+        dayStart.setUTCHours(0, 0, 0, 0);
+        const existing = await this.prisma.historicalMetric.count({
+          where: { date: dayStart },
+        });
+        if (existing > 0) {
+          this.logger.log(`Skipping ${dayStart.toISOString().split('T')[0]}: ${existing} metrics already exist`);
+          results.push({
+            date: current.toISOString().split('T')[0],
+            metricsCount: existing,
+            skipped: true,
+          });
+          current.setUTCDate(current.getUTCDate() + 1);
+          continue;
+        }
+      }
+
       const count = await this.snapshotDate(new Date(current));
       results.push({
         date: current.toISOString().split('T')[0],

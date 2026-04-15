@@ -21,6 +21,7 @@
     let backfillMessage = $state('');
     let backfillError = $state('');
     let backfillDays = $state('30');
+    let backfillOverwrite = $state(false);
 
     // Reviewer leaderboard state
     let reviewerLeaderboard = $state<ReviewerLeaderboardEntry[]>([]);
@@ -120,6 +121,7 @@
                 params: { query: {
                     startDate: startDate.toISOString().split('T')[0],
                     endDate: endDate.toISOString().split('T')[0],
+                    overwrite: backfillOverwrite,
                 } },
             });
             if (error) { backfillError = 'Backfill failed'; return; }
@@ -254,6 +256,10 @@
                 bind:value={backfillDays}
                 class="w-20 rounded-md border border-ds-border bg-ds-surface px-3 py-1.5 text-sm text-ds-text"
             />
+            <label class="flex items-center gap-1.5 text-sm text-ds-text-secondary cursor-pointer">
+                <input type="checkbox" bind:checked={backfillOverwrite} class="rounded border-ds-border" />
+                Overwrite
+            </label>
             <Button onclick={runBackfill} disabled={backfillBusy}>
                 {backfillBusy ? 'Running...' : 'Run Backfill'}
             </Button>

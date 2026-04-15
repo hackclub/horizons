@@ -920,6 +920,9 @@ class BackfillEntry {
 
   @ApiProperty()
   metricsCount: number;
+
+  @ApiPropertyOptional()
+  skipped?: boolean;
 }
 
 export class BackfillResponse {

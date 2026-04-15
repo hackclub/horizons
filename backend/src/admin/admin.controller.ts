@@ -163,13 +163,15 @@ export class AdminController {
   @ApiCreatedResponse({ type: BackfillResponse })
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'overwrite', required: false, type: Boolean })
   async backfillStats(
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
+    @Query('overwrite') overwrite?: string,
   ) {
     const start = new Date(startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     const end = new Date(endDate || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-    const results = await this.metricsSnapshotService.backfill(start, end);
+    const results = await this.metricsSnapshotService.backfill(start, end, overwrite !== 'true');
     return { results };
   }
 
