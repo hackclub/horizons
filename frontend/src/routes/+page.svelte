@@ -62,6 +62,7 @@
 	let ctaInvalidHint = $state(false);
 	let ctaCardSelected = $state(false);
 	let ctaEmailFocused = $state(false);
+	let isReturningUser = $state(false);
 	let activeVideo = $state<string | null>(null);
 	let globeCanvas = $state<HTMLCanvasElement | null>(null);
 	const isValidEmail = $derived(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail));
@@ -169,7 +170,24 @@
 		return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255];
 	}
 
+	async function goToApp() {
+		if (env.PUBLIC_ENABLE_ONBOARDING === 'true') {
+			const { data } = await api.GET('/api/user/auth/onboarding-status');
+			if (data && !data.onboardComplete) {
+				window.location.href = '/app/onboarding';
+				return;
+			}
+		}
+		window.location.href = '/app';
+	}
+
 	onMount(() => {
+		api.GET('/api/user/auth/me').then(response => {
+			if (response.data && response.data.hcaId) {
+				isReturningUser = true;
+			}
+		});
+
 		// Patch WebGL to override cobe's fragment shader for a flat cell-shaded look
 		const origGetContext = globeCanvas!.getContext.bind(globeCanvas!);
 		(globeCanvas as any).getContext = (type: string, attrs?: any) => {
@@ -390,10 +408,12 @@ void main(){
 		if (e.key === 'Enter' && !emailFocused && !ctaEmailFocused) {
 			if (ctaCardInView) {
 				e.preventDefault();
-				selectCtaCard();
+				if (isReturningUser) goToApp();
+				else selectCtaCard();
 			} else if (cardInView) {
 				e.preventDefault();
-				selectCard();
+				if (isReturningUser) goToApp();
+				else selectCard();
 			}
 		}
 	}
@@ -454,14 +474,25 @@ void main(){
 		<div
 			use:observeCard
 			class="max-sm:hidden signup-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-[904px] max-w-full relative overflow-hidden cursor-pointer bg-[#f3e8d8] max-lg:w-full origin-left transition-all duration-(--juice-duration) ease-(--juice-easing) {cardSelected ? 'scale-[1.05]' : 'scale-100'}"
-			onmousedown={(e) => { e.preventDefault(); selectCard(); }}
+			onmousedown={(e) => { e.preventDefault(); if (isReturningUser) goToApp(); else selectCard(); }}
 		>
 			<!-- Orange fill -->
-			<div class="absolute inset-0 bg-[#ffa936] transition-opacity duration-(--selected-duration) {cardSelected ? 'opacity-100' : 'opacity-0'}"></div>
+			<div class="absolute inset-0 bg-[#ffa936] transition-opacity duration-(--selected-duration) {cardSelected || isReturningUser ? 'opacity-100' : 'opacity-0'}"></div>
 			<!-- Chevron arrows -->
-			<div class="absolute right-[10%] top-[45%] -translate-y-1/2 scale-[2.1] pointer-events-none transition-opacity duration-(--selected-duration) delay-100 {cardSelected ? 'opacity-100' : 'opacity-0'}">
+			<div class="absolute right-[10%] top-[45%] -translate-y-1/2 scale-[2.1] pointer-events-none transition-opacity duration-(--selected-duration) delay-100 {cardSelected || isReturningUser ? 'opacity-100' : 'opacity-0'}">
 				<img src={ChevronSvg} alt="" class="h-[180px] w-auto" />
 			</div>
+			{#if isReturningUser}
+				<div class="relative flex flex-col items-center justify-center gap-6 py-5 px-[30px] z-1">
+					<p class="font-cook text-[48px] text-black m-0 leading-none">LOG BACK IN</p>
+					<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink!">
+						<InputPrompt type="Enter" />
+						<p class="font-bold text-sm text-black leading-6">OR</p>
+						<InputPrompt type="click" />
+						<p class="font-bold text-sm text-black leading-6">TO LOG BACK IN</p>
+					</div>
+				</div>
+			{:else}
 			<div class="relative flex flex-col gap-4 justify-center py-5 px-[30px] z-1">
 				<p class="font-cook text-[32px] text-black m-0 leading-none">SIGN UP NOW</p>
 				<div class="flex gap-3 items-center">
@@ -501,30 +532,38 @@ void main(){
 					<p class="font-bold text-sm text-black leading-6">TO SIGN UP</p>
 				</div>
 			</div>
+			{/if}
 		</div>
 
 		<!-- Signup (mobile) -->
 		<div class="hidden max-sm:flex flex-col gap-3 w-full">
-			<input
-				type="email"
-				class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black/50 outline-none w-full"
-				placeholder="orpheus@hackclub.com"
-				bind:value={signupEmail}
-				onkeydown={(e) => handleEmailKeydown(e)}
-				oninput={() => { if (showInvalidHint) showInvalidHint = false; }}
-				onfocus={() => { emailFocused = true; }}
-				onblur={() => { emailFocused = false; }}
-			/>
-			<button
-				class="signup-btn border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
-				class:valid={isValidEmail}
-				onclick={() => {
-					if (isValidEmail) handleSignup(signupEmail);
-					else showInvalidHint = true;
-				}}
-			>SIGN UP</button>
-			{#if showInvalidHint}
-				<p class="font-bricolage text-sm m-0 text-[#c00] text-center">Please enter a valid email</p>
+			{#if isReturningUser}
+				<button
+					class="signup-btn valid border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
+					onclick={goToApp}
+				>LOG BACK IN</button>
+			{:else}
+				<input
+					type="email"
+					class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black/50 outline-none w-full"
+					placeholder="orpheus@hackclub.com"
+					bind:value={signupEmail}
+					onkeydown={(e) => handleEmailKeydown(e)}
+					oninput={() => { if (showInvalidHint) showInvalidHint = false; }}
+					onfocus={() => { emailFocused = true; }}
+					onblur={() => { emailFocused = false; }}
+				/>
+				<button
+					class="signup-btn border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
+					class:valid={isValidEmail}
+					onclick={() => {
+						if (isValidEmail) handleSignup(signupEmail);
+						else showInvalidHint = true;
+					}}
+				>SIGN UP</button>
+				{#if showInvalidHint}
+					<p class="font-bricolage text-sm m-0 text-[#c00] text-center">Please enter a valid email</p>
+				{/if}
 			{/if}
 		</div>
 
@@ -803,14 +842,25 @@ void main(){
 			<div
 				use:observeCtaCard
 				class="max-sm:hidden signup-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-[904px] max-w-full relative overflow-hidden cursor-pointer bg-[#f3e8d8] transition-all duration-(--juice-duration) ease-(--juice-easing) {ctaCardSelected ? 'scale-[1.05]' : 'scale-100'}"
-				onmousedown={(e) => { e.preventDefault(); selectCtaCard(); }}
+				onmousedown={(e) => { e.preventDefault(); if (isReturningUser) goToApp(); else selectCtaCard(); }}
 			>
 				<!-- Orange fill -->
-				<div class="absolute inset-0 bg-[#ffa936] transition-opacity duration-(--selected-duration) {ctaCardSelected ? 'opacity-100' : 'opacity-0'}"></div>
+				<div class="absolute inset-0 bg-[#ffa936] transition-opacity duration-(--selected-duration) {ctaCardSelected || isReturningUser ? 'opacity-100' : 'opacity-0'}"></div>
 				<!-- Chevron arrows -->
-				<div class="absolute right-[10%] top-[45%] -translate-y-1/2 scale-[2.1] pointer-events-none transition-opacity duration-(--selected-duration) delay-100 {ctaCardSelected ? 'opacity-100' : 'opacity-0'}">
+				<div class="absolute right-[10%] top-[45%] -translate-y-1/2 scale-[2.1] pointer-events-none transition-opacity duration-(--selected-duration) delay-100 {ctaCardSelected || isReturningUser ? 'opacity-100' : 'opacity-0'}">
 					<img src={ChevronSvg} alt="" class="h-45 w-auto" />
 				</div>
+				{#if isReturningUser}
+					<div class="relative flex flex-col items-center justify-center gap-6 py-5 px-7.5 z-1">
+						<p class="font-cook text-[48px] text-black m-0 leading-none">LOG BACK IN</p>
+						<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink!">
+							<InputPrompt type="Enter" />
+							<p class="font-bold text-sm text-black leading-6">OR</p>
+							<InputPrompt type="click" />
+							<p class="font-bold text-sm text-black leading-6">TO LOG BACK IN</p>
+						</div>
+					</div>
+				{:else}
 				<div class="relative flex flex-col gap-4 justify-center py-5 px-7.5 z-1">
 					<p class="font-cook text-[32px] text-black m-0 leading-none">SIGN UP NOW</p>
 					<div class="flex gap-3 items-center">
@@ -850,28 +900,36 @@ void main(){
 						<p class="font-bold text-sm text-black leading-6">TO SIGN UP</p>
 					</div>
 				</div>
+				{/if}
 			</div>
 
 			<!-- CTA signup (mobile) -->
 			<div class="hidden max-sm:flex flex-col gap-3 w-full">
-				<input
-					type="email"
-					class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black/50 outline-none w-full"
-					placeholder="orpheus@hackclub.com"
-					bind:value={ctaEmail}
-					onkeydown={(e) => handleCtaEmailKeydown(e)}
-					oninput={() => { if (ctaInvalidHint) ctaInvalidHint = false; }}
-				/>
-				<button
-					class="signup-btn border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
-					class:valid={isValidCtaEmail}
-					onclick={() => {
-						if (isValidCtaEmail) handleSignup(ctaEmail);
-						else ctaInvalidHint = true;
-					}}
-				>SIGN UP</button>
-				{#if ctaInvalidHint}
-					<p class="font-bricolage text-sm m-0 text-[#c00] text-center">Please enter a valid email</p>
+				{#if isReturningUser}
+					<button
+						class="signup-btn valid border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
+						onclick={goToApp}
+					>LOG BACK IN</button>
+				{:else}
+					<input
+						type="email"
+						class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black/50 outline-none w-full"
+						placeholder="orpheus@hackclub.com"
+						bind:value={ctaEmail}
+						onkeydown={(e) => handleCtaEmailKeydown(e)}
+						oninput={() => { if (ctaInvalidHint) ctaInvalidHint = false; }}
+					/>
+					<button
+						class="signup-btn border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
+						class:valid={isValidCtaEmail}
+						onclick={() => {
+							if (isValidCtaEmail) handleSignup(ctaEmail);
+							else ctaInvalidHint = true;
+						}}
+					>SIGN UP</button>
+					{#if ctaInvalidHint}
+						<p class="font-bricolage text-sm m-0 text-[#c00] text-center">Please enter a valid email</p>
+					{/if}
 				{/if}
 			</div>
 		</div>
