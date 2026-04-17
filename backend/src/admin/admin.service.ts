@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
 import { GeocodingService } from './geocoding.service';
+import * as Papa from 'papaparse';
 
 const projectAdminInclude = {
   user: {
@@ -420,6 +421,102 @@ export class AdminService {
 
     const approved = approvedAgg._sum.approvedHours ?? 0;
 
+    // Median review time this week
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekSubmissions = await this.prisma.submission.findMany({
+      where: {
+        reviewedAt: { gte: weekStart },
+        approvalStatus: { in: ['approved', 'rejected'] },
+      },
+      select: { reviewedAt: true, createdAt: true },
+    });
+
+    const toHours = (ms: number) => Math.round((ms / (1000 * 60 * 60)) * 10) / 10;
+
+    let medianReviewTimeThisWeek: number | null = null;
+    if (weekSubmissions.length > 0) {
+      const durations = weekSubmissions
+        .map((s) => s.reviewedAt!.getTime() - s.createdAt.getTime())
+        .sort((a, b) => a - b);
+      const mid = Math.floor(durations.length / 2);
+      const medianMs =
+        durations.length % 2 === 1
+          ? durations[mid]
+          : (durations[mid - 1] + durations[mid]) / 2;
+      medianReviewTimeThisWeek = toHours(medianMs);
+    }
+
+    // Median fraud check time this week (joeFraudReviewedAt - earliest submission createdAt)
+    const fraudCheckedProjects = await this.prisma.project.findMany({
+      where: {
+        joeFraudReviewedAt: { gte: weekStart },
+        joeFraudPassed: { not: null },
+        submissions: { some: {} },
+      },
+      select: {
+        joeFraudReviewedAt: true,
+        submissions: {
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+          select: { createdAt: true },
+        },
+      },
+    });
+
+    let medianFraudCheckTimeThisWeek: number | null = null;
+    const fraudDurations = fraudCheckedProjects
+      .filter((p) => p.joeFraudReviewedAt && p.submissions.length > 0)
+      .map((p) => p.joeFraudReviewedAt!.getTime() - p.submissions[0].createdAt.getTime())
+      .filter((d) => d >= 0)
+      .sort((a, b) => a - b);
+    if (fraudDurations.length > 0) {
+      const mid = Math.floor(fraudDurations.length / 2);
+      const medianMs =
+        fraudDurations.length % 2 === 1
+          ? fraudDurations[mid]
+          : (fraudDurations[mid - 1] + fraudDurations[mid]) / 2;
+      medianFraudCheckTimeThisWeek = toHours(medianMs);
+    }
+
+    // Last reviewed project's review turnaround time
+    const lastReviewed = await this.prisma.submission.findFirst({
+      where: {
+        reviewedAt: { not: null },
+        approvalStatus: { in: ['approved', 'rejected'] },
+      },
+      orderBy: { reviewedAt: 'desc' },
+      select: { reviewedAt: true, createdAt: true },
+    });
+    const lastProjectReviewTime =
+      lastReviewed && lastReviewed.reviewedAt
+        ? toHours(lastReviewed.reviewedAt.getTime() - lastReviewed.createdAt.getTime())
+        : null;
+
+    // Last fraud-checked project's turnaround time
+    const lastFraudChecked = await this.prisma.project.findFirst({
+      where: {
+        joeFraudReviewedAt: { not: null },
+        joeFraudPassed: { not: null },
+        submissions: { some: {} },
+      },
+      orderBy: { joeFraudReviewedAt: 'desc' },
+      select: {
+        joeFraudReviewedAt: true,
+        submissions: {
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+          select: { createdAt: true },
+        },
+      },
+    });
+    const lastProjectFraudCheckTime =
+      lastFraudChecked && lastFraudChecked.joeFraudReviewedAt && lastFraudChecked.submissions.length > 0
+        ? toHours(lastFraudChecked.joeFraudReviewedAt.getTime() - lastFraudChecked.submissions[0].createdAt.getTime())
+        : null;
+
     return {
       trackedHours: trackedAgg._sum.nowHackatimeHours ?? 0,
       unshippedHours: unshippedAgg._sum.nowHackatimeHours ?? 0,
@@ -427,11 +524,18 @@ export class AdminService {
       hoursInReview: Number(hoursInReviewResult[0]?.total_hours ?? 0),
       approvedHours: approved,
       weightedGrants: Math.round((approved / 10) * 100) / 100,
+      medianReviewTimeThisWeek,
+      medianFraudCheckTimeThisWeek,
+      lastProjectReviewTime,
+      lastProjectFraudCheckTime,
     };
   }
 
   private async computeReviewProjects() {
-    const [shipped, fraudChecked, inQueue, reviewed, approved] = await Promise.all([
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+
+    const [shipped, fraudChecked, fraudQueue, reviewQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek] = await Promise.all([
       // Projects with >= 1 submission
       this.prisma.project.count({ where: { submissions: { some: {} } } }),
       // Projects that passed fraud check (includes reviewed)
@@ -441,7 +545,14 @@ export class AdminService {
           submissions: { some: {} },
         },
       }),
-      // Fraud-checked projects with NO approved/rejected submissions (truly waiting for review)
+      // Fraud queue: shipped but not yet fraud checked (joeFraudPassed is null)
+      this.prisma.project.count({
+        where: {
+          joeFraudPassed: null,
+          submissions: { some: {} },
+        },
+      }),
+      // Review queue: fraud-checked projects with NO approved/rejected submissions (waiting for review)
       this.prisma.project.count({
         where: {
           joeFraudPassed: true,
@@ -459,9 +570,26 @@ export class AdminService {
       this.prisma.project.count({
         where: { submissions: { some: { approvalStatus: 'approved' } } },
       }),
+      // Shipped in the past week (projects with a submission created in the past 7 days)
+      this.prisma.project.count({
+        where: { submissions: { some: { createdAt: { gte: sevenDaysAgo } } } },
+      }),
+      // Fraud checked in the past week
+      this.prisma.project.count({
+        where: {
+          joeFraudPassed: true,
+          submissions: { some: { createdAt: { gte: sevenDaysAgo } } },
+        },
+      }),
+      // Reviewed in the past week
+      this.prisma.project.count({
+        where: {
+          submissions: { some: { reviewedAt: { gte: sevenDaysAgo }, approvalStatus: { in: ['approved', 'rejected'] } } },
+        },
+      }),
     ]);
 
-    return { shipped, fraudChecked, inQueue, reviewed, approved };
+    return { shipped, fraudChecked, fraudQueue, reviewQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek };
   }
 
   private async computeSignups() {
@@ -548,8 +676,8 @@ export class AdminService {
   private async computeHistorical(thirtyDaysAgo: Date) {
     const timeSeriesMetrics = [
       'dau', 'new_signups', 'submissions_created', 'reviews_completed',
-      'median_review_time_hours', 'daily_hours_logged',
-      'total_users', 'total_projects',
+      'median_review_time_hours', 'median_fraud_check_time_hours', 'daily_hours_logged',
+      'total_users', 'total_projects', 'review_projects',
     ];
 
     const rows = await this.prisma.historicalMetric.findMany({
@@ -566,7 +694,10 @@ export class AdminService {
       submissionsCreated: [],   // cumulative running sum
       reviewsCompleted: [],     // cumulative running sum
       medianReviewTimeHours: [],
+      medianFraudCheckTimeHours: [],
       dailyHoursLogged: [],
+      projectsShipped: [],
+      projectsFraudChecked: [],
     };
 
     // First pass: collect raw daily values
@@ -575,6 +706,7 @@ export class AdminService {
       submissions_created: [],
       reviews_completed: [],
       median_review_time_hours: [],
+      median_fraud_check_time_hours: [],
     };
     const metricKeyMap: Record<string, string> = {
       dau: 'dau',
@@ -595,6 +727,16 @@ export class AdminService {
       // Cumulative: use total_users snapshot directly for signups
       if (row.metric === 'total_users') {
         result.newSignups.push({ date: dateStr, value: val });
+        continue;
+      }
+
+      // Extract review_projects JSON snapshot for shipped/fraudChecked series
+      if (row.metric === 'review_projects') {
+        const obj = typeof row.value === 'object' && row.value !== null ? row.value as Record<string, any> : {};
+        const shipped = Number(obj.shipped) || 0;
+        const fraudChecked = Number(obj.passingFraudInQueue) || 0;
+        result.projectsShipped.push({ date: dateStr, value: shipped });
+        result.projectsFraudChecked.push({ date: dateStr, value: fraudChecked });
         continue;
       }
 
@@ -622,6 +764,24 @@ export class AdminService {
       result.medianReviewTimeHours.push({ date: weekStart, value: avg });
     }
     result.medianReviewTimeHours.sort((a, b) => a.date.localeCompare(b.date));
+
+    // Aggregate median fraud check time into weekly averages
+    const fraudWeekBuckets = new Map<string, number[]>();
+    for (const d of rawDaily.median_fraud_check_time_hours) {
+      if (d.value === 0) continue;
+      const date = new Date(d.date);
+      const day = date.getUTCDay();
+      const monday = new Date(date);
+      monday.setUTCDate(date.getUTCDate() - ((day + 6) % 7));
+      const weekKey = monday.toISOString().split('T')[0];
+      if (!fraudWeekBuckets.has(weekKey)) fraudWeekBuckets.set(weekKey, []);
+      fraudWeekBuckets.get(weekKey)!.push(d.value);
+    }
+    for (const [weekStart, values] of fraudWeekBuckets) {
+      const avg = Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 100) / 100;
+      result.medianFraudCheckTimeHours.push({ date: weekStart, value: avg });
+    }
+    result.medianFraudCheckTimeHours.sort((a, b) => a.date.localeCompare(b.date));
 
     // Convert daily submissions_created and reviews_completed to cumulative running sums
     let submissionSum = 0;
@@ -1611,5 +1771,320 @@ export class AdminService {
       user: project.user,
       timeline: events,
     };
+  }
+
+  private readonly HACKATIME_BASE_URL = 'https://hackatime.hackclub.com';
+
+  private async fetchHackatimeProjectNames(
+    slackId: string,
+  ): Promise<Set<string>> {
+    const startDate = new Date(
+      process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
+    )
+      .toISOString()
+      .split('T')[0];
+
+    try {
+      const response = await fetch(
+        `${this.HACKATIME_BASE_URL}/api/v1/users/${slackId}/stats?features=projects&start_date=${startDate}`,
+      );
+
+      if (!response.ok) return new Set();
+
+      const data = await response.json();
+      const names = new Set<string>();
+
+      const projects = data?.data?.projects;
+      if (Array.isArray(projects)) {
+        for (const p of projects) {
+          if (typeof p?.name === 'string') names.add(p.name);
+        }
+      }
+
+      return names;
+    } catch {
+      return new Set();
+    }
+  }
+
+  async importCsv(fileBuffer: Buffer) {
+    const csvString = fileBuffer.toString('utf-8');
+    const parsed = Papa.parse<Record<string, string>>(csvString, {
+      header: true,
+      skipEmptyLines: true,
+    });
+
+    if (parsed.errors.length > 0 && parsed.data.length === 0) {
+      throw new BadRequestException(
+        `CSV parsing failed: ${parsed.errors[0].message}`,
+      );
+    }
+
+    const results = {
+      total: parsed.data.length,
+      usersCreated: 0,
+      projectsCreated: 0,
+      skipped: 0,
+      skippedDetails: [] as { row: number; email: string; reason: string }[],
+      errors: [] as { row: number; email: string; message: string }[],
+    };
+
+    for (let i = 0; i < parsed.data.length; i++) {
+      const row = parsed.data[i];
+      const rowNum = i + 2; // 1-indexed + header row
+      const email = row['Email']?.trim();
+      const codeUrl = row['Code URL']?.trim();
+      const description = row['Description']?.trim();
+      const hackatimeProjectName = row['hackatime_project_name']?.trim();
+      const firstName = row['First Name']?.trim() || 'Imported';
+      const lastName = row['Last Name']?.trim() || 'User';
+      const slackId = row['Slack ID']?.trim();
+
+      if (!email) {
+        results.errors.push({
+          row: rowNum,
+          email: '',
+          message: 'Missing email',
+        });
+        continue;
+      }
+
+      try {
+        // 1. Resolve or create user
+        let user = await this.prisma.user.findUnique({
+          where: { email },
+          include: {
+            projects: {
+              select: {
+                repoUrl: true,
+                nowHackatimeProjects: true,
+                playableUrl: true,
+              },
+            },
+          },
+        });
+
+        let userCreated = false;
+        if (!user) {
+          user = await this.prisma.user.create({
+            data: {
+              hcaId: `import-${email}`,
+              email,
+              firstName,
+              lastName,
+              slackUserId: slackId || null,
+            },
+            include: {
+              projects: {
+                select: {
+                  repoUrl: true,
+                  nowHackatimeProjects: true,
+                  playableUrl: true,
+                },
+              },
+            },
+          });
+          userCreated = true;
+          results.usersCreated++;
+        }
+
+        // 2. Parse and verify hackatime project names
+        let hackatimeProjects: string[] = [];
+        if (hackatimeProjectName) {
+          const rawNames = hackatimeProjectName
+            .split(', ')
+            .map((n) => n.trim())
+            .filter(Boolean);
+
+          if (slackId) {
+            const validNames =
+              await this.fetchHackatimeProjectNames(slackId);
+            if (validNames.size > 0) {
+              hackatimeProjects = rawNames.filter((n) => validNames.has(n));
+            } else {
+              // API unreachable or no projects — use raw names as fallback
+              hackatimeProjects = rawNames;
+            }
+          } else {
+            hackatimeProjects = rawNames;
+          }
+        }
+
+        // 3. Overlap detection
+        const existingProjects = user.projects;
+        let hasOverlap = false;
+        let overlapReason = '';
+
+        for (const existing of existingProjects) {
+          // Check repoUrl overlap
+          if (codeUrl && existing.repoUrl && existing.repoUrl === codeUrl) {
+            hasOverlap = true;
+            overlapReason = `Matching repo URL: ${codeUrl}`;
+            break;
+          }
+
+          // Check hackatime project overlap
+          if (
+            hackatimeProjects.length > 0 &&
+            existing.nowHackatimeProjects?.length
+          ) {
+            const existingSet = new Set(existing.nowHackatimeProjects);
+            const overlap = hackatimeProjects.filter((n) =>
+              existingSet.has(n),
+            );
+            if (overlap.length > 0) {
+              hasOverlap = true;
+              overlapReason = `Matching hackatime project(s): ${overlap.join(', ')}`;
+              break;
+            }
+          }
+        }
+
+        if (hasOverlap) {
+          results.skipped++;
+          results.skippedDetails.push({
+            row: rowNum,
+            email,
+            reason: overlapReason,
+          });
+          continue;
+        }
+
+        // 4. Derive project title
+        let projectTitle = '';
+        if (hackatimeProjects.length > 0) {
+          projectTitle = hackatimeProjects[0];
+        } else if (codeUrl) {
+          // Extract repo name from GitHub URL
+          const match = codeUrl.match(
+            /github\.com\/[^/]+\/([^/?#]+)/,
+          );
+          projectTitle = match ? match[1] : 'Imported Project';
+        } else {
+          projectTitle = 'Imported Project';
+        }
+        projectTitle = projectTitle.substring(0, 30);
+
+        // 5. Create project
+        await this.prisma.project.create({
+          data: {
+            userId: user.userId,
+            projectTitle,
+            projectType: 'web_playable',
+            description: description
+              ? description.substring(0, 500)
+              : null,
+            repoUrl: codeUrl || null,
+            nowHackatimeProjects: hackatimeProjects,
+          },
+        });
+
+        results.projectsCreated++;
+      } catch (error) {
+        results.errors.push({
+          row: rowNum,
+          email,
+          message:
+            error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private async fetchCachetUsername(slackId: string): Promise<string | null> {
+    try {
+      const res = await fetch(
+        `https://cachet.dunkirk.sh/users/${slackId}`,
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.username ?? data?.name ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async exportCsv(): Promise<string> {
+    const users = await this.prisma.user.findMany({
+      select: {
+        userId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        slackUserId: true,
+        hackatimeAccount: true,
+        createdAt: true,
+        projects: {
+          select: { createdAt: true },
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+        },
+        pinnedEvent: {
+          select: {
+            event: { select: { title: true } },
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    // Get first submission per user via a single query
+    const firstSubmissions = await this.prisma.$queryRaw<
+      { user_id: number; first_submission_at: Date }[]
+    >`
+      SELECT p.user_id, MIN(s.created_at) AS first_submission_at
+      FROM submissions s
+      JOIN projects p ON p.project_id = s.project_id
+      GROUP BY p.user_id
+    `;
+    const submissionMap = new Map(
+      firstSubmissions.map((r) => [r.user_id, r.first_submission_at]),
+    );
+
+    // Get hackatime link time from OTPs (usedAt as proxy)
+    const hackatimeLinks = await this.prisma.hackatimeLinkOtp.findMany({
+      where: { usedAt: { not: null } },
+      select: { userId: true, usedAt: true },
+      orderBy: { usedAt: 'asc' },
+      distinct: ['userId'],
+    });
+    const hackatimeLinkMap = new Map(
+      hackatimeLinks.map((r) => [r.userId, r.usedAt]),
+    );
+
+    // Batch fetch Cachet usernames for users with Slack IDs
+    const slackUsers = users.filter((u) => u.slackUserId);
+    const cachetResults = await Promise.allSettled(
+      slackUsers.map(async (u) => ({
+        userId: u.userId,
+        username: await this.fetchCachetUsername(u.slackUserId!),
+      })),
+    );
+    const cachetMap = new Map<number, string>();
+    for (const result of cachetResults) {
+      if (result.status === 'fulfilled' && result.value.username) {
+        cachetMap.set(result.value.userId, result.value.username);
+      }
+    }
+
+    const rows = users.map((user) => ({
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      slackId: user.slackUserId ?? '',
+      username: cachetMap.get(user.userId) ?? '',
+      signedUpAt: user.createdAt.toISOString(),
+      hackatimeLinkedAt: hackatimeLinkMap.get(user.userId)?.toISOString() ?? '',
+      firstProjectAt:
+        user.projects[0]?.createdAt?.toISOString() ?? '',
+      firstSubmissionAt:
+        submissionMap.get(user.userId)?.toISOString() ?? '',
+      pinnedEvent: user.pinnedEvent?.event?.title ?? '',
+      pinnedEventAt: user.pinnedEvent?.createdAt?.toISOString() ?? '',
+    }));
+
+    return Papa.unparse(rows);
   }
 }

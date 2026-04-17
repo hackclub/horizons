@@ -11,6 +11,7 @@
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
+	import { getCachedPinnedEvent, setCachedPinnedEvent } from '$lib/store/pinnedEventCache';
 	import { onMount } from 'svelte';
 	import yaml from 'js-yaml';
 	import type { EventConfig } from '$lib/events/types';
@@ -42,8 +43,8 @@
 	let referralCode = $derived($userStore.referralCode);
 	let isAdmin = $derived($userStore.role === 'admin' || $userStore.role === 'superadmin');
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
-	let pinnedEventConfig = $state<EventConfig | null>(null);
-	let pinnedEventSlug = $state<string | null>(null);
+	let pinnedEventConfig = $state<EventConfig>(eventsMap['nexus']);
+	let pinnedEventSlug = $state<string>('nexus');
 
 	let approvedHours = $state(0);
 	let completedHours = $state(0);
@@ -53,20 +54,31 @@
 	let approvedPct = $derived(targetHours > 0 ? Math.min(100, (approvedHours / targetHours) * 100) : 0);
 	let completedPct = $derived(targetHours > 0 ? Math.min(100, ((completedHours - approvedHours) / targetHours) * 100) : 0);
 
-	onMount(async () => {
-		const [, totalRes, approvedRes] = await Promise.all([
-			userStore.load(),
+	// Load cached pinned event instantly
+	const cached = getCachedPinnedEvent();
+	if (cached && eventsMap[cached.slug]) {
+		pinnedEventSlug = cached.slug;
+		pinnedEventConfig = eventsMap[cached.slug];
+		targetHours = cached.hourCost;
+	}
+
+	async function fetchHours() {
+		const [totalRes, approvedRes] = await Promise.all([
 			api.GET('/api/hackatime/hours/total'),
 			api.GET('/api/hackatime/hours/approved'),
 		]);
-
 		if (totalRes.data) {
 			completedHours = Math.round(((totalRes.data as any).totalNowHackatimeHours ?? 0) * 10) / 10;
 		}
 		if (approvedRes.data) {
 			approvedHours = Math.round(((approvedRes.data as any).totalApprovedHours ?? 0) * 10) / 10;
 		}
+	}
 
+	onMount(async () => {
+		await Promise.all([userStore.load(), fetchHours()]);
+
+		// Refresh from API and update cache
 		const pinnedRes = await api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null);
 		if (pinnedRes?.data) {
 			const event = (pinnedRes.data as any).event;
@@ -74,11 +86,12 @@
 			if (slug && eventsMap[slug]) {
 				pinnedEventSlug = slug;
 				pinnedEventConfig = eventsMap[slug];
-			}
-			if (event?.hourCost) {
-				targetHours = event.hourCost;
+				const hourCost = event?.hourCost ?? 30;
+				targetHours = hourCost;
+				setCachedPinnedEvent(slug, hourCost);
 			}
 		}
+
 	});
 
 	const hrefs = [
@@ -273,25 +286,31 @@
 				<div class="middle-col shrink-0">
 					<!-- Event / Nexus Card (informational, not navigable) -->
 					<div class="event-card-wrapper enter-up flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
-						<div class="card event-card relative" style="background-color: {pinnedEventSlug === 'nexus' || !pinnedEventConfig ? '#fac393' : pinnedEventConfig.colors.primary};">
+						<div class="card event-card relative" style="background-color: {pinnedEventConfig?.eventCard?.bgColor ?? '#fac393'}; {pinnedEventConfig?.eventCard?.bgImage ? `background-image: url(${pinnedEventConfig.eventCard.bgImage}); background-size: cover; background-position: center;` : ''}">
+							{#if pinnedEventConfig?.eventCard?.gradient}
+								<div class="event-card-gradient full-gradient" style="background: {pinnedEventConfig.eventCard.gradient};"></div>
+							{/if}
+							{#if pinnedEventConfig?.eventCard?.compactGradient}
+								<div class="event-card-gradient compact-gradient" style="background: {pinnedEventConfig.eventCard.compactGradient};"></div>
+							{/if}
 							<!-- Full progress view -->
 							<div class="full-progress">
-								<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0">PROGRESS</p>
-								<div class="flex flex-col gap-3 w-full">
-									<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left" />
-									<div class="card progress-card">
+								<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0 z-10">PROGRESS</p>
+								<div class="flex flex-col gap-3 w-full relative flex-1 min-h-0">
+									<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="flex-1 min-h-0 w-auto object-contain object-left" />
+									<div class="card progress-card shrink-0">
 										<div class="progress-bar">
 											{#if approvedPct > 0}
-												<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.colors.primary ?? '#ffa936'};">
+												<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.progressBar?.approved ?? '#ffa936'};">
 													<span class="progress-label">{approvedHours} HOURS APPROVED</span>
 												</div>
 											{/if}
 											{#if completedPct > 0}
-												<div class="progress-segment" style="width: {completedPct}%; background-color: {pinnedEventConfig?.colors.secondary ?? '#f86d95'};">
+												<div class="progress-segment" style="width: {completedPct}%; background-color: {pinnedEventConfig?.progressBar?.completed ?? '#f86d95'};">
 													<span class="progress-label">{completedHours - approvedHours} HOURS COMPLETED</span>
 												</div>
 											{/if}
-											<div class="flex-1" style="background-color: {pinnedEventConfig?.colors.tertiary ?? '#46467c'};"></div>
+											<div class="flex-1" style="background-color: {pinnedEventConfig?.progressBar?.remaining ?? '#46467c'};"></div>
 										</div>
 										<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
 											{#if remainingHours > 0}
@@ -305,8 +324,8 @@
 							</div>
 							<!-- Compact progress view -->
 							<div class="compact-progress">
-								<img src={pinnedEventConfig?.logo ?? '/logos/nexus-logo-constrained.svg'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-[68px] w-auto object-contain object-left shrink-0" />
-								<div class="text-right text-[24px] text-black tracking-[0.24px]">
+								<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-auto w-auto object-contain object-left shrink-0 relative" />
+								<div class="text-right text-[24px] text-white tracking-[0.24px] relative">
 									<p class="font-cook m-0">PROGRESS</p>
 									<p class="font-bricolage font-semibold m-0">
 										{#if remainingHours > 0}
@@ -625,11 +644,21 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		justify-content: center;
+		justify-content: flex-end;
 		padding: 24px 24px 28px;
 		height: 100%;
 		overflow: hidden;
 		background-color: #fac393;
+	}
+
+	.event-card-gradient {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
+
+	.compact-gradient {
+		display: none;
 	}
 
 	.full-progress {
@@ -647,6 +676,12 @@
 	@container (max-height: 200px) {
 		.full-progress {
 			display: none;
+		}
+		.full-gradient {
+			display: none;
+		}
+		.compact-gradient {
+			display: block;
 		}
 		.compact-progress {
 			display: flex;

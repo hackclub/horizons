@@ -11,9 +11,15 @@ import {
   Delete,
   Post,
   NotFoundException,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Res,
+  Header,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
-import { Request } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiOkResponse, ApiCreatedResponse, ApiConsumes, ApiProduces } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import { AdminService } from './admin.service';
 import { MetricsSnapshotService } from './metrics-snapshot.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -42,6 +48,7 @@ import {
   AdminStatsResponse,
   BackfillResponse,
   EventStatsResponse,
+  ImportCsvResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -156,13 +163,15 @@ export class AdminController {
   @ApiCreatedResponse({ type: BackfillResponse })
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'overwrite', required: false, type: Boolean })
   async backfillStats(
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
+    @Query('overwrite') overwrite?: string,
   ) {
     const start = new Date(startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     const end = new Date(endDate || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-    const results = await this.metricsSnapshotService.backfill(start, end);
+    const results = await this.metricsSnapshotService.backfill(start, end, overwrite !== 'true');
     return { results };
   }
 
@@ -308,5 +317,35 @@ export class AdminController {
     @Req() req: Request,
   ) {
     return this.adminService.updateUserRole(id, body.role, req.user.userId);
+  }
+
+  @Post('import/csv')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 50 * 1024 * 1024 },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiCreatedResponse({ type: ImportCsvResponse })
+  async importCsv(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return this.adminService.importCsv(file.buffer);
+  }
+
+  @Get('export/csv')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="horizons-users-export.csv"')
+  @ApiProduces('text/csv')
+  async exportCsv(@Res() res: Response) {
+    const csv = await this.adminService.exportCsv();
+    res.send(csv);
   }
 }

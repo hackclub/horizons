@@ -776,6 +776,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/import/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_importCsv"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/export/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_exportCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/fraud-review/refresh": {
         parameters: {
             query?: never;
@@ -1976,13 +2008,21 @@ export interface components {
             hoursInReview: number;
             approvedHours: number;
             weightedGrants: number;
+            medianReviewTimeThisWeek: number | null;
+            medianFraudCheckTimeThisWeek: number | null;
+            lastProjectReviewTime: number | null;
+            lastProjectFraudCheckTime: number | null;
         };
         StatsReviewProjects: {
             shipped: number;
             fraudChecked: number;
-            inQueue: number;
+            fraudQueue: number;
+            reviewQueue: number;
             reviewed: number;
             approved: number;
+            shippedThisWeek: number;
+            fraudCheckedThisWeek: number;
+            reviewedThisWeek: number;
         };
         StatsSignupEventEntry: {
             eventId: number;
@@ -2023,6 +2063,9 @@ export interface components {
             reviewsCompleted: components["schemas"]["HistoricalDataPoint"][];
             medianReviewTimeHours: components["schemas"]["HistoricalDataPoint"][];
             dailyHoursLogged: components["schemas"]["HistoricalDataPoint"][];
+            projectsShipped: components["schemas"]["HistoricalDataPoint"][];
+            projectsFraudChecked: components["schemas"]["HistoricalDataPoint"][];
+            medianFraudCheckTimeHours: components["schemas"]["HistoricalDataPoint"][];
         };
         StatsDauEventEntry: {
             eventId: number;
@@ -2050,6 +2093,7 @@ export interface components {
         BackfillEntry: {
             date: string;
             metricsCount: number;
+            skipped?: boolean;
         };
         BackfillResponse: {
             results: components["schemas"]["BackfillEntry"][];
@@ -2173,6 +2217,24 @@ export interface components {
             firstName: string | null;
             lastName: string | null;
             role: string;
+        };
+        ImportCsvSkipped: {
+            row: number;
+            email: string;
+            reason: string;
+        };
+        ImportCsvError: {
+            row: number;
+            email: string;
+            message: string;
+        };
+        ImportCsvResponse: {
+            total: number;
+            usersCreated: number;
+            projectsCreated: number;
+            skipped: number;
+            skippedDetails: components["schemas"]["ImportCsvSkipped"][];
+            errors: components["schemas"]["ImportCsvError"][];
         };
         LeaderboardEntry: {
             reviewerId: string;
@@ -2318,7 +2380,7 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             cost: number;
-            region: string | null;
+            regions: string[];
             maxPerUser: number | null;
             isActive: boolean;
             /** Format: date-time */
@@ -3477,6 +3539,7 @@ export interface operations {
             query?: {
                 startDate?: string;
                 endDate?: string;
+                overwrite?: boolean;
             };
             header?: never;
             path?: never;
@@ -3795,6 +3858,42 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UpdateUserRoleResponse"];
                 };
+            };
+        };
+    };
+    AdminController_importCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportCsvResponse"];
+                };
+            };
+        };
+    };
+    AdminController_exportCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

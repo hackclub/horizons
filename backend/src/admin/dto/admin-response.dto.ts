@@ -671,6 +671,18 @@ class StatsReviewHours {
 
   @ApiProperty()
   weightedGrants: number;
+
+  @ApiProperty({ type: Number, nullable: true })
+  medianReviewTimeThisWeek: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  medianFraudCheckTimeThisWeek: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  lastProjectReviewTime: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  lastProjectFraudCheckTime: number | null;
 }
 
 class StatsReviewProjects {
@@ -681,13 +693,25 @@ class StatsReviewProjects {
   fraudChecked: number;
 
   @ApiProperty()
-  inQueue: number;
+  fraudQueue: number;
+
+  @ApiProperty()
+  reviewQueue: number;
 
   @ApiProperty()
   reviewed: number;
 
   @ApiProperty()
   approved: number;
+
+  @ApiProperty()
+  shippedThisWeek: number;
+
+  @ApiProperty()
+  fraudCheckedThisWeek: number;
+
+  @ApiProperty()
+  reviewedThisWeek: number;
 }
 
 class StatsSignupEventEntry {
@@ -780,6 +804,15 @@ class StatsHistorical {
 
   @ApiProperty({ type: [HistoricalDataPoint] })
   dailyHoursLogged: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  projectsShipped: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  projectsFraudChecked: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  medianFraudCheckTimeHours: HistoricalDataPoint[];
 }
 
 class StatsDauEventEntry {
@@ -839,12 +872,57 @@ export class AdminStatsResponse {
   dau: StatsDau;
 }
 
+class ImportCsvError {
+  @ApiProperty()
+  row: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  message: string;
+}
+
+class ImportCsvSkipped {
+  @ApiProperty()
+  row: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  reason: string;
+}
+
+export class ImportCsvResponse {
+  @ApiProperty()
+  total: number;
+
+  @ApiProperty()
+  usersCreated: number;
+
+  @ApiProperty()
+  projectsCreated: number;
+
+  @ApiProperty()
+  skipped: number;
+
+  @ApiProperty({ type: [ImportCsvSkipped] })
+  skippedDetails: ImportCsvSkipped[];
+
+  @ApiProperty({ type: [ImportCsvError] })
+  errors: ImportCsvError[];
+}
+
 class BackfillEntry {
   @ApiProperty()
   date: string;
 
   @ApiProperty()
   metricsCount: number;
+
+  @ApiPropertyOptional()
+  skipped?: boolean;
 }
 
 export class BackfillResponse {

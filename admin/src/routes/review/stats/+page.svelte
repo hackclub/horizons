@@ -23,7 +23,7 @@
 			goto('/login');
 			return;
 		}
-		if (me.role !== 'admin' && me.role !== 'reviewer') {
+		if (me.role !== 'admin' && me.role !== 'superadmin' && me.role !== 'reviewer') {
 			goto('/app/projects');
 			return;
 		}

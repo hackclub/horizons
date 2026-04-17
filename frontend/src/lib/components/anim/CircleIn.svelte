@@ -1,14 +1,27 @@
+<script lang="ts" module>
+    let hasPlayed = false;
+</script>
+
 <script lang="ts">
+    import { onMount } from 'svelte';
+
     interface Props {
         class?: string;
     }
 
     let { class: className = '' }: Props = $props();
+    let shouldAnimate = $state(!hasPlayed);
+
+    onMount(() => {
+        hasPlayed = true;
+    });
 </script>
 
+{#if shouldAnimate}
 <div class="trans-am {className}">
     <div class="circle"></div>
 </div>
+{/if}
 
 <style>
     .trans-am {

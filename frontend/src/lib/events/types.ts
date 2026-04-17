@@ -1,5 +1,8 @@
 export interface EventConfig {
 	name: string;
+	location?: [number, number];
+	dates?: string;
+	landingBlurb?: string;
 	tagline: string;
 	headline: string;
 	logo: string;
@@ -20,6 +23,17 @@ export interface EventConfig {
 		secondary: string;
 		tertiary: string;
 		cardBg: string;
+	};
+	progressBar: {
+		approved: string;
+		completed: string;
+		remaining: string;
+	};
+	eventCard: {
+		bgColor: string;
+		bgImage?: string | null;
+		gradient?: string | null;
+		compactGradient?: string | null;
 	};
 	stripes: string[];
 	menu: EventMenuItem[];
