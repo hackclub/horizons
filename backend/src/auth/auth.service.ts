@@ -152,8 +152,10 @@ export class AuthService {
         );
     }
 
+    const oauthUrl = `${this.HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`;
+
     return {
-      url: `${this.HACKCLUB_AUTH_URL}/join/horizons?${params.toString()}`,
+      url: `${this.HACKCLUB_AUTH_URL}/join/horizons?return_to=${encodeURIComponent(oauthUrl)}`,
     };
   }
 
