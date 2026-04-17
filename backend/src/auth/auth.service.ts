@@ -159,7 +159,7 @@ export class AuthService {
     if (email) joinParams.set('email', email);
 
     return {
-      url: `${this.HACKCLUB_AUTH_URL}/join/horizons?${joinParams.toString()}`,
+      url: `${this.HACKCLUB_AUTH_URL}/oauth/welcome?${joinParams.toString()}`,
     };
   }
 
