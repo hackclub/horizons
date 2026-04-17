@@ -640,7 +640,7 @@ void main(){
 									class="absolute left-9 right-9 bottom-9 z-1 flex flex-col items-center gap-1 transition-all duration-(--selected-duration) ease-out"
 									style="opacity: {selected ? 1 : 0}; transform: translateY({selected ? '0' : '16px'});"
 								>
-									<p class="text-2xl text-center text-white m-0">{event.headline}</p>
+									<p class="text-2xl text-center text-white m-0">{event.landingBlurb}</p>
 									{#if event.dates}
 										<p class="font-cook text-base text-center text-white/70 m-0">{event.dates}</p>
 									{/if}

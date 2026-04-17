@@ -2,6 +2,7 @@ export interface EventConfig {
 	name: string;
 	location?: [number, number];
 	dates?: string;
+	landingBlurb?: string;
 	tagline: string;
 	headline: string;
 	logo: string;
