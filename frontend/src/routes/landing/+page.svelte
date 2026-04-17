@@ -32,6 +32,7 @@
 	import yaml from 'js-yaml';
 	import eventsRaw from '$lib/events/events.yaml?raw';
 	import type { EventConfig } from '$lib/events/types';
+	import faqRaw from '$lib/data/faq.yaml?raw';
 
 	// Assets - Photo collage
 	import photo1 from '$lib/assets/landing/photo-1.png';
@@ -56,12 +57,19 @@
 	let showInvalidHint = $state(false);
 	let cardSelected = $state(false);
 	let emailFocused = $state(false);
+	let ctaEmail = $state('');
+	let ctaInvalidHint = $state(false);
+	let ctaCardSelected = $state(false);
+	let ctaEmailFocused = $state(false);
 	let activeVideo = $state<string | null>(null);
 	let globeCanvas = $state<HTMLCanvasElement | null>(null);
 	const isValidEmail = $derived(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail));
+	const isValidCtaEmail = $derived(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ctaEmail));
 
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 	const eventEntries = Object.entries(eventsMap);
+	const faqItems = yaml.load(faqRaw) as { question: string; answer: string }[];
+	let openFaqIndex = $state<number | null>(null);
 
 	let selectedEventIndex = $state(0);
 	let eventScrollOffset = $state(0);
@@ -346,6 +354,7 @@ void main(){
 	}
 
 	let cardInView = $state(false);
+	let ctaCardInView = $state(false);
 
 	function scrollCardIntoView() {
 		const container = document.querySelector('.landing-page') as HTMLElement;
@@ -359,16 +368,47 @@ void main(){
 		scrollCardIntoView();
 	}
 
-	function handleGlobalKeydown(e: KeyboardEvent) {
-		if (e.key === 'Enter' && !emailFocused && cardInView) {
+	function handleCtaEmailKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
 			e.preventDefault();
-			selectCard();
+			if (isValidCtaEmail) {
+				ctaInvalidHint = false;
+				handleSignup(ctaEmail);
+			} else {
+				ctaInvalidHint = true;
+			}
+		}
+	}
+
+	function selectCtaCard() {
+		ctaCardSelected = true;
+		document.getElementById('cta-email')?.focus({ preventScroll: true });
+	}
+
+	function handleGlobalKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !emailFocused && !ctaEmailFocused) {
+			if (ctaCardInView) {
+				e.preventDefault();
+				selectCtaCard();
+			} else if (cardInView) {
+				e.preventDefault();
+				selectCard();
+			}
 		}
 	}
 
 	function observeCard(node: HTMLElement) {
 		const observer = new IntersectionObserver(
 			([entry]) => { cardInView = entry.isIntersecting; },
+			{ threshold: 0.5 }
+		);
+		observer.observe(node);
+		return { destroy: () => observer.disconnect() };
+	}
+
+	function observeCtaCard(node: HTMLElement) {
+		const observer = new IntersectionObserver(
+			([entry]) => { ctaCardInView = entry.isIntersecting; },
 			{ threshold: 0.5 }
 		);
 		observer.observe(node);
@@ -383,7 +423,7 @@ void main(){
 	<meta name="description" content="High school flagship hackathons across the world, brought to you by Hack Club." />
 </svelte:head>
 
-<BG class="landing-page overflow-x-hidden overflow-y-auto font-['Bricolage_Grotesque',sans-serif]">
+<BG class="landing-page overflow-x-hidden overflow-y-auto overscroll-none font-['Bricolage_Grotesque',sans-serif]">
 	<!-- ===== BG ===== -->
 	<div class="absolute top-0 left-0 w-full h-[400px] overflow-hidden pointer-events-none z-0">
 		<!-- Diagonal stripes -->
@@ -666,6 +706,158 @@ void main(){
 		</div>
 	</section>
 
+	<!-- ===== FAQ SECTION ===== -->
+	<section class="relative z-1 p-[60px] max-sm:p-6 max-sm:pt-10">
+		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-2xl">FAQ</h2>
+		<div class="flex flex-col gap-5 w-full">
+			{#each faqItems as item, i}
+				{@const isOpen = openFaqIndex === i}
+				<button
+					class="relative bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] p-6 text-left cursor-pointer overflow-hidden transition-all duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) w-full"
+					onclick={() => openFaqIndex = openFaqIndex === i ? null : i}
+				>
+					<div class="flex items-center justify-between gap-4">
+						<p class="font-cook text-xl text-black m-0">{item.question}</p>
+						<span
+							class="faq-chevron text-black text-xl shrink-0 inline-block"
+							class:faq-chevron-open={isOpen}
+						>&#9660;</span>
+					</div>
+					<div
+						class="faq-answer grid"
+						class:faq-answer-open={isOpen}
+						style="--faq-delay: {i * 0.03}s"
+					>
+						<div class="overflow-hidden">
+							<p class="text-base text-black/80 m-0 pt-4">{item.answer}</p>
+						</div>
+					</div>
+				</button>
+			{/each}
+		</div>
+		<a href="/faq" class="inline-block mt-6 text-sm text-black/50 hover:text-black underline transition-colors">See all &rarr;</a>
+	</section>
+
+	<!-- ===== LOWER CTA SECTION ===== -->
+	<section class="relative z-1">
+		<!-- Colored stripes -->
+		<div class="flex flex-col gap-2.5 w-full h-20">
+			<div class="flex-1 bg-[#ffa936]"></div>
+			<div class="flex-1 bg-[#f86d95]"></div>
+			<div class="flex-1 bg-[#46467c]"></div>
+		</div>
+
+		<!-- CTA content -->
+		<div class="flex flex-col items-center gap-8 py-16 px-[60px] max-sm:px-6">
+			<h2 class="font-cook text-[32px] text-black m-0 text-center">Join us this summer!</h2>
+
+			<!-- CTA signup card (separate state from hero card) -->
+			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+			<div
+				use:observeCtaCard
+				class="signup-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-[904px] max-w-full relative overflow-hidden cursor-pointer bg-[#f3e8d8] transition-all duration-(--juice-duration) ease-(--juice-easing) {ctaCardSelected ? 'scale-[1.05]' : 'scale-100'}"
+				onmousedown={(e) => { e.preventDefault(); selectCtaCard(); }}
+			>
+				<!-- Orange fill -->
+				<div class="absolute inset-0 bg-[#ffa936] transition-opacity duration-(--selected-duration) {ctaCardSelected ? 'opacity-100' : 'opacity-0'}"></div>
+				<!-- Chevron arrows -->
+				<div class="absolute right-[10%] top-[45%] -translate-y-1/2 scale-[2.1] pointer-events-none transition-opacity duration-(--selected-duration) delay-100 {ctaCardSelected ? 'opacity-100' : 'opacity-0'}">
+					<img src={ChevronSvg} alt="" class="h-45 w-auto" />
+				</div>
+				<div class="relative flex flex-col gap-4 justify-center py-5 px-7.5 z-1">
+					<p class="font-cook text-[32px] text-black m-0 leading-none">SIGN UP NOW</p>
+					<div class="flex gap-3 items-center">
+						<input
+							id="cta-email"
+							type="email"
+							class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-base font-semibold text-black/50 outline-none w-70"
+							placeholder="orpheus@hackclub.com"
+							bind:value={ctaEmail}
+							onkeydown={(e) => handleCtaEmailKeydown(e)}
+							oninput={() => { if (ctaInvalidHint) ctaInvalidHint = false; }}
+							onclick={(e) => { e.stopPropagation(); ctaCardSelected = true; }}
+							onfocus={() => { ctaCardSelected = true; ctaEmailFocused = true; }}
+							onblur={() => { ctaEmailFocused = false; if (!ctaEmail) ctaCardSelected = false; }}
+						/>
+						<button
+							class="signup-btn border-2 border-black rounded-lg py-2 px-4 font-bricolage text-base font-semibold text-black cursor-pointer transition-colors duration-150 hover:bg-[#e89a45]"
+							class:valid={isValidCtaEmail}
+							onclick={(e) => {
+								e.stopPropagation();
+								if (isValidCtaEmail) handleSignup(ctaEmail);
+								else ctaInvalidHint = true;
+							}}
+						>SIGN UP</button>
+					</div>
+					{#if ctaInvalidHint}
+						<p class="font-bricolage text-sm m-0 text-[#c00]">Please enter a valid email</p>
+					{/if}
+					<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {ctaEmailFocused ? 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden' : 'opacity-100 max-h-10'}">
+						<InputPrompt type="Enter" />
+						<p class="font-bold text-sm text-black leading-6">OR</p>
+						<InputPrompt type="click" />
+						<p class="font-bold text-sm text-black leading-6">TO FOCUS</p>
+					</div>
+					<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {ctaEmailFocused && isValidCtaEmail ? 'opacity-100 max-h-10' : 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden'}">
+						<InputPrompt type="Enter" />
+						<p class="font-bold text-sm text-black leading-6">TO SIGN UP</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ===== FOOTER ===== -->
+	<footer class="relative z-1 flex flex-col items-center">
+		<div class="divider-top w-full aspect-[1444/120] overflow-hidden relative">
+			<img src={divider} alt="" />
+		</div>
+
+		<div class="bg-black w-full relative py-[51px] px-[81px] pb-[60px] max-sm:py-8 max-sm:px-6">
+			<!-- Top text -->
+			<div class="text-white max-w-[755px]">
+				<p class="text-2xl m-0">
+					<span class="font-semibold">A project by Hack Club</span><br />
+					With love from the Horizons team.
+				</p>
+				<p class="text-base text-white mt-4 m-0 leading-relaxed">
+					Hack Club is a 501(c)(3) nonprofit and network of 60k+ technical high schoolers. We believe you learn best by building so we're creating community and providing grants so you can make awesome projects. In the past few years, we've partnered with GitHub to run <a href="https://summer.hackclub.com/" target="_blank" rel="noopener" class="text-white underline">Summer of Making</a>, hosted the <a href="https://github.com/hackclub/the-hacker-zephyr" target="_blank" rel="noopener" class="text-white underline">world's longest hackathon on land</a>, and ran <a href="https://www.youtube.com/watch?v=QvCoISXfcE8" target="_blank" rel="noopener" class="text-white underline">Canada's largest high school hackathon</a>.
+				</p>
+			</div>
+
+			<!-- Link columns -->
+			<div class="flex gap-8 mt-10 flex-wrap">
+				<div class="flex flex-col gap-4 w-48">
+					<p class="font-cook text-2xl text-white m-0">HACK CLUB</p>
+					<div class="flex flex-col gap-2.5 text-2xl text-white">
+						<a href="https://hackclub.com/philosophy" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Our Philosophy</a>
+						<a href="https://hackclub.com/team" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Team &amp; Board</a>
+						<a href="https://hackclub.com/donate" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Donate</a>
+						<a href="https://hackclub.com/print" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Print</a>
+						<a href="mailto:press@hackclub.com" class="text-white no-underline hover:underline">Press Inquiries</a>
+					</div>
+				</div>
+				<div class="flex flex-col gap-4 w-48">
+					<p class="font-cook text-2xl text-white m-0">HORIZONS</p>
+					<div class="flex flex-col gap-2.5 text-2xl text-white">
+						<a href="/" class="text-white no-underline hover:underline font-semibold">Sign up now</a>
+						<a href="/faq" class="text-white no-underline hover:underline">FAQ</a>
+						<a href="https://guides.horizons.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Guides</a>
+					</div>
+				</div>
+				<div class="flex flex-col gap-4 w-57">
+					<p class="font-cook text-2xl text-white m-0">COMMUNITY</p>
+					<div class="flex flex-col gap-2.5 text-2xl text-white">
+						<a href="https://hackclub.com/slack" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Slack</a>
+						<a href="https://jams.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Jams</a>
+						<a href="https://workshops.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Workshops</a>
+						<a href="https://hackclub.com/conduct" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Code of Conduct</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</footer>
+
 	<!-- Video Modal -->
 	{#if activeVideo}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -770,6 +962,30 @@ void main(){
 
 	.email-input:focus {
 		color: black;
+	}
+
+	/* FAQ accordion animation */
+	.faq-answer {
+		grid-template-rows: 0fr;
+		opacity: 0;
+		transition:
+			grid-template-rows var(--juice-duration) var(--juice-easing) var(--faq-delay),
+			opacity var(--juice-duration) ease var(--faq-delay);
+	}
+
+	.faq-answer-open {
+		grid-template-rows: 1fr;
+		opacity: 1;
+	}
+
+	.faq-chevron {
+		transition: transform var(--juice-duration) var(--juice-easing);
+		transform: rotate(-90deg);
+		font-size: 0.75rem;
+	}
+
+	.faq-chevron-open {
+		transform: rotate(0deg);
 	}
 
 </style>
