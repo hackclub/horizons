@@ -437,23 +437,23 @@ void main(){
 		</div>
 
 		<!-- Orpheus flag -->
-		<img src={flagOrpheus} alt="Hack Club" class="absolute -top-1 left-[59px] w-[135px] h-auto z-5 sm:left-[59px] max-sm:left-[24px] max-sm:w-[80px] max-sm:h-auto" />
+		<img src={flagOrpheus} alt="Hack Club" class="absolute -top-1 left-[59px] w-[135px] h-auto z-5 sm:left-[59px] max-sm:left-[24px] max-sm:w-[200px] max-sm:h-auto" />
 	</div>
 
 	<!-- ===== HERO SECTION ===== -->
-	<section class="relative z-1 flex flex-col gap-[26px] pt-[70px] px-[59px] max-w-[1020px] max-lg:px-6 max-lg:pt-[80px] h-[70vh] min-h-[600px]">
-		<img src={heroLogo} alt="Horizons" class="w-[560px] h-auto max-lg:w-full max-lg:max-w-[560px]" />
+	<section class="relative flex flex-col gap-6 pt-[70px] px-[59px] max-w-[1020px] max-lg:px-6 max-lg:pt-[80px] sm:h-[70vh] sm:min-h-[600px] sm:z-1 max-sm:items-center max-sm:pt-24 max-sm:pb-10 max-sm:px-4">
+		<img src={heroLogo} alt="Horizons" class="w-[560px] h-auto max-lg:w-full max-lg:max-w-[560px] max-sm:mt-6" />
 
-		<div class="font-cook">
-			<p class="hero-subtitle text-[32px] text-black m-0 leading-[1.2] max-sm:text-[20px] whitespace-nowrap">We're running 7 hackathons across the world.</p>
-			<p class="hero-title text-[48px] text-black m-0 leading-[1.2] max-sm:text-[32px]">And you're invited.</p>
+		<div class="font-cook max-sm:text-center">
+			<p class="hero-subtitle text-[32px] text-black m-0 leading-[1.2] max-sm:text-base max-sm:whitespace-normal whitespace-nowrap">We're running 7 hackathons across the world.</p>
+			<p class="hero-title text-[48px] text-black m-0 leading-[1.2] max-sm:text-2xl">And you're invited.</p>
 		</div>
 
-		<!-- Signup Card -->
+		<!-- Signup Card (desktop) -->
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 		<div
 			use:observeCard
-			class="signup-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-[904px] max-w-full relative overflow-hidden cursor-pointer bg-[#f3e8d8] max-lg:w-full origin-left transition-all duration-(--juice-duration) ease-(--juice-easing) {cardSelected ? 'scale-[1.05]' : 'scale-100'}"
+			class="max-sm:hidden signup-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-[904px] max-w-full relative overflow-hidden cursor-pointer bg-[#f3e8d8] max-lg:w-full origin-left transition-all duration-(--juice-duration) ease-(--juice-easing) {cardSelected ? 'scale-[1.05]' : 'scale-100'}"
 			onmousedown={(e) => { e.preventDefault(); selectCard(); }}
 		>
 			<!-- Orange fill -->
@@ -503,16 +503,41 @@ void main(){
 			</div>
 		</div>
 
-		<p class="font-['Bricolage_Grotesque',sans-serif] text-2xl font-medium text-[#666]">Scroll to read more...</p>
+		<!-- Signup (mobile) -->
+		<div class="hidden max-sm:flex flex-col gap-3 w-full">
+			<input
+				type="email"
+				class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black/50 outline-none w-full"
+				placeholder="orpheus@hackclub.com"
+				bind:value={signupEmail}
+				onkeydown={(e) => handleEmailKeydown(e)}
+				oninput={() => { if (showInvalidHint) showInvalidHint = false; }}
+				onfocus={() => { emailFocused = true; }}
+				onblur={() => { emailFocused = false; }}
+			/>
+			<button
+				class="signup-btn border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
+				class:valid={isValidEmail}
+				onclick={() => {
+					if (isValidEmail) handleSignup(signupEmail);
+					else showInvalidHint = true;
+				}}
+			>SIGN UP</button>
+			{#if showInvalidHint}
+				<p class="font-bricolage text-sm m-0 text-[#c00] text-center">Please enter a valid email</p>
+			{/if}
+		</div>
+
+		<p class="font-['Bricolage_Grotesque',sans-serif] text-2xl font-medium text-[#666] max-sm:hidden">Scroll to read more...</p>
 	</section>
 
 	<!-- ===== BLURB SECTION ===== -->
-	<section class="relative z-0 flex flex-col items-center -mt-5">
+	<section class="relative flex flex-col items-center sm:-mt-5 sm:z-0">
 		<div class="divider-top w-full aspect-[1444/120] overflow-hidden relative">
 			<img src={divider} alt="" />
 		</div>
 
-		<div class="bg-black w-full relative py-[51px] px-[81px] pb-[60px] min-h-[620px] overflow-hidden max-sm:py-[30px] max-sm:px-6">
+		<div class="bg-black w-full relative py-[51px] px-[81px] pb-[60px] min-h-[620px] max-sm:min-h-0 overflow-hidden max-sm:overflow-visible max-sm:py-[30px] max-sm:px-4">
 			<div class="text-white text-2xl leading-relaxed max-w-[700px] max-sm:text-lg [&_p]:m-0 [&_.bold]:font-bold">
 				<p>This summer, we're running something we've never done before.</p>
 				<p class="bold">&ZeroWidthSpace;</p>
@@ -523,29 +548,29 @@ void main(){
 			</div>
 
 			<!-- How steps -->
-			<div class="relative w-[832px] max-w-full h-[356px] mt-10 -ml-[81px]">
-				<div class="absolute inset-0 overflow-hidden pointer-events-none">
+			<div class="relative w-[832px] max-w-full h-[356px] max-sm:h-auto mt-10 -ml-[81px] max-sm:-ml-4 max-sm:-mr-20 max-sm:w-[calc(100%+6rem)]">
+				<div class="absolute inset-0 max-sm:-left-4 max-sm:-right-8 max-sm:-top-8 max-sm:-bottom-8 overflow-hidden pointer-events-none">
 					<img src={blurbPhoto} alt="" class="absolute max-w-none" style="width: 218.8%; height: 467.01%; left: -70.3%; top: -70.94%;" />
 				</div>
-				<div class="relative z-1 flex flex-col gap-4 justify-center h-full pl-[81px] pr-[80px] max-sm:px-6">
+				<div class="relative z-1 flex flex-col gap-4 justify-center h-full pl-[81px] pr-[80px] max-sm:pl-10 max-sm:pr-4 max-sm:py-8">
 					<p class="text-2xl font-semibold text-black m-0 max-sm:text-lg">How?</p>
 					<div class="flex gap-2 items-center">
 						<div class="border-2 border-black rounded-full w-[30px] h-[30px] flex items-center justify-center text-xl text-black shrink-0">1</div>
-						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:text-lg">Sign up for Horizons</p>
+						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:whitespace-normal max-sm:text-lg">Sign up for Horizons</p>
 					</div>
 					<div class="flex gap-2 items-start">
 						<div class="border-2 border-black rounded-full w-[30px] h-[30px] flex items-center justify-center text-xl text-black shrink-0">2</div>
-						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:text-lg">Spend 30-35 hours hacking & shipping projects<br /><span class="text-black/60">(that's about a week!)</span></p>
+						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:whitespace-normal max-sm:text-lg">Spend 30-35 hours hacking & shipping projects<br /><span class="text-black/60">(that's about a week!)</span></p>
 					</div>
 					<div class="flex gap-2 items-start">
 						<div class="border-2 border-black rounded-full w-[30px] h-[30px] flex items-center justify-center text-xl text-black shrink-0">3</div>
-						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:text-lg">Earn your ticket to a hackathon of your choosing</p>
+						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:whitespace-normal max-sm:text-lg">Earn your ticket to a hackathon of your choosing</p>
 					</div>
 				</div>
 			</div>
 
-			<!-- Side photos -->
-			<div class="absolute right-[40px] top-[30px] w-[400px] h-full max-lg:hidden">
+			<!-- Side photos (desktop: absolute positioned, mobile: stacked) -->
+			<div class="absolute right-[40px] top-[30px] w-[400px] h-full max-sm:hidden">
 				<div class="absolute top-0 right-0 w-[305px] rotate-[6.55deg]">
 					<img src={blurbPhoto2} alt="" class="w-full h-auto block" />
 				</div>
@@ -556,6 +581,12 @@ void main(){
 					<img src={blurbPhoto4} alt="" class="w-full h-auto block" />
 				</div>
 			</div>
+			<!-- Mobile blurb photos -->
+			<div class="hidden max-sm:flex flex-col gap-4 mt-8 -mx-4">
+				<div class="rotate-[6.55deg] w-[90%]"><img src={blurbPhoto2} alt="" class="w-full h-auto block" /></div>
+				<div class="rotate-[-5.23deg] w-[90%] self-end"><img src={blurbPhoto3} alt="" class="w-full h-auto block" /></div>
+				<div class="rotate-[4.2deg] w-[85%]"><img src={blurbPhoto4} alt="" class="w-full h-auto block" /></div>
+			</div>
 		</div>
 
 		<div class="divider-bottom w-full aspect-[1444/120] overflow-hidden relative rotate-180">
@@ -564,7 +595,8 @@ void main(){
 	</section>
 
 	<!-- ===== PHOTO COLLAGE ===== -->
-	<section class="relative z-1 h-[798px] overflow-hidden max-lg:h-[500px]">
+	<!-- Desktop: original 8 photos -->
+	<section class="relative z-1 h-[798px] overflow-hidden max-lg:h-[500px] max-sm:!hidden">
 		<div class="absolute w-[14%]" style="left: 16%; top: 0; transform: rotate(-3.38deg);"><img src={photo1} alt="" class="w-full h-auto block" /></div>
 		<div class="absolute" style="left: -10%; top: -8%; transform: rotate(7.38deg); width: 27%;"><img src={photo2} alt="" class="w-full h-auto block" /></div>
 		<div class="absolute" style="left: -5%; top: 60%; transform: rotate(-6.94deg); width: 30%;"><img src={photo3} alt="" class="w-full h-auto block" /></div>
@@ -574,13 +606,19 @@ void main(){
 		<div class="absolute" style="left: 88%; top: 55%; transform: rotate(3.05deg); width: 15%;"><img src={photo7} alt="" class="w-full h-auto block" /></div>
 		<div class="absolute" style="left: 24%; top: 77%; transform: rotate(6.17deg); width: 16%;"><img src={photo8} alt="" class="w-full h-auto block" /></div>
 	</section>
+	<!-- Mobile: blurb photos as collage -->
+	<section class="!hidden relative z-1 h-[350px] overflow-hidden max-sm:!block">
+		<div class="absolute" style="left: -15%; top: -5%; transform: rotate(6.55deg); width: 75%;"><img src={blurbPhoto2} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 40%; top: 40%; transform: rotate(-5.23deg); width: 75%;"><img src={blurbPhoto3} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: -10%; top: 55%; transform: rotate(4.2deg); width: 65%;"><img src={blurbPhoto4} alt="" class="w-full h-auto block" /></div>
+	</section>
 
 	<!-- ===== PREVIOUS EVENTS SECTION ===== -->
 	<section class="relative z-1 p-[60px] max-sm:p-6 max-sm:pt-10">
-		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-2xl">Hackathons we've ran before...</h2>
-		<div class="flex gap-8 items-center justify-center flex-wrap">
+		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-base">Hackathons we've ran before...</h2>
+		<div class="flex gap-8 items-center justify-center flex-wrap max-sm:flex-col max-sm:gap-8">
 			<!-- Shipwrecked -->
-			<a href="https://shipwrecked.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center" style="background-image: url({prevEventBg1})">
+			<a href="https://shipwrecked.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center max-sm:w-full max-sm:h-auto max-sm:p-4 max-sm:gap-2.5" style="background-image: url({prevEventBg1})">
 				<img src={prevEventLogo1} alt="Shipwrecked" class="relative z-1 object-cover w-[139px] h-[88px]" />
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = 'uXWMr0gdLJA'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = 'uXWMr0gdLJA'; } }}>
@@ -593,7 +631,7 @@ void main(){
 			</a>
 
 			<!-- Apocalypse -->
-			<a href="https://apocalypse.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center" style="background-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.6)), url({prevEventBg2})">
+			<a href="https://apocalypse.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center max-sm:w-full max-sm:h-auto max-sm:p-4 max-sm:gap-2.5" style="background-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.6)), url({prevEventBg2})">
 				<img src={prevEventLogo2} alt="Apocalypse" class="relative z-1 w-full object-cover" style="aspect-ratio: 3240/1080;" />
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = 'QvCoISXfcE8'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = 'QvCoISXfcE8'; } }}>
@@ -606,7 +644,7 @@ void main(){
 			</a>
 
 			<!-- Scrapyard -->
-			<a href="https://scrapyard.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center" style="background-image: url({prevEventBg3})">
+			<a href="https://scrapyard.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center max-sm:w-full max-sm:h-auto max-sm:p-4 max-sm:gap-2.5" style="background-image: url({prevEventBg3})">
 				<img src={scrapyardLogo} alt="Scrapyard" class="relative z-1 w-[119px] h-[57px]" />
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = '8iM1W8kXrQA'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = '8iM1W8kXrQA'; } }}>
@@ -619,7 +657,7 @@ void main(){
 			</a>
 
 			<!-- Campfire -->
-			<a href="https://flagship.campfire.hackclub.com" target="_blank" rel="noopener noreferrer" class="bg-[#160124] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105">
+			<a href="https://flagship.campfire.hackclub.com" target="_blank" rel="noopener noreferrer" class="max-sm:hidden bg-[#160124] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105">
 				<div class="relative z-1 w-[176px] h-[39px] overflow-hidden px-[5px]">
 					<div class="w-full aspect-[1233/180] relative overflow-hidden">
 						<img src={campfireLogo} alt="Campfire Flagship" class="absolute max-w-none" style="height: 181.11%; left: -4.46%; top: -11.11%; width: 109.81%;" />
@@ -636,7 +674,7 @@ void main(){
 	<!-- ===== THIS SUMMER SECTION ===== -->
 	<section bind:this={summerSectionEl} class="relative z-0" style="--divider-url: url('{divider}')">
 		<!-- Event Carousel -->
-		<div class="w-full relative overflow-hidden h-[750px] transition-colors duration-(--selected-duration) ease-out" style="background-color: {eventEntries[selectedEventIndex][1].eventCard.bgColor}">
+		<div class="w-full relative overflow-hidden h-[750px] max-sm:h-auto transition-colors duration-(--selected-duration) ease-out" style="background-color: {eventEntries[selectedEventIndex][1].eventCard.bgColor}">
 			<!-- Background image -->
 			{#if eventEntries[selectedEventIndex][1].eventCard.bgImage}
 				<img src={eventEntries[selectedEventIndex][1].eventCard.bgImage} alt="" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-(--selected-duration) ease-out" />
@@ -649,36 +687,36 @@ void main(){
 			<div class="summer-divider-mask absolute top-0 left-0 w-full aspect-[1444/120] z-20" style="background-color: #f3e8d8;"></div>
 			<div class="summer-divider-mask absolute bottom-0 left-0 w-full aspect-[1444/120] z-20 rotate-180" style="background-color: #f3e8d8;"></div>
 
-			<div class="relative z-1 flex flex-col gap-8 h-full pt-[100px] pb-[100px] max-sm:pt-20 max-sm:pb-20 px-[60px] max-sm:px-8">
-				<h2 class="font-cook text-[32px] text-black m-0 whitespace-nowrap" style="-webkit-text-stroke: 8px #f3e8d8; paint-order: stroke fill;">This summer, we're running...</h2>
+			<div class="relative z-1 flex flex-col gap-8 h-full pt-[100px] pb-[100px] max-sm:pt-20 max-sm:pb-10 px-[60px] max-sm:px-4">
+				<h2 class="font-cook text-[32px] max-sm:text-base text-black m-0 whitespace-nowrap" style="-webkit-text-stroke: 8px #f3e8d8; paint-order: stroke fill;">This summer, we're running...</h2>
 
-				<div class="flex-1 min-h-0 overflow-visible relative">
+				<div class="flex-1 min-h-0 overflow-visible relative max-sm:overflow-hidden">
 					<div
-						class="flex gap-6 items-center h-full"
+						class="flex gap-6 items-center h-full max-sm:flex-col max-sm:gap-8 max-sm:h-auto max-sm:items-stretch"
 						bind:this={eventListEl}
 						style="transform: translateX({eventScrollOffset}px); transition: transform 0.4s ease;"
 					>
 						{#each eventEntries as [key, event], i}
 							{@const selected = i === selectedEventIndex}
 							<button
-								class="event-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative shrink-0 cursor-pointer bg-cover bg-center {selected ? 'opacity-100' : 'opacity-80 hover:opacity-100 hover:scale-(--juice-scale)'}"
+								class="event-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative shrink-0 cursor-pointer bg-cover bg-center max-sm:w-full max-sm:opacity-100 {selected ? 'opacity-100' : 'opacity-80 hover:opacity-100 hover:scale-(--juice-scale)'}"
 								style="width: {selected ? '325px' : '262px'}; height: {selected ? '435px' : '351px'}; transition: all var(--juice-duration) var(--juice-easing); background-color: {event.eventCard.bgColor};{event.eventCard.bgImage ? ` background-image: ${event.eventCard.gradient ? event.eventCard.gradient + ', ' : ''}url(${event.eventCard.bgImage});` : ''}"
 								onclick={() => selectEvent(i)}
 							>
 								<!-- Gradient overlay -->
-								<div class="absolute inset-0 rounded-[16px] bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-(--selected-duration) ease-out {selected ? 'opacity-100' : 'opacity-0'}"></div>
+								<div class="card-gradient absolute inset-0 rounded-[16px] bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-(--selected-duration) ease-out {selected ? 'opacity-100' : 'opacity-0'}"></div>
 
 								<!-- Logo — absolutely positioned, animates between center and top -->
 								<img
 									src={event.logo}
 									alt={event.name}
-									class="absolute z-1 max-w-[80%] h-auto object-contain transition-all duration-(--selected-duration) ease-out"
+									class="card-logo absolute z-1 max-w-[80%] h-auto object-contain transition-all duration-(--selected-duration) ease-out"
 									style="left: 50%; top: {selected ? '36px' : '50%'}; transform: translate(-50%, {selected ? '0' : '-50%'}) scale({selected ? '1' : '0.9'}); max-height: {selected ? '120px' : '96px'}; filter: {selected ? 'drop-shadow(0px 0px 40px rgba(0,0,0,0.6))' : 'none'};"
 								/>
 
 								<!-- Tagline — fades in above dates when selected -->
 								<div
-									class="absolute left-9 right-9 z-1 flex flex-col items-center gap-1 transition-all duration-(--selected-duration) ease-out"
+									class="card-tagline absolute left-9 right-9 z-1 flex flex-col items-center gap-1 transition-all duration-(--selected-duration) ease-out"
 									style="bottom: {selected ? '60px' : '36px'}; opacity: {selected ? 1 : 0}; transform: translateY({selected ? '0' : '16px'});"
 								>
 									<p class="text-2xl text-center text-white m-0">{event.landingBlurb}</p>
@@ -687,7 +725,7 @@ void main(){
 								<!-- Dates — always visible at bottom -->
 								{#if event.dates}
 									<div
-										class="absolute left-9 right-9 z-1 flex justify-center transition-all duration-(--selected-duration) ease-out"
+										class="card-dates absolute left-9 right-9 z-1 flex justify-center transition-all duration-(--selected-duration) ease-out"
 										style="bottom: {selected ? '36px' : '16px'};"
 									>
 										<p class="font-cook text-base text-center text-white/70 m-0">{event.dates}</p>
@@ -756,15 +794,15 @@ void main(){
 		</div>
 
 		<!-- CTA content — fixed height to prevent scale from shifting doc flow -->
-		<div class="h-100 max-sm:h-96 overflow-hidden">
-		<div class="flex flex-col items-center gap-8 py-16 px-[60px] max-sm:px-6">
-			<h2 class="font-cook text-[32px] text-black m-0 text-center">Join us this summer!</h2>
+		<div class="h-100 max-sm:h-auto overflow-hidden">
+		<div class="flex flex-col items-center gap-8 py-16 px-[60px] max-sm:px-4 max-sm:py-8">
+			<h2 class="font-cook text-[32px] max-sm:text-2xl text-black m-0 text-center">Join us this summer!</h2>
 
-			<!-- CTA signup card (separate state from hero card) -->
+			<!-- CTA signup card (desktop) -->
 			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 			<div
 				use:observeCtaCard
-				class="signup-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-[904px] max-w-full relative overflow-hidden cursor-pointer bg-[#f3e8d8] transition-all duration-(--juice-duration) ease-(--juice-easing) {ctaCardSelected ? 'scale-[1.05]' : 'scale-100'}"
+				class="max-sm:hidden signup-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-[904px] max-w-full relative overflow-hidden cursor-pointer bg-[#f3e8d8] transition-all duration-(--juice-duration) ease-(--juice-easing) {ctaCardSelected ? 'scale-[1.05]' : 'scale-100'}"
 				onmousedown={(e) => { e.preventDefault(); selectCtaCard(); }}
 			>
 				<!-- Orange fill -->
@@ -813,6 +851,29 @@ void main(){
 					</div>
 				</div>
 			</div>
+
+			<!-- CTA signup (mobile) -->
+			<div class="hidden max-sm:flex flex-col gap-3 w-full">
+				<input
+					type="email"
+					class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black/50 outline-none w-full"
+					placeholder="orpheus@hackclub.com"
+					bind:value={ctaEmail}
+					onkeydown={(e) => handleCtaEmailKeydown(e)}
+					oninput={() => { if (ctaInvalidHint) ctaInvalidHint = false; }}
+				/>
+				<button
+					class="signup-btn border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
+					class:valid={isValidCtaEmail}
+					onclick={() => {
+						if (isValidCtaEmail) handleSignup(ctaEmail);
+						else ctaInvalidHint = true;
+					}}
+				>SIGN UP</button>
+				{#if ctaInvalidHint}
+					<p class="font-bricolage text-sm m-0 text-[#c00] text-center">Please enter a valid email</p>
+				{/if}
+			</div>
 		</div>
 		</div>
 	</section>
@@ -836,10 +897,10 @@ void main(){
 			</div>
 
 			<!-- Link columns -->
-			<div class="flex gap-8 mt-10 flex-wrap">
+			<div class="flex gap-8 mt-10 flex-wrap max-sm:gap-4">
 				<div class="flex flex-col gap-4 w-48">
-					<p class="font-cook text-2xl text-white m-0">HACK CLUB</p>
-					<div class="flex flex-col gap-2.5 text-2xl text-white">
+					<p class="font-cook text-2xl max-sm:text-xl text-white m-0">HACK CLUB</p>
+					<div class="flex flex-col gap-2.5 text-2xl max-sm:text-xl text-white">
 						<a href="https://hackclub.com/philosophy" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Our Philosophy</a>
 						<a href="https://hackclub.com/team" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Team &amp; Board</a>
 						<a href="https://hackclub.com/donate" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Donate</a>
@@ -848,16 +909,16 @@ void main(){
 					</div>
 				</div>
 				<div class="flex flex-col gap-4 w-48">
-					<p class="font-cook text-2xl text-white m-0">HORIZONS</p>
-					<div class="flex flex-col gap-2.5 text-2xl text-white">
+					<p class="font-cook text-2xl max-sm:text-xl text-white m-0">HORIZONS</p>
+					<div class="flex flex-col gap-2.5 text-2xl max-sm:text-xl text-white">
 						<a href="/" class="text-white no-underline hover:underline font-semibold">Sign up now</a>
 						<a href="/faq" class="text-white no-underline hover:underline">FAQ</a>
 						<a href="https://guides.horizons.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Guides</a>
 					</div>
 				</div>
-				<div class="flex flex-col gap-4 w-57">
-					<p class="font-cook text-2xl text-white m-0">COMMUNITY</p>
-					<div class="flex flex-col gap-2.5 text-2xl text-white">
+				<div class="flex flex-col gap-4 w-57 max-sm:w-48">
+					<p class="font-cook text-2xl max-sm:text-xl text-white m-0">COMMUNITY</p>
+					<div class="flex flex-col gap-2.5 text-2xl max-sm:text-xl text-white">
 						<a href="https://hackclub.com/slack" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Slack</a>
 						<a href="https://jams.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Jams</a>
 						<a href="https://workshops.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Workshops</a>
@@ -997,6 +1058,38 @@ void main(){
 
 	.faq-chevron-open {
 		transform: rotate(0deg);
+	}
+
+	/* Mobile: override inline width/height on event cards */
+	@media (max-width: 640px) {
+		.event-card {
+			width: 100% !important;
+			height: 300px !important;
+		}
+
+		.event-card .card-gradient {
+			opacity: 1 !important;
+		}
+
+		.event-card .card-logo {
+			left: 50% !important;
+			top: 36px !important;
+			transform: translate(-50%, 0) !important;
+			max-height: 96px !important;
+			filter: drop-shadow(0px 0px 40px rgba(0,0,0,0.6)) !important;
+		}
+
+		.event-card .card-tagline {
+			opacity: 1 !important;
+			transform: none !important;
+			bottom: 50px !important;
+		}
+
+		.event-card .card-dates {
+			bottom: 16px !important;
+			opacity: 1 !important;
+			transform: none !important;
+		}
 	}
 
 </style>
