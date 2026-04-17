@@ -230,6 +230,9 @@
 				<button
 					class="event-card w-74.5 h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing)"
 					class:selected={selectedEvent === event.slug}
+					style={event.slug === 'nexus' && event.eventCard?.bgImage
+						? `background-image: url(${event.eventCard.bgImage}); background-size: cover; background-position: center;`
+						: undefined}
 					onclick={(e) => { e.stopPropagation(); handleEventSelect(event.slug); }}
 					disabled={!isEventSelectStep}
 				>
@@ -237,12 +240,27 @@
 						<img src={event.logo} alt={event.name} class="max-w-65 max-h-full object-contain" />
 					</div>
 					{#if event.location || (event.startDate && event.endDate)}
-						<p class="font-bricolage text-base font-semibold pb-3 whitespace-nowrap shrink-0">
-							{[event.location, event.startDate && event.endDate ? formatDateRange(event.startDate, event.endDate) : null].filter(Boolean).join(' - ')}
-						</p>
+						<div class="flex flex-col items-center pb-3 shrink-0 leading-tight" class:text-white={event.slug === 'nexus'}>
+							{#if event.location}
+								<p class="font-bricolage text-base font-semibold whitespace-nowrap">{event.location}</p>
+							{/if}
+							{#if event.startDate && event.endDate}
+								<p class="font-bricolage text-base font-semibold whitespace-nowrap">{formatDateRange(event.startDate, event.endDate)}</p>
+							{/if}
+						</div>
 					{/if}
 				</button>
 			{/each}
+			<button
+				class="event-card w-74.5 h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing)"
+				onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app?post-onboarding'); } }}
+				disabled={!isEventSelectStep}
+			>
+				<div class="flex flex-col items-center justify-center flex-1 p-3 min-h-0 gap-1">
+					<p class="font-cook text-2xl text-black leading-none">CHOOSE LATER</p>
+					<p class="font-bricolage text-sm font-semibold text-black opacity-60">I'll decide another time</p>
+				</div>
+			</button>
 			<div class="w-full h-75 shrink-0"></div>
 		</div>
 	{/if}
@@ -332,12 +350,10 @@
 			{/if}
 
 			{#if isEventSelectStep}
-				<div class="flex justify-between items-center">
-					<button class="font-bricolage text-base font-semibold text-black opacity-40 bg-transparent border-none cursor-pointer underline hover:opacity-70 transition-opacity duration-150 ease-in-out" onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app?post-onboarding'); } }}>
-						Skip
-					</button>
+				<div class="flex justify-between items-center gap-4">
+					<p class="font-bricolage text-base font-semibold text-black opacity-60">You can change which event you want to go to later!</p>
 					{#if selectedEvent}
-						<button class="py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); handleEventContinue(); }}>
+						<button class="py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936] shrink-0" onclick={(e) => { e.stopPropagation(); handleEventContinue(); }}>
 							Continue
 						</button>
 					{/if}
