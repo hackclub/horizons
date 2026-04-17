@@ -579,7 +579,7 @@ void main(){
 				<p class="bold">&ZeroWidthSpace;</p>
 				<p class="bold">7 hackathons. Ran by teenagers across the globe. For teenagers everywhere.</p>
 				<p class="bold">&ZeroWidthSpace;</p>
-				<p>Fly out to San Francisco, Sydney, Toronto, Berlin, Cairo, or Sao Paulo. For Free.</p>
+				<p>Fly out to San Francisco, Sydney, Toronto, Berlin, Cairo, Singapore or Sao Paulo. For Free.</p>
 				<p>Go on an adventure of a lifetime.</p>
 			</div>
 
