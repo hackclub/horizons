@@ -16,16 +16,13 @@
 	import divider from '$lib/assets/landing/divider.png';
 
 	// Assets - Previous Events
-	import prevEventBg1 from '$lib/assets/landing/prev-event-bg-1.png';
-	import prevEventBg2 from '$lib/assets/landing/prev-event-bg-2.png';
-	import prevEventBg3 from '$lib/assets/landing/prev-event-bg-3.png';
+	import prevEventBg1 from '$lib/assets/landing/prev-event-bg-1.webp';
+	import prevEventBg2 from '$lib/assets/landing/prev-event-bg-2.webp';
+	import prevEventBg3 from '$lib/assets/landing/prev-event-bg-3.webp';
 	import prevEventLogo1 from '$lib/assets/landing/prev-event-logo-1.png';
-	import prevEventPhoto1 from '$lib/assets/landing/prev-event-photo-1.png';
 	import prevEventLogo2 from '$lib/assets/landing/prev-event-logo-2.png';
-	import prevEventPhoto2 from '$lib/assets/landing/prev-event-photo-2.png';
-	import prevEventPhoto3 from '$lib/assets/landing/prev-event-photo-3.png';
 	import campfireLogo from '$lib/assets/landing/campfire-logo.png';
-	import campfirePhoto from '$lib/assets/landing/campfire-photo.png';
+	import campfirePhoto from '$lib/assets/landing/campfire-photo.webp';
 	import scrapyardLogo from '$lib/assets/landing/scrapyard-logo.svg';
 
 	// Assets - This Summer
@@ -46,10 +43,10 @@
 	import photo8 from '$lib/assets/landing/photo-8.png';
 
 	// Assets - Blurb
-	import blurbPhoto from '$lib/assets/landing/blurb-photo.png';
-	import blurbPhoto2 from '$lib/assets/landing/blurb-photo-2.png';
-	import blurbPhoto3 from '$lib/assets/landing/blurb-photo-3.png';
-	import blurbPhoto4 from '$lib/assets/landing/blurb-photo-4.png';
+	import blurbPhoto from '$lib/assets/landing/blurb-photo.webp';
+	import blurbPhoto2 from '$lib/assets/landing/blurb-photo-2.webp';
+	import blurbPhoto3 from '$lib/assets/landing/blurb-photo-3.webp';
+	import blurbPhoto4 from '$lib/assets/landing/blurb-photo-4.webp';
 
 	let referralCode = $derived(page.url.searchParams.get('ref') ?? undefined);
 	let utmSource = $derived(page.url.searchParams.get('utm_source') ?? undefined);
