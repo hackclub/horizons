@@ -4,9 +4,9 @@
 
 	let { children } = $props();
 
-	let windowWidth = $state(0);
-	let windowHeight = $state(0);
-	let isSmallViewport = $derived(windowWidth < 1280 || windowHeight < 800);
+	let windowWidth = $state<number | undefined>(undefined);
+	let windowHeight = $state<number | undefined>(undefined);
+	let isSmallViewport = $derived(windowWidth === undefined ? undefined : windowWidth < 1280 || windowHeight! < 800);
 </script>
 
 <style>
@@ -49,7 +49,9 @@
 
 <svelte:window bind:innerWidth={windowWidth} bind:innerHeight={windowHeight} />
 
-{#if isSmallViewport}
+{#if isSmallViewport === undefined}
+	<!-- Wait for window dimensions -->
+{:else if isSmallViewport}
 	<div class="content-area absolute inset-0 overflow-hidden" style="background-color: var(--layout-bg, #f3e8d8)">
 		{@render children()}
 	</div>

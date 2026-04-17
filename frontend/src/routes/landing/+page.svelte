@@ -10,6 +10,7 @@
 	import ChevronSvg from '$lib/assets/shapes/chevron.svg';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
 	import BG from '$lib/components/BG.svelte';
+	import CircleIn from '$lib/components/anim/CircleIn.svelte';
 
 	// Assets - Divider
 	import divider from '$lib/assets/landing/divider.png';
@@ -635,13 +636,13 @@ void main(){
 	<!-- ===== THIS SUMMER SECTION ===== -->
 	<section bind:this={summerSectionEl} class="relative z-0" style="--divider-url: url('{divider}')">
 		<!-- Event Carousel -->
-		<div class="w-full relative overflow-hidden h-[750px]" style="background-color: {eventEntries[0][1].eventCard.bgColor}">
+		<div class="w-full relative overflow-hidden h-[750px] transition-colors duration-(--selected-duration) ease-out" style="background-color: {eventEntries[selectedEventIndex][1].eventCard.bgColor}">
 			<!-- Background image -->
-			{#if eventEntries[0][1].eventCard.bgImage}
-				<img src={eventEntries[0][1].eventCard.bgImage} alt="" class="absolute inset-0 w-full h-full object-cover" />
+			{#if eventEntries[selectedEventIndex][1].eventCard.bgImage}
+				<img src={eventEntries[selectedEventIndex][1].eventCard.bgImage} alt="" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-(--selected-duration) ease-out" />
 			{/if}
-			{#if eventEntries[0][1].eventCard.gradient}
-				<div class="absolute inset-0" style="background: {eventEntries[0][1].eventCard.gradient}"></div>
+			{#if eventEntries[selectedEventIndex][1].eventCard.gradient}
+				<div class="absolute inset-0 transition-opacity duration-(--selected-duration) ease-out" style="background: {eventEntries[selectedEventIndex][1].eventCard.gradient}"></div>
 			{/if}
 
 			<!-- Divider masks -->
@@ -675,16 +676,23 @@ void main(){
 									style="left: 50%; top: {selected ? '36px' : '50%'}; transform: translate(-50%, {selected ? '0' : '-50%'}) scale({selected ? '1' : '0.9'}); max-height: {selected ? '120px' : '96px'}; filter: {selected ? 'drop-shadow(0px 0px 40px rgba(0,0,0,0.6))' : 'none'};"
 								/>
 
-								<!-- Tagline + dates — absolutely positioned at bottom, fades in -->
+								<!-- Tagline — fades in above dates when selected -->
 								<div
-									class="absolute left-9 right-9 bottom-9 z-1 flex flex-col items-center gap-1 transition-all duration-(--selected-duration) ease-out"
-									style="opacity: {selected ? 1 : 0}; transform: translateY({selected ? '0' : '16px'});"
+									class="absolute left-9 right-9 z-1 flex flex-col items-center gap-1 transition-all duration-(--selected-duration) ease-out"
+									style="bottom: {selected ? '60px' : '36px'}; opacity: {selected ? 1 : 0}; transform: translateY({selected ? '0' : '16px'});"
 								>
 									<p class="text-2xl text-center text-white m-0">{event.landingBlurb}</p>
-									{#if event.dates}
-										<p class="font-cook text-base text-center text-white/70 m-0">{event.dates}</p>
-									{/if}
 								</div>
+
+								<!-- Dates — always visible at bottom -->
+								{#if event.dates}
+									<div
+										class="absolute left-9 right-9 z-1 flex justify-center transition-all duration-(--selected-duration) ease-out"
+										style="bottom: {selected ? '36px' : '16px'};"
+									>
+										<p class="font-cook text-base text-center text-white/70 m-0">{event.dates}</p>
+									</div>
+								{/if}
 
 								<!-- Auto-rotate timer indicator -->
 								{#if selected && autoRotateActive}
@@ -747,7 +755,8 @@ void main(){
 			<div class="flex-1 bg-[#46467c]"></div>
 		</div>
 
-		<!-- CTA content -->
+		<!-- CTA content — fixed height to prevent scale from shifting doc flow -->
+		<div class="h-100 max-sm:h-96 overflow-hidden">
 		<div class="flex flex-col items-center gap-8 py-16 px-[60px] max-sm:px-6">
 			<h2 class="font-cook text-[32px] text-black m-0 text-center">Join us this summer!</h2>
 
@@ -804,6 +813,7 @@ void main(){
 					</div>
 				</div>
 			</div>
+		</div>
 		</div>
 	</section>
 
@@ -877,6 +887,7 @@ void main(){
 		</div>
 	{/if}
 
+	<CircleIn />
 </BG>
 
 <style>
