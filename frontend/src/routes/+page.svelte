@@ -1,498 +1,1002 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { api } from '$lib/api';
+	import { page } from '$app/state';
+	import { env } from '$env/dynamic/public';
+
+	// Assets - Hero
+	import heroLogo from '$lib/assets/Logo.svg';
+	import flagOrpheus from '$lib/assets/landing/flag-orpheus.png';
+	import ChevronSvg from '$lib/assets/shapes/chevron.svg';
+	import InputPrompt from '$lib/components/InputPrompt.svelte';
 	import BG from '$lib/components/BG.svelte';
-	import BobaText from '$lib/components/BobaText.svelte';
-	import TextWave from '$lib/components/TextWave.svelte';
-	import Stripes from '$lib/components/Stripes.svelte';
-	import Logo from '$lib/assets/Logo.svg';
-    import playIcon from '$lib/assets/icons/yaya.svg';
-    import faqIcon from '$lib/assets/icons/huh.svg';
-    import horizonIcon from '$lib/assets/icons/h.svg';
-    import { onMount } from 'svelte';
-    import BobaButton from '$lib/components/BobaButton.svelte';
-    import CircleIn from '$lib/components/anim/CircleIn.svelte';
-    import MenuItem from '$lib/components/MenuItem.svelte';
-    import { fade, fly } from 'svelte/transition';
-    import { quintOut } from 'svelte/easing';
-    import CircleOut from '$lib/components/anim/CircleOut.svelte';
-    import { api } from '$lib/api';
-    import { goto } from '$app/navigation';
-    import { page } from '$app/stores';
-    import { env } from '$env/dynamic/public';
-    import { createListNav, parseNavKey, isNavKey, clampIndex, navState } from '$lib/nav/wasd.svelte';
+	import CircleIn from '$lib/components/anim/CircleIn.svelte';
 
-    let activated = $state(false);
-    let pressed = $state(false);
-    let transitioning = $state(false);
-    let isTransitioning = $state(false);
-    let selectedElement = $state(-1); // -1 = card itself, 0+ = index within focusable elements
-    let cardRefs: HTMLElement[] = [];
-    let isTyping = $state(false);
-    let btnPressed = $state(false);
-    let showSlideOut = $state(false);
-    let disableAnimations = $state(false);
-    let animationsReady = $state(false);
-    let windowWidth = $state(0);
-    let isMobile = $derived(windowWidth > 0 && windowWidth < 640);
+	// Assets - Divider
+	import divider from '$lib/assets/landing/divider.png';
 
-    let isAuthed = $state(false);
-    let referralCode = $derived($page.url.searchParams.get('ref') ?? undefined);
-    let utmSource = $derived($page.url.searchParams.get('utm_source') ?? undefined);
+	// Assets - Previous Events
+	import prevEventBg1 from '$lib/assets/landing/prev-event-bg-1.png';
+	import prevEventBg2 from '$lib/assets/landing/prev-event-bg-2.png';
+	import prevEventBg3 from '$lib/assets/landing/prev-event-bg-3.png';
+	import prevEventLogo1 from '$lib/assets/landing/prev-event-logo-1.png';
+	import prevEventPhoto1 from '$lib/assets/landing/prev-event-photo-1.png';
+	import prevEventLogo2 from '$lib/assets/landing/prev-event-logo-2.png';
+	import prevEventPhoto2 from '$lib/assets/landing/prev-event-photo-2.png';
+	import prevEventPhoto3 from '$lib/assets/landing/prev-event-photo-3.png';
+	import campfireLogo from '$lib/assets/landing/campfire-logo.png';
+	import campfirePhoto from '$lib/assets/landing/campfire-photo.png';
+	import scrapyardLogo from '$lib/assets/landing/scrapyard-logo.svg';
 
-    // Sync disableAnimations with localStorage
-    onMount(() => {
-        const stored = localStorage.getItem('disableAnimations');
-        if (stored !== null) {
-            disableAnimations = stored === 'true';
-        }
-        animationsReady = true;
+	// Assets - This Summer
+	import createGlobe from 'cobe';
+	import yaml from 'js-yaml';
+	import eventsRaw from '$lib/events/events.yaml?raw';
+	import type { EventConfig } from '$lib/events/types';
+	import faqRaw from '$lib/data/faq.yaml?raw';
 
-        api.GET('/api/user/auth/me').then(async response => {
-            if (response.data && response.data.hcaId) {
-                if (env.PUBLIC_ENABLE_ONBOARDING === 'true') {
-                    const { data } = await api.GET('/api/user/auth/onboarding-status');
-                    if (data && !data.onboardComplete) {
-                        window.location.href = '/app/onboarding';
-                        return;
-                    }
-                }
-                window.location.href = '/app';
-            }
-        })
-    });
+	// Assets - Photo collage
+	import photo1 from '$lib/assets/landing/photo-1.png';
+	import photo2 from '$lib/assets/landing/photo-2.png';
+	import photo3 from '$lib/assets/landing/photo-3.png';
+	import photo4 from '$lib/assets/landing/photo-4.png';
+	import photo5 from '$lib/assets/landing/photo-5.png';
+	import photo6 from '$lib/assets/landing/photo-6.png';
+	import photo7 from '$lib/assets/landing/photo-7.png';
+	import photo8 from '$lib/assets/landing/photo-8.png';
 
-    $effect(() => {
-        localStorage.setItem('disableAnimations', String(disableAnimations));
-    });
-    let signupEmail = $state('');
-    let signupEmailFocused = $state(false);
+	// Assets - Blurb
+	import blurbPhoto from '$lib/assets/landing/blurb-photo.png';
+	import blurbPhoto2 from '$lib/assets/landing/blurb-photo-2.png';
+	import blurbPhoto3 from '$lib/assets/landing/blurb-photo-3.png';
+	import blurbPhoto4 from '$lib/assets/landing/blurb-photo-4.png';
 
-    async function activateJoinNow(email: string) {
-        showSlideOut = true;
+	let referralCode = $derived(page.url.searchParams.get('ref') ?? undefined);
+	let utmSource = $derived(page.url.searchParams.get('utm_source') ?? undefined);
 
-        if (isAuthed) {
-            setTimeout(async () => {
-                const { data } = await api.GET('/api/user/auth/onboarding-status');
-                if (data && !data.onboardComplete) {
-                    goto('/app/onboarding');
-                } else {
-                    goto('/app');
-                }
-            }, 1200)
-            return;
-        }
+	let signupEmail = $state('');
+	let showInvalidHint = $state(false);
+	let cardSelected = $state(false);
+	let emailFocused = $state(false);
+	let ctaEmail = $state('');
+	let ctaInvalidHint = $state(false);
+	let ctaCardSelected = $state(false);
+	let ctaEmailFocused = $state(false);
+	let activeVideo = $state<string | null>(null);
+	let globeCanvas = $state<HTMLCanvasElement | null>(null);
+	const isValidEmail = $derived(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail));
+	const isValidCtaEmail = $derived(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ctaEmail));
 
-        const response = await api.GET('/api/user/auth/login', {
-            params: {
-                query: {
-                    email,
-                    referralCode,
-                    utm_source: utmSource
-                }
-            }
-         });
-        const authURL = response.data?.url;
+	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
+	const eventEntries = Object.entries(eventsMap);
+	const faqItems = yaml.load(faqRaw) as { question: string; answer: string }[];
+	let openFaqIndex = $state<number | null>(null);
 
-        if (!authURL) {
-            showSlideOut = false;
-            return;
-        }
+	let selectedEventIndex = $state(0);
+	let eventScrollOffset = $state(0);
+	let eventListEl: HTMLDivElement;
+	let targetPhi = $state(0);
+	let targetTheta = $state(0.2);
 
-        setTimeout(() => {
-            window.location = authURL as string & Location;
-        }, 1200)
-    }
+	// Convert lat/lng to cobe phi/theta
+	// To face a marker at [lat, lng], we need phi = -lng in radians
+	// (cobe internally offsets by -PI, so we add PI to compensate)
+	function locationToGlobe(loc: [number, number]): { phi: number; theta: number } {
+		return {
+			phi: -loc[1] * (Math.PI / 180) - 2 * Math.PI / 3,
+			theta: loc[0] * (Math.PI / 180)
+		};
+	}
 
-    function navigateToFaq() {
-        showSlideOut = true;
-        setTimeout(() => {
-            goto('/faq');
-        }, 500);
-    }
+	function updateEventScroll() {
+		if (!eventListEl) return;
+		const cards = eventListEl.querySelectorAll('.event-card') as NodeListOf<HTMLElement>;
+		const card = cards[selectedEventIndex];
+		if (!card) return;
 
-    let logoRect: DOMRect | null = $state(null);
-    let stripesRect: DOMRect | null = $state(null);
+		// Anchor selected card at ~20% from left
+		const containerWidth = eventListEl.parentElement?.clientWidth ?? 0;
+		const anchorX = containerWidth * 0.2;
+		const offset = -(card.offsetLeft - anchorX);
+		eventScrollOffset = Math.min(offset, 0);
+	}
 
-    function captureLogoRect(node: HTMLElement) {
-        logoRect = node.getBoundingClientRect();
-        return { duration: 0 };
-    }
+	let autoRotateTimer: ReturnType<typeof setInterval>;
+	let inactivityTimer: ReturnType<typeof setTimeout>;
+	let autoRotateActive = $state(false);
+	let summerSectionEl: HTMLElement;
+	let timerProgress = $state(0);
+	let timerAnimFrame: number;
+	let timerStart = 0;
+	const AUTO_ROTATE_MS = 10000;
+	const INACTIVITY_MS = 45000;
 
-    function captureStripesRect(node: HTMLElement) {
-        stripesRect = node.getBoundingClientRect();
-        return { duration: 0 };
-    }
+	function startTimerAnimation() {
+		timerStart = Date.now();
+		cancelAnimationFrame(timerAnimFrame);
+		function tick() {
+			if (!autoRotateActive) { timerProgress = 0; return; }
+			timerProgress = (Date.now() - timerStart) / AUTO_ROTATE_MS;
+			if (timerProgress >= 1) { timerProgress = 0; return; }
+			timerAnimFrame = requestAnimationFrame(tick);
+		}
+		tick();
+	}
 
-    function animateLogoIn(node: HTMLElement) {
-        if (!logoRect || disableAnimations) return { duration: 0 };
-        const to = node.getBoundingClientRect();
-        const dx = logoRect.left - to.left;
-        const dy = logoRect.top - to.top;
-        const sx = logoRect.width / to.width;
-        const sy = logoRect.height / to.height;
-        return {
-            duration: 600,
-            easing: quintOut,
-            css: (t: number) => {
-                const u = 1 - t;
-                return `transform: translate(${u * dx}px, ${u * dy}px) scale(${1 + u * (sx - 1)}, ${1 + u * (sy - 1)}); transform-origin: top left;`;
-            }
-        };
-    }
+	function startAutoRotate() {
+		autoRotateActive = true;
+		clearInterval(autoRotateTimer);
+		startTimerAnimation();
+		autoRotateTimer = setInterval(() => {
+			selectEvent((selectedEventIndex + 1) % eventEntries.length, false);
+		}, AUTO_ROTATE_MS);
+	}
 
-    function animateStripesIn(node: HTMLElement) {
-        if (!stripesRect || disableAnimations) return { duration: 0 };
-        const to = node.getBoundingClientRect();
-        const dx = stripesRect.left - to.left;
-        const dy = stripesRect.top - to.top;
-        const sx = stripesRect.width / to.width;
-        const sy = stripesRect.height / to.height;
-        return {
-            duration: 600,
-            easing: quintOut,
-            css: (t: number) => {
-                const u = 1 - t;
-                return `transform: translate(${u * dx}px, ${u * dy}px) scale(${1 + u * (sx - 1)}, ${1 + u * (sy - 1)}); transform-origin: top left;`;
-            }
-        };
-    }
+	function stopAutoRotate() {
+		autoRotateActive = false;
+		clearInterval(autoRotateTimer);
+		cancelAnimationFrame(timerAnimFrame);
+		timerProgress = 0;
+	}
 
-    const transitionDuration = $derived(disableAnimations ? 0 : undefined);
+	function resetInactivityTimer() {
+		clearTimeout(inactivityTimer);
+		inactivityTimer = setTimeout(() => {
+			startAutoRotate();
+		}, INACTIVITY_MS);
+	}
 
-    const nav = createListNav({
-        count: () => 3,
-        onSelect: (index) => {
-            const elements = getFocusableElements(index);
-            if (isAuthed && index === 0) {
-                activateJoinNow('');
-            } else if (index === 1) {
-                navigateToFaq();
-            } else if (elements.length > 0) {
-                selectedElement = 0;
-                focusSelectedElement();
-            }
-        },
-    });
+	function selectEvent(index: number, manual = true) {
+		selectedEventIndex = index;
+		updateEventScroll();
+		const event = eventEntries[index][1];
+		if (event.location) {
+			const { phi, theta } = locationToGlobe(event.location);
+			targetPhi = phi;
+			targetTheta = theta;
+		}
+		if (manual) {
+			stopAutoRotate();
+			resetInactivityTimer();
+		} else {
+			startTimerAnimation();
+		}
+	}
 
-    function handlePageKeydown(ev: KeyboardEvent) {
-        // Pre-activation: set keyboard mode on nav keys, only handle Enter
-        if (!activated) {
-            if (isNavKey(ev.key)) {
-                navState.usingKeyboard = true;
-            }
-            if (ev.key === 'Enter' && !isTransitioning) {
-                pressed = true;
-                setTimeout(() => {
-                    isTransitioning = true;
-                    setTimeout(showDetail, 400);
-                }, 150);
-            }
-            return;
-        }
 
-        // Guards for typing and element-level focus
-        if (isTyping) return;
-        if (selectedElement >= 0) return;
+	function hexToRgb(hex: string): [number, number, number] {
+		const h = hex.replace('#', '');
+		return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255];
+	}
 
-        nav.handleKeydown(ev);
-    }
+	onMount(() => {
+		// Patch WebGL to override cobe's fragment shader for a flat cell-shaded look
+		const origGetContext = globeCanvas!.getContext.bind(globeCanvas!);
+		(globeCanvas as any).getContext = (type: string, attrs?: any) => {
+			const gl = origGetContext(type, attrs);
+			if (!gl || !('shaderSource' in gl)) return gl;
 
-    function showDetail() {
-        transitioning = true;
-        activated = true;
-        pressed = false;
+			const origShaderSource = gl.shaderSource.bind(gl);
+			gl.shaderSource = (shader: WebGLShader, source: string) => {
+				// Replace the globe fragment shader (contains the glow/diffuse logic)
+				if (source.includes('gl_FragColor') && source.includes('uniform vec3 F,w') && source.includes('uniform vec4 n')) {
+					source = `precision highp float;
+uniform vec2 t,v,s;
+uniform vec3 F,w;
+uniform vec4 n;
+uniform float k,x,y;
+uniform sampler2D z;
+float u;
+mat3 A(float a,float b){float c=cos(a),d=cos(b),e=sin(a),f=sin(b);return mat3(d,f*e,-f*c,0,c,e,f,d*-e,d*c);}
+vec3 B(vec3 c,out float G){c=c.xzy;float q=max(2.,floor(log2(2.236068*k*3.141593*(1.-c.z*c.z))*.72021));vec2 g=floor(pow(1.618034,q)/2.236068*vec2(1,1.618034)+.5),d=fract((g+1.)*.618034)*6.283185-3.883222,e=-2.*g,f=vec2(atan(c.y,c.x),c.z-1.),r=floor(vec2(e.y*f.x-d.y*(f.y*k+1.),-e.x*f.x+d.x*(f.y*k+1.))/(d.x*e.y-e.x*d.y));float o=3.141593;vec3 C;for(float h=0.;h<4.;h+=1.){vec2 D=vec2(mod(h,2.),floor(h*.5));float j=dot(g,r+D);if(j>k)continue;float a=j,b=0.;a>=16384.?(a-=16384.,b+=.868872):0.,a>=8192.?(a-=8192.,b+=.934436):0.,a>=4096.?(a-=4096.,b+=.467218):0.,a>=2048.?(a-=2048.,b+=.733609):0.,a>=1024.?(a-=1024.,b+=.866804):0.,a>=512.?(a-=512.,b+=.433402):0.,a>=256.?(a-=256.,b+=.216701):0.,a>=128.?(a-=128.,b+=.108351):0.,a>=64.?(a-=64.,b+=.554175):0.,a>=32.?(a-=32.,b+=.777088):0.,a>=16.?(a-=16.,b+=.888544):0.,a>=8.?(a-=8.,b+=.944272):0.,a>=4.?(a-=4.,b+=.472136):0.,a>=2.?(a-=2.,b+=.236068):0.,a>=1.?(a-=1.,b+=.618034):0.;float l=fract(b)*6.283185,i=1.-2.*j*u,m=sqrt(1.-i*i);vec3 p=vec3(cos(l)*m,sin(l)*m,i);float E=length(c-p);if(E<o)o=E,C=p;}G=o;return C.xzy;}
+void main(){
+  u=1./k;
+  vec2 c=1./t,b=(gl_FragCoord.xy*c*2.-1.)/x-v*vec2(1,-1)*c;
+  b.x*=t.x*c.y;
+  float a=dot(b,b);
+  float edge=smoothstep(.635,.64,a);
+  if(a>.65){discard;}
+  float g;
+  vec3 h=normalize(vec3(b,sqrt(max(.64-a,0.001))));
+  mat3 o=A(s.y,s.x);
+  vec3 d=B(h*o,g);
+  float j=asin(d.y),e=acos(-d.x/cos(j));
+  e=d.z<0.?-e:e;
+  float p=max(texture2D(z,vec2(e*.5/3.141593,-(j/3.141593+.5))).x,y);
+  float q=p*smoothstep(8e-3,0.,g)*n.x;
+  // Flat beige base, map dots as slightly darker beige
+  vec3 col=F*(1.0 - q*0.15);
+  // Black outline at globe edge — flush with the edge
+  float outline=smoothstep(.618,.619,a);
+  col=mix(col,vec3(0.0),outline);
+  gl_FragColor=vec4(col,(1.0-edge));
+}`;
+				}
+				// Tighten marker culling — less peeking around globe edge
+				if (source.includes('attribute vec3 p,w') && source.includes('m=n,g=w,h=x')) {
+					source = source.replace('length(l.xy)<.8', 'length(l.xy)<.85');
+				}
+				// Replace marker fragment shader to add black outline per-marker
+				if (source.includes('gl_FragColor') && source.includes('varying vec2 m') && source.includes('varying vec3 g') && source.includes('uniform vec3 v') && !source.includes('uniform vec2 t')) {
+					source = `precision highp float;
+varying vec2 m;
+varying vec3 g;
+varying float h;
+uniform vec3 v;
+void main(){
+  float dist=length(m);
+  if(dist>.25)discard;
+  vec3 a=h>.5?g:v;
+  float outlineStart=h>.5?.19:.22;
+  if(dist>outlineStart)a=vec3(0.0);
+  gl_FragColor=vec4(a,1.0);
+}`;
+				}
+				return origShaderSource(shader, source);
+			};
+			return gl;
+		};
 
-        setTimeout(() => {
-            transitioning = false;
-        }, 600);
-    }
+		// Initialize globe markers
+		function buildMarkers() {
+			return eventEntries
+				.filter(([, e]) => e.location)
+				.map(([, e], i) => ({
+					location: e.location!,
+					size: i === selectedEventIndex ? 0.1 : 0.04,
+					color: i === selectedEventIndex ? hexToRgb(e.colors.primary) : [0.5, 0.5, 0.5] as [number, number, number]
+				}));
+		}
 
-    function getFocusableElements(cardIndex: number): HTMLElement[] {
-        const card = cardRefs[cardIndex];
-        if (!card) return [];
-        return Array.from(card.querySelectorAll('input, button, [tabindex]:not([tabindex="-1"])'));
-    }
+		// Set initial globe position to first event
+		const firstEvent = eventEntries[0][1];
+		if (firstEvent.location) {
+			const { phi, theta } = locationToGlobe(firstEvent.location);
+			targetPhi = phi;
+			targetTheta = theta;
+		}
 
-    function focusSelectedElement() {
-        const elements = getFocusableElements(nav.selectedIndex);
-        if (selectedElement >= 0 && selectedElement < elements.length) {
-            elements[selectedElement]?.focus();
-        } else {
-            (document.activeElement as HTMLElement)?.blur();
-        }
-    }
+		let currentPhi = targetPhi;
+		let currentTheta = targetTheta;
 
-    function handleElementFocus(ev: FocusEvent) {
-        const target = ev.target as HTMLElement;
-        const elements = getFocusableElements(nav.selectedIndex);
-        const index = elements.indexOf(target);
-        if (index >= 0) {
-            selectedElement = index;
-        }
-        if (target.tagName === 'INPUT') {
-            isTyping = true;
-        }
-    }
+		const globeInstance = createGlobe(globeCanvas!, {
+			devicePixelRatio: 2,
+			width: 1000,
+			height: 1000,
+			phi: currentPhi,
+			theta: currentTheta,
+			dark: 0,
+			diffuse: 0,
+			scale: 1,
+			offset: [0, 0],
+			mapSamples: 40000,
+			mapBrightness: 6,
+			mapBaseBrightness: 0,
+			baseColor: [0.95, 0.91, 0.85],
+			markerColor: [1, 0.5, 0],
+			glowColor: [0, 0, 0],
+			opacity: 1,
+			markers: buildMarkers(),
+			markerElevation: 0.01,
+		});
 
-    function handleElementBlur(ev: FocusEvent) {
-        isTyping = false;
-        const container = cardRefs[nav.selectedIndex];
-        const relatedTarget = ev.relatedTarget as HTMLElement;
-        if (!container?.contains(relatedTarget)) {
-            selectedElement = -1;
-        }
-    }
+		let animFrame: number;
+		function animate() {
+			// Lerp with shortest angular path for phi
+			let dPhi = targetPhi - currentPhi;
+			// Normalize to [-PI, PI] to always take the short way around
+			dPhi = ((dPhi + Math.PI) % (2 * Math.PI)) - Math.PI;
+			if (dPhi < -Math.PI) dPhi += 2 * Math.PI;
+			currentPhi += dPhi * 0.05;
+			currentTheta += (targetTheta - currentTheta) * 0.05;
+			globeInstance.update({ phi: currentPhi, theta: currentTheta, markers: buildMarkers() });
+			animFrame = requestAnimationFrame(animate);
+		}
+		animate();
 
-    function handleElementKeydown(ev: KeyboardEvent) {
-        const elements = getFocusableElements(nav.selectedIndex);
-        const isInput = (ev.target as HTMLElement).tagName === 'INPUT';
+		// Start auto-rotate when section comes into view
+		const sectionObserver = new IntersectionObserver((entries) => {
+			if (entries[0].isIntersecting) {
+				startAutoRotate();
+				sectionObserver.disconnect();
+			}
+		}, { threshold: 0.3 });
+		if (summerSectionEl) sectionObserver.observe(summerSectionEl);
 
-        if (isInput && ev.key !== 'Enter' && ev.key !== 'Tab' && ev.key !== 'Escape') {
-            return; // Allow typing in inputs
-        }
+		// Prevent browser focus restore from auto-selecting the card
+		setTimeout(() => {
+			if (!signupEmail) {
+				(document.activeElement as HTMLElement)?.blur();
+				cardSelected = false;
+				emailFocused = false;
+			}
+			updateEventScroll();
+		}, 50);
 
-        if (ev.key === 'Enter') {
-            if (isInput && selectedElement < elements.length - 1) {
-                ev.preventDefault();
-                selectedElement++;
-                focusSelectedElement();
-            } else if (!isInput) {
-                btnPressed = true;
-                setTimeout(() => { btnPressed = false; }, 150);
-            }
-            return;
-        }
+		return () => {
+			cancelAnimationFrame(animFrame);
+			cancelAnimationFrame(timerAnimFrame);
+			clearInterval(autoRotateTimer);
+			clearTimeout(inactivityTimer);
+			sectionObserver.disconnect();
+			globeInstance.destroy();
+		};
 
-        if (ev.key === 'Tab') {
-            if (selectedElement < elements.length - 1) {
-                ev.preventDefault();
-                selectedElement++;
-                focusSelectedElement();
-            } else if (!ev.shiftKey) {
-                ev.preventDefault();
-                selectedElement = -1;
-                nav.selectedIndex = clampIndex(nav.selectedIndex + 1, 2);
-                (document.activeElement as HTMLElement)?.blur();
-            }
-            return;
-        }
+	});
 
-        if ((ev.key === 'Tab' && ev.shiftKey) || ev.key === 'Escape') {
-            ev.preventDefault();
-            if (selectedElement > 0) {
-                selectedElement--;
-                focusSelectedElement();
-            } else {
-                selectedElement = -1;
-                (document.activeElement as HTMLElement)?.blur();
-            }
-            return;
-        }
+	async function handleSignup(email: string) {
+		if (!email) return;
 
-        const dir = parseNavKey(ev.key);
-        if (!dir) return;
-        ev.preventDefault();
+		const response = await api.GET('/api/user/auth/login', {
+			params: {
+				query: {
+					email,
+					referralCode,
+					utm_source: utmSource
+				}
+			}
+		});
+		const authURL = response.data?.url;
+		if (authURL) {
+			window.location = authURL as string & Location;
+		}
+	}
 
-        if (dir === 'up') {
-            if (selectedElement > 0) {
-                selectedElement--;
-                focusSelectedElement();
-            } else {
-                selectedElement = -1;
-                (document.activeElement as HTMLElement)?.blur();
-            }
-        } else if (dir === 'down') {
-            if (selectedElement < elements.length - 1) {
-                selectedElement++;
-                focusSelectedElement();
-            }
-        } else if (dir === 'left') {
-            selectedElement = -1;
-            nav.selectedIndex = clampIndex(nav.selectedIndex - 1, 2);
-            (document.activeElement as HTMLElement)?.blur();
-        } else if (dir === 'right') {
-            selectedElement = -1;
-            nav.selectedIndex = clampIndex(nav.selectedIndex + 1, 2);
-            (document.activeElement as HTMLElement)?.blur();
-        }
-    }
+	function handleEmailKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			if (isValidEmail) {
+				showInvalidHint = false;
+				handleSignup(signupEmail);
+			} else {
+				showInvalidHint = true;
+			}
+		}
+	}
 
+	let cardInView = $state(false);
+	let ctaCardInView = $state(false);
+
+	function scrollCardIntoView() {
+		const container = document.querySelector('.landing-page') as HTMLElement;
+		if (!container) return;
+		container.scrollTo({ top: 0, behavior: 'smooth' });
+	}
+
+	function selectCard() {
+		cardSelected = true;
+		document.getElementById('signup-email')?.focus();
+		scrollCardIntoView();
+	}
+
+	function handleCtaEmailKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			if (isValidCtaEmail) {
+				ctaInvalidHint = false;
+				handleSignup(ctaEmail);
+			} else {
+				ctaInvalidHint = true;
+			}
+		}
+	}
+
+	function selectCtaCard() {
+		ctaCardSelected = true;
+		document.getElementById('cta-email')?.focus({ preventScroll: true });
+	}
+
+	function handleGlobalKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !emailFocused && !ctaEmailFocused) {
+			if (ctaCardInView) {
+				e.preventDefault();
+				selectCtaCard();
+			} else if (cardInView) {
+				e.preventDefault();
+				selectCard();
+			}
+		}
+	}
+
+	function observeCard(node: HTMLElement) {
+		const observer = new IntersectionObserver(
+			([entry]) => { cardInView = entry.isIntersecting; },
+			{ threshold: 0.5 }
+		);
+		observer.observe(node);
+		return { destroy: () => observer.disconnect() };
+	}
+
+	function observeCtaCard(node: HTMLElement) {
+		const observer = new IntersectionObserver(
+			([entry]) => { ctaCardInView = entry.isIntersecting; },
+			{ threshold: 0.5 }
+		);
+		observer.observe(node);
+		return { destroy: () => observer.disconnect() };
+	}
 </script>
 
-<svelte:window onkeydown={handlePageKeydown} bind:innerWidth={windowWidth} />
+<svelte:window onkeydown={handleGlobalKeydown} />
 
-{#if !animationsReady}
-    <div class="fixed inset-0 bg-black z-[9999]"></div>
-{:else if !disableAnimations}
-    <CircleIn />
-    {#if showSlideOut}
-        <CircleOut />
-    {/if}
-{/if}
+<svelte:head>
+	<title>Horizons | Hack Club</title>
+	<meta name="description" content="High school flagship hackathons across the world, brought to you by Hack Club." />
+</svelte:head>
 
-<BG class="flex flex-col overflow-hidden" {disableAnimations}>
-    {#if !activated}
-        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-        <div class="flex-1 flex flex-col justify-center absolute inset-0 cursor-pointer" onclick={() => {
-            if (!isTransitioning) {
-                navState.usingKeyboard = false;
-                pressed = true;
-                setTimeout(() => {
-                    isTransitioning = true;
-                    setTimeout(() => {
-                        showDetail();
-                    }, 400);
-                }, 150);
-            }
-        }}>
-            <div class="flex flex-col items-center justify-center px-4 sm:px-16 pb-4">
-                <div out:captureLogoRect>
-                    <img src={Logo} alt="Hack Club Horizon" class="w-full max-w-7xl" />
-                </div>
-            </div>
-            {#if !isTransitioning}
-                <!-- <p class="text-black font-cook text-center text-4xl tracking-widest mt-2 mb-4" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}>HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD</p> -->
-                <p class="text-black font-cook text-center text-lg sm:text-3xl tracking-wide sm:tracking-widest mt-2 mb-6" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}><TextWave text="HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD" duration={2} disabled={disableAnimations} /></p>
-            {/if}
+<BG class="landing-page overflow-x-hidden overflow-y-auto overscroll-none font-['Bricolage_Grotesque',sans-serif]">
+	<!-- ===== BG ===== -->
+	<div class="absolute top-0 left-0 w-full h-[400px] overflow-hidden pointer-events-none z-0">
+		<!-- Diagonal stripes -->
+		<div class="absolute top-0 -left-[160px] w-[calc(100%+400px)] flex items-center justify-center">
+			<div class="flex flex-col gap-[10px] w-[1830px] h-[83px] rotate-[-9.8deg]">
+				<div class="flex-1 w-full min-h-0 bg-[#ffa936]"></div>
+				<div class="flex-1 w-full min-h-0 bg-[#f86d95]"></div>
+				<div class="flex-1 w-full min-h-0 bg-[#46467c]"></div>
+			</div>
+		</div>
 
-            <div out:captureStripesRect>
-                <Stripes outro={isTransitioning} {disableAnimations} />
-            </div>
+		<!-- Orpheus flag -->
+		<img src={flagOrpheus} alt="Hack Club" class="absolute -top-1 left-[59px] w-[135px] h-auto z-5 sm:left-[59px] max-sm:left-[24px] max-sm:w-[80px] max-sm:h-auto" />
+	</div>
 
-            {#if !isTransitioning}
-                <div class="flex flex-col items-center justify-center px-4 sm:px-16 mt-8" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}>
-                    <BobaButton text={isMobile ? "> TAP  TO  START" : "> CLICK  OR  PRESS  ENTER"} fontSize={isMobile ? 22 : 32} fallbackWidth={isMobile ? 186 : 360} {pressed} className="select-none" wave {disableAnimations} />
-                </div>
-            {/if}
-        </div>
+	<!-- ===== HERO SECTION ===== -->
+	<section class="relative z-1 flex flex-col gap-[26px] pt-[70px] px-[59px] max-w-[1020px] max-lg:px-6 max-lg:pt-[80px] h-[70vh] min-h-[600px]">
+		<img src={heroLogo} alt="Horizons" class="w-[560px] h-auto max-lg:w-full max-lg:max-w-[560px]" />
 
-        <label class="disable-anim-checkbox">
-            <input type="checkbox" bind:checked={disableAnimations} />
-            Disable animations
-        </label>
-    {/if}
-    {#if activated}
-        <div class="flex flex-col h-full items-center gap-4 sm:gap-8 pb-8">
-            <div class="flex flex-col w-full">
-                <div class="flex gap-2 sm:gap-4 items-center sm:items-end px-4 sm:px-10 pt-6 sm:pt-10 pb-3">
-                    <div in:animateLogoIn>
-                        <img src={Logo} alt="Hack Club Horizon" class="h-14 sm:h-24" />
-                    </div>
-                    <!-- <p in:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 200 }} class="tagline"><TextWave text="HACK CLUB'S " disabled={disableAnimations} /><span class="underline"><TextWave text="BIGGEST" disabled={disableAnimations} offset={12} /></span><TextWave text=" EVENT" disabled={disableAnimations} offset={19} /></p> -->
-                    <p in:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 200 }} class="tagline hidden sm:block"><TextWave text="HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD" disabled={disableAnimations} /></p>
-                </div>
-                <div in:animateStripesIn>
-                    <Stripes small {disableAnimations} />
-                </div>
-            </div>
+		<div class="font-cook">
+			<p class="hero-subtitle text-[32px] text-black m-0 leading-[1.2] max-sm:text-[20px] whitespace-nowrap">We're running 7 hackathons across the world.</p>
+			<p class="hero-title text-[48px] text-black m-0 leading-[1.2] max-sm:text-[32px]">And you're invited.</p>
+		</div>
 
-            <div class="flex flex-col items-center gap-4 sm:gap-7 w-full px-4 sm:px-10">                
-                <div class="w-full flex justify-center" in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 500 }} bind:this={cardRefs[0]} onmouseenter={() => { if (!signupEmailFocused) nav.select(0); }}>
-                    {#if isAuthed}
-                        <MenuItem
-                            title="SIGN BACK IN"
-                            subtitle="GET BACK TO WORKING ON YOUR PROJECTS!"
-                            chevron
-                            selected={nav.selectedIndex === 0}
-                            preserveIcon
-                            {disableAnimations}
-                            onclick={() => activateJoinNow('')}
-                        >
-                            {#snippet icon()}
-                                <img src={horizonIcon} alt="Watch" />
-                            {/snippet}
-                        </MenuItem>
-                    {:else}
-                        <MenuItem
-                            title="JOIN NOW"
-                            subtitle="START WORKING ON YOUR PROJECTS!"
-                            chevron
-                            selected={nav.selectedIndex === 0}
-                            preserveIcon
-                            {disableAnimations}
-                            showSignup={!isMobile}
-                            bind:email={signupEmail}
-                            bind:emailFocused={signupEmailFocused}
-                            onSignup={activateJoinNow}
-                            signupHint={navState.usingKeyboard ? "Press enter to enter your email" : "Click to enter your email"}
-                            onclick={isMobile ? () => activateJoinNow('') : undefined}
-                        >
-                            {#snippet icon()}
-                                <img src={horizonIcon} alt="Watch" />
-                            {/snippet}
-                        </MenuItem>
-                    {/if}
-                </div>
-                <div class="w-full flex justify-center" in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 600 }} bind:this={cardRefs[1]} onmouseenter={() => { if (!signupEmailFocused) nav.select(1); }}>
-                    <MenuItem
-                        title="WHAT'S HORIZONS?"
-                        subtitle="LEARN MORE ABOUT THE EVENT!"
-                        selected={nav.selectedIndex === 1}
-                        preserveIcon
-                        {disableAnimations}
-                        onclick={() => navigateToFaq()}
-                    >
-                        {#snippet icon()}
-                            <img src={faqIcon} alt="Watch" />
-                        {/snippet}
-                    </MenuItem>
-                </div>
-                <!-- <div class="w-full flex justify-center" in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 700 }} bind:this={cardRefs[2]} onmouseenter={() => { if (!signupEmailFocused) nav.select(2); }}>
-                    <MenuItem
-                        title="WATCH THE VIDEO"
-                        subtitle="SOMETHING SOMETHING SOMETHING IDK"
-                        selected={nav.selectedIndex === 2}
-                        preserveIcon
-                        {disableAnimations}
-                    >
-                        {#snippet icon()}
-                            <img src={playIcon} alt="Watch" />
-                        {/snippet}
-                    </MenuItem>
-                </div> -->
-            </div>
+		<!-- Signup Card -->
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div
+			use:observeCard
+			class="signup-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-[904px] max-w-full relative overflow-hidden cursor-pointer bg-[#f3e8d8] max-lg:w-full origin-left transition-all duration-(--juice-duration) ease-(--juice-easing) {cardSelected ? 'scale-[1.05]' : 'scale-100'}"
+			onmousedown={(e) => { e.preventDefault(); selectCard(); }}
+		>
+			<!-- Orange fill -->
+			<div class="absolute inset-0 bg-[#ffa936] transition-opacity duration-(--selected-duration) {cardSelected ? 'opacity-100' : 'opacity-0'}"></div>
+			<!-- Chevron arrows -->
+			<div class="absolute right-[10%] top-[45%] -translate-y-1/2 scale-[2.1] pointer-events-none transition-opacity duration-(--selected-duration) delay-100 {cardSelected ? 'opacity-100' : 'opacity-0'}">
+				<img src={ChevronSvg} alt="" class="h-[180px] w-auto" />
+			</div>
+			<div class="relative flex flex-col gap-4 justify-center py-5 px-[30px] z-1">
+				<p class="font-cook text-[32px] text-black m-0 leading-none">SIGN UP NOW</p>
+				<div class="flex gap-3 items-center">
+					<input
+						id="signup-email"
+						type="email"
+						class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-['Bricolage_Grotesque',sans-serif] text-base font-semibold text-black/50 outline-none w-[280px]"
+						placeholder="orpheus@hackclub.com"
+						bind:value={signupEmail}
+						onkeydown={(e) => handleEmailKeydown(e)}
+						oninput={() => { if (showInvalidHint) showInvalidHint = false; }}
+						onclick={(e) => { e.stopPropagation(); cardSelected = true; }}
+						onfocus={() => { cardSelected = true; emailFocused = true; }}
+						onblur={() => { emailFocused = false; if (!signupEmail) cardSelected = false; }}
+					/>
+					<button
+						class="signup-btn border-2 border-black rounded-lg py-2 px-4 font-['Bricolage_Grotesque',sans-serif] text-base font-semibold text-black cursor-pointer transition-colors duration-150 hover:bg-[#e89a45]"
+						class:valid={isValidEmail}
+						onclick={(e) => {
+							e.stopPropagation();
+							if (isValidEmail) handleSignup(signupEmail);
+							else showInvalidHint = true;
+						}}
+					>SIGN UP</button>
+				</div>
+				{#if showInvalidHint}
+					<p class="font-['Bricolage_Grotesque',sans-serif] text-sm m-0 text-[#c00]">Please enter a valid email</p>
+				{/if}
+				<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {emailFocused ? 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden' : 'opacity-100 max-h-10'}">
+					<InputPrompt type="Enter" />
+					<p class="font-bold text-sm text-black leading-6">OR</p>
+					<InputPrompt type="click" />
+					<p class="font-bold text-sm text-black leading-6">TO FOCUS</p>
+				</div>
+				<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {emailFocused && isValidEmail ? 'opacity-100 max-h-10' : 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden'}">
+					<InputPrompt type="Enter" />
+					<p class="font-bold text-sm text-black leading-6">TO SIGN UP</p>
+				</div>
+			</div>
+		</div>
 
-            <div in:fly={{ y: disableAnimations ? 0 : 20, duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 800 }} class="hidden sm:flex justify-center absolute bottom-4 left-0 right-0">
-                <BobaText text="USE  WASD  OR  YOUR  MOUSE" fontSize={30} wave {disableAnimations} />
-            </div>
+		<p class="font-['Bricolage_Grotesque',sans-serif] text-2xl font-medium text-[#666]">Scroll to read more...</p>
+	</section>
 
-            <button 
-                in:fly={{ y: disableAnimations ? 0 : 20, duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 900 }}
-                class="absolute bottom-0 left-4 bg-transparent border-none cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-200"
-                onclick={() => { activated = false; isTransitioning = false; }}
-            >
-                <BobaText text="< BACK" fontSize={24} {disableAnimations} />
-            </button>
-        </div>
-    {/if}
+	<!-- ===== BLURB SECTION ===== -->
+	<section class="relative z-0 flex flex-col items-center -mt-5">
+		<div class="divider-top w-full aspect-[1444/120] overflow-hidden relative">
+			<img src={divider} alt="" />
+		</div>
+
+		<div class="bg-black w-full relative py-[51px] px-[81px] pb-[60px] min-h-[620px] overflow-hidden max-sm:py-[30px] max-sm:px-6">
+			<div class="text-white text-2xl leading-relaxed max-w-[700px] max-sm:text-lg [&_p]:m-0 [&_.bold]:font-bold">
+				<p>This summer, we're running something we've never done before.</p>
+				<p class="bold">&ZeroWidthSpace;</p>
+				<p class="bold">7 hackathons. Ran by teenagers across the globe. For teenagers everywhere.</p>
+				<p class="bold">&ZeroWidthSpace;</p>
+				<p>Fly out to San Francisco, Sydney, Toronto, Berlin, Cairo, or Sao Paulo. For Free.</p>
+				<p>Go on an adventure of a lifetime.</p>
+			</div>
+
+			<!-- How steps -->
+			<div class="relative w-[832px] max-w-full h-[356px] mt-10 -ml-[81px]">
+				<div class="absolute inset-0 overflow-hidden pointer-events-none">
+					<img src={blurbPhoto} alt="" class="absolute max-w-none" style="width: 218.8%; height: 467.01%; left: -70.3%; top: -70.94%;" />
+				</div>
+				<div class="relative z-1 flex flex-col gap-4 justify-center h-full pl-[81px] pr-[80px] max-sm:px-6">
+					<p class="text-2xl font-semibold text-black m-0 max-sm:text-lg">How?</p>
+					<div class="flex gap-2 items-center">
+						<div class="border-2 border-black rounded-full w-[30px] h-[30px] flex items-center justify-center text-xl text-black shrink-0">1</div>
+						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:text-lg">Sign up for Horizons</p>
+					</div>
+					<div class="flex gap-2 items-start">
+						<div class="border-2 border-black rounded-full w-[30px] h-[30px] flex items-center justify-center text-xl text-black shrink-0">2</div>
+						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:text-lg">Spend 30-35 hours hacking & shipping projects<br /><span class="text-black/60">(that's about a week!)</span></p>
+					</div>
+					<div class="flex gap-2 items-start">
+						<div class="border-2 border-black rounded-full w-[30px] h-[30px] flex items-center justify-center text-xl text-black shrink-0">3</div>
+						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:text-lg">Earn your ticket to a hackathon of your choosing</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Side photos -->
+			<div class="absolute right-[40px] top-[30px] w-[400px] h-full max-lg:hidden">
+				<div class="absolute top-0 right-0 w-[305px] rotate-[6.55deg]">
+					<img src={blurbPhoto2} alt="" class="w-full h-auto block" />
+				</div>
+				<div class="absolute top-[200px] -right-[30px] w-[305px] rotate-[-5.23deg]">
+					<img src={blurbPhoto3} alt="" class="w-full h-auto block" />
+				</div>
+				<div class="absolute top-[400px] right-[10px] w-[305px] rotate-[4.2deg]">
+					<img src={blurbPhoto4} alt="" class="w-full h-auto block" />
+				</div>
+			</div>
+		</div>
+
+		<div class="divider-bottom w-full aspect-[1444/120] overflow-hidden relative rotate-180">
+			<img src={divider} alt="" />
+		</div>
+	</section>
+
+	<!-- ===== PHOTO COLLAGE ===== -->
+	<section class="relative z-1 h-[798px] overflow-hidden max-lg:h-[500px]">
+		<div class="absolute w-[14%]" style="left: 16%; top: 0; transform: rotate(-3.38deg);"><img src={photo1} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: -10%; top: -8%; transform: rotate(7.38deg); width: 27%;"><img src={photo2} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: -5%; top: 60%; transform: rotate(-6.94deg); width: 30%;"><img src={photo3} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 59%; top: -10%; transform: rotate(-4.55deg); width: 22%;"><img src={photo4} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 79%; top: -6%; transform: rotate(5.71deg); width: 24%;"><img src={photo5} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 81%; top: 71%; transform: rotate(-5.71deg); width: 20%;"><img src={photo6} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 88%; top: 55%; transform: rotate(3.05deg); width: 15%;"><img src={photo7} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 24%; top: 77%; transform: rotate(6.17deg); width: 16%;"><img src={photo8} alt="" class="w-full h-auto block" /></div>
+	</section>
+
+	<!-- ===== PREVIOUS EVENTS SECTION ===== -->
+	<section class="relative z-1 p-[60px] max-sm:p-6 max-sm:pt-10">
+		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-2xl">Hackathons we've ran before...</h2>
+		<div class="flex gap-8 items-center justify-center flex-wrap">
+			<!-- Shipwrecked -->
+			<a href="https://shipwrecked.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center" style="background-image: url({prevEventBg1})">
+				<img src={prevEventLogo1} alt="Shipwrecked" class="relative z-1 object-cover w-[139px] h-[88px]" />
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = 'uXWMr0gdLJA'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = 'uXWMr0gdLJA'; } }}>
+					<img src="https://img.youtube.com/vi/uXWMr0gdLJA/maxresdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover/vid:scale-110" />
+					<div class="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-200 opacity-70 group-hover/vid:opacity-100">
+						<svg class="w-12 h-12 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+					</div>
+				</div>
+				<p class="relative z-1 text-base font-semibold text-black text-center m-0">A hackathon on an island in the Boston Harbor!</p>
+			</a>
+
+			<!-- Apocalypse -->
+			<a href="https://apocalypse.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center" style="background-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.6)), url({prevEventBg2})">
+				<img src={prevEventLogo2} alt="Apocalypse" class="relative z-1 w-full object-cover" style="aspect-ratio: 3240/1080;" />
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = 'QvCoISXfcE8'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = 'QvCoISXfcE8'; } }}>
+					<img src="https://img.youtube.com/vi/QvCoISXfcE8/maxresdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover/vid:scale-110" />
+					<div class="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-200 opacity-70 group-hover/vid:opacity-100">
+						<svg class="w-12 h-12 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+					</div>
+				</div>
+				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">Canada's largest high school hackathon!</p>
+			</a>
+
+			<!-- Scrapyard -->
+			<a href="https://scrapyard.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center" style="background-image: url({prevEventBg3})">
+				<img src={scrapyardLogo} alt="Scrapyard" class="relative z-1 w-[119px] h-[57px]" />
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = '8iM1W8kXrQA'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = '8iM1W8kXrQA'; } }}>
+					<img src="https://img.youtube.com/vi/8iM1W8kXrQA/maxresdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover/vid:scale-110" />
+					<div class="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-200 opacity-70 group-hover/vid:opacity-100">
+						<svg class="w-12 h-12 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+					</div>
+				</div>
+				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">A hackathon about building the stupidest projects ever</p>
+			</a>
+
+			<!-- Campfire -->
+			<a href="https://flagship.campfire.hackclub.com" target="_blank" rel="noopener noreferrer" class="bg-[#160124] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105">
+				<div class="relative z-1 w-[176px] h-[39px] overflow-hidden px-[5px]">
+					<div class="w-full aspect-[1233/180] relative overflow-hidden">
+						<img src={campfireLogo} alt="Campfire Flagship" class="absolute max-w-none" style="height: 181.11%; left: -4.46%; top: -11.11%; width: 109.81%;" />
+					</div>
+				</div>
+				<div class="relative z-1 w-full aspect-video overflow-hidden rounded-lg">
+					<img src={campfirePhoto} alt="" class="absolute inset-0 w-full h-full object-cover" />
+				</div>
+				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">A hackathon with a bunch of youtubers, including Michael Reeves and William Osman</p>
+			</a>
+		</div>
+	</section>
+
+	<!-- ===== THIS SUMMER SECTION ===== -->
+	<section bind:this={summerSectionEl} class="relative z-0" style="--divider-url: url('{divider}')">
+		<!-- Event Carousel -->
+		<div class="w-full relative overflow-hidden h-[750px] transition-colors duration-(--selected-duration) ease-out" style="background-color: {eventEntries[selectedEventIndex][1].eventCard.bgColor}">
+			<!-- Background image -->
+			{#if eventEntries[selectedEventIndex][1].eventCard.bgImage}
+				<img src={eventEntries[selectedEventIndex][1].eventCard.bgImage} alt="" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-(--selected-duration) ease-out" />
+			{/if}
+			{#if eventEntries[selectedEventIndex][1].eventCard.gradient}
+				<div class="absolute inset-0 transition-opacity duration-(--selected-duration) ease-out" style="background: {eventEntries[selectedEventIndex][1].eventCard.gradient}"></div>
+			{/if}
+
+			<!-- Divider masks -->
+			<div class="summer-divider-mask absolute top-0 left-0 w-full aspect-[1444/120] z-20" style="background-color: #f3e8d8;"></div>
+			<div class="summer-divider-mask absolute bottom-0 left-0 w-full aspect-[1444/120] z-20 rotate-180" style="background-color: #f3e8d8;"></div>
+
+			<div class="relative z-1 flex flex-col gap-8 h-full pt-[100px] pb-[100px] max-sm:pt-20 max-sm:pb-20 px-[60px] max-sm:px-8">
+				<h2 class="font-cook text-[32px] text-black m-0 whitespace-nowrap" style="-webkit-text-stroke: 8px #f3e8d8; paint-order: stroke fill;">This summer, we're running...</h2>
+
+				<div class="flex-1 min-h-0 overflow-visible relative">
+					<div
+						class="flex gap-6 items-center h-full"
+						bind:this={eventListEl}
+						style="transform: translateX({eventScrollOffset}px); transition: transform 0.4s ease;"
+					>
+						{#each eventEntries as [key, event], i}
+							{@const selected = i === selectedEventIndex}
+							<button
+								class="event-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative shrink-0 cursor-pointer bg-cover bg-center {selected ? 'opacity-100' : 'opacity-80 hover:opacity-100 hover:scale-(--juice-scale)'}"
+								style="width: {selected ? '325px' : '262px'}; height: {selected ? '435px' : '351px'}; transition: all var(--juice-duration) var(--juice-easing); background-color: {event.eventCard.bgColor};{event.eventCard.bgImage ? ` background-image: ${event.eventCard.gradient ? event.eventCard.gradient + ', ' : ''}url(${event.eventCard.bgImage});` : ''}"
+								onclick={() => selectEvent(i)}
+							>
+								<!-- Gradient overlay -->
+								<div class="absolute inset-0 rounded-[16px] bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-(--selected-duration) ease-out {selected ? 'opacity-100' : 'opacity-0'}"></div>
+
+								<!-- Logo — absolutely positioned, animates between center and top -->
+								<img
+									src={event.logo}
+									alt={event.name}
+									class="absolute z-1 max-w-[80%] h-auto object-contain transition-all duration-(--selected-duration) ease-out"
+									style="left: 50%; top: {selected ? '36px' : '50%'}; transform: translate(-50%, {selected ? '0' : '-50%'}) scale({selected ? '1' : '0.9'}); max-height: {selected ? '120px' : '96px'}; filter: {selected ? 'drop-shadow(0px 0px 40px rgba(0,0,0,0.6))' : 'none'};"
+								/>
+
+								<!-- Tagline — fades in above dates when selected -->
+								<div
+									class="absolute left-9 right-9 z-1 flex flex-col items-center gap-1 transition-all duration-(--selected-duration) ease-out"
+									style="bottom: {selected ? '60px' : '36px'}; opacity: {selected ? 1 : 0}; transform: translateY({selected ? '0' : '16px'});"
+								>
+									<p class="text-2xl text-center text-white m-0">{event.landingBlurb}</p>
+								</div>
+
+								<!-- Dates — always visible at bottom -->
+								{#if event.dates}
+									<div
+										class="absolute left-9 right-9 z-1 flex justify-center transition-all duration-(--selected-duration) ease-out"
+										style="bottom: {selected ? '36px' : '16px'};"
+									>
+										<p class="font-cook text-base text-center text-white/70 m-0">{event.dates}</p>
+									</div>
+								{/if}
+
+								<!-- Auto-rotate timer indicator -->
+								{#if selected && autoRotateActive}
+									<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-white/5 rounded-b-2xl overflow-hidden z-10">
+										<div class="h-full bg-white/15" style="width: {timerProgress * 100}%;"></div>
+									</div>
+								{/if}
+							</button>
+						{/each}
+					</div>
+				</div>
+
+			</div>
+		</div>
+
+		<!-- 3D Globe (outside carousel/masks) -->
+		<div class="max-lg:hidden absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-30 pointer-events-none">
+			<canvas bind:this={globeCanvas} width="1000" height="1000" style="width: 900px; height: 900px;"></canvas>
+		</div>
+	</section>
+
+	<!-- ===== FAQ SECTION ===== -->
+	<section class="relative z-1 p-[60px] max-sm:p-6 max-sm:pt-10">
+		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-2xl">FAQ</h2>
+		<div class="flex flex-col gap-5 w-full">
+			{#each faqItems as item, i}
+				{@const isOpen = openFaqIndex === i}
+				<button
+					class="relative bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] p-6 text-left cursor-pointer overflow-hidden transition-all duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) w-full"
+					onclick={() => openFaqIndex = openFaqIndex === i ? null : i}
+				>
+					<div class="flex items-center justify-between gap-4">
+						<p class="font-cook text-xl text-black m-0">{item.question}</p>
+						<span
+							class="faq-chevron text-black text-xl shrink-0 inline-block"
+							class:faq-chevron-open={isOpen}
+						>&#9660;</span>
+					</div>
+					<div
+						class="faq-answer grid"
+						class:faq-answer-open={isOpen}
+						style="--faq-delay: {i * 0.03}s"
+					>
+						<div class="overflow-hidden">
+							<p class="text-base text-black/80 m-0 pt-4">{item.answer}</p>
+						</div>
+					</div>
+				</button>
+			{/each}
+		</div>
+		<a href="/faq" class="inline-block mt-6 text-sm text-black/50 hover:text-black underline transition-colors">See all &rarr;</a>
+	</section>
+
+	<!-- ===== LOWER CTA SECTION ===== -->
+	<section class="relative z-1">
+		<!-- Colored stripes -->
+		<div class="flex flex-col gap-2.5 w-full h-20">
+			<div class="flex-1 bg-[#ffa936]"></div>
+			<div class="flex-1 bg-[#f86d95]"></div>
+			<div class="flex-1 bg-[#46467c]"></div>
+		</div>
+
+		<!-- CTA content — fixed height to prevent scale from shifting doc flow -->
+		<div class="h-100 max-sm:h-96 overflow-hidden">
+		<div class="flex flex-col items-center gap-8 py-16 px-[60px] max-sm:px-6">
+			<h2 class="font-cook text-[32px] text-black m-0 text-center">Join us this summer!</h2>
+
+			<!-- CTA signup card (separate state from hero card) -->
+			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+			<div
+				use:observeCtaCard
+				class="signup-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-[904px] max-w-full relative overflow-hidden cursor-pointer bg-[#f3e8d8] transition-all duration-(--juice-duration) ease-(--juice-easing) {ctaCardSelected ? 'scale-[1.05]' : 'scale-100'}"
+				onmousedown={(e) => { e.preventDefault(); selectCtaCard(); }}
+			>
+				<!-- Orange fill -->
+				<div class="absolute inset-0 bg-[#ffa936] transition-opacity duration-(--selected-duration) {ctaCardSelected ? 'opacity-100' : 'opacity-0'}"></div>
+				<!-- Chevron arrows -->
+				<div class="absolute right-[10%] top-[45%] -translate-y-1/2 scale-[2.1] pointer-events-none transition-opacity duration-(--selected-duration) delay-100 {ctaCardSelected ? 'opacity-100' : 'opacity-0'}">
+					<img src={ChevronSvg} alt="" class="h-45 w-auto" />
+				</div>
+				<div class="relative flex flex-col gap-4 justify-center py-5 px-7.5 z-1">
+					<p class="font-cook text-[32px] text-black m-0 leading-none">SIGN UP NOW</p>
+					<div class="flex gap-3 items-center">
+						<input
+							id="cta-email"
+							type="email"
+							class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-base font-semibold text-black/50 outline-none w-70"
+							placeholder="orpheus@hackclub.com"
+							bind:value={ctaEmail}
+							onkeydown={(e) => handleCtaEmailKeydown(e)}
+							oninput={() => { if (ctaInvalidHint) ctaInvalidHint = false; }}
+							onclick={(e) => { e.stopPropagation(); ctaCardSelected = true; }}
+							onfocus={() => { ctaCardSelected = true; ctaEmailFocused = true; }}
+							onblur={() => { ctaEmailFocused = false; if (!ctaEmail) ctaCardSelected = false; }}
+						/>
+						<button
+							class="signup-btn border-2 border-black rounded-lg py-2 px-4 font-bricolage text-base font-semibold text-black cursor-pointer transition-colors duration-150 hover:bg-[#e89a45]"
+							class:valid={isValidCtaEmail}
+							onclick={(e) => {
+								e.stopPropagation();
+								if (isValidCtaEmail) handleSignup(ctaEmail);
+								else ctaInvalidHint = true;
+							}}
+						>SIGN UP</button>
+					</div>
+					{#if ctaInvalidHint}
+						<p class="font-bricolage text-sm m-0 text-[#c00]">Please enter a valid email</p>
+					{/if}
+					<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {ctaEmailFocused ? 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden' : 'opacity-100 max-h-10'}">
+						<InputPrompt type="Enter" />
+						<p class="font-bold text-sm text-black leading-6">OR</p>
+						<InputPrompt type="click" />
+						<p class="font-bold text-sm text-black leading-6">TO FOCUS</p>
+					</div>
+					<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {ctaEmailFocused && isValidCtaEmail ? 'opacity-100 max-h-10' : 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden'}">
+						<InputPrompt type="Enter" />
+						<p class="font-bold text-sm text-black leading-6">TO SIGN UP</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		</div>
+	</section>
+
+	<!-- ===== FOOTER ===== -->
+	<footer class="relative z-1 flex flex-col items-center">
+		<div class="divider-top w-full aspect-[1444/120] overflow-hidden relative">
+			<img src={divider} alt="" />
+		</div>
+
+		<div class="bg-black w-full relative py-[51px] px-[81px] pb-[60px] max-sm:py-8 max-sm:px-6">
+			<!-- Top text -->
+			<div class="text-white max-w-[755px]">
+				<p class="text-2xl m-0">
+					<span class="font-semibold">A project by Hack Club</span><br />
+					With love from the Horizons team.
+				</p>
+				<p class="text-base text-white mt-4 m-0 leading-relaxed">
+					Hack Club is a 501(c)(3) nonprofit and network of 60k+ technical high schoolers. We believe you learn best by building so we're creating community and providing grants so you can make awesome projects. In the past few years, we've partnered with GitHub to run <a href="https://summer.hackclub.com/" target="_blank" rel="noopener" class="text-white underline">Summer of Making</a>, hosted the <a href="https://github.com/hackclub/the-hacker-zephyr" target="_blank" rel="noopener" class="text-white underline">world's longest hackathon on land</a>, and ran <a href="https://www.youtube.com/watch?v=QvCoISXfcE8" target="_blank" rel="noopener" class="text-white underline">Canada's largest high school hackathon</a>.
+				</p>
+			</div>
+
+			<!-- Link columns -->
+			<div class="flex gap-8 mt-10 flex-wrap">
+				<div class="flex flex-col gap-4 w-48">
+					<p class="font-cook text-2xl text-white m-0">HACK CLUB</p>
+					<div class="flex flex-col gap-2.5 text-2xl text-white">
+						<a href="https://hackclub.com/philosophy" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Our Philosophy</a>
+						<a href="https://hackclub.com/team" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Team &amp; Board</a>
+						<a href="https://hackclub.com/donate" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Donate</a>
+						<a href="https://hackclub.com/print" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Print</a>
+						<a href="mailto:press@hackclub.com" class="text-white no-underline hover:underline">Press Inquiries</a>
+					</div>
+				</div>
+				<div class="flex flex-col gap-4 w-48">
+					<p class="font-cook text-2xl text-white m-0">HORIZONS</p>
+					<div class="flex flex-col gap-2.5 text-2xl text-white">
+						<a href="/" class="text-white no-underline hover:underline font-semibold">Sign up now</a>
+						<a href="/faq" class="text-white no-underline hover:underline">FAQ</a>
+						<a href="https://guides.horizons.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Guides</a>
+					</div>
+				</div>
+				<div class="flex flex-col gap-4 w-57">
+					<p class="font-cook text-2xl text-white m-0">COMMUNITY</p>
+					<div class="flex flex-col gap-2.5 text-2xl text-white">
+						<a href="https://hackclub.com/slack" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Slack</a>
+						<a href="https://jams.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Jams</a>
+						<a href="https://workshops.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Workshops</a>
+						<a href="https://hackclub.com/conduct" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Code of Conduct</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</footer>
+
+	<!-- Video Modal -->
+	{#if activeVideo}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer" onclick={() => activeVideo = null} onkeydown={(e) => { if (e.key === 'Escape') activeVideo = null; }}>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="relative w-full max-w-4xl aspect-video mx-4" onclick={(e) => e.stopPropagation()}>
+				<iframe
+					src="https://www.youtube.com/embed/{activeVideo}?autoplay=1"
+					title="Event video"
+					class="w-full h-full rounded-xl"
+					frameborder="0"
+					allow="autoplay; encrypted-media"
+					allowfullscreen
+				></iframe>
+				<button class="absolute -top-10 right-0 text-white text-3xl font-bold cursor-pointer bg-transparent border-none" onclick={() => activeVideo = null}>&times;</button>
+			</div>
+		</div>
+	{/if}
+
+	<CircleIn />
 </BG>
 
 <style>
-    .disable-anim-checkbox {
-        position: fixed;
-        bottom: 16px;
-        right: 16px;
-        font-family: 'Bricolage Grotesque', sans-serif;
-        font-size: 14px;
-        color: black;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        opacity: 0.6;
-        transition: opacity 0.2s ease;
-    }
+	/* Scrollbar */
+	:global(.landing-page) {
+		scrollbar-color: #8a7a6a #3d3428;
+		scrollbar-width: thin;
+	}
 
-    .disable-anim-checkbox:hover {
-        opacity: 1;
-    }
+	:global(.landing-page)::-webkit-scrollbar {
+		width: 10px;
+	}
 
-    .tagline {
-        font-family: var(--font-cook);
-        font-size: clamp(14px, 2vw, 24px);
-        font-weight: 600;
-        color: black;
-        margin: 0;
-    }
+	:global(.landing-page)::-webkit-scrollbar-track {
+		background: #3d3428;
+	}
+
+	:global(.landing-page)::-webkit-scrollbar-thumb {
+		background: #6b5d50;
+		border-radius: 5px;
+	}
+
+	:global(.landing-page)::-webkit-scrollbar-thumb:hover {
+		background: #8a7a6a;
+	}
+
+	/* Text stroke */
+	.hero-subtitle {
+		-webkit-text-stroke: 8px #f3e8d8;
+		paint-order: stroke fill;
+	}
+
+	.hero-title {
+		-webkit-text-stroke: 8px #f3e8d8;
+		paint-order: stroke fill;
+	}
+
+	/* Divider image positioning */
+	.divider-top img,
+	.divider-bottom img {
+		position: absolute;
+		width: 100%;
+		height: 901.27%;
+		top: -393.65%;
+		left: 0;
+		max-width: none;
+		display: block;
+	}
+
+	/* Summer section divider mask — inverted: brush stroke = hidden (carousel shows through),
+	   transparent areas = visible (page bg). Two layers + exclude to invert. */
+	.summer-divider-mask {
+		-webkit-mask-image: var(--divider-url), linear-gradient(#fff, #fff);
+		mask-image: var(--divider-url), linear-gradient(#fff, #fff);
+		-webkit-mask-size: 100% 901.27%, 100% 100%;
+		mask-size: 100% 901.27%, 100% 100%;
+		-webkit-mask-position: 0 49.13%, 0 0;
+		mask-position: 0 49.13%, 0 0;
+		-webkit-mask-repeat: no-repeat, no-repeat;
+		mask-repeat: no-repeat, no-repeat;
+		-webkit-mask-composite: xor;
+		mask-composite: exclude;
+	}
+
+	/* Signup button blink */
+	.signup-btn {
+		background-color: #fba74d;
+	}
+
+	.signup-btn.valid {
+		animation: white-blink 1s ease-in-out infinite;
+	}
+
+	@keyframes white-blink {
+		0%, 100% { background-color: #fdd9a8; }
+		50% { background-color: #fba74d; }
+	}
+
+	/* Email input states */
+	.email-input::placeholder {
+		color: rgba(0, 0, 0, 0.5);
+	}
+
+	.email-input:focus {
+		color: black;
+	}
+
+	/* FAQ accordion animation */
+	.faq-answer {
+		grid-template-rows: 0fr;
+		opacity: 0;
+		transition:
+			grid-template-rows var(--juice-duration) var(--juice-easing) var(--faq-delay),
+			opacity var(--juice-duration) ease var(--faq-delay);
+	}
+
+	.faq-answer-open {
+		grid-template-rows: 1fr;
+		opacity: 1;
+	}
+
+	.faq-chevron {
+		transition: transform var(--juice-duration) var(--juice-easing);
+		transform: rotate(-90deg);
+		font-size: 0.75rem;
+	}
+
+	.faq-chevron-open {
+		transform: rotate(0deg);
+	}
+
 </style>
-
-
