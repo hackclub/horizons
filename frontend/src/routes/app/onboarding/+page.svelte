@@ -297,6 +297,7 @@
 							<div class="flex flex-col gap-2">
 								<h1 class="font-cook text-2xl text-black leading-normal">CREATE YOUR PROJECT</h1>
 								<p class="font-bricolage text-2xl font-medium text-black leading-normal">Fill out the following fields! You can put an existing project, or the idea for a new project.</p>
+								<p class="font-bricolage text-base font-medium text-black/60 leading-normal">Don't worry, this doesn't have to be final, you can change all of this later!</p>
 							</div>
 							<div class="flex flex-col gap-4 w-full">
 								<FormField label="Title" id="title" placeholder="Horizons" maxlength={30} bind:value={projectTitle} />
