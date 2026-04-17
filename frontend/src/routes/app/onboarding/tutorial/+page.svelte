@@ -59,7 +59,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="absolute inset-0 flex flex-col items-center justify-center overflow-hidden" style="cursor: {isDialogStep ? 'pointer' : 'default'};" onclick={isDialogStep ? () => step++ : undefined}>
+<div class="absolute inset-0 flex flex-col items-center overflow-y-auto overflow-x-hidden" style="cursor: {isDialogStep ? 'pointer' : 'default'};" onclick={isDialogStep ? () => step++ : undefined}>
 
 	<!-- Dialog step: Jelly excited -->
 	{#if isDialogStep}
@@ -79,11 +79,12 @@
 
 	<!-- Card steps -->
 	{#if !isDialogStep}
-		<div class="absolute inset-0 flex items-center justify-center">
-			<div class="absolute top-[calc(50%-331px-30px)] left-[calc(50%-363px-90px)] z-0">
-				<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
-			</div>
-			<div class="relative z-1 w-181.75 min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-hidden">
+		<div class="w-full flex items-center justify-center py-8 my-auto">
+			<div class="relative">
+				<div class="absolute -top-7.5 -left-22.5 z-0">
+					<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
+				</div>
+				<div class="relative z-1 w-181.75 min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-hidden">
 				{#if isStep1}
 					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
@@ -214,6 +215,7 @@
 						</button>
 					</div>
 				{/if}
+			</div>
 			</div>
 		</div>
 	{/if}
