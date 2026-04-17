@@ -1,6 +1,7 @@
 nexus:
   name: Horizons Nexus
   location: [37.7879363, -122.4075201]
+  locationText: "San Francisco, CA"
   dates: "JUN 19-21"
   landingBlurb: "We're bringing everyone around the world to Nexus, our hacker summit in SF."
   tagline: "300+ PERSON HACKATHON IN SF \u2022 JUNE 19-21"
@@ -49,6 +50,7 @@ nexus:
 equinox:
   name: Horizons Equinox
   location: [30.0443879, 31.2357257]
+  locationText: "Cairo, Egypt"
   dates: "AUG 14-16"
   landingBlurb: "A hackathon in the shadow of the pyramids"
   tagline: "60 PERSON HIGH SCHOOL HACKATHON IN EGYPT \u2022 AUG 14-16"
@@ -97,6 +99,7 @@ equinox:
 europa:
   name: Horizons Europa
   location: [52.5173885, 13.3951309]
+  locationText: "Berlin, Germany"
   dates: "JUL 24-26"
   landingBlurb: "A hackathon in Europe's techno capital"
   tagline: "100+ PERSON HACKATHON IN BERLIN, GERMANY \u2022 JULY 24-26"
@@ -145,6 +148,7 @@ europa:
 sol:
   name: Horizons Sol
   location: [-23.5506507, -46.6333824]
+  locationText: "São Paulo, Brazil"
   dates: "JUN 12-14"
   landingBlurb: "A hackathon in Latin America's concrete jungle"
   tagline: "70+ PERSON HACKATHON IN SÃO PAULO! \u2022 JUNE 12-14"
@@ -193,6 +197,7 @@ sol:
 crux:
   name: Horizons Crux
   location: [-33.8698439, 151.2082848]
+  locationText: "Sydney, Australia"
   dates: "JUL 10-12"
   landingBlurb: "A hackathon in the land down under"
   tagline: "100+ PERSON HACKATHON IN SYDNEY \u2022 JULY 10-12"
@@ -241,6 +246,7 @@ crux:
 arcana:
   name: Horizons Arcana
   location: [1.3571070, 103.8194992]
+  locationText: "Singapore"
   dates: "JUL 31-AUG 2"
   landingBlurb: "A hackathon at the crossroads of Asia"
   tagline: "100+ PERSON HACKATHON IN SINGAPORE \u2022 JULY 31-AUGUST 2"
@@ -289,6 +295,7 @@ arcana:
 polaris:
   name: Horizons Polaris
   location: [43.6534817, -79.3839347]
+  locationText: "Toronto, Canada"
   dates: "AUG 7-9"
   landingBlurb: "A hackathon in the heart of Canada"
   tagline: "100+ PERSON HACKATHON IN TORONTO \u2022 AUG 7-9"

@@ -742,31 +742,36 @@ void main(){
 								<!-- Gradient overlay -->
 								<div class="card-gradient absolute inset-0 rounded-[16px] bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-(--selected-duration) ease-out {selected ? 'opacity-100' : 'opacity-0'}"></div>
 
-								<!-- Logo — absolutely positioned, animates between center and top -->
-								<img
-									src={event.logo}
-									alt={event.name}
-									class="card-logo absolute z-1 max-w-[80%] h-auto object-contain transition-all duration-(--selected-duration) ease-out"
-									style="left: 50%; top: {selected ? '36px' : '50%'}; transform: translate(-50%, {selected ? '0' : '-50%'}) scale({selected ? '1' : '0.9'}); max-height: {selected ? '120px' : '96px'}; filter: {selected ? 'drop-shadow(0px 0px 40px rgba(0,0,0,0.6))' : 'none'};"
-								/>
-
-								<!-- Tagline — fades in above dates when selected -->
+								<!-- Logo + name + dates + location — absolutely positioned group, animates between center and top -->
 								<div
-									class="card-tagline absolute left-9 right-9 z-1 flex flex-col items-center gap-1 transition-all duration-(--selected-duration) ease-out"
-									style="bottom: {selected ? '60px' : '36px'}; opacity: {selected ? 1 : 0}; transform: translateY({selected ? '0' : '16px'});"
+									class="card-logo absolute z-1 left-9 right-9 flex flex-col items-center gap-2 transition-all duration-(--selected-duration) ease-out"
+									style="top: {selected ? '36px' : '50%'}; transform: translateY({selected ? '0' : '-50%'}) scale({selected ? '1' : '0.9'});"
 								>
-									<p class="text-2xl text-center text-white m-0">{event.landingBlurb}</p>
+									<img
+										src={event.logo}
+										alt={event.name}
+										class="max-w-[80%] h-auto object-contain transition-all duration-(--selected-duration) ease-out mb-1"
+										style="max-height: {selected ? '120px' : '96px'}; filter: {selected ? 'drop-shadow(0px 0px 40px rgba(0,0,0,0.6))' : 'none'};"
+									/>
+									<p
+										class="font-cook text-white text-center m-0 whitespace-nowrap transition-all duration-(--selected-duration) ease-out"
+										style="font-size: {selected ? '20px' : '16px'};"
+									>{event.name}</p>
+									{#if event.dates}
+										<p class="font-cook text-gray-100 text-center text-sm m-0 whitespace-nowrap">{event.dates}</p>
+									{/if}
+									{#if event.locationText}
+										<p class="text-gray-100 font-bold text-center text-sm m-0 whitespace-nowrap">{event.locationText}</p>
+									{/if}
 								</div>
 
-								<!-- Dates — always visible at bottom -->
-								{#if event.dates}
-									<div
-										class="card-dates absolute left-9 right-9 z-1 flex justify-center transition-all duration-(--selected-duration) ease-out"
-										style="bottom: {selected ? '36px' : '16px'};"
-									>
-										<p class="font-cook text-base text-center text-white/70 m-0">{event.dates}</p>
-									</div>
-								{/if}
+								<!-- Tagline — fades in when selected -->
+								<div
+									class="card-tagline absolute left-9 right-9 z-1 flex flex-col items-center gap-1 transition-all duration-(--selected-duration) ease-out"
+									style="bottom: {selected ? '24px' : '16px'}; opacity: {selected ? 1 : 0}; transform: translateY({selected ? '0' : '16px'});"
+								>
+									<p class="text-lg text-center text-white m-0 leading-snug">{event.landingBlurb}</p>
+								</div>
 
 								<!-- Auto-rotate timer indicator -->
 								{#if selected && autoRotateActive}
@@ -1137,13 +1142,7 @@ void main(){
 		.event-card .card-tagline {
 			opacity: 1 !important;
 			transform: none !important;
-			bottom: 50px !important;
-		}
-
-		.event-card .card-dates {
-			bottom: 16px !important;
-			opacity: 1 !important;
-			transform: none !important;
+			bottom: 24px !important;
 		}
 	}
 
