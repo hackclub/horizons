@@ -110,7 +110,74 @@
 	}
 
 	onMount(() => {
-		// Initialize globe (cobe v2 API)
+		// Patch WebGL to override cobe's fragment shader for a flat cell-shaded look
+		const origGetContext = globeCanvas!.getContext.bind(globeCanvas!);
+		(globeCanvas as any).getContext = (type: string, attrs?: any) => {
+			const gl = origGetContext(type, attrs);
+			if (!gl || !('shaderSource' in gl)) return gl;
+
+			const origShaderSource = gl.shaderSource.bind(gl);
+			gl.shaderSource = (shader: WebGLShader, source: string) => {
+				// Replace the globe fragment shader (contains the glow/diffuse logic)
+				if (source.includes('gl_FragColor') && source.includes('uniform vec3 F,w') && source.includes('uniform vec4 n')) {
+					source = `precision highp float;
+uniform vec2 t,v,s;
+uniform vec3 F,w;
+uniform vec4 n;
+uniform float k,x,y;
+uniform sampler2D z;
+float u;
+mat3 A(float a,float b){float c=cos(a),d=cos(b),e=sin(a),f=sin(b);return mat3(d,f*e,-f*c,0,c,e,f,d*-e,d*c);}
+vec3 B(vec3 c,out float G){c=c.xzy;float q=max(2.,floor(log2(2.236068*k*3.141593*(1.-c.z*c.z))*.72021));vec2 g=floor(pow(1.618034,q)/2.236068*vec2(1,1.618034)+.5),d=fract((g+1.)*.618034)*6.283185-3.883222,e=-2.*g,f=vec2(atan(c.y,c.x),c.z-1.),r=floor(vec2(e.y*f.x-d.y*(f.y*k+1.),-e.x*f.x+d.x*(f.y*k+1.))/(d.x*e.y-e.x*d.y));float o=3.141593;vec3 C;for(float h=0.;h<4.;h+=1.){vec2 D=vec2(mod(h,2.),floor(h*.5));float j=dot(g,r+D);if(j>k)continue;float a=j,b=0.;a>=16384.?(a-=16384.,b+=.868872):0.,a>=8192.?(a-=8192.,b+=.934436):0.,a>=4096.?(a-=4096.,b+=.467218):0.,a>=2048.?(a-=2048.,b+=.733609):0.,a>=1024.?(a-=1024.,b+=.866804):0.,a>=512.?(a-=512.,b+=.433402):0.,a>=256.?(a-=256.,b+=.216701):0.,a>=128.?(a-=128.,b+=.108351):0.,a>=64.?(a-=64.,b+=.554175):0.,a>=32.?(a-=32.,b+=.777088):0.,a>=16.?(a-=16.,b+=.888544):0.,a>=8.?(a-=8.,b+=.944272):0.,a>=4.?(a-=4.,b+=.472136):0.,a>=2.?(a-=2.,b+=.236068):0.,a>=1.?(a-=1.,b+=.618034):0.;float l=fract(b)*6.283185,i=1.-2.*j*u,m=sqrt(1.-i*i);vec3 p=vec3(cos(l)*m,sin(l)*m,i);float E=length(c-p);if(E<o)o=E,C=p;}G=o;return C.xzy;}
+void main(){
+  u=1./k;
+  vec2 c=1./t,b=(gl_FragCoord.xy*c*2.-1.)/x-v*vec2(1,-1)*c;
+  b.x*=t.x*c.y;
+  float a=dot(b,b);
+  float edge=smoothstep(.635,.64,a);
+  if(a>.65){discard;}
+  float g;
+  vec3 h=normalize(vec3(b,sqrt(max(.64-a,0.001))));
+  mat3 o=A(s.y,s.x);
+  vec3 d=B(h*o,g);
+  float j=asin(d.y),e=acos(-d.x/cos(j));
+  e=d.z<0.?-e:e;
+  float p=max(texture2D(z,vec2(e*.5/3.141593,-(j/3.141593+.5))).x,y);
+  float q=p*smoothstep(8e-3,0.,g)*n.x;
+  // Flat beige base, map dots as slightly darker beige
+  vec3 col=F*(1.0 - q*0.15);
+  // Black outline at globe edge — flush with the edge
+  float outline=smoothstep(.618,.619,a);
+  col=mix(col,vec3(0.0),outline);
+  gl_FragColor=vec4(col,(1.0-edge));
+}`;
+				}
+				// Tighten marker culling — less peeking around globe edge
+				if (source.includes('attribute vec3 p,w') && source.includes('m=n,g=w,h=x')) {
+					source = source.replace('length(l.xy)<.8', 'length(l.xy)<.85');
+				}
+				// Replace marker fragment shader to add black outline per-marker
+				if (source.includes('gl_FragColor') && source.includes('varying vec2 m') && source.includes('varying vec3 g') && source.includes('uniform vec3 v') && !source.includes('uniform vec2 t')) {
+					source = `precision highp float;
+varying vec2 m;
+varying vec3 g;
+varying float h;
+uniform vec3 v;
+void main(){
+  float dist=length(m);
+  if(dist>.25)discard;
+  vec3 a=h>.5?g:v;
+  float outlineStart=h>.5?.19:.22;
+  if(dist>outlineStart)a=vec3(0.0);
+  gl_FragColor=vec4(a,1.0);
+}`;
+				}
+				return origShaderSource(shader, source);
+			};
+			return gl;
+		};
+
+		// Initialize globe markers
 		function buildMarkers() {
 			return eventEntries
 				.filter(([, e]) => e.location)
@@ -138,15 +205,17 @@
 			height: 1000,
 			phi: currentPhi,
 			theta: currentTheta,
-			dark: 2,
-			diffuse: -3,
+			dark: 0,
+			diffuse: 0,
 			scale: 1,
 			offset: [0, 0],
-			mapSamples: 16000,
+			mapSamples: 40000,
 			mapBrightness: 6,
-			baseColor: [1, 1, 1],
+			mapBaseBrightness: 0,
+			baseColor: [0.95, 0.91, 0.85],
 			markerColor: [1, 0.5, 0],
 			glowColor: [0, 0, 0],
+			opacity: 1,
 			markers: buildMarkers(),
 			markerElevation: 0.01,
 		});
@@ -505,11 +574,12 @@
 					</div>
 				</div>
 
-				<!-- 3D Globe -->
-				<div class="shrink-0 max-lg:hidden absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-0 pointer-events-none">
-					<canvas bind:this={globeCanvas} width="1000" height="1000" style="width: 900px; height: 900px;"></canvas>
-				</div>
 			</div>
+		</div>
+
+		<!-- 3D Globe (outside carousel/masks) -->
+		<div class="max-lg:hidden absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-30 pointer-events-none">
+			<canvas bind:this={globeCanvas} width="1000" height="1000" style="width: 900px; height: 900px;"></canvas>
 		</div>
 	</section>
 
