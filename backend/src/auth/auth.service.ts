@@ -158,9 +158,13 @@ export class AuthService {
     const joinParams = new URLSearchParams({ return_to: oauthUrl });
     if (email) joinParams.set('email', email);
 
+    // return {
+    //   url: `${this.HACKCLUB_AUTH_URL}/oauth/welcome?${joinParams.toString()}`,
+    // };
+
     return {
-      url: `${this.HACKCLUB_AUTH_URL}/oauth/welcome?${joinParams.toString()}`,
-    };
+      url: oauthUrl
+    }
   }
 
   async handleCallback(
