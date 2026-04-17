@@ -153,9 +153,11 @@ export class AuthService {
     }
 
     const oauthUrl = `${this.HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`;
+    const joinParams = new URLSearchParams({ return_to: oauthUrl });
+    if (email) joinParams.set('email', email);
 
     return {
-      url: `${this.HACKCLUB_AUTH_URL}/join/horizons?return_to=${encodeURIComponent(oauthUrl)}`,
+      url: `${this.HACKCLUB_AUTH_URL}/join/horizons?${joinParams.toString()}`,
     };
   }
 
