@@ -320,6 +320,9 @@ importers:
 
   frontend:
     dependencies:
+      cobe:
+        specifier: ^2.0.1
+        version: 2.0.1
       dompurify:
         specifier: ^3.3.3
         version: 3.3.3
@@ -2918,6 +2921,9 @@ packages:
   co@4.6.0:
     resolution: {integrity: sha512-QVb0dM5HvG+uaxitm8wONl7jltx8dqhfU33DcqtOZcLSVIKSDDLDi7+0LbAKiyI8hD9u42m2YxXSkMGWThaecQ==}
     engines: {iojs: '>= 1.0.0', node: '>= 0.12.0'}
+
+  cobe@2.0.1:
+    resolution: {integrity: sha512-aaa6vcIlaC8C1SF50LDH0Anybo/EAXnrxqe+bwvr4+YUtZydqjeBjTTD7ziCCkbRrRGSns3I3F6cZsf3W+L+ag==}
 
   collect-v8-coverage@1.0.3:
     resolution: {integrity: sha512-1L5aqIkwPfiodaMgQunkF1zRhNqifHBmtbbbxcr6yVxxBnliw4TDOW6NxpO8DJLgJ16OT+Y4ztZqP6p/FtXnAw==}
@@ -8415,6 +8421,8 @@ snapshots:
   cluster-key-slot@1.1.2: {}
 
   co@4.6.0: {}
+
+  cobe@2.0.1: {}
 
   collect-v8-coverage@1.0.3: {}
 

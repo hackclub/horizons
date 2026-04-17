@@ -27,6 +27,12 @@
 	import campfirePhoto from '$lib/assets/landing/campfire-photo.png';
 	import scrapyardLogo from '$lib/assets/landing/scrapyard-logo.svg';
 
+	// Assets - This Summer
+	import createGlobe from 'cobe';
+	import yaml from 'js-yaml';
+	import eventsRaw from '$lib/events/events.yaml?raw';
+	import type { EventConfig } from '$lib/events/types';
+
 	// Assets - Photo collage
 	import photo1 from '$lib/assets/landing/photo-1.png';
 	import photo2 from '$lib/assets/landing/photo-2.png';
@@ -51,9 +57,114 @@
 	let cardSelected = $state(false);
 	let emailFocused = $state(false);
 	let activeVideo = $state<string | null>(null);
+	let globeCanvas = $state<HTMLCanvasElement | null>(null);
 	const isValidEmail = $derived(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail));
 
+	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
+	const eventEntries = Object.entries(eventsMap);
+
+	let selectedEventIndex = $state(0);
+	let eventScrollOffset = $state(0);
+	let eventListEl: HTMLDivElement;
+	let targetPhi = $state(0);
+	let targetTheta = $state(0.2);
+
+	// Convert lat/lng to cobe phi/theta
+	// To face a marker at [lat, lng], we need phi = -lng in radians
+	// (cobe internally offsets by -PI, so we add PI to compensate)
+	function locationToGlobe(loc: [number, number]): { phi: number; theta: number } {
+		return {
+			phi: -loc[1] * (Math.PI / 180) - 2 * Math.PI / 3,
+			theta: loc[0] * (Math.PI / 180)
+		};
+	}
+
+	function updateEventScroll() {
+		if (!eventListEl) return;
+		const cards = eventListEl.querySelectorAll('.event-card') as NodeListOf<HTMLElement>;
+		const card = cards[selectedEventIndex];
+		if (!card) return;
+
+		// Anchor selected card at ~20% from left
+		const containerWidth = eventListEl.parentElement?.clientWidth ?? 0;
+		const anchorX = containerWidth * 0.2;
+		const offset = -(card.offsetLeft - anchorX);
+		eventScrollOffset = Math.min(offset, 0);
+	}
+
+	function selectEvent(index: number) {
+		selectedEventIndex = index;
+		updateEventScroll();
+		const event = eventEntries[index][1];
+		if (event.location) {
+			const { phi, theta } = locationToGlobe(event.location);
+			targetPhi = phi;
+			targetTheta = theta;
+		}
+	}
+
+
+	function hexToRgb(hex: string): [number, number, number] {
+		const h = hex.replace('#', '');
+		return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255];
+	}
+
 	onMount(() => {
+		// Initialize globe (cobe v2 API)
+		function buildMarkers() {
+			return eventEntries
+				.filter(([, e]) => e.location)
+				.map(([, e], i) => ({
+					location: e.location!,
+					size: i === selectedEventIndex ? 0.1 : 0.04,
+					color: i === selectedEventIndex ? hexToRgb(e.colors.primary) : [0.5, 0.5, 0.5] as [number, number, number]
+				}));
+		}
+
+		// Set initial globe position to first event
+		const firstEvent = eventEntries[0][1];
+		if (firstEvent.location) {
+			const { phi, theta } = locationToGlobe(firstEvent.location);
+			targetPhi = phi;
+			targetTheta = theta;
+		}
+
+		let currentPhi = targetPhi;
+		let currentTheta = targetTheta;
+
+		const globeInstance = createGlobe(globeCanvas!, {
+			devicePixelRatio: 2,
+			width: 1000,
+			height: 1000,
+			phi: currentPhi,
+			theta: currentTheta,
+			dark: 2,
+			diffuse: -3,
+			scale: 1,
+			offset: [0, 0],
+			mapSamples: 16000,
+			mapBrightness: 6,
+			baseColor: [1, 1, 1],
+			markerColor: [1, 0.5, 0],
+			glowColor: [0, 0, 0],
+			markers: buildMarkers(),
+			markerElevation: 0.01,
+		});
+
+		let animFrame: number;
+		function animate() {
+			// Lerp with shortest angular path for phi
+			let dPhi = targetPhi - currentPhi;
+			// Normalize to [-PI, PI] to always take the short way around
+			dPhi = ((dPhi + Math.PI) % (2 * Math.PI)) - Math.PI;
+			if (dPhi < -Math.PI) dPhi += 2 * Math.PI;
+			currentPhi += dPhi * 0.05;
+			currentTheta += (targetTheta - currentTheta) * 0.05;
+			globeInstance.update({ phi: currentPhi, theta: currentTheta, markers: buildMarkers() });
+			animFrame = requestAnimationFrame(animate);
+		}
+		animate();
+
 		// Prevent browser focus restore from auto-selecting the card
 		setTimeout(() => {
 			if (!signupEmail) {
@@ -61,20 +172,14 @@
 				cardSelected = false;
 				emailFocused = false;
 			}
+			updateEventScroll();
 		}, 50);
 
-		api.GET('/api/user/auth/me').then(async response => {
-			if (response.data && response.data.hcaId) {
-				if (env.PUBLIC_ENABLE_ONBOARDING === 'true') {
-					const { data } = await api.GET('/api/user/auth/onboarding-status');
-					if (data && !data.onboardComplete) {
-						window.location.href = '/app/onboarding';
-						return;
-					}
-				}
-				window.location.href = '/app';
-			}
-		});
+		return () => {
+			cancelAnimationFrame(animFrame);
+			globeInstance.destroy();
+		};
+
 	});
 
 	async function handleSignup(email: string) {
@@ -354,6 +459,60 @@
 		</div>
 	</section>
 
+	<!-- ===== THIS SUMMER SECTION ===== -->
+	<section class="relative z-0" style="--divider-url: url('{divider}')">
+		<!-- Event Carousel -->
+		<div class="w-full relative overflow-hidden h-[750px]" style="background-color: {eventEntries[0][1].eventCard.bgColor}">
+			<!-- Background image -->
+			{#if eventEntries[0][1].eventCard.bgImage}
+				<img src={eventEntries[0][1].eventCard.bgImage} alt="" class="absolute inset-0 w-full h-full object-cover" />
+			{/if}
+			{#if eventEntries[0][1].eventCard.gradient}
+				<div class="absolute inset-0" style="background: {eventEntries[0][1].eventCard.gradient}"></div>
+			{/if}
+
+			<!-- Divider masks -->
+			<div class="summer-divider-mask absolute top-0 left-0 w-full aspect-[1444/120] z-20" style="background-color: #f3e8d8;"></div>
+			<div class="summer-divider-mask absolute bottom-0 left-0 w-full aspect-[1444/120] z-20 rotate-180" style="background-color: #f3e8d8;"></div>
+
+			<div class="relative z-1 flex flex-col gap-8 h-full pt-[100px] pb-[100px] max-sm:pt-20 max-sm:pb-20 px-[60px] max-sm:px-8">
+				<h2 class="font-cook text-[32px] text-black m-0 whitespace-nowrap" style="-webkit-text-stroke: 8px #f3e8d8; paint-order: stroke fill;">This summer, we're running...</h2>
+
+				<div class="flex-1 min-h-0 overflow-visible relative">
+					<div
+						class="flex gap-6 items-center h-full"
+						bind:this={eventListEl}
+						style="transform: translateX({eventScrollOffset}px); transition: transform 0.4s ease;"
+					>
+						{#each eventEntries as [key, event], i}
+							{@const selected = i === selectedEventIndex}
+							<button
+								class="event-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center overflow-hidden relative shrink-0 p-9 cursor-pointer bg-cover bg-center transition-all duration-(--juice-duration) ease-(--juice-easing) {selected ? 'w-[325px] h-[435px] scale-(--juice-scale) justify-between' : 'w-[262px] h-[351px] opacity-80 hover:opacity-100 hover:scale-(--juice-scale) justify-center'}"
+								style="background-color: {event.eventCard.bgColor};{event.eventCard.bgImage ? ` background-image: ${event.eventCard.gradient ? event.eventCard.gradient + ', ' : ''}url(${event.eventCard.bgImage});` : ''}"
+								onclick={() => selectEvent(i)}
+							>
+								<!-- Gradient overlay for selected card -->
+								<div class="absolute inset-0 rounded-[16px] bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-(--juice-duration) {selected ? 'opacity-100' : 'opacity-0'}"></div>
+
+								<img src={event.logo} alt={event.name} class="relative z-1 max-w-full h-auto object-contain transition-all duration-(--juice-duration) ease-(--juice-easing) {selected ? 'max-h-30 drop-shadow-[0px_0px_40px_rgba(0,0,0,0.6)]' : 'max-h-24'}" />
+
+								<!-- Tagline (selected only) -->
+								<p class="relative z-1 text-2xl text-center text-white m-0 transition-opacity duration-(--juice-duration) {selected ? 'opacity-100' : 'opacity-0 absolute bottom-9'}">
+									{event.headline}
+								</p>
+							</button>
+						{/each}
+					</div>
+				</div>
+
+				<!-- 3D Globe -->
+				<div class="shrink-0 max-lg:hidden absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-0 pointer-events-none">
+					<canvas bind:this={globeCanvas} width="1000" height="1000" style="width: 900px; height: 900px;"></canvas>
+				</div>
+			</div>
+		</div>
+	</section>
+
 	<!-- Video Modal -->
 	{#if activeVideo}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -420,6 +579,30 @@
 		left: 0;
 		max-width: none;
 		display: block;
+	}
+
+	/* Summer section divider mask — inverted: brush stroke = hidden (carousel shows through),
+	   transparent areas = visible (page bg). Two layers + exclude to invert. */
+	.summer-divider-mask {
+		-webkit-mask-image: var(--divider-url), linear-gradient(#fff, #fff);
+		mask-image: var(--divider-url), linear-gradient(#fff, #fff);
+		-webkit-mask-size: 100% 901.27%, 100% 100%;
+		mask-size: 100% 901.27%, 100% 100%;
+		-webkit-mask-position: 0 49.13%, 0 0;
+		mask-position: 0 49.13%, 0 0;
+		-webkit-mask-repeat: no-repeat, no-repeat;
+		mask-repeat: no-repeat, no-repeat;
+		-webkit-mask-composite: xor;
+		mask-composite: exclude;
+	}
+
+	/* Hide scrollbar */
+	.scrollbar-hide {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none;
 	}
 
 	/* Signup button blink */

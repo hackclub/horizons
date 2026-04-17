@@ -1,5 +1,6 @@
 export interface EventConfig {
 	name: string;
+	location?: [number, number];
 	tagline: string;
 	headline: string;
 	logo: string;
