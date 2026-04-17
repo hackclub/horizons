@@ -214,9 +214,18 @@
 			<div class="w-[347.58px] h-[75.13px] shrink-0">
 				<img src={logoSvg} alt="Horizon" class="w-full h-full block" />
 			</div>
-			<p class="font-cook text-[24px] font-semibold text-black m-0 whitespace-nowrap">
+			<p class="font-cook text-[18px] font-semibold text-black m-0 whitespace-nowrap">
 				<TextWave text={headerText} disabled={disableAnimations} />
 			</p>
+			<a href="https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476" target="_blank" rel="noopener noreferrer" class="card slack-card ml-auto">
+				<div class="flex flex-col">
+					<p class="font-cook text-[20px] font-semibold text-black m-0 whitespace-nowrap leading-tight">Join 700+ teenagers at #horizon</p>
+					<p class="font-bricolage text-[14px] font-semibold text-black/50 m-0 leading-tight">Open the Hack Club Slack</p>
+				</div>
+				<svg class="shrink-0" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+					<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
+				</svg>
+			</a>
 		</div>
 
 		<!-- Scrollable Content -->
@@ -747,6 +756,19 @@
 		width: 100%;
 		height: 100%;
 		background-color: #CA6DF8;
+	}
+
+	.slack-card {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		padding: 14px 20px;
+		background-color: #f3e8d8;
+		text-decoration: none;
+		transition: transform var(--juice-duration) var(--juice-easing);
+	}
+	.slack-card:hover {
+		transform: scale(var(--juice-scale));
 	}
 
 	.nav-hint-card {
