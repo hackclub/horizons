@@ -306,7 +306,9 @@
 							<div class="full-progress">
 								<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0 z-10">PROGRESS</p>
 								<div class="flex flex-col gap-3 w-full relative flex-1 min-h-0">
-									<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="flex-1 min-h-0 w-auto object-contain object-left" />
+									<div class="flex-1 min-h-0 w-full">
+										<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-full w-full object-contain object-left" />
+									</div>
 									<div class="card progress-card shrink-0">
 										<div class="progress-bar">
 											{#if approvedPct > 0}
@@ -333,7 +335,7 @@
 							</div>
 							<!-- Compact progress view -->
 							<div class="compact-progress">
-								<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-auto w-auto object-contain object-left shrink-0 relative" />
+								<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="compact-logo object-contain object-left shrink-0 relative" />
 								<div class="text-right text-[24px] text-white tracking-[0.24px] relative">
 									<p class="font-cook m-0">PROGRESS</p>
 									<p class="font-bricolage font-semibold m-0">
@@ -680,6 +682,13 @@
 		justify-content: space-between;
 		width: 100%;
 		gap: 24px;
+	}
+
+	.compact-logo {
+		height: auto;
+		width: auto;
+		max-height: calc(100cqh - 48px);
+		max-width: 100%;
 	}
 
 	@container (max-height: 200px) {
