@@ -14,6 +14,29 @@
 	// Assets - Divider
 	import divider from '$lib/assets/landing/divider.png';
 
+	// Assets - Previous Events
+	import prevEventBg1 from '$lib/assets/landing/prev-event-bg-1.png';
+	import prevEventBg2 from '$lib/assets/landing/prev-event-bg-2.png';
+	import prevEventBg3 from '$lib/assets/landing/prev-event-bg-3.png';
+	import prevEventLogo1 from '$lib/assets/landing/prev-event-logo-1.png';
+	import prevEventPhoto1 from '$lib/assets/landing/prev-event-photo-1.png';
+	import prevEventLogo2 from '$lib/assets/landing/prev-event-logo-2.png';
+	import prevEventPhoto2 from '$lib/assets/landing/prev-event-photo-2.png';
+	import prevEventPhoto3 from '$lib/assets/landing/prev-event-photo-3.png';
+	import campfireLogo from '$lib/assets/landing/campfire-logo.png';
+	import campfirePhoto from '$lib/assets/landing/campfire-photo.png';
+	import scrapyardLogo from '$lib/assets/landing/scrapyard-logo.svg';
+
+	// Assets - Photo collage
+	import photo1 from '$lib/assets/landing/photo-1.png';
+	import photo2 from '$lib/assets/landing/photo-2.png';
+	import photo3 from '$lib/assets/landing/photo-3.png';
+	import photo4 from '$lib/assets/landing/photo-4.png';
+	import photo5 from '$lib/assets/landing/photo-5.png';
+	import photo6 from '$lib/assets/landing/photo-6.png';
+	import photo7 from '$lib/assets/landing/photo-7.png';
+	import photo8 from '$lib/assets/landing/photo-8.png';
+
 	// Assets - Blurb
 	import blurbPhoto from '$lib/assets/landing/blurb-photo.png';
 	import blurbPhoto2 from '$lib/assets/landing/blurb-photo-2.png';
@@ -27,6 +50,7 @@
 	let showInvalidHint = $state(false);
 	let cardSelected = $state(false);
 	let emailFocused = $state(false);
+	let activeVideo = $state<string | null>(null);
 	const isValidEmail = $derived(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail));
 
 	onMount(() => {
@@ -259,6 +283,95 @@
 			<img src={divider} alt="" />
 		</div>
 	</section>
+
+	<!-- ===== PHOTO COLLAGE ===== -->
+	<section class="relative z-1 h-[798px] overflow-hidden max-lg:h-[500px]">
+		<div class="absolute w-[14%]" style="left: 16%; top: 0; transform: rotate(-3.38deg);"><img src={photo1} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: -10%; top: -8%; transform: rotate(7.38deg); width: 27%;"><img src={photo2} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: -5%; top: 60%; transform: rotate(-6.94deg); width: 30%;"><img src={photo3} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 59%; top: -10%; transform: rotate(-4.55deg); width: 22%;"><img src={photo4} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 79%; top: -6%; transform: rotate(5.71deg); width: 24%;"><img src={photo5} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 81%; top: 71%; transform: rotate(-5.71deg); width: 20%;"><img src={photo6} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 88%; top: 55%; transform: rotate(3.05deg); width: 15%;"><img src={photo7} alt="" class="w-full h-auto block" /></div>
+		<div class="absolute" style="left: 24%; top: 77%; transform: rotate(6.17deg); width: 16%;"><img src={photo8} alt="" class="w-full h-auto block" /></div>
+	</section>
+
+	<!-- ===== PREVIOUS EVENTS SECTION ===== -->
+	<section class="relative z-1 p-[60px] max-sm:p-6 max-sm:pt-10">
+		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-2xl">Hackathons we've ran before...</h2>
+		<div class="flex gap-8 items-center justify-center flex-wrap">
+			<!-- Shipwrecked -->
+			<a href="https://shipwrecked.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center" style="background-image: url({prevEventBg1})">
+				<img src={prevEventLogo1} alt="Shipwrecked" class="relative z-1 object-cover w-[139px] h-[88px]" />
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = 'uXWMr0gdLJA'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = 'uXWMr0gdLJA'; } }}>
+					<img src="https://img.youtube.com/vi/uXWMr0gdLJA/maxresdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover/vid:scale-110" />
+					<div class="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-200 opacity-70 group-hover/vid:opacity-100">
+						<svg class="w-12 h-12 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+					</div>
+				</div>
+				<p class="relative z-1 text-base font-semibold text-black text-center m-0">A hackathon on an island in the Boston Harbor!</p>
+			</a>
+
+			<!-- Apocalypse -->
+			<a href="https://apocalypse.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center" style="background-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.6)), url({prevEventBg2})">
+				<img src={prevEventLogo2} alt="Apocalypse" class="relative z-1 w-full object-cover" style="aspect-ratio: 3240/1080;" />
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = 'QvCoISXfcE8'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = 'QvCoISXfcE8'; } }}>
+					<img src="https://img.youtube.com/vi/QvCoISXfcE8/maxresdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover/vid:scale-110" />
+					<div class="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-200 opacity-70 group-hover/vid:opacity-100">
+						<svg class="w-12 h-12 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+					</div>
+				</div>
+				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">Canada's largest high school hackathon!</p>
+			</a>
+
+			<!-- Scrapyard -->
+			<a href="https://scrapyard.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center" style="background-image: url({prevEventBg3})">
+				<img src={scrapyardLogo} alt="Scrapyard" class="relative z-1 w-[119px] h-[57px]" />
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = '8iM1W8kXrQA'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = '8iM1W8kXrQA'; } }}>
+					<img src="https://img.youtube.com/vi/8iM1W8kXrQA/maxresdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover/vid:scale-110" />
+					<div class="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-200 opacity-70 group-hover/vid:opacity-100">
+						<svg class="w-12 h-12 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+					</div>
+				</div>
+				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">A hackathon about building the stupidest projects ever</p>
+			</a>
+
+			<!-- Campfire -->
+			<a href="https://flagship.campfire.hackclub.com" target="_blank" rel="noopener noreferrer" class="bg-[#160124] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105">
+				<div class="relative z-1 w-[176px] h-[39px] overflow-hidden px-[5px]">
+					<div class="w-full aspect-[1233/180] relative overflow-hidden">
+						<img src={campfireLogo} alt="Campfire Flagship" class="absolute max-w-none" style="height: 181.11%; left: -4.46%; top: -11.11%; width: 109.81%;" />
+					</div>
+				</div>
+				<div class="relative z-1 w-full aspect-video overflow-hidden rounded-lg">
+					<img src={campfirePhoto} alt="" class="absolute inset-0 w-full h-full object-cover" />
+				</div>
+				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">A hackathon with a bunch of youtubers, including Michael Reeves and William Osman</p>
+			</a>
+		</div>
+	</section>
+
+	<!-- Video Modal -->
+	{#if activeVideo}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer" onclick={() => activeVideo = null} onkeydown={(e) => { if (e.key === 'Escape') activeVideo = null; }}>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="relative w-full max-w-4xl aspect-video mx-4" onclick={(e) => e.stopPropagation()}>
+				<iframe
+					src="https://www.youtube.com/embed/{activeVideo}?autoplay=1"
+					title="Event video"
+					class="w-full h-full rounded-xl"
+					frameborder="0"
+					allow="autoplay; encrypted-media"
+					allowfullscreen
+				></iframe>
+				<button class="absolute -top-10 right-0 text-white text-3xl font-bold cursor-pointer bg-transparent border-none" onclick={() => activeVideo = null}>&times;</button>
+			</div>
+		</div>
+	{/if}
 
 </BG>
 
