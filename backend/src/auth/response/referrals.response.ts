@@ -1,11 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ReferralUserResponse {
-  @ApiProperty()
-  username: string;
+  @ApiProperty({ nullable: true })
+  slackUserId: string | null;
 
-  @ApiProperty()
-  email: string;
+  @ApiProperty({ nullable: true })
+  displayName: string | null;
 
   @ApiProperty()
   onboardComplete: boolean;

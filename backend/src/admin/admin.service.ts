@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
+import { CachetService } from '../cachet/cachet.service';
 import { GeocodingService } from './geocoding.service';
 import * as Papa from 'papaparse';
 
@@ -42,6 +43,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private slackService: SlackService,
+    private cachetService: CachetService,
     private geocodingService: GeocodingService,
   ) {}
 
@@ -1993,19 +1995,6 @@ export class AdminService {
     return results;
   }
 
-  private async fetchCachetUsername(slackId: string): Promise<string | null> {
-    try {
-      const res = await fetch(
-        `https://cachet.dunkirk.sh/users/${slackId}`,
-      );
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data?.username ?? data?.name ?? null;
-    } catch {
-      return null;
-    }
-  }
-
   async exportCsv(): Promise<string> {
     const users = await this.prisma.user.findMany({
       select: {
@@ -2054,27 +2043,17 @@ export class AdminService {
       hackatimeLinks.map((r) => [r.userId, r.usedAt]),
     );
 
-    // Batch fetch Cachet usernames for users with Slack IDs
-    const slackUsers = users.filter((u) => u.slackUserId);
-    const cachetResults = await Promise.allSettled(
-      slackUsers.map(async (u) => ({
-        userId: u.userId,
-        username: await this.fetchCachetUsername(u.slackUserId!),
-      })),
-    );
-    const cachetMap = new Map<number, string>();
-    for (const result of cachetResults) {
-      if (result.status === 'fulfilled' && result.value.username) {
-        cachetMap.set(result.value.userId, result.value.username);
-      }
-    }
+    const slackIds = users
+      .map((u) => u.slackUserId)
+      .filter((id): id is string => !!id);
+    const displayNames = await this.cachetService.getDisplayNames(slackIds);
 
     const rows = users.map((user) => ({
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       slackId: user.slackUserId ?? '',
-      username: cachetMap.get(user.userId) ?? '',
+      username: (user.slackUserId && displayNames.get(user.slackUserId)) || '',
       signedUpAt: user.createdAt.toISOString(),
       hackatimeLinkedAt: hackatimeLinkMap.get(user.userId)?.toISOString() ?? '',
       firstProjectAt:

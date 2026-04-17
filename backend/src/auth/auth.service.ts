@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
+import { CachetService } from '../cachet/cachet.service';
 
 import { createHmac } from 'crypto';
 import * as jose from 'jose';
@@ -108,6 +109,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private airtableService: AirtableService,
+    private cachetService: CachetService,
   ) {}
 
   getAuthUrl(
@@ -591,18 +593,24 @@ export class AuthService {
     const users = await this.prisma.user.findMany({
       where: { referredByUserId: userId },
       select: {
-        firstName: true,
-        email: true,
+        slackUserId: true,
         onboardComplete: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
     });
 
+    const slackIds = users
+      .map((u) => u.slackUserId)
+      .filter((id): id is string => !!id);
+    const displayNames = await this.cachetService.getDisplayNames(slackIds);
+
     return {
       referrals: users.map((u) => ({
-        username: u.firstName ?? 'Unknown',
-        email: u.email,
+        slackUserId: u.slackUserId,
+        displayName: u.slackUserId
+          ? (displayNames.get(u.slackUserId) ?? null)
+          : null,
         onboardComplete: u.onboardComplete,
         createdAt: u.createdAt.toISOString(),
       })),

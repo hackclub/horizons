@@ -1597,8 +1597,8 @@ export interface components {
             referralCode: string;
         };
         ReferralUserResponse: {
-            username: string;
-            email: string;
+            slackUserId: string | null;
+            displayName: string | null;
             onboardComplete: boolean;
             createdAt: string;
         };

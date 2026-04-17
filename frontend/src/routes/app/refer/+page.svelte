@@ -126,12 +126,12 @@
 						{#each referrals as referral, i}
 							<div class="referral-card" class:first={i === 0}>
 								<div class="flex items-center justify-between w-full">
-									<p class="font-cook text-[20px] text-black m-0">{referral.username.toUpperCase()}</p>
+									<p class="font-cook text-[20px] text-black m-0">{(referral.displayName ?? 'UNKNOWN').toUpperCase()}</p>
 									<span class="font-bricolage text-sm font-semibold px-3 py-1 rounded-full border-2 border-black {referral.onboardComplete ? 'bg-[#91D374]' : 'bg-[#f3e8d8]'}">
 										{referral.onboardComplete ? 'Onboarded' : 'Pending'}
 									</span>
 								</div>
-								<p class="font-bricolage text-[20px] text-black m-0">{referral.email}</p>
+								<p class="font-bricolage text-[20px] text-black m-0">{referral.slackUserId ?? '—'}</p>
 							</div>
 						{/each}
 					{/if}
