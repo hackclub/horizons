@@ -153,7 +153,7 @@ export class AuthService {
     }
 
     return {
-      url: `${this.HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`,
+      url: `${this.HACKCLUB_AUTH_URL}/join/horizons?${params.toString()}`,
     };
   }
 
