@@ -92,7 +92,52 @@
 		eventScrollOffset = Math.min(offset, 0);
 	}
 
-	function selectEvent(index: number) {
+	let autoRotateTimer: ReturnType<typeof setInterval>;
+	let inactivityTimer: ReturnType<typeof setTimeout>;
+	let autoRotateActive = $state(false);
+	let summerSectionEl: HTMLElement;
+	let timerProgress = $state(0);
+	let timerAnimFrame: number;
+	let timerStart = 0;
+	const AUTO_ROTATE_MS = 10000;
+	const INACTIVITY_MS = 45000;
+
+	function startTimerAnimation() {
+		timerStart = Date.now();
+		cancelAnimationFrame(timerAnimFrame);
+		function tick() {
+			if (!autoRotateActive) { timerProgress = 0; return; }
+			timerProgress = (Date.now() - timerStart) / AUTO_ROTATE_MS;
+			if (timerProgress >= 1) { timerProgress = 0; return; }
+			timerAnimFrame = requestAnimationFrame(tick);
+		}
+		tick();
+	}
+
+	function startAutoRotate() {
+		autoRotateActive = true;
+		clearInterval(autoRotateTimer);
+		startTimerAnimation();
+		autoRotateTimer = setInterval(() => {
+			selectEvent((selectedEventIndex + 1) % eventEntries.length, false);
+		}, AUTO_ROTATE_MS);
+	}
+
+	function stopAutoRotate() {
+		autoRotateActive = false;
+		clearInterval(autoRotateTimer);
+		cancelAnimationFrame(timerAnimFrame);
+		timerProgress = 0;
+	}
+
+	function resetInactivityTimer() {
+		clearTimeout(inactivityTimer);
+		inactivityTimer = setTimeout(() => {
+			startAutoRotate();
+		}, INACTIVITY_MS);
+	}
+
+	function selectEvent(index: number, manual = true) {
 		selectedEventIndex = index;
 		updateEventScroll();
 		const event = eventEntries[index][1];
@@ -100,6 +145,12 @@
 			const { phi, theta } = locationToGlobe(event.location);
 			targetPhi = phi;
 			targetTheta = theta;
+		}
+		if (manual) {
+			stopAutoRotate();
+			resetInactivityTimer();
+		} else {
+			startTimerAnimation();
 		}
 	}
 
@@ -234,6 +285,15 @@ void main(){
 		}
 		animate();
 
+		// Start auto-rotate when section comes into view
+		const sectionObserver = new IntersectionObserver((entries) => {
+			if (entries[0].isIntersecting) {
+				startAutoRotate();
+				sectionObserver.disconnect();
+			}
+		}, { threshold: 0.3 });
+		if (summerSectionEl) sectionObserver.observe(summerSectionEl);
+
 		// Prevent browser focus restore from auto-selecting the card
 		setTimeout(() => {
 			if (!signupEmail) {
@@ -246,6 +306,10 @@ void main(){
 
 		return () => {
 			cancelAnimationFrame(animFrame);
+			cancelAnimationFrame(timerAnimFrame);
+			clearInterval(autoRotateTimer);
+			clearTimeout(inactivityTimer);
+			sectionObserver.disconnect();
 			globeInstance.destroy();
 		};
 
@@ -529,7 +593,7 @@ void main(){
 	</section>
 
 	<!-- ===== THIS SUMMER SECTION ===== -->
-	<section class="relative z-0" style="--divider-url: url('{divider}')">
+	<section bind:this={summerSectionEl} class="relative z-0" style="--divider-url: url('{divider}')">
 		<!-- Event Carousel -->
 		<div class="w-full relative overflow-hidden h-[750px]" style="background-color: {eventEntries[0][1].eventCard.bgColor}">
 			<!-- Background image -->
@@ -556,19 +620,38 @@ void main(){
 						{#each eventEntries as [key, event], i}
 							{@const selected = i === selectedEventIndex}
 							<button
-								class="event-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center overflow-hidden relative shrink-0 p-9 cursor-pointer bg-cover bg-center transition-all duration-(--juice-duration) ease-(--juice-easing) {selected ? 'w-[325px] h-[435px] scale-(--juice-scale) justify-between' : 'w-[262px] h-[351px] opacity-80 hover:opacity-100 hover:scale-(--juice-scale) justify-center'}"
-								style="background-color: {event.eventCard.bgColor};{event.eventCard.bgImage ? ` background-image: ${event.eventCard.gradient ? event.eventCard.gradient + ', ' : ''}url(${event.eventCard.bgImage});` : ''}"
+								class="event-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative shrink-0 cursor-pointer bg-cover bg-center {selected ? 'opacity-100' : 'opacity-80 hover:opacity-100 hover:scale-(--juice-scale)'}"
+								style="width: {selected ? '325px' : '262px'}; height: {selected ? '435px' : '351px'}; transition: all var(--juice-duration) var(--juice-easing); background-color: {event.eventCard.bgColor};{event.eventCard.bgImage ? ` background-image: ${event.eventCard.gradient ? event.eventCard.gradient + ', ' : ''}url(${event.eventCard.bgImage});` : ''}"
 								onclick={() => selectEvent(i)}
 							>
-								<!-- Gradient overlay for selected card -->
-								<div class="absolute inset-0 rounded-[16px] bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-(--juice-duration) {selected ? 'opacity-100' : 'opacity-0'}"></div>
+								<!-- Gradient overlay -->
+								<div class="absolute inset-0 rounded-[16px] bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-(--selected-duration) ease-out {selected ? 'opacity-100' : 'opacity-0'}"></div>
 
-								<img src={event.logo} alt={event.name} class="relative z-1 max-w-full h-auto object-contain transition-all duration-(--juice-duration) ease-(--juice-easing) {selected ? 'max-h-30 drop-shadow-[0px_0px_40px_rgba(0,0,0,0.6)]' : 'max-h-24'}" />
+								<!-- Logo — absolutely positioned, animates between center and top -->
+								<img
+									src={event.logo}
+									alt={event.name}
+									class="absolute z-1 max-w-[80%] h-auto object-contain transition-all duration-(--selected-duration) ease-out"
+									style="left: 50%; top: {selected ? '36px' : '50%'}; transform: translate(-50%, {selected ? '0' : '-50%'}) scale({selected ? '1' : '0.9'}); max-height: {selected ? '120px' : '96px'}; filter: {selected ? 'drop-shadow(0px 0px 40px rgba(0,0,0,0.6))' : 'none'};"
+								/>
 
-								<!-- Tagline (selected only) -->
-								<p class="relative z-1 text-2xl text-center text-white m-0 transition-opacity duration-(--juice-duration) {selected ? 'opacity-100' : 'opacity-0 absolute bottom-9'}">
-									{event.headline}
-								</p>
+								<!-- Tagline + dates — absolutely positioned at bottom, fades in -->
+								<div
+									class="absolute left-9 right-9 bottom-9 z-1 flex flex-col items-center gap-1 transition-all duration-(--selected-duration) ease-out"
+									style="opacity: {selected ? 1 : 0}; transform: translateY({selected ? '0' : '16px'});"
+								>
+									<p class="text-2xl text-center text-white m-0">{event.headline}</p>
+									{#if event.dates}
+										<p class="font-cook text-base text-center text-white/70 m-0">{event.dates}</p>
+									{/if}
+								</div>
+
+								<!-- Auto-rotate timer indicator -->
+								{#if selected && autoRotateActive}
+									<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-white/5 rounded-b-2xl overflow-hidden z-10">
+										<div class="h-full bg-white/15" style="width: {timerProgress * 100}%;"></div>
+									</div>
+								{/if}
 							</button>
 						{/each}
 					</div>
@@ -664,15 +747,6 @@ void main(){
 		mask-repeat: no-repeat, no-repeat;
 		-webkit-mask-composite: xor;
 		mask-composite: exclude;
-	}
-
-	/* Hide scrollbar */
-	.scrollbar-hide {
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-	}
-	.scrollbar-hide::-webkit-scrollbar {
-		display: none;
 	}
 
 	/* Signup button blink */
