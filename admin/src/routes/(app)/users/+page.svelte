@@ -466,16 +466,22 @@
                                             </Button>
                                         </div>
                                     </div>
+                                {:else if (user as any).hackatimeStartDate}
+                                    <div class="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-2 py-1.5 text-[11px] text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
+                                        <span class="font-semibold">
+                                            ⚠ Custom Hackatime start: {toDateInputValue((user as any).hackatimeStartDate)}
+                                        </span>
+                                        <span class="opacity-80">
+                                            — hours include activity since this admin-set date, not the default cutoff.
+                                        </span>
+                                        <Button variant="ghost" onclick={() => startDateEdit(user)}>
+                                            Edit
+                                        </Button>
+                                    </div>
                                 {:else}
                                     <div class="flex items-center gap-2">
-                                        <span
-                                            class={(user as any).hackatimeStartDate
-                                                ? 'text-green-700'
-                                                : 'text-ds-text-placeholder'}
-                                        >
-                                            Hackatime start: {(user as any).hackatimeStartDate
-                                                ? toDateInputValue((user as any).hackatimeStartDate)
-                                                : 'default cutoff'}
+                                        <span class="text-ds-text-placeholder">
+                                            Hackatime start: default cutoff
                                         </span>
                                         <Button variant="ghost" onclick={() => startDateEdit(user)}>
                                             Edit
