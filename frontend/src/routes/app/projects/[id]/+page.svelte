@@ -78,6 +78,20 @@
 	);
 	let hoursLabel = $derived(isApproved ? 'approved' : 'submitted');
 
+	let reviewerFeedback = $derived(latestSubmission?.hoursJustification as string | null | undefined);
+	let feedbackEl = $state<HTMLParagraphElement | null>(null);
+	let feedbackTruncated = $state(false);
+	let showFeedbackModal = $state(false);
+
+	$effect(() => {
+		reviewerFeedback;
+		if (feedbackEl) {
+			feedbackTruncated = feedbackEl.scrollHeight > feedbackEl.clientHeight + 1;
+		} else {
+			feedbackTruncated = false;
+		}
+	});
+
 	const nav = createGridNav({
 		columns: () => [1, 1],
 		onSelect: (col) => {
@@ -95,6 +109,13 @@
 	});
 
 	function handleKeydown(e: KeyboardEvent) {
+		if (showFeedbackModal) {
+			if (e.key === 'Escape') {
+				e.stopPropagation();
+				showFeedbackModal = false;
+			}
+			return;
+		}
 		if (e.key === 'Escape') {
 			navigateTo('/app/projects?noanimate');
 			return;
@@ -208,7 +229,16 @@
 						{#if reviewerFeedback}
 							<div class="flex-1 bg-[rgba(0,0,0,0.1)] rounded-xl p-4 flex flex-col gap-1 min-w-0">
 								<p class="font-bricolage text-[15px] font-bold text-black m-0">Reviewer Feedback</p>
-								<p class="font-bricolage text-[14px] text-black m-0 line-clamp-4">{reviewerFeedback}</p>
+								<p bind:this={feedbackEl} class="font-bricolage text-[14px] text-black m-0 line-clamp-4 whitespace-pre-wrap wrap-break-word">{reviewerFeedback}</p>
+								{#if feedbackTruncated}
+									<button
+										type="button"
+										class="self-start font-bricolage text-[13px] font-semibold text-black underline cursor-pointer bg-transparent border-0 p-0 mt-0.5"
+										onclick={() => (showFeedbackModal = true)}
+									>
+										Read more
+									</button>
+								{/if}
 							</div>
 						{/if}
 
@@ -281,6 +311,40 @@
 		</div>
 	{/if}
 
+	<!-- Reviewer Feedback Modal -->
+	{#if showFeedbackModal && reviewerFeedback}
+		<div class="fixed inset-0 z-50 flex items-center justify-center p-6" role="presentation">
+			<button
+				type="button"
+				aria-label="Close"
+				class="absolute inset-0 bg-black/40 border-0 p-0 cursor-default"
+				onclick={() => (showFeedbackModal = false)}
+			></button>
+			<div
+				class="relative bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] max-w-160 w-full max-h-[80vh] flex flex-col"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Reviewer feedback"
+				tabindex="-1"
+			>
+				<div class="flex items-center justify-between gap-4 px-6 pt-5 pb-3 border-b-2 border-black/20">
+					<p class="font-cook text-[28px] font-semibold text-black m-0">REVIEWER FEEDBACK</p>
+					<button
+						type="button"
+						aria-label="Close"
+						class="close-btn size-8 flex items-center justify-center border-2 border-black rounded-md font-bricolage text-[18px] font-bold leading-none"
+						onclick={() => (showFeedbackModal = false)}
+					>
+						×
+					</button>
+				</div>
+				<div class="px-6 py-5 overflow-y-auto">
+					<p class="font-bricolage text-[16px] text-black m-0 whitespace-pre-wrap wrap-break-word">{reviewerFeedback}</p>
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Back button -->
 	<BackButton onclick={() => navigateTo('/app/projects?noanimate')} />
 
@@ -342,6 +406,19 @@
 
 	.action-btn:not(.pending):not(.keyboard):hover,
 	.action-btn.selected {
+		background-color: #ffa936;
+		transform: scale(var(--juice-scale));
+	}
+
+	.close-btn {
+		background-color: #f3e8d8;
+		cursor: pointer;
+		transition:
+			background-color var(--selected-duration) ease,
+			transform var(--juice-duration) var(--juice-easing);
+	}
+
+	.close-btn:hover {
 		background-color: #ffa936;
 		transform: scale(var(--juice-scale));
 	}
