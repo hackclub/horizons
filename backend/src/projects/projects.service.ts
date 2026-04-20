@@ -221,7 +221,7 @@ export class ProjectsService {
       );
     }
 
-    if (this.calculateAge(user.birthday) >= 19) {
+    if (this.calculateAge(user.birthday) >= 19 && !user.ageOverride) {
       throw new ForbiddenException('You must be under 19 to submit projects.');
     }
 
