@@ -61,16 +61,16 @@ equinox:
   buttonTextMobile: "> TAP  TO  START"
   footerHint: "USE  WASD  OR  YOUR  MOUSE"
   background:
-    image: /event-bgs/equinox-bg.webp
+    image: /event-bgs/equinox-blend.webp
     pattern: true
     opacity: 0.25
     mix-blend-mode: overlay
   colors:
     background: "#f4efe4"
-    buttonColor: "7D1B33"
-    dark: "#1a1510"
+    buttonColor: "#7D1B33"
+    dark: "#10002a"
     text: "#000000"
-    primary: "#c9a227"
+    primary: "#6874ee"
     secondary: "#2d6a6a"
     tertiary: "#8b4513"
     cardBg: "#f4efe4"
