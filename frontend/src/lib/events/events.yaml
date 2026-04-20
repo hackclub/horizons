@@ -63,10 +63,11 @@ equinox:
   background:
     image: /event-bgs/equinox-bg.webp
     pattern: true
-    opacity: 0.50
-    mix-blend-mode: soft-light
+    opacity: 0.25
+    mix-blend-mode: overlay
   colors:
     background: "#f4efe4"
+    buttonColor: "7D1B33"
     dark: "#1a1510"
     text: "#000000"
     primary: "#c9a227"

@@ -22,7 +22,7 @@
 		<div class="absolute inset-0">
 			<div
 				class="w-full h-full pointer-events-none bg-cover bg-center"
-				style="background-image: url({backgroundImage}); opacity: {backgroundImage && showPattern ? 1 : backgroundOpacity};"
+				style="background-image: url({backgroundImage}); opacity: {backgroundOpacity};"
 			></div>
 		</div>
 	{/if}

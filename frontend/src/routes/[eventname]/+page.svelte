@@ -340,7 +340,7 @@
 
 			{#if !isTransitioning}
 				<div class="flex flex-col items-center justify-center px-4 sm:px-16 mt-8" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}>
-					<BobaButton text={isMobile ? config.buttonTextMobile : config.buttonText} fontSize={isMobile ? 22 : 32} fallbackWidth={isMobile ? 186 : 360} {pressed} className="select-none" wave {disableAnimations} />
+					<BobaButton text={isMobile ? config.buttonTextMobile : config.buttonText} fontSize={isMobile ? 22 : 32} fallbackWidth={isMobile ? 186 : 360} {pressed} className="select-none" wave {disableAnimations} textColor={config.buttonColor} />
 				</div>
 			{/if}
 		</div>

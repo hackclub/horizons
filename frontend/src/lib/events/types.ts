@@ -10,6 +10,7 @@ export interface EventConfig {
 	logoMaxWidth?: string;
 	buttonText: string;
 	buttonTextMobile: string;
+	buttonColor?: string;
 	footerHint: string;
 	background?: {
 		image?: string | null;
