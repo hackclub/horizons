@@ -118,11 +118,11 @@
 
 	{#if hackatimeStartDateLabel}
 		<div
-			class="mt-2 rounded-md border border-yellow-500/40 bg-yellow-500/10 p-2 text-[12px] text-yellow-800 dark:text-yellow-300"
+			class="mt-2 rounded-md border border-rv-accent bg-rv-tag-bg p-2 text-[12px] text-rv-accent"
 			title="This user has a custom Hackatime start date set by an admin (usually for CSV backfill). Hours counted below include Hackatime activity from this date onward — not the default event cutoff."
 		>
 			<div class="font-semibold">⚠ Custom Hackatime start: {hackatimeStartDateLabel}</div>
-			<div class="opacity-80">
+			<div>
 				Hours include this user's Hackatime activity since this date (admin-set override). Default event cutoff does not apply.
 			</div>
 		</div>

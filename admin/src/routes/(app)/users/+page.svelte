@@ -439,7 +439,7 @@
                                         <label class="block text-xs text-ds-text-secondary" for="startdate-{user.userId}">
                                             Hackatime Start Date (overrides global cutoff; leave blank to clear)
                                         </label>
-                                        <p class="text-[11px] text-yellow-600 dark:text-yellow-400 leading-snug">
+                                        <p class="rounded-md border border-yellow-600 bg-yellow-100 px-2 py-1.5 text-[12px] text-yellow-900 leading-snug">
                                             ⚠ Setting this widens the Hackatime time window for <em>all</em> of this user's linked projects, not just CSV-imported ones.
                                             Any post-cutoff project they link manually will also get credit for pre-cutoff activity on that project.
                                             Only set this for admin-curated backfill users.
@@ -467,11 +467,11 @@
                                         </div>
                                     </div>
                                 {:else if (user as any).hackatimeStartDate}
-                                    <div class="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-2 py-1.5 text-[11px] text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
+                                    <div class="rounded-md border border-yellow-600 bg-yellow-100 px-2 py-1.5 text-[12px] text-yellow-900 flex items-center gap-2 flex-wrap">
                                         <span class="font-semibold">
                                             ⚠ Custom Hackatime start: {toDateInputValue((user as any).hackatimeStartDate)}
                                         </span>
-                                        <span class="opacity-80">
+                                        <span>
                                             — hours include activity since this admin-set date, not the default cutoff.
                                         </span>
                                         <Button variant="ghost" onclick={() => startDateEdit(user)}>
