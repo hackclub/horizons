@@ -283,7 +283,7 @@
 						</div>
 					</div>
 					<button
-						class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
+						class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
 						class:card-continue-ready={hackatimeLinked}
 						onclick={() => step++}
 						disabled={!hackatimeLinked}
@@ -313,7 +313,7 @@
 					<div class="flex flex-col gap-2 w-full">
 						<FormError message={projectError} />
 						<button
-							class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
+							class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
 							class:card-submit-ready={projectFormReady}
 							onclick={handleProjectSubmit}
 							disabled={projectSubmitting}
@@ -356,7 +356,7 @@
 				<div class="flex justify-between items-center gap-4">
 					<p class="font-bricolage text-base font-semibold text-black opacity-60">You can change which event you want to go to later!</p>
 					{#if selectedEvent}
-						<button class="py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936] shrink-0" onclick={(e) => { e.stopPropagation(); handleEventContinue(); }}>
+						<button class="juice-btn py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936] shrink-0" onclick={(e) => { e.stopPropagation(); handleEventContinue(); }}>
 							Continue
 						</button>
 					{/if}
@@ -365,10 +365,10 @@
 
 			{#if isExperienceStep}
 				<div class="flex gap-2.5 w-full">
-					<button class="flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); step++; }}>
+					<button class="juice-btn flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); step++; }}>
 						Yes!
 					</button>
-					<button class="flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); goto('/app/onboarding/tutorial'); }}>
+					<button class="juice-btn flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); goto('/app/onboarding/tutorial'); }}>
 						No, this is my first time.
 					</button>
 				</div>
@@ -379,6 +379,11 @@
 </div>
 
 <style>
+	.juice-btn {
+		transition: scale var(--juice-duration) var(--juice-easing),
+		            background-color 0.2s ease-in-out;
+	}
+
 	.event-card:not(:disabled):not(.selected):hover {
 		transform: scale(var(--juice-scale));
 	}
