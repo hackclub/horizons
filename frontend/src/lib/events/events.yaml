@@ -33,9 +33,9 @@ nexus:
     gradient: "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 50%)"
     compactGradient: "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.25) 50%)"
   stripes:
-    - "#ffa936"
-    - "#f86d95"
-    - "#46467c"
+    - "#ED7D0F"
+    - "#DC3079"
+    - "#595FD8"
   menu:
     - title: JOIN NOW
       subtitle: START WORKING ON YOUR PROJECTS!
@@ -54,16 +54,17 @@ equinox:
   dates: "AUG 14-16"
   landingBlurb: "A hackathon in the shadow of the pyramids"
   tagline: "60 PERSON HIGH SCHOOL HACKATHON IN EGYPT \u2022 AUG 14-16"
-  headline: A HORIZONS EVENT IN AFRICA
+  headline: A HORIZONS EVENT IN EGYPT
   logo: /logos/equinox.webp
-  logoMaxWidth: 650px
+  logoMaxWidth: 700px
   buttonText: "> CLICK  OR  PRESS  ENTER"
   buttonTextMobile: "> TAP  TO  START"
   footerHint: "USE  WASD  OR  YOUR  MOUSE"
   background:
-    image: null
+    image: /event-bgs/equinox-bg.webp
     pattern: true
-    opacity: 0.5
+    opacity: 0.50
+    mix-blend-mode: soft-light
   colors:
     background: "#f4efe4"
     dark: "#1a1510"
@@ -82,9 +83,9 @@ equinox:
     gradient: null
     compactGradient: null
   stripes:
-    - "#c9a227"
-    - "#2d6a6a"
-    - "#8b4513"
+    - "#ED7D0F"
+    - "#DC3079"
+    - "#595FD8"
   menu:
     - title: JOIN NOW
       subtitle: START WORKING ON YOUR PROJECTS!

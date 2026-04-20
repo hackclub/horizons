@@ -15,6 +15,7 @@ export interface EventConfig {
 		image?: string | null;
 		pattern?: boolean;
 		opacity?: number;
+		'mix-blend-mode'?: string;
 	};
 	colors: {
 		background: string;

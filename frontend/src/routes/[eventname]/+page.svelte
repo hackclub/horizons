@@ -306,7 +306,7 @@
 	{/if}
 {/if}
 
-<BG class="flex flex-col overflow-hidden" {disableAnimations} --bg-color={config.colors.background} backgroundImage={config.background?.image} backgroundPattern={config.background?.pattern ?? true} backgroundOpacity={config.background?.opacity ?? 0.5}>
+<BG class="flex flex-col overflow-hidden" {disableAnimations} --bg-color={config.colors.background} backgroundImage={config.background?.image} backgroundPattern={config.background?.pattern ?? true} backgroundOpacity={config.background?.opacity ?? 0.5} patternBlend={config.background?.['mix-blend-mode']}>
 	{#if !activated}
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 		<div class="flex-1 flex flex-col justify-center absolute inset-0 cursor-pointer" onclick={() => {
