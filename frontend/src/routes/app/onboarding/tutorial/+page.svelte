@@ -152,7 +152,7 @@
 										<span class="font-bricolage text-base font-semibold text-black/60">Build and deploy your own personal website!</span>
 									</div>
 								</a>
-								<a href="https://guides.horizons.hackclub.com/guides/godot-platformer/" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-easing) hover:scale-(--juice-scale)">
+								<a href="https://guides.horizons.hackclub.com/guides/godot-guide/" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-easing) hover:scale-(--juice-scale)">
 									<div class="flex flex-col gap-1">
 										<div class="flex items-center gap-1">
 											<span class="font-bricolage text-2xl font-semibold text-black">Create your first platformer game</span>
