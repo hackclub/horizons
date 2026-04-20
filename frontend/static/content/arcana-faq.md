@@ -32,7 +32,7 @@ Yes, we want you to! This hackathon is for all skill levels. We'll be running wo
 Any kind of technical project is allowed - websites, games, hardware - anything!
 
 ## How do I qualify?
-For Horizons Crux (Australia), you are required to code and ship 35 hours of projects.
+For Horizons Arcana (Singapore), you are required to code and ship 35 hours of projects.
 
 ## Can I use AI?
 
