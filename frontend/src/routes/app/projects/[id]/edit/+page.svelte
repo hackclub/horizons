@@ -374,7 +374,7 @@
 		submitting = true;
 		errorMsg = null;
 
-		const [projectRes] = await Promise.all([
+		const [projectRes, hackatimeRes] = await Promise.all([
 			api.PUT('/api/projects/auth/{id}', {
 				params: { path: { id: Number(projectId) } },
 				body: {
@@ -394,16 +394,19 @@
 			}),
 		]);
 
-		if (projectRes.data) {
+		if (projectRes.data && hackatimeRes.data) {
 			// Invalidate all caches so fresh data loads when navigating back
 			// Clear project detail cache + edit cache for this project
 			invalidateProjectCaches(projectId);
 			// Also clear projects list cache since this project's info changed
 			invalidateCache();
 			goto(`/app/projects/${projectId}`);
-		} else {
+		} else if (!projectRes.data) {
 			const err = projectRes.error as any;
 			errorMsg = err?.message ?? err?.error ?? 'Failed to update project. Please try again.';
+		} else {
+			const err = hackatimeRes.error as any;
+			errorMsg = err?.message ?? err?.error ?? 'Failed to update Hackatime projects. Please try again.';
 		}
 
 		submitting = false;
