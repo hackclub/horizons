@@ -12,6 +12,7 @@
         { key: 'Description', label: 'Description', required: false },
         { key: 'hackatime_project_name', label: 'Hackatime Project', required: false },
         { key: 'Slack ID', label: 'Slack ID', required: false },
+        { key: 'Hackatime Start Date', label: 'Hackatime Start Date', required: false },
     ] as const;
 
     let file = $state<File | null>(null);

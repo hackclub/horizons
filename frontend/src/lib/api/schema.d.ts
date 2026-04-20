@@ -776,6 +776,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminController_updateUser"];
+        trace?: never;
+    };
     "/api/admin/import/csv": {
         parameters: {
             query?: never;
@@ -1784,6 +1800,8 @@ export interface components {
             country: string | null;
             zipCode: string | null;
             hackatimeAccount: string | null;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
             slackUserId: string | null;
             referralCode: string | null;
             referredByUserId: number | null;
@@ -1858,6 +1876,8 @@ export interface components {
             country: string | null;
             zipCode: string | null;
             hackatimeAccount: string | null;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
             slackUserId: string | null;
             referralCode: string | null;
             referredByUserId: number | null;
@@ -1967,6 +1987,8 @@ export interface components {
             country: string | null;
             zipCode: string | null;
             hackatimeAccount: string | null;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
             slackUserId: string | null;
             referralCode: string | null;
             referredByUserId: number | null;
@@ -2223,6 +2245,15 @@ export interface components {
             lastName: string | null;
             role: string;
         };
+        UpdateUserDto: {
+            hackatimeStartDate?: string | null;
+        };
+        UpdateUserResponse: {
+            userId: number;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
+            recalculatedProjects: number;
+        };
         ImportCsvSkipped: {
             row: number;
             email: string;
@@ -2268,6 +2299,8 @@ export interface components {
             lastName: string;
             slackUserId: string | null;
             age: number | null;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
         };
         QueueProjectResponse: {
             projectId: number;
@@ -3862,6 +3895,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateUserRoleResponse"];
+                };
+            };
+        };
+    };
+    AdminController_updateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateUserResponse"];
                 };
             };
         };

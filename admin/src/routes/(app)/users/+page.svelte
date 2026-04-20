@@ -20,6 +20,63 @@
     let slackError = $state('');
     let slackLookupResult = $state<SlackLookupResponse | null>(null);
 
+    // Hackatime start date editing state
+    let startDateEditingUserId = $state<number | null>(null);
+    let startDateEditValue = $state('');
+    let startDateSaving = $state(false);
+    let startDateError = $state('');
+
+    function toDateInputValue(value: string | Date | null | undefined): string {
+        if (!value) return '';
+        const d = typeof value === 'string' ? new Date(value) : value;
+        if (isNaN(d.getTime())) return '';
+        return d.toISOString().split('T')[0];
+    }
+
+    function startDateEdit(user: AdminUserResponse) {
+        startDateEditingUserId = user.userId;
+        startDateEditValue = toDateInputValue((user as any).hackatimeStartDate);
+        startDateError = '';
+    }
+
+    function cancelStartDateEdit() {
+        startDateEditingUserId = null;
+        startDateEditValue = '';
+        startDateError = '';
+    }
+
+    async function saveStartDate(userId: number) {
+        startDateSaving = true;
+        startDateError = '';
+        try {
+            const body: { hackatimeStartDate: string | null } = {
+                hackatimeStartDate: startDateEditValue
+                    ? new Date(startDateEditValue).toISOString()
+                    : null,
+            };
+            const { data, error } = await (api as any).PATCH('/api/admin/users/{id}', {
+                params: { path: { id: userId } },
+                body,
+            });
+            if (error) {
+                startDateError = (error as any)?.message || 'Failed to save';
+                return;
+            }
+            if (data) {
+                users = users.map((u) =>
+                    u.userId === userId
+                        ? { ...u, hackatimeStartDate: data.hackatimeStartDate }
+                        : u,
+                );
+                cancelStartDateEdit();
+            }
+        } catch (e) {
+            startDateError = 'Failed to save start date';
+        } finally {
+            startDateSaving = false;
+        }
+    }
+
     function formatDate(value: string) {
         return new Date(value).toLocaleString();
     }
@@ -371,6 +428,56 @@
                                             onclick={() =>
                                                 startSlackEdit(user)}
                                         >
+                                            Edit
+                                        </Button>
+                                    </div>
+                                {/if}
+                                {#if startDateEditingUserId === user.userId}
+                                    <div
+                                        class="space-y-2 p-3 bg-ds-surface2 rounded-lg border border-ds-border"
+                                    >
+                                        <label class="block text-xs text-ds-text-secondary" for="startdate-{user.userId}">
+                                            Hackatime Start Date (overrides global cutoff; leave blank to clear)
+                                        </label>
+                                        <p class="text-[11px] text-yellow-600 dark:text-yellow-400 leading-snug">
+                                            ⚠ Setting this widens the Hackatime time window for <em>all</em> of this user's linked projects, not just CSV-imported ones.
+                                            Any post-cutoff project they link manually will also get credit for pre-cutoff activity on that project.
+                                            Only set this for admin-curated backfill users.
+                                        </p>
+                                        <input
+                                            id="startdate-{user.userId}"
+                                            type="date"
+                                            class="rounded-lg border border-ds-border bg-ds-surface2 px-3 py-1.5 text-sm text-ds-text"
+                                            bind:value={startDateEditValue}
+                                        />
+                                        {#if startDateError}
+                                            <p class="text-xs text-red-600">{startDateError}</p>
+                                        {/if}
+                                        <div class="flex gap-2">
+                                            <Button
+                                                variant="approve"
+                                                onclick={() => saveStartDate(user.userId)}
+                                                disabled={startDateSaving}
+                                            >
+                                                {startDateSaving ? 'Saving...' : 'Save & Recalc'}
+                                            </Button>
+                                            <Button variant="ghost" onclick={cancelStartDateEdit}>
+                                                Cancel
+                                            </Button>
+                                        </div>
+                                    </div>
+                                {:else}
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class={(user as any).hackatimeStartDate
+                                                ? 'text-green-700'
+                                                : 'text-ds-text-placeholder'}
+                                        >
+                                            Hackatime start: {(user as any).hackatimeStartDate
+                                                ? toDateInputValue((user as any).hackatimeStartDate)
+                                                : 'default cutoff'}
+                                        </span>
+                                        <Button variant="ghost" onclick={() => startDateEdit(user)}>
                                             Edit
                                         </Button>
                                     </div>

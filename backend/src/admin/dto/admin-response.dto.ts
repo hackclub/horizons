@@ -37,6 +37,9 @@ export class AdminLightUserResponse {
   @ApiProperty({ type: String, nullable: true })
   hackatimeAccount: string | null;
 
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  hackatimeStartDate: Date | null;
+
   @ApiProperty({ type: String, nullable: true })
   slackUserId: string | null;
 
@@ -471,6 +474,17 @@ export class UpdateUserRoleResponse {
 
   @ApiProperty()
   role: string;
+}
+
+export class UpdateUserResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  hackatimeStartDate: Date | null;
+
+  @ApiProperty()
+  recalculatedProjects: number;
 }
 
 class AuditLogAdminResponse {

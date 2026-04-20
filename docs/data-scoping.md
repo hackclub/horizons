@@ -53,6 +53,7 @@ Reviewers see submission and project data for the review queue, but **user PII i
 | First name, last name | Yes | |
 | Slack user ID | Yes | For contacting via Slack |
 | Age | Yes | **Computed** from birthday, raw date never returned |
+| Hackatime start date | Yes | Per-user cutoff override (non-PII, operational — helps explain pre-default-cutoff hours) |
 | Email | **No** | |
 | Birthday (raw) | **No** | Only age is exposed |
 | Address | **No** | |
@@ -92,6 +93,7 @@ const SCOPED_USER_SELECT = {
   lastName: true,
   slackUserId: true,
   birthday: true,  // fetched but not returned directly
+  hackatimeStartDate: true,
 };
 ```
 

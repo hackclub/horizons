@@ -262,6 +262,7 @@ export class ProjectsService {
       user.hackatimeAccount,
       hackatimeBaseUrl,
       hackatimeApiKey,
+      user.hackatimeStartDate,
     );
 
     // Check if this is a resubmission
@@ -451,6 +452,7 @@ export class ProjectsService {
       project.user.hackatimeAccount,
       hackatimeBaseUrl,
       hackatimeApiKey,
+      project.user.hackatimeStartDate,
     );
 
     const allLinkedProjects = await this.prisma.project.findMany({
@@ -508,7 +510,7 @@ export class ProjectsService {
         nowHackatimeProjects: true,
         userId: true,
         user: {
-          select: { hackatimeAccount: true },
+          select: { hackatimeAccount: true, hackatimeStartDate: true },
         },
         submissions: {
           orderBy: { createdAt: 'desc' },
@@ -551,6 +553,7 @@ export class ProjectsService {
       projectNames,
       hackatimeBaseUrl,
       hackatimeApiKey,
+      project.user.hackatimeStartDate ?? undefined,
     );
 
     const hackatimeProjectHours: Record<string, number> = {};
@@ -691,11 +694,12 @@ export class ProjectsService {
     hackatimeAccount?: string,
     baseUrl?: string,
     apiKey?: string,
+    userStartDate?: Date | null,
   ) {
     if (hackatimeAccount && baseUrl) {
-      const cutoffDate = new Date(
-        process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z',
-      );
+      const cutoffDate =
+        userStartDate ??
+        new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z');
       const filteredDurations =
         await this.fetchHackatimeProjectDurationsAfterDate(
           hackatimeAccount,

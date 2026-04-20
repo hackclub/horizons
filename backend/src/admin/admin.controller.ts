@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Put,
+  Patch,
   Body,
   Param,
   Query,
@@ -45,6 +46,7 @@ import {
   GlobalSettingsResponse,
   ElevatedUserResponse,
   UpdateUserRoleResponse,
+  UpdateUserResponse,
   AdminStatsResponse,
   BackfillResponse,
   EventStatsResponse,
@@ -57,6 +59,7 @@ import {
   ToggleSubmissionsFrozenDto,
   UpdateUserRoleDto,
 } from './dto/admin-request.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiQuery } from '@nestjs/swagger';
 
 @Controller('api/admin')
@@ -317,6 +320,17 @@ export class AdminController {
     @Req() req: Request,
   ) {
     return this.adminService.updateUserRole(id, body.role, req.user.userId);
+  }
+
+  @Patch('users/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiOkResponse({ type: UpdateUserResponse })
+  async updateUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateUserDto,
+  ) {
+    return this.adminService.updateUser(id, body);
   }
 
   @Post('import/csv')

@@ -431,6 +431,7 @@ export class HackatimeService {
       select: {
         hackatimeAccount: true,
         hackatimeAccessToken: true,
+        hackatimeStartDate: true,
         projects: {
           select: {
             projectId: true,
@@ -474,6 +475,7 @@ export class HackatimeService {
           projectsMap,
           user.hackatimeAccount,
           user.hackatimeAccessToken,
+          user.hackatimeStartDate,
         );
         await this.prisma.project.update({
           where: { projectId: project.projectId },
@@ -603,11 +605,12 @@ export class HackatimeService {
     projectsMap: Map<string, number>,
     hackatimeAccount?: string,
     accessToken?: string,
+    userStartDate?: Date | null,
   ) {
     if (hackatimeAccount && accessToken) {
-      const cutoffDate = new Date(
-        process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
-      );
+      const cutoffDate =
+        userStartDate ??
+        new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z');
       const filteredDurations =
         await this.fetchHackatimeProjectDurationsAfterDate(
           hackatimeAccount,
