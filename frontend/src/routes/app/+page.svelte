@@ -18,7 +18,7 @@
 	import eventsRaw from '$lib/events/events.yaml?raw';
 
 	const phrases = [
-		"IT'S! TIME! TO! COOK!",,
+		"IT'S! TIME! TO! COOK!",
 	];
 	const headerText = phrases[Math.floor(Math.random() * phrases.length)];
 
