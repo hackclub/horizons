@@ -361,6 +361,9 @@ export class ProjectsService {
     if (updateProjectDto.projectTitle !== undefined) {
       updateData.projectTitle = updateProjectDto.projectTitle;
     }
+    if (updateProjectDto.projectType !== undefined) {
+      updateData.projectType = updateProjectDto.projectType;
+    }
     if (updateProjectDto.description !== undefined) {
       updateData.description = updateProjectDto.description;
     }
