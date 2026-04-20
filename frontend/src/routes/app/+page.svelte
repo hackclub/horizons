@@ -18,12 +18,7 @@
 	import eventsRaw from '$lib/events/events.yaml?raw';
 
 	const phrases = [
-		"OH YEAH. IT'S ALL COMING TOGETHER.",
-		"IT'S! TIME! TO! COOK!",
-		"HACKCLUB HORIZONS 4EVER",
-		"IN EVERY CONTINENT (DON'T TELL ANTARCTICA)",
-		"All across the earth! *(flat or round)",
-		"APOLLLOOOOOOOOOOO",
+		"IT'S! TIME! TO! COOK!",,
 	];
 	const headerText = phrases[Math.floor(Math.random() * phrases.length)];
 
