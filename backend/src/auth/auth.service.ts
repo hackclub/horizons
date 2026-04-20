@@ -553,7 +553,12 @@ export class AuthService {
         ({ isFraud: _, hoursJustification: __, ...project }: any) => project,
       );
     }
-    return { ...userWithoutAddress, hasAddress };
+
+    const slackDisplayName = user.slackUserId
+      ? await this.cachetService.getDisplayName(user.slackUserId)
+      : null;
+
+    return { ...userWithoutAddress, hasAddress, slackDisplayName };
   }
 
   async logout(sessionId: string) {

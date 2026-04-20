@@ -28,8 +28,10 @@ export const userStore = {
 					api.GET('/api/user/auth/referral-code'),
 				]);
 
+				const slackDisplayName = userRes.data?.slackDisplayName as string | null | undefined;
+
 				store.set({
-					userName: userRes.data?.firstName ? (userRes.data.firstName as string).toLowerCase() : '',
+					userName: slackDisplayName || 'you',
 					referralCode: referralRes.data?.referralCode ?? '',
 					role: (userRes.data?.role as string) ?? '',
 					loaded: true,
