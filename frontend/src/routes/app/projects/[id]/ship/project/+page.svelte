@@ -5,6 +5,8 @@
 	import { api, type components } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, FormButtons, FormError, HackatimeSelect } from '$lib/components/form';
+	import { invalidateProjectCaches } from '$lib/store/projectDetailCache';
+	import { invalidateCache } from '$lib/store/projectCache';
 	import BackButton from '$lib/components/BackButton.svelte';
 
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
@@ -462,6 +464,8 @@
 		]);
 
 		if (projectRes.data) {
+			invalidateProjectCaches(projectId!);
+			invalidateCache();
 			goto(`/app/projects/${projectId}/ship/personal`);
 		} else {
 			errorMsg = 'Failed to save project. Please try again.';
