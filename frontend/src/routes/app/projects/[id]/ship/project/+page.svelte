@@ -446,6 +446,7 @@
 				params: { path: { id: Number(projectId) } },
 				body: {
 					projectTitle: title.trim(),
+					projectType,
 					description: description.trim(),
 					playableUrl: demoUrl.trim(),
 					repoUrl: codeUrl.trim(),
