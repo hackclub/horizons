@@ -46,6 +46,7 @@ model User {
 
   isFraud         Boolean       @default(false) @map("is_fraud")
   isSus           Boolean       @default(false) @map("is_sus")
+  ageOverride     Boolean       @default(false) @map("age_override")
   adminComment    String?       @map("admin_comment") @db.VarChar(1000)
 
   createdAt       DateTime      @default(now()) @map("created_at")
