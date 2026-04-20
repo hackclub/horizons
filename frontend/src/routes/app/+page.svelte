@@ -22,6 +22,8 @@
 		"IT'S! TIME! TO! COOK!",
 		"HACKCLUB HORIZONS 4EVER",
 		"IN EVERY CONTINENT (DON'T TELL ANTARCTICA)",
+		"All across the earth! *(flat or round)",
+		"APOLLLOOOOOOOOOOO",
 	];
 	const headerText = phrases[Math.floor(Math.random() * phrases.length)];
 
@@ -219,7 +221,7 @@
 			</p>
 			<a href="https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476" target="_blank" rel="noopener noreferrer" class="card slack-card ml-auto">
 				<div class="flex flex-col">
-					<p class="font-cook text-[20px] font-semibold text-black m-0 whitespace-nowrap leading-tight">Join 700+ teenagers at #horizons</p>
+					<p class="font-cook text-[20px] font-semibold text-black m-0 whitespace-nowrap leading-tight">Join 1000+ teenagers at #horizons</p>
 					<p class="font-bricolage text-[14px] font-semibold text-black/50 m-0 leading-tight">Open the Hack Club Slack</p>
 				</div>
 				<svg class="shrink-0" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
