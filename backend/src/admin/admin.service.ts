@@ -25,6 +25,7 @@ const projectAdminInclude = {
       country: true,
       zipCode: true,
       hackatimeAccount: true,
+      hackatimeStartDate: true,
       referralCode: true,
       referredByUserId: true,
       isFraud: true,
@@ -1149,6 +1150,68 @@ export class AdminService {
     return updatedUser;
   }
 
+  async updateUser(
+    userId: number,
+    dto: { hackatimeStartDate?: string | null },
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: { userId: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const data: { hackatimeStartDate?: Date | null } = {};
+    if (dto.hackatimeStartDate === null) {
+      data.hackatimeStartDate = null;
+    } else if (dto.hackatimeStartDate !== undefined) {
+      const parsed = new Date(dto.hackatimeStartDate);
+      if (isNaN(parsed.getTime())) {
+        throw new BadRequestException('Invalid hackatimeStartDate');
+      }
+      data.hackatimeStartDate = parsed;
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { userId },
+      data,
+      select: { userId: true, hackatimeStartDate: true },
+    });
+
+    const projects = await this.prisma.project.findMany({
+      where: { userId },
+      include: projectAdminInclude,
+    });
+
+    const baseUrl =
+      process.env.HACKATIME_ADMIN_API_URL ||
+      'https://hackatime.hackclub.com/api/admin/v1';
+    const apiKey = process.env.HACKATIME_API_KEY;
+    const cache = new Map<string, Map<string, number>>();
+    let recalculatedProjects = 0;
+
+    for (const project of projects) {
+      try {
+        const result = await this.recalculateProjectInternal(project, {
+          strict: false,
+          cache,
+          baseUrl,
+          apiKey,
+        });
+        if (result?.project) recalculatedProjects++;
+      } catch {
+        // swallow per-project failures; recalc is best-effort here
+      }
+    }
+
+    return {
+      userId: updatedUser.userId,
+      hackatimeStartDate: updatedUser.hackatimeStartDate,
+      recalculatedProjects,
+    };
+  }
+
   async lookupSlackByEmail(email: string) {
     const result = await this.slackService.lookupSlackUserByEmail(email);
     if (!result) {
@@ -1175,6 +1238,7 @@ export class AdminService {
         lastName: string | null;
         email: string;
         hackatimeAccount: string | null;
+        hackatimeStartDate?: Date | null;
       };
     },
     options: {
@@ -1227,6 +1291,7 @@ export class AdminService {
       project.user.hackatimeAccount,
       baseUrl,
       apiKey,
+      project.user.hackatimeStartDate,
     );
 
     const updatedProject = await this.prisma.project.update({
@@ -1356,11 +1421,12 @@ export class AdminService {
     hackatimeAccount?: string,
     baseUrl?: string,
     apiKey?: string,
+    userStartDate?: Date | null,
   ) {
     if (hackatimeAccount && baseUrl) {
-      const cutoffDate = new Date(
-        process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z',
-      );
+      const cutoffDate =
+        userStartDate ??
+        new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z');
       const filteredDurations =
         await this.fetchHackatimeProjectDurationsAfterDate(
           hackatimeAccount,
@@ -1779,9 +1845,11 @@ export class AdminService {
 
   private async fetchHackatimeProjectNames(
     slackId: string,
+    startDateOverride?: Date | null,
   ): Promise<Set<string>> {
-    const startDate = new Date(
-      process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
+    const startDate = (
+      startDateOverride ??
+      new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z')
     )
       .toISOString()
       .split('T')[0];
@@ -1841,6 +1909,7 @@ export class AdminService {
       const firstName = row['First Name']?.trim() || 'Imported';
       const lastName = row['Last Name']?.trim() || 'User';
       const slackId = row['Slack ID']?.trim();
+      const startDateRaw = row['Hackatime Start Date']?.trim();
 
       if (!email) {
         results.errors.push({
@@ -1849,6 +1918,20 @@ export class AdminService {
           message: 'Missing email',
         });
         continue;
+      }
+
+      let hackatimeStartDate: Date | null = null;
+      if (startDateRaw) {
+        const parsedDate = new Date(startDateRaw);
+        if (isNaN(parsedDate.getTime())) {
+          results.errors.push({
+            row: rowNum,
+            email,
+            message: `Invalid Hackatime Start Date: "${startDateRaw}"`,
+          });
+          continue;
+        }
+        hackatimeStartDate = parsedDate;
       }
 
       try {
@@ -1875,6 +1958,7 @@ export class AdminService {
               firstName,
               lastName,
               slackUserId: slackId || null,
+              hackatimeStartDate,
             },
             include: {
               projects: {
@@ -1888,6 +1972,12 @@ export class AdminService {
           });
           userCreated = true;
           results.usersCreated++;
+        } else if (hackatimeStartDate) {
+          await this.prisma.user.update({
+            where: { userId: user.userId },
+            data: { hackatimeStartDate },
+          });
+          user.hackatimeStartDate = hackatimeStartDate;
         }
 
         // 2. Parse and verify hackatime project names
@@ -1899,8 +1989,10 @@ export class AdminService {
             .filter(Boolean);
 
           if (slackId) {
-            const validNames =
-              await this.fetchHackatimeProjectNames(slackId);
+            const validNames = await this.fetchHackatimeProjectNames(
+              slackId,
+              user.hackatimeStartDate,
+            );
             if (validNames.size > 0) {
               hackatimeProjects = rawNames.filter((n) => validNames.has(n));
             } else {

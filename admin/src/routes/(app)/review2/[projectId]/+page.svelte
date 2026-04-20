@@ -474,6 +474,12 @@
 									<strong>{currentSubmission.hackatimeHours.toFixed(1)}h</strong> Hackatime hours
 								</p>
 							{/if}
+							{#if (currentSubmission.project.user as any).hackatimeStartDate}
+								<div class="mt-1.5 rounded-md border border-yellow-600 bg-yellow-100 px-2 py-1.5 text-[12px] text-yellow-900">
+									<span class="font-semibold">⚠ Custom Hackatime start: {new Date((currentSubmission.project.user as any).hackatimeStartDate).toISOString().split('T')[0]}</span>
+									<span> — hours include activity since this admin-set date, not the default cutoff.</span>
+								</div>
+							{/if}
 							{#if currentSubmission.project.description}
 								<p class="text-xs text-ds-link m-0 mt-1">{currentSubmission.project.description}</p>
 							{/if}

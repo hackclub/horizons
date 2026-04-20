@@ -35,6 +35,7 @@ model User {
 
   hackatimeAccount      String?      @map("hackatime_account")
   hackatimeAccessToken  String?      @map("hackatime_access_token")
+  hackatimeStartDate    DateTime?    @map("hackatime_start_date")
 
   referralCode    String?       @unique @map("referral_code")
   referredByUserId Int?         @map("referred_by_user_id")

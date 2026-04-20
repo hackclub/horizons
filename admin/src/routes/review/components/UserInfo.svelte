@@ -30,6 +30,12 @@
 	const airlockUrl = $derived(
 		repoUrl ? `https://airlock.hackclub.com/?r=${encodeURIComponent(repoUrl)}` : null,
 	);
+
+	const hackatimeStartDateLabel = $derived(
+		(user as any).hackatimeStartDate
+			? new Date((user as any).hackatimeStartDate).toISOString().split('T')[0]
+			: null,
+	);
 </script>
 
 <div class="p-4">
@@ -107,6 +113,18 @@
 				<circle cx="12" cy="7" r="4" />
 			</svg>
 			<span class="bg-rv-green-bg text-rv-green text-[11px] font-bold py-0.5 px-2 rounded-sm">{user.age}yo</span>
+		</div>
+	{/if}
+
+	{#if hackatimeStartDateLabel}
+		<div
+			class="mt-2 rounded-md border border-rv-accent bg-rv-tag-bg p-2 text-[12px] text-rv-accent"
+			title="This user has a custom Hackatime start date set by an admin (usually for CSV backfill). Hours counted below include Hackatime activity from this date onward — not the default event cutoff."
+		>
+			<div class="font-semibold">⚠ Custom Hackatime start: {hackatimeStartDateLabel}</div>
+			<div>
+				Hours include this user's Hackatime activity since this date (admin-set override). Default event cutoff does not apply.
+			</div>
 		</div>
 	{/if}
 </div>

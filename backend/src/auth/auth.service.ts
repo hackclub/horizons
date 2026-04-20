@@ -510,6 +510,7 @@ export class AuthService {
             onboardComplete: true,
             onboardedAt: true,
             hackatimeAccount: true,
+            hackatimeStartDate: true,
             referralCode: true,
             referredByUserId: true,
             rafflePos: true,

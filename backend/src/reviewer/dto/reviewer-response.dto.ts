@@ -15,6 +15,9 @@ export class ScopedUserResponse {
 
   @ApiProperty({ type: Number, nullable: true })
   age: number | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  hackatimeStartDate: Date | null;
 }
 
 class QueueProjectResponse {

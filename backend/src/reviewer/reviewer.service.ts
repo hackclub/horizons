@@ -94,6 +94,7 @@ const SCOPED_USER_SELECT = {
   lastName: true,
   slackUserId: true,
   birthday: true, // used to compute age only, never sent raw
+  hackatimeStartDate: true,
 } as const;
 
 @Injectable()
@@ -911,6 +912,7 @@ export class ReviewerService {
     lastName: string;
     slackUserId: string | null;
     birthday: Date | null;
+    hackatimeStartDate: Date | null;
   }) {
     let age: number | null = null;
     if (user.birthday) {
@@ -932,6 +934,7 @@ export class ReviewerService {
       lastName: user.lastName,
       slackUserId: user.slackUserId,
       age,
+      hackatimeStartDate: user.hackatimeStartDate,
     };
   }
 

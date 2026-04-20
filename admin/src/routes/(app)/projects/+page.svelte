@@ -334,6 +334,12 @@
                                 <p class="text-sm text-ds-text-secondary">
                                     Owner: {fullName(project.user)} ({project.user.email})
                                 </p>
+                                {#if (project.user as any).hackatimeStartDate}
+                                    <div class="mt-2 rounded-md border border-yellow-600 bg-yellow-100 px-2 py-1.5 text-[12px] text-yellow-900">
+                                        <span class="font-semibold">⚠ Custom Hackatime start: {new Date((project.user as any).hackatimeStartDate).toISOString().split('T')[0]}</span>
+                                        <span> — hours include activity since this admin-set date, not the default cutoff.</span>
+                                    </div>
+                                {/if}
                             </div>
                             <div class="flex flex-wrap gap-2 text-sm text-ds-text-secondary">
                                 <span class="rounded-full border border-ds-border px-3 py-1">Type: {project.projectType}</span>
