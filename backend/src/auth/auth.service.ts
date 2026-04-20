@@ -414,6 +414,12 @@ export class AuthService {
           console.error('Error syncing signUp event to Airtable:', err),
         );
 
+      this.airtableService
+        .syncUserEvent(email, existingUser.userId, 'authedWithHCA')
+        .catch((err) =>
+          console.error('Error syncing authedWithHCA event to Airtable:', err),
+        );
+
       return { user: existingUser, isNewUser: true };
     }
 
