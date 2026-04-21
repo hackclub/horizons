@@ -208,6 +208,7 @@ enum ProjectType {
   web_playable
   cross_platform_playable
   hardware
+  mobile_app
 }
 
 enum ApprovalStatus {
