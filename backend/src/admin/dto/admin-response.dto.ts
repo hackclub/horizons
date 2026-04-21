@@ -826,6 +826,12 @@ class StatsUtmEntry {
 
   @ApiProperty()
   count: number;
+
+  @ApiProperty()
+  onboardedCount: number;
+
+  @ApiProperty()
+  shipped10HoursCount: number;
 }
 
 class StatsUtm {

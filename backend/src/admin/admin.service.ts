@@ -824,17 +824,41 @@ export class AdminService {
   }
 
   private async computeUtm() {
-    const groups = await this.prisma.user.groupBy({
-      by: ['utmSource'],
-      _count: { _all: true },
-      where: { utmSource: { not: null } },
-      orderBy: { _count: { utmSource: 'desc' } },
-    });
+    const [groups, onboardedGroups, shipped10hGroups] = await Promise.all([
+      this.prisma.user.groupBy({
+        by: ['utmSource'],
+        _count: { _all: true },
+        where: { utmSource: { not: null } },
+        orderBy: { _count: { utmSource: 'desc' } },
+      }),
+      this.prisma.user.groupBy({
+        by: ['utmSource'],
+        _count: { _all: true },
+        where: { utmSource: { not: null }, onboardComplete: true },
+      }),
+      this.prisma.user.groupBy({
+        by: ['utmSource'],
+        _count: { _all: true },
+        where: {
+          utmSource: { not: null },
+          projects: { some: { nowHackatimeHours: { gte: 10 } } },
+        },
+      }),
+    ]);
+
+    const onboardedBySource = new Map(
+      onboardedGroups.map((g) => [g.utmSource!, g._count._all]),
+    );
+    const shipped10hBySource = new Map(
+      shipped10hGroups.map((g) => [g.utmSource!, g._count._all]),
+    );
 
     return {
       sources: groups.map((g) => ({
         source: g.utmSource!,
         count: g._count._all,
+        onboardedCount: onboardedBySource.get(g.utmSource!) ?? 0,
+        shipped10HoursCount: shipped10hBySource.get(g.utmSource!) ?? 0,
       })),
     };
   }
