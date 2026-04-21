@@ -412,7 +412,7 @@
 		}
 		if (!mediaUrl) {
 			missing.add('media');
-			missingLabels.push('Screenshot/Video');
+			missingLabels.push('Screenshot');
 		}
 		if (isHardware && !journalUrl.trim()) {
 			missing.add('journal-url');
