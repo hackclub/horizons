@@ -124,6 +124,169 @@ export class AdminService {
     return projects;
   }
 
+  async getProject(projectId: number) {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      include: projectAdminInclude,
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return project;
+  }
+
+  async updateProject(
+    projectId: number,
+    dto: {
+      projectTitle?: string;
+      projectType?: string;
+      description?: string | null;
+      playableUrl?: string | null;
+      repoUrl?: string | null;
+      readmeUrl?: string | null;
+      journalUrl?: string | null;
+      screenshotUrl?: string | null;
+      nowHackatimeProjects?: string[];
+      adminComment?: string | null;
+      hoursJustification?: string | null;
+      approvedHours?: number | null;
+      isLocked?: boolean;
+    },
+  ) {
+    const existing = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: {
+        projectId: true,
+        nowHackatimeProjects: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const data: Record<string, any> = {};
+    const keys = [
+      'projectTitle',
+      'projectType',
+      'description',
+      'playableUrl',
+      'repoUrl',
+      'readmeUrl',
+      'journalUrl',
+      'screenshotUrl',
+      'adminComment',
+      'hoursJustification',
+      'approvedHours',
+      'isLocked',
+    ] as const;
+    for (const key of keys) {
+      if (dto[key] !== undefined) {
+        const value = dto[key] as any;
+        data[key] = typeof value === 'string' && value.trim() === '' ? null : value;
+      }
+    }
+
+    let hackatimeProjectsChanged = false;
+    if (dto.nowHackatimeProjects !== undefined) {
+      const next = Array.from(
+        new Set(dto.nowHackatimeProjects.map((n) => n.trim()).filter(Boolean)),
+      );
+      const prev = existing.nowHackatimeProjects ?? [];
+      const sameLength = prev.length === next.length;
+      const sameContent = sameLength && prev.every((n) => next.includes(n));
+      if (!sameContent) {
+        data.nowHackatimeProjects = next;
+        hackatimeProjectsChanged = true;
+      }
+    }
+
+    await this.prisma.project.update({
+      where: { projectId },
+      data,
+    });
+
+    if (hackatimeProjectsChanged) {
+      try {
+        await this.recalculateProjectHours(projectId, false);
+      } catch {
+        // best-effort; caller sees updated fields even if recalc fails
+      }
+    }
+
+    return this.getProject(projectId);
+  }
+
+  async listProjectOwnerHackatimeProjects(projectId: number) {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: {
+        projectId: true,
+        nowHackatimeProjects: true,
+        user: {
+          select: {
+            hackatimeAccount: true,
+            hackatimeStartDate: true,
+          },
+        },
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (!project.user.hackatimeAccount) {
+      return {
+        projects: [],
+        linked: project.nowHackatimeProjects ?? [],
+        hackatimeAccount: null,
+        hackatimeStartDate: null,
+      };
+    }
+
+    const baseUrl =
+      process.env.HACKATIME_ADMIN_API_URL ||
+      'https://hackatime.hackclub.com/api/admin/v1';
+    const apiKey = process.env.HACKATIME_API_KEY;
+
+    const { projectsMap } = await this.fetchHackatimeProjectsData(
+      project.user.hackatimeAccount,
+      baseUrl,
+      apiKey,
+    );
+
+    const cutoff =
+      project.user.hackatimeStartDate ??
+      new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z');
+
+    const names = Array.from(projectsMap.keys());
+    const filtered = await this.fetchHackatimeProjectDurationsAfterDate(
+      project.user.hackatimeAccount,
+      names,
+      baseUrl,
+      apiKey,
+      cutoff,
+    );
+
+    const projects = names
+      .map((name) => ({
+        name,
+        totalHours:
+          Math.round(((filtered.get(name) ?? 0) / 3600) * 10) / 10,
+      }))
+      .sort((a, b) => b.totalHours - a.totalHours);
+
+    return {
+      projects,
+      linked: project.nowHackatimeProjects ?? [],
+      hackatimeAccount: project.user.hackatimeAccount,
+      hackatimeStartDate: project.user.hackatimeStartDate,
+    };
+  }
+
   async recalculateProjectHours(projectId: number, strict = true) {
     const project = await this.prisma.project.findUnique({
       where: { projectId },

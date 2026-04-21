@@ -51,6 +51,7 @@ import {
   BackfillResponse,
   EventStatsResponse,
   ImportCsvResponse,
+  ProjectOwnerHackatimeProjectsResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -60,6 +61,7 @@ import {
   UpdateUserRoleDto,
 } from './dto/admin-request.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateAdminProjectDto } from './dto/update-admin-project.dto';
 import { ApiQuery } from '@nestjs/swagger';
 
 @Controller('api/admin')
@@ -110,6 +112,35 @@ export class AdminController {
   @ApiOkResponse({ type: [AdminProjectResponse] })
   async getAllProjects() {
     return this.adminService.getAllProjects();
+  }
+
+  @Get('projects/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminProjectResponse })
+  async getProject(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getProject(id);
+  }
+
+  @Patch('projects/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiOkResponse({ type: AdminProjectResponse })
+  async updateProject(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateAdminProjectDto,
+  ) {
+    return this.adminService.updateProject(id, body);
+  }
+
+  @Get('projects/:id/hackatime-projects')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: ProjectOwnerHackatimeProjectsResponse })
+  async listProjectOwnerHackatimeProjects(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.adminService.listProjectOwnerHackatimeProjects(id);
   }
 
   @Post('projects/:id/recalculate')
