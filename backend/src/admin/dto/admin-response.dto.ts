@@ -173,7 +173,16 @@ export class AdminProjectResponse {
   @ApiProperty({ type: String, nullable: true })
   description: string | null;
 
-  @ApiProperty()
+  @ApiProperty({
+    enum: [
+      'windows_playable',
+      'mac_playable',
+      'linux_playable',
+      'web_playable',
+      'cross_platform_playable',
+      'hardware',
+    ],
+  })
   projectType: string;
 
   @ApiProperty({ type: Number, nullable: true })
@@ -189,6 +198,12 @@ export class AdminProjectResponse {
   repoUrl: string | null;
 
   @ApiProperty({ type: String, nullable: true })
+  readmeUrl: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  journalUrl: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
   screenshotUrl: string | null;
 
   @ApiProperty({ type: Number, nullable: true })
@@ -196,6 +211,9 @@ export class AdminProjectResponse {
 
   @ApiProperty({ type: String, nullable: true })
   hoursJustification: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  adminComment: string | null;
 
   @ApiProperty()
   isLocked: boolean;
@@ -437,6 +455,28 @@ export class DeleteProjectResponse {
 
   @ApiProperty()
   projectId: number;
+}
+
+class HackatimeProjectEntry {
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  totalHours: number;
+}
+
+export class ProjectOwnerHackatimeProjectsResponse {
+  @ApiProperty({ type: [HackatimeProjectEntry] })
+  projects: HackatimeProjectEntry[];
+
+  @ApiProperty({ type: [String] })
+  linked: string[];
+
+  @ApiProperty({ type: String, nullable: true })
+  hackatimeAccount: string | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  hackatimeStartDate: Date | null;
 }
 
 export class ElevatedUserResponse {

@@ -440,6 +440,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getProject"];
+        put?: never;
+        post?: never;
+        delete: operations["AdminController_deleteProject"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminController_updateProject"];
+        trace?: never;
+    };
+    "/api/admin/projects/{id}/hackatime-projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_listProjectOwnerHackatimeProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/projects/{id}/recalculate": {
         parameters: {
             query?: never;
@@ -467,22 +499,6 @@ export interface paths {
         put?: never;
         post: operations["AdminController_recalculateAllProjects"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/projects/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["AdminController_deleteProject"];
         options?: never;
         head?: never;
         patch?: never;
@@ -774,6 +790,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminController_updateUser"];
         trace?: never;
     };
     "/api/admin/import/csv": {
@@ -1713,6 +1745,11 @@ export interface components {
         UpdateProjectDto: {
             /** @description Project title */
             projectTitle?: string;
+            /**
+             * @description Project type
+             * @enum {string}
+             */
+            projectType?: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware";
             /** @description Project description */
             description?: string;
             /**
@@ -1779,6 +1816,8 @@ export interface components {
             country: string | null;
             zipCode: string | null;
             hackatimeAccount: string | null;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
             slackUserId: string | null;
             referralCode: string | null;
             referredByUserId: number | null;
@@ -1853,6 +1892,8 @@ export interface components {
             country: string | null;
             zipCode: string | null;
             hackatimeAccount: string | null;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
             slackUserId: string | null;
             referralCode: string | null;
             referredByUserId: number | null;
@@ -1874,14 +1915,18 @@ export interface components {
             projectId: number;
             projectTitle: string;
             description: string | null;
-            projectType: string;
+            /** @enum {string} */
+            projectType: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware";
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[] | null;
             playableUrl: string | null;
             repoUrl: string | null;
+            readmeUrl: string | null;
+            journalUrl: string | null;
             screenshotUrl: string | null;
             approvedHours: number | null;
             hoursJustification: string | null;
+            adminComment: string | null;
             isLocked: boolean;
             isFraud: boolean;
             /** Format: date-time */
@@ -1910,6 +1955,38 @@ export interface components {
             projectTitle: string;
             user: components["schemas"]["TimelineActorResponse"];
             timeline: components["schemas"]["TimelineEventResponse"][];
+        };
+        UpdateAdminProjectDto: {
+            projectTitle?: string;
+            /** @enum {string} */
+            projectType?: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware";
+            description?: string | null;
+            /** Format: uri */
+            playableUrl?: string | null;
+            /** Format: uri */
+            repoUrl?: string | null;
+            /** Format: uri */
+            readmeUrl?: string | null;
+            /** Format: uri */
+            journalUrl?: string | null;
+            /** Format: uri */
+            screenshotUrl?: string | null;
+            nowHackatimeProjects?: string[];
+            adminComment?: string | null;
+            hoursJustification?: string | null;
+            approvedHours?: number | null;
+            isLocked?: boolean;
+        };
+        HackatimeProjectEntry: {
+            name: string;
+            totalHours: number;
+        };
+        ProjectOwnerHackatimeProjectsResponse: {
+            projects: components["schemas"]["HackatimeProjectEntry"][];
+            linked: string[];
+            hackatimeAccount: string | null;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
         };
         RecalculateProjectResponse: {
             project?: components["schemas"]["AdminProjectResponse"];
@@ -1962,6 +2039,8 @@ export interface components {
             country: string | null;
             zipCode: string | null;
             hackatimeAccount: string | null;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
             slackUserId: string | null;
             referralCode: string | null;
             referredByUserId: number | null;
@@ -2218,6 +2297,15 @@ export interface components {
             lastName: string | null;
             role: string;
         };
+        UpdateUserDto: {
+            hackatimeStartDate?: string | null;
+        };
+        UpdateUserResponse: {
+            userId: number;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
+            recalculatedProjects: number;
+        };
         ImportCsvSkipped: {
             row: number;
             email: string;
@@ -2263,6 +2351,8 @@ export interface components {
             lastName: string;
             slackUserId: string | null;
             age: number | null;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
         };
         QueueProjectResponse: {
             projectId: number;
@@ -3416,6 +3506,94 @@ export interface operations {
             };
         };
     };
+    AdminController_getProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProjectResponse"];
+                };
+            };
+        };
+    };
+    AdminController_deleteProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteProjectResponse"];
+                };
+            };
+        };
+    };
+    AdminController_updateProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdminProjectDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProjectResponse"];
+                };
+            };
+        };
+    };
+    AdminController_listProjectOwnerHackatimeProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOwnerHackatimeProjectsResponse"];
+                };
+            };
+        };
+    };
     AdminController_recalculateProjectHours: {
         parameters: {
             query?: never;
@@ -3452,27 +3630,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecalculateAllResponse"];
-                };
-            };
-        };
-    };
-    AdminController_deleteProject: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeleteProjectResponse"];
                 };
             };
         };
@@ -3857,6 +4014,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateUserRoleResponse"];
+                };
+            };
+        };
+    };
+    AdminController_updateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateUserResponse"];
                 };
             };
         };

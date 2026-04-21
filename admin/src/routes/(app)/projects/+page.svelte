@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { invalidateAll } from '$app/navigation';
+    import { base } from '$app/paths';
     import { api, type components } from '$lib/api';
     import { Button, Checkbox } from '$lib/components';
 
@@ -330,7 +331,11 @@
                         {/if}
                         <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                             <div>
-                                <h3 class="text-xl font-semibold">{project.projectTitle}</h3>
+                                <h3 class="text-xl font-semibold">
+                                    <a href="{base}/projects/{project.projectId}" class="hover:underline">
+                                        {project.projectTitle}
+                                    </a>
+                                </h3>
                                 <p class="text-sm text-ds-text-secondary">
                                     Owner: {fullName(project.user)} ({project.user.email})
                                 </p>
@@ -415,6 +420,12 @@
                                 <Button variant="approve" onclick={() => recalculateProject(project.projectId)} disabled={projectBusy[project.projectId]}>
                                     {projectBusy[project.projectId] ? 'Processing...' : 'Recalculate hours'}
                                 </Button>
+                                <a
+                                    href="{base}/projects/{project.projectId}"
+                                    class="inline-flex items-center rounded-lg border border-ds-border bg-ds-surface-deselected px-3 py-2 text-sm font-dm text-black hover:bg-ds-surface"
+                                >
+                                    Edit
+                                </a>
                                 <Button
                                     variant="ghost"
                                     class={project.user.isSus
