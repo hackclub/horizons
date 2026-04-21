@@ -21,6 +21,10 @@ This event is open to anyone 13-18, regardless of skill level.
 
 Yup, all for free! [Hack Club is a 501(c)3 non-profit organization](https://the.hackfoundation.org/), and we've run a bunch of events like this in the past. For example, we ran a [180-person hardware hackathon at GitHub HQ](https://www.youtube.com/watch?v=kaEFv7e49mo), and a [seven-day game jam in Shanghai, China](https://www.youtube.com/watch?v=Gtjyyu82pw4).
 
+## Will my travel be covered?
+
+We'll cover travel for additional work submitted beyond the base hour requirement (around $8.5/hr). We'll also provide applications for need-based stipends for Horizons Nexus only.
+
 ## What if my parents are concerned?
 
 We're here to help! Feel free to reach out to [horizons@hackclub.com](mailto:horizons@hackclub.com) and we'd love to answer questions or hop on a call.
