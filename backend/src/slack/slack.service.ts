@@ -8,11 +8,10 @@ interface SlackMessageBlock {
     text: string;
     emoji?: boolean;
   };
-  elements?: Array<{
-    type: string;
-    text?: string;
-    url?: string;
-  }>;
+  elements?: any[];
+  style?: string;
+  indent?: number;
+  border?: number;
 }
 
 @Injectable()
@@ -143,12 +142,190 @@ export class SlackService {
     }
   }
 
+  async getUserChannels(slackUserId: string): Promise<Set<string>> {
+    const result = new Set<string>();
+    if (!this.botToken) return result;
+
+    let cursor: string | undefined;
+    try {
+      do {
+        const params = new URLSearchParams({
+          user: slackUserId,
+          types: 'public_channel,private_channel',
+          limit: '200',
+          exclude_archived: 'true',
+        });
+        if (cursor) params.set('cursor', cursor);
+
+        const response = await fetch(
+          `https://slack.com/api/users.conversations?${params.toString()}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.botToken}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+
+        const data = await response.json();
+        if (!data.ok) {
+          console.error(
+            `Failed to fetch user.conversations for ${slackUserId}:`,
+            data.error,
+          );
+          return result;
+        }
+
+        for (const ch of data.channels ?? []) {
+          if (ch?.id) result.add(ch.id);
+        }
+        cursor = data.response_metadata?.next_cursor || undefined;
+      } while (cursor);
+    } catch (error) {
+      console.error('Error fetching user channels:', error);
+    }
+    return result;
+  }
+
+  async inviteUserToChannel(
+    slackUserId: string,
+    channelId: string,
+  ): Promise<{
+    success: boolean;
+    alreadyInChannel: boolean;
+    error?: string;
+  }> {
+    if (!this.botToken) {
+      return {
+        success: false,
+        alreadyInChannel: false,
+        error: 'Slack not configured',
+      };
+    }
+
+    try {
+      const response = await fetch('https://slack.com/api/conversations.invite', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ channel: channelId, users: slackUserId }),
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        return { success: true, alreadyInChannel: false };
+      }
+
+      if (data.error === 'already_in_channel') {
+        return { success: true, alreadyInChannel: true };
+      }
+
+      const errorsArr: Array<{ user?: string; error?: string }> = data.errors;
+      if (Array.isArray(errorsArr)) {
+        const perUser = errorsArr.find((e) => e.user === slackUserId);
+        if (perUser?.error === 'already_in_channel') {
+          return { success: true, alreadyInChannel: true };
+        }
+      }
+
+      return {
+        success: false,
+        alreadyInChannel: false,
+        error: data.error || 'unknown_error',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        alreadyInChannel: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  async removeUserFromChannel(
+    slackUserId: string,
+    channelId: string,
+  ): Promise<{ success: boolean; notInChannel: boolean; error?: string }> {
+    // Prefer a user token (xoxp-) for kicks so that workspace "who can remove
+    // members from channels" restrictions apply to the authorizing admin, not
+    // the bot. Fall back to the bot token if no user token is configured.
+    const kickToken = process.env.SLACK_USER_TOKEN || this.botToken;
+    if (!kickToken) {
+      return {
+        success: false,
+        notInChannel: false,
+        error: 'Slack not configured',
+      };
+    }
+
+    try {
+      const response = await fetch('https://slack.com/api/conversations.kick', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${kickToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ channel: channelId, user: slackUserId }),
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        return { success: true, notInChannel: false };
+      }
+
+      if (data.error === 'not_in_channel' || data.error === 'user_not_in_channel') {
+        return { success: true, notInChannel: true };
+      }
+
+      return {
+        success: false,
+        notInChannel: false,
+        error: data.error || 'unknown_error',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        notInChannel: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
   async sendDirectMessage(
     slackUserId: string,
     message: string,
     blocks?: SlackMessageBlock[],
   ): Promise<{ success: boolean; error?: string }> {
-    if (!this.botToken) {
+    return this.sendDmWithToken(this.botToken, slackUserId, message, blocks);
+  }
+
+  async sendDirectMessageAsUser(
+    slackUserId: string,
+    message: string,
+    blocks?: SlackMessageBlock[],
+  ): Promise<{ success: boolean; error?: string }> {
+    const userToken = process.env.SLACK_USER_TOKEN;
+    if (!userToken) {
+      console.warn(
+        'SLACK_USER_TOKEN not set — falling back to bot token for DM',
+      );
+      return this.sendDirectMessage(slackUserId, message, blocks);
+    }
+    return this.sendDmWithToken(userToken, slackUserId, message, blocks);
+  }
+
+  private async sendDmWithToken(
+    token: string,
+    slackUserId: string,
+    message: string,
+    blocks?: SlackMessageBlock[],
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!token) {
       console.log('Slack not configured, skipping DM');
       return { success: false, error: 'Slack not configured' };
     }
@@ -159,7 +336,7 @@ export class SlackService {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${this.botToken}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ users: slackUserId }),
@@ -189,7 +366,7 @@ export class SlackService {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${this.botToken}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(messagePayload),
