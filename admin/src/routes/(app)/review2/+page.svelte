@@ -18,6 +18,7 @@
 	const PROJECT_TYPES = [
 		'windows_playable', 'mac_playable', 'linux_playable',
 		'web_playable', 'cross_platform_playable', 'hardware',
+		'mobile_app',
 	];
 	let selectedTypes = $state<Set<string>>(new Set());
 

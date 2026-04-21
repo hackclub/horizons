@@ -1676,7 +1676,7 @@ export interface components {
              * @description Project type
              * @enum {string}
              */
-            projectType: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware";
+            projectType: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware" | "mobile_app";
             /** @description Project description */
             projectDescription: string;
             /** @description Playable URL for the project */
@@ -1749,7 +1749,7 @@ export interface components {
              * @description Project type
              * @enum {string}
              */
-            projectType?: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware";
+            projectType?: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware" | "mobile_app";
             /** @description Project description */
             description?: string;
             /**
@@ -1916,7 +1916,7 @@ export interface components {
             projectTitle: string;
             description: string | null;
             /** @enum {string} */
-            projectType: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware";
+            projectType: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware" | "mobile_app";
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[] | null;
             playableUrl: string | null;
@@ -1959,7 +1959,7 @@ export interface components {
         UpdateAdminProjectDto: {
             projectTitle?: string;
             /** @enum {string} */
-            projectType?: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware";
+            projectType?: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware" | "mobile_app";
             description?: string | null;
             /** Format: uri */
             playableUrl?: string | null;

@@ -15,6 +15,7 @@
 		{ label: 'Web Playable', value: 'web_playable' },
 		{ label: 'Cross-Platform Playable', value: 'cross_platform_playable' },
 		{ label: 'Hardware', value: 'hardware' },
+		{ label: 'Mobile App', value: 'mobile_app' },
 	];
 
 	let title = $state('');

@@ -181,6 +181,7 @@ export class AdminProjectResponse {
       'web_playable',
       'cross_platform_playable',
       'hardware',
+      'mobile_app',
     ],
   })
   projectType: string;

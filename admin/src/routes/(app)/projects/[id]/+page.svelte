@@ -20,6 +20,7 @@
         'web_playable',
         'cross_platform_playable',
         'hardware',
+        'mobile_app',
     ];
 
     let projectId = $derived(parseInt($page.params.id ?? '', 10));

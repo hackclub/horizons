@@ -5,4 +5,5 @@ export enum ProjectType {
   WebPlayable = 'web_playable',
   CrossPlatformPlayable = 'cross_platform_playable',
   Hardware = 'hardware',
+  MobileApp = 'mobile_app',
 }
