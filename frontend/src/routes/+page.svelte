@@ -446,7 +446,7 @@ void main(){
 	<div class="absolute top-0 left-0 w-full h-[400px] overflow-hidden pointer-events-none z-0">
 		<!-- Diagonal stripes -->
 		<div class="absolute top-0 -left-[160px] w-[calc(100%+400px)] flex items-center justify-center">
-			<div class="flex flex-col gap-[10px] w-[1830px] h-[83px] rotate-[-9.8deg]">
+			<div class="flex flex-col gap-[10px] w-full min-w-[1830px] h-[83px] rotate-[-9.8deg]">
 				<div class="flex-1 w-full min-h-0 bg-[#ffa936]"></div>
 				<div class="flex-1 w-full min-h-0 bg-[#f86d95]"></div>
 				<div class="flex-1 w-full min-h-0 bg-[#46467c]"></div>
