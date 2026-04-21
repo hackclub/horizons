@@ -666,10 +666,34 @@
 		if (!chart) return;
 
 		const data = stats.utm.sources;
+		const dark = isDark();
+
+		const shippedColor = dark ? '#6d28d9' : '#6d28d9';
+		const onboardedColor = dark ? '#a78bfa' : '#a78bfa';
+		const remainderColor = dark ? '#475569' : '#e2e8f0';
+
+		const shippedData = data.map((d) => d.shipped10HoursCount);
+		const onboardedOnlyData = data.map((d) =>
+			Math.max(0, d.onboardedCount - d.shipped10HoursCount),
+		);
+		const notOnboardedData = data.map((d) => Math.max(0, d.count - d.onboardedCount));
+
+		const segmentLabel = (value: number, total: number) => {
+			if (!value || !total) return '';
+			const pct = (value / total) * 100;
+			return pct >= 8 ? `${value} (${pct.toFixed(0)}%)` : '';
+		};
 
 		chart.setOption({
 			backgroundColor: bgColor(),
-			grid: { left: 120, right: 40, top: 4, bottom: 4 },
+			grid: { left: 120, right: 60, top: 32, bottom: 8 },
+			legend: {
+				top: 0,
+				textStyle: { color: dimColor(), fontSize: 10 },
+				itemWidth: 14,
+				itemHeight: 8,
+				data: ['Shipped 10+ hrs', 'Onboarded', 'Not onboarded'],
+			},
 			xAxis: {
 				type: 'value',
 				axisLabel: { color: dimColor(), fontSize: 10 },
@@ -684,22 +708,72 @@
 				axisTick: { show: false },
 				inverse: true,
 			},
-			tooltip: { trigger: 'axis' },
-			series: [{
-				type: 'bar',
-				data: data.map((d) => d.count),
-				barWidth: 20,
-				itemStyle: {
-					color: isDark() ? '#a78bfa' : '#7c3aed',
-					borderRadius: [0, 3, 3, 0],
+			tooltip: {
+				trigger: 'axis',
+				axisPointer: { type: 'shadow' },
+				formatter: (params: any) => {
+					const idx = params[0].dataIndex;
+					const d = data[idx];
+					const onboardedPct = d.count ? ((d.onboardedCount / d.count) * 100).toFixed(1) : '0.0';
+					const shippedPct = d.count ? ((d.shipped10HoursCount / d.count) * 100).toFixed(1) : '0.0';
+					return `<b>${d.source}</b><br/>`
+						+ `Total: ${d.count}<br/>`
+						+ `Onboarded: ${d.onboardedCount} (${onboardedPct}%)<br/>`
+						+ `Shipped 10+ hrs: ${d.shipped10HoursCount} (${shippedPct}%)`;
 				},
-				label: {
-					show: true,
-					position: 'right',
-					color: dimColor(),
-					fontSize: 11,
+			},
+			series: [
+				{
+					name: 'Shipped 10+ hrs',
+					type: 'bar',
+					stack: 'utm',
+					data: shippedData,
+					barWidth: 22,
+					itemStyle: { color: shippedColor },
+					label: {
+						show: true,
+						position: 'inside',
+						color: '#fff',
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].count),
+					},
 				},
-			}],
+				{
+					name: 'Onboarded',
+					type: 'bar',
+					stack: 'utm',
+					data: onboardedOnlyData,
+					barWidth: 22,
+					itemStyle: { color: onboardedColor },
+					label: {
+						show: true,
+						position: 'inside',
+						color: '#fff',
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].count),
+					},
+				},
+				{
+					name: 'Not onboarded',
+					type: 'bar',
+					stack: 'utm',
+					data: notOnboardedData,
+					barWidth: 22,
+					itemStyle: {
+						color: remainderColor,
+						borderRadius: [0, 3, 3, 0],
+					},
+					label: {
+						show: true,
+						position: 'right',
+						color: dimColor(),
+						fontSize: 11,
+						formatter: (p: any) => String(data[p.dataIndex].count),
+					},
+				},
+			],
 		});
 	}
 
@@ -1020,7 +1094,7 @@
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Referral Sources (UTM)</h2>
 				{#if stats.utm.sources.length > 0}
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<div bind:this={utmEl} style="height: {Math.max(120, stats.utm.sources.length * 32 + 8)}px;"></div>
+						<div bind:this={utmEl} style="height: {Math.max(180, stats.utm.sources.length * 38 + 48)}px;"></div>
 					</div>
 				{:else}
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-6 text-center text-ds-text-secondary text-sm">
