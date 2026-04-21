@@ -11,7 +11,7 @@
 	}
 
 	let {
-		label = 'Screenshot/Video',
+		label = 'Screenshot',
 		mediaUrl = $bindable(null),
 		mediaPreview = $bindable(null),
 		onupload,
@@ -60,7 +60,7 @@
 	<input
 		bind:this={fileInput}
 		type="file"
-		accept="image/*,video/*"
+		accept="image/*"
 		class="hidden"
 		onchange={handleFileSelect}
 	/>
@@ -89,7 +89,7 @@
 	{/if}
 	{#if !hideHint}
 		<p class="font-bricolage text-xs font-semibold text-black/60 m-0 leading-normal">
-			If your project is difficult to experience, we recommend uploading a video
+			If your project is difficult to experience, we recommend adding a video to your README
 		</p>
 	{/if}
 </div>
