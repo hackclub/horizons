@@ -4,9 +4,12 @@
 	import yaml from 'js-yaml';
 	import type { EventConfig } from '$lib/events/types';
 	import eventsRaw from '$lib/events/events.yaml?raw';
+	import enterSvg from '$lib/assets/prompts/enter.svg';
+	import clickSvg from '$lib/assets/prompts/click.svg';
 
 	interface Props {
 		selected?: boolean;
+		usingKeyboard?: boolean;
 		shaking?: boolean;
 		disabled?: boolean;
 		postOnboarding?: boolean;
@@ -18,6 +21,7 @@
 
 	let {
 		selected = false,
+		usingKeyboard = true,
 		shaking = false,
 		disabled = false,
 		postOnboarding = false,
@@ -103,15 +107,36 @@
 		idleTimer = setTimeout(() => startSlideshow(), IDLE_MS);
 	}
 
-	onMount(() => {
-		scheduleNextCycle();
-	});
-
-	onDestroy(() => {
+	function cancelAll() {
 		if (idleTimer) clearTimeout(idleTimer);
 		if (flyOutTimer) clearTimeout(flyOutTimer);
 		if (endTimer) clearTimeout(endTimer);
 		clearSlideTimer();
+		flyOutActive = false;
+		idleSlideshowActive = false;
+	}
+
+	let animationsEnabled = $state(true);
+	let mq: MediaQueryList | null = null;
+
+	onMount(() => {
+		mq = window.matchMedia('(min-height: 550px)');
+		animationsEnabled = mq.matches;
+		const onChange = (e: MediaQueryListEvent) => { animationsEnabled = e.matches; };
+		mq.addEventListener('change', onChange);
+		return () => mq?.removeEventListener('change', onChange);
+	});
+
+	$effect(() => {
+		if (animationsEnabled) {
+			scheduleNextCycle();
+		} else {
+			cancelAll();
+		}
+	});
+
+	onDestroy(() => {
+		cancelAll();
 	});
 </script>
 
@@ -163,9 +188,28 @@
 		{/key}
 	{/if}
 
+	{#if selected}
+		<div class="enter-hint">
+			<img
+				src={usingKeyboard ? enterSvg : clickSvg}
+				alt={usingKeyboard ? 'Enter' : 'Click'}
+				class="enter-hint-key"
+			/>
+			<span class="font-bricolage text-[12px] text-black font-semibold">TO VIEW EVENTS</span>
+		</div>
+	{/if}
+
 	{#if postOnboarding && selected}
 		<div class="card-popover">
 			<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{description}</p>
+			<div class="popover-hint">
+				<img
+					src={usingKeyboard ? enterSvg : clickSvg}
+					alt={usingKeyboard ? 'Enter' : 'Click'}
+					class="enter-hint-key"
+				/>
+				<span class="font-bricolage text-[12px] text-black font-semibold">TO VIEW EVENTS</span>
+			</div>
 		</div>
 	{/if}
 </a>
@@ -289,17 +333,46 @@
 		filter: drop-shadow(0px 0px 20px rgba(0, 0, 0, 0.5));
 	}
 
+	.enter-hint {
+		position: absolute;
+		bottom: 12px;
+		right: 12px;
+		z-index: 30;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 5px 12px;
+		background: #f3e8d8;
+		border: 2px solid black;
+		border-radius: 8px;
+	}
+
+	.enter-hint-key {
+		height: 22px;
+		width: auto;
+	}
+
 	.card-popover {
 		position: absolute;
 		bottom: 12px;
 		left: 12px;
 		right: 12px;
-		z-index: 30;
+		z-index: 40;
 		background: #f3e8d8;
 		border: 3px solid black;
 		border-radius: 12px;
 		box-shadow: 3px 3px 0px 0px black;
 		padding: 12px 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.popover-hint {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		align-self: flex-end;
 	}
 
 	@keyframes slide-pan {
