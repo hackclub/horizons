@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CircleIn from '$lib/components/anim/CircleIn.svelte';
 	import TextWave from '$lib/components/TextWave.svelte';
+	import CommunityEventsCard from '$lib/components/CommunityEventsCard.svelte';
 	import logoSvg from '$lib/assets/Logo.svg';
 	import communitySvg from '$lib/assets/home/community.svg';
 
@@ -29,11 +30,12 @@
 	let postOnboarding = $state(page.url.searchParams.has('post-onboarding'));
 
 	const cardDescriptions: Record<string, string> = {
-		'0-0': 'Create projects, track your progress, and submit them for review!',
-		'0-1': 'Check out upcoming Horizons events!',
-		'1-0': 'Spend your approved hours on rewards!',
-		'2-0': 'Check out online events we\'re running for the community!',
-		'3-0': 'Got questions? Find answers here.',
+		'0-0': 'See what\'s coming up in the community!',
+		'1-0': 'Create projects, track your progress, and submit them for review!',
+		'1-1': 'Check out upcoming Horizons events!',
+		'2-0': 'Spend your approved hours on rewards!',
+		'3-0': 'Check out online events we\'re running for the community!',
+		'4-0': 'Got questions? Find answers here.',
 	};
 
 	let userName = $derived($userStore.userName);
@@ -95,6 +97,7 @@
 	});
 
 	const hrefs = [
+		['/app/community'],
 		['/app/projects?back', '/app/events'],
 		['/app/shop?back'],
 		['/app/community'],
@@ -102,7 +105,6 @@
 		['/admin'],
 	];
 
-	// Projects (0,0), Events (0,1), Shop (1,0), Community (2,0), FAQ (3,0) are enabled
 	function isDisabled(col: number, row: number) {
 		return false;
 	}
@@ -134,22 +136,25 @@
 		goto(href);
 	}
 
+	let ceFocusedEventId = $state<string | null>(null);
+
 	const nav = createGridNav({
-		columns: () => isAdmin ? [2, 1, 1, 1, 1] : [2, 1, 1, 1],
+		columns: () => isAdmin ? [1, 2, 1, 1, 1, 1] : [1, 2, 1, 1, 1],
 		onSelect: (col, row) => {
 			if (isDisabled(col, row)) {
 				triggerShake(col, row);
+			} else if (col === 0 && ceFocusedEventId) {
+				navigateTo(`/app/community?event=${encodeURIComponent(ceFocusedEventId)}`);
 			} else {
 				navigateTo(hrefs[col][row]);
 			}
 		},
 	});
 
-	// Refs for scroll targets
+	// Refs for scroll targets (index = nav column)
 	let scrollContainer = $state<HTMLElement | null>(null);
 	let cardsRow = $state<HTMLElement | null>(null);
-	let cardRefs = $state<(HTMLElement | null)[]>([null, null, null, null, null]);
-	// cardRefs: [0]=projects, [1]=events, [2]=shop, [3]=community, [4]=faq
+	let cardRefs = $state<(HTMLElement | null)[]>([null, null, null, null, null, null]);
 
 	// Slide cards row so selected card is visible with a peek of the next card.
 	// Use offsetLeft (layout position, unaffected by transform) to avoid mid-transition jitter.
@@ -180,7 +185,7 @@
 			// and a peek of the previous card by offsetting to the right.
 			const peekAmount = 60;
 			const isFirst = nav.col === 0;
-			const colCount = isAdmin ? 5 : 4;
+			const colCount = isAdmin ? 6 : 5;
 			const isLast = nav.col === colCount - 1;
 
 			let target;
@@ -231,13 +236,27 @@
 		<!-- Scrollable Content -->
 		<div class="scroll-wrapper" bind:this={scrollContainer}>
 			<div class="cards-row" bind:this={cardsRow}>
-				<!-- Left Column: Projects (top) + Events (bottom) -->
-				<div class="left-col shrink-0" bind:this={cardRefs[0]}>
+				<!-- Community Events (preview card, leftmost) -->
+				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="0ms" style:--exit-right-delay="150ms">
+					<CommunityEventsCard
+						bind:element={cardRefs[0]}
+						bind:focusedEventId={ceFocusedEventId}
+						selected={nav.isSelected(0, 0)}
+						postOnboarding={postOnboarding}
+						description={cardDescriptions['0-0']}
+						onmouseenter={() => { if (!nav.usingKeyboard) nav.select(0, 0); }}
+						onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
+						onEventClick={(id) => navigateTo(`/app/community?event=${encodeURIComponent(id)}`)}
+					/>
+				</div>
+
+				<!-- Projects (top) + Events (bottom) -->
+				<div class="left-col shrink-0" bind:this={cardRefs[1]}>
 					<!-- Projects -->
 					<div class="enter-up flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms" style:--exit-right-delay="150ms">
 						<a href="/app/projects" class="card nav-card projects-card"
-							class:selected={nav.isSelected(0, 0)}
-							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(0, 0); }}
+							class:selected={nav.isSelected(1, 0)}
+							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(1, 0); }}
 							onclick={(e) => { e.preventDefault(); navigateTo('/app/projects?back'); }}>
 							<!-- Hammer/wrench icon background -->
 							<div class="absolute -bottom-16 -right-16 text-white opacity-20" style="width: 120%; height: 120%;">
@@ -253,9 +272,9 @@
 									CREATE AND SHIP YOUR PROJECTS
 								</p>
 							</div>
-							{#if postOnboarding && nav.isSelected(0, 0)}
+							{#if postOnboarding && nav.isSelected(1, 0)}
 								<div class="card-popover">
-									<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['0-0']}</p>
+									<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['1-0']}</p>
 								</div>
 							{/if}
 						</a>
@@ -264,11 +283,11 @@
 					<!-- Events -->
 					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
 						<a href="/app/events" class="card nav-card events-half-card"
-							class:selected={nav.isSelected(0, 1)}
-							class:disabled={isDisabled(0, 1)}
-							class:shaking={isShaking(0, 1)}
-							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(0, 1); }}
-							onclick={(e) => { e.preventDefault(); if (isDisabled(0, 1)) triggerShake(0, 1); else navigateTo('/app/events'); }}
+							class:selected={nav.isSelected(1, 1)}
+							class:disabled={isDisabled(1, 1)}
+							class:shaking={isShaking(1, 1)}
+							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(1, 1); }}
+							onclick={(e) => { e.preventDefault(); if (isDisabled(1, 1)) triggerShake(1, 1); else navigateTo('/app/events'); }}
 							onanimationend={() => { shakingKey = null; }}>
 							<!-- Starburst background -->
 							<div class="card-bg-icon" style="right: -60px; top: 50%; transform: translateY(-50%) rotate(130deg); height: 140%;">
@@ -282,9 +301,9 @@
 									CHECK OUT HORIZONS EVENTS!
 								</p>
 							</div>
-							{#if postOnboarding && nav.isSelected(0, 1)}
+							{#if postOnboarding && nav.isSelected(1, 1)}
 								<div class="card-popover">
-									<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['0-1']}</p>
+									<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['1-1']}</p>
 								</div>
 							{/if}
 						</a>
@@ -355,8 +374,8 @@
 						<!-- Shop -->
 						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="60ms" style:--enter-delay="150ms" style:--exit-right-delay="150ms">
 							<a bind:this={cardRefs[2]} href="/app/shop" class="card nav-card shop-card"
-								class:selected={nav.isSelected(1, 0)}
-								onmouseenter={() => { if (!nav.usingKeyboard) nav.select(1, 0); }}
+								class:selected={nav.isSelected(2, 0)}
+								onmouseenter={() => { if (!nav.usingKeyboard) nav.select(2, 0); }}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/shop?back'); }}>
 								<!-- Shop bag icon -->
 								<div class="card-bg-icon" style="right: -10px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
@@ -370,9 +389,9 @@
 										BUY STUFF FOR YOURSELF!
 									</p>
 								</div>
-								{#if postOnboarding && nav.isSelected(1, 0)}
+								{#if postOnboarding && nav.isSelected(2, 0)}
 									<div class="card-popover">
-										<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['1-0']}</p>
+										<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['2-0']}</p>
 									</div>
 								{/if}
 							</a>
@@ -381,8 +400,8 @@
 						<!-- Community -->
 						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms" style:--exit-right-delay="150ms">
 							<a bind:this={cardRefs[3]} href="/app/community" class="card nav-card community-card"
-								class:selected={nav.isSelected(2, 0)}
-								onmouseenter={() => { if (!nav.usingKeyboard) nav.select(2, 0); }}
+								class:selected={nav.isSelected(3, 0)}
+								onmouseenter={() => { if (!nav.usingKeyboard) nav.select(3, 0); }}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}>
 								<div class="card-bg-icon" style="right: -20px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
 									<img src={communitySvg} alt="" class="w-full h-full" />
@@ -393,9 +412,9 @@
 										SEE WHAT'S HAPPENING!
 									</p>
 								</div>
-								{#if postOnboarding && nav.isSelected(2, 0)}
+								{#if postOnboarding && nav.isSelected(3, 0)}
 									<div class="card-popover">
-										<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['2-0']}</p>
+										<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['3-0']}</p>
 									</div>
 								{/if}
 							</a>
@@ -406,9 +425,9 @@
 				<!-- FAQ (tall right card) -->
 				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="120ms" style:--enter-delay="250ms" style:--exit-right-delay="150ms">
 					<a bind:this={cardRefs[4]} href="/faq?from=app" class="card nav-card faq-card"
-						class:selected={nav.isSelected(3, 0)}
-						class:shaking={isShaking(3, 0)}
-						onmouseenter={() => { if (!nav.usingKeyboard) nav.select(3, 0); }}
+						class:selected={nav.isSelected(4, 0)}
+						class:shaking={isShaking(4, 0)}
+						onmouseenter={() => { if (!nav.usingKeyboard) nav.select(4, 0); }}
 						onanimationend={() => { shakingKey = null; }}>
 						<!-- HUH icon -->
 						<div class="card-bg-icon" style="right: 20px; top: 50%; transform: translateY(-50%); width: 145px; height: 145px;">
@@ -422,9 +441,9 @@
 								NEED HELP?
 							</p>
 						</div>
-						{#if postOnboarding && nav.isSelected(3, 0)}
+						{#if postOnboarding && nav.isSelected(4, 0)}
 							<div class="card-popover">
-								<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['3-0']}</p>
+								<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['4-0']}</p>
 							</div>
 						{/if}
 					</a>
@@ -433,9 +452,9 @@
 				<!-- Admin (only visible for admins) -->
 				{#if isAdmin}
 					<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="150ms" style:--enter-delay="300ms" style:--exit-right-delay="150ms">
-						<a href="/admin" class="card nav-card admin-card"
-							class:selected={nav.isSelected(4, 0)}
-							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(4, 0); }}
+						<a bind:this={cardRefs[5]} href="/admin" class="card nav-card admin-card"
+							class:selected={nav.isSelected(5, 0)}
+							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(5, 0); }}
 							onclick={(e) => { e.preventDefault(); window.location.href = '/admin'; }}>
 							<!-- Shield icon -->
 							<div class="card-bg-icon" style="right: 20px; top: 50%; transform: translateY(-50%); width: 145px; height: 145px;">
