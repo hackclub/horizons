@@ -223,6 +223,18 @@
 		inset: 0;
 		background-size: cover;
 		background-position: center;
+		animation: slide-pan 9s ease-out forwards;
+		transform-origin: center;
+		will-change: transform;
+	}
+
+	@keyframes slide-pan {
+		from {
+			transform: scale(1.05) translate(-2%, 1%);
+		}
+		to {
+			transform: scale(1.18) translate(2%, -1%);
+		}
 	}
 
 	.project-slide-overlay {
