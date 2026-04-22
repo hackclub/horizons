@@ -244,6 +244,7 @@
 						bind:element={cardRefs[0]}
 						bind:focusedEventId={ceFocusedEventId}
 						selected={nav.isSelected(0, 0)}
+						usingKeyboard={nav.usingKeyboard}
 						postOnboarding={postOnboarding}
 						description={cardDescriptions['0-0']}
 						onmouseenter={() => { if (!nav.usingKeyboard) nav.select(0, 0); }}
@@ -258,6 +259,7 @@
 					<div class="enter-up flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms" style:--exit-right-delay="150ms">
 						<ProjectsCard
 							selected={nav.isSelected(1, 0)}
+							usingKeyboard={nav.usingKeyboard}
 							postOnboarding={postOnboarding}
 							description={cardDescriptions['1-0']}
 							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(1, 0); }}
@@ -269,6 +271,7 @@
 					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
 						<EventsCard
 							selected={nav.isSelected(1, 1)}
+							usingKeyboard={nav.usingKeyboard}
 							disabled={isDisabled(1, 1)}
 							shaking={isShaking(1, 1)}
 							postOnboarding={postOnboarding}

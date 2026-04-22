@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
+	import clickSvg from '$lib/assets/prompts/click.svg';
 	import { parseNavKey } from '$lib/nav/wasd.svelte';
 
 	interface Props {
 		element?: HTMLElement | null;
 		selected?: boolean;
+		usingKeyboard?: boolean;
 		postOnboarding?: boolean;
 		description?: string;
 		onmouseenter?: () => void;
@@ -17,6 +19,7 @@
 	let {
 		element = $bindable(null),
 		selected = false,
+		usingKeyboard = true,
 		postOnboarding = false,
 		description = '',
 		onmouseenter,
@@ -175,15 +178,28 @@
 			{/each}
 		{/if}
 	</div>
+	{#if selected && !postOnboarding}
+		<div class="enter-hint">
+			<img
+				src={usingKeyboard ? enterSvg : clickSvg}
+				alt={usingKeyboard ? 'Enter' : 'Click'}
+				class="enter-hint-key"
+			/>
+			<span class="font-bricolage text-[12px] text-black font-semibold">TO VIEW COMMUNITY EVENTS</span>
+		</div>
+	{/if}
+
 	{#if postOnboarding && selected}
 		<div class="ce-popover">
 			<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{description}</p>
-		</div>
-	{/if}
-	{#if selected}
-		<div class="ce-footer">
-			<img src={enterSvg} alt="Enter" class="ce-enter-key" />
-			<p class="font-bricolage text-[16px] font-bold text-black m-0">TO VIEW COMMUNITY EVENTS</p>
+			<div class="popover-hint">
+				<img
+					src={usingKeyboard ? enterSvg : clickSvg}
+					alt={usingKeyboard ? 'Enter' : 'Click'}
+					class="enter-hint-key"
+				/>
+				<span class="font-bricolage text-[12px] text-black font-semibold">TO VIEW COMMUNITY EVENTS</span>
+			</div>
 		</div>
 	{/if}
 </div>
@@ -315,26 +331,45 @@
 		font-family: 'Bricolage Grotesque', sans-serif;
 	}
 
-	.ce-footer {
-		display: flex;
+	.enter-hint {
+		position: absolute;
+		bottom: 12px;
+		right: 12px;
+		z-index: 30;
+		display: inline-flex;
 		align-items: center;
-		justify-content: center;
 		gap: 8px;
-		margin-top: auto;
-		padding-top: 8px;
+		padding: 5px 12px;
+		background: #f3e8d8;
+		border: 2px solid black;
+		border-radius: 8px;
 	}
 
-	.ce-enter-key {
-		height: 28px;
+	.enter-hint-key {
+		height: 22px;
 		width: auto;
 	}
 
 	.ce-popover {
-		background: #fff;
+		position: absolute;
+		bottom: 12px;
+		left: 12px;
+		right: 12px;
+		z-index: 40;
+		background: #f3e8d8;
 		border: 3px solid black;
 		border-radius: 12px;
 		box-shadow: 3px 3px 0px 0px black;
 		padding: 12px 16px;
-		flex-shrink: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.popover-hint {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		align-self: flex-end;
 	}
 </style>

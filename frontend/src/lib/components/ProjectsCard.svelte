@@ -3,9 +3,12 @@
 	import { fade } from 'svelte/transition';
 	import { api } from '$lib/api';
 	import { projectsStore, fetchProjects } from '$lib/store/projectCache';
+	import enterSvg from '$lib/assets/prompts/enter.svg';
+	import clickSvg from '$lib/assets/prompts/click.svg';
 
 	interface Props {
 		selected?: boolean;
+		usingKeyboard?: boolean;
 		postOnboarding?: boolean;
 		description?: string;
 		onmouseenter?: () => void;
@@ -14,6 +17,7 @@
 
 	let {
 		selected = false,
+		usingKeyboard = true,
 		postOnboarding = false,
 		description = '',
 		onmouseenter,
@@ -87,20 +91,42 @@
 		idleTimer = setTimeout(() => startSlideshow(), IDLE_MS);
 	}
 
+	function cancelAll() {
+		if (idleTimer) clearTimeout(idleTimer);
+		if (flyOutTimer) clearTimeout(flyOutTimer);
+		if (endTimer) clearTimeout(endTimer);
+		clearSlideTimer();
+		flyOutActive = false;
+		idleSlideshowActive = false;
+	}
+
+	let animationsEnabled = $state(true);
+	let mq: MediaQueryList | null = null;
+
 	onMount(() => {
 		api.GET('/api/hackatime/active-coders-today')
 			.then((r) => { if (r.data) activeCodersToday = r.data.count; })
 			.catch(() => {});
 
 		fetchProjects().catch(() => {});
-		scheduleNextCycle();
+
+		mq = window.matchMedia('(min-height: 550px)');
+		animationsEnabled = mq.matches;
+		const onChange = (e: MediaQueryListEvent) => { animationsEnabled = e.matches; };
+		mq.addEventListener('change', onChange);
+		return () => mq?.removeEventListener('change', onChange);
+	});
+
+	$effect(() => {
+		if (animationsEnabled) {
+			scheduleNextCycle();
+		} else {
+			cancelAll();
+		}
 	});
 
 	onDestroy(() => {
-		if (idleTimer) clearTimeout(idleTimer);
-		if (flyOutTimer) clearTimeout(flyOutTimer);
-		if (endTimer) clearTimeout(endTimer);
-		clearSlideTimer();
+		cancelAll();
 	});
 </script>
 
@@ -146,9 +172,28 @@
 		{/key}
 	{/if}
 
+	{#if selected}
+		<div class="enter-hint">
+			<img
+				src={usingKeyboard ? enterSvg : clickSvg}
+				alt={usingKeyboard ? 'Enter' : 'Click'}
+				class="enter-hint-key"
+			/>
+			<span class="font-bricolage text-[12px] text-black font-semibold">TO SHOW PROJECTS</span>
+		</div>
+	{/if}
+
 	{#if postOnboarding && selected}
 		<div class="card-popover">
 			<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{description}</p>
+			<div class="popover-hint">
+				<img
+					src={usingKeyboard ? enterSvg : clickSvg}
+					alt={usingKeyboard ? 'Enter' : 'Click'}
+					class="enter-hint-key"
+				/>
+				<span class="font-bricolage text-[12px] text-black font-semibold">TO SHOW PROJECTS</span>
+			</div>
 		</div>
 	{/if}
 </a>
@@ -253,6 +298,25 @@
 		gap: 4px;
 	}
 
+	.enter-hint {
+		position: absolute;
+		bottom: 12px;
+		right: 12px;
+		z-index: 30;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 5px 12px;
+		background: #f3e8d8;
+		border: 2px solid black;
+		border-radius: 8px;
+	}
+
+	.enter-hint-key {
+		height: 22px;
+		width: auto;
+	}
+
 	.active-coders-tag {
 		position: absolute;
 		top: 16px;
@@ -262,7 +326,7 @@
 		align-items: center;
 		gap: 10px;
 		padding: 5px 12px;
-		background: white;
+		background: #f3e8d8;
 		border: 2px solid black;
 		border-radius: 8px;
 		width: fit-content;
@@ -281,11 +345,21 @@
 		bottom: 12px;
 		left: 12px;
 		right: 12px;
-		z-index: 20;
+		z-index: 40;
 		background: #f3e8d8;
 		border: 3px solid black;
 		border-radius: 12px;
 		box-shadow: 3px 3px 0px 0px black;
 		padding: 12px 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.popover-hint {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		align-self: flex-end;
 	}
 </style>
