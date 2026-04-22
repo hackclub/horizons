@@ -28,6 +28,7 @@ import {
   TotalApprovedHoursResponse,
   RecalculateHoursResponse,
   HackatimeAccountStatusResponse,
+  ActiveCodersTodayResponse,
 } from './response';
 
 @ApiTags('Hackatime')
@@ -142,6 +143,19 @@ export class HackatimeController {
     const userId = req.user.userId;
     const total = await this.hackatimeService.getTotalApprovedHours(userId);
     return { totalApprovedHours: total };
+  }
+
+  @Get('active-coders-today')
+  @Public()
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Get count of distinct users with project activity today' })
+  @ApiOkResponse({
+    type: ActiveCodersTodayResponse,
+    description: 'Active coders today',
+  })
+  async getActiveCodersToday(): Promise<ActiveCodersTodayResponse> {
+    const count = await this.hackatimeService.getActiveCodersToday();
+    return { count };
   }
 
   @Post('hours/recalculate')
