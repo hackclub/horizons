@@ -6,6 +6,8 @@
 	import EventsCard from '$lib/components/EventsCard.svelte';
 	import logoSvg from '$lib/assets/Logo.svg';
 	import communitySvg from '$lib/assets/home/community.svg';
+	import enterSvg from '$lib/assets/prompts/enter.svg';
+	import clickSvg from '$lib/assets/prompts/click.svg';
 
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -210,6 +212,26 @@
 
 <svelte:window onkeydown={(e) => { nav.handleKeydown(e); hasInteracted = true; }} onmousemove={() => { hasInteracted = true; }} />
 
+{#snippet hintRow(text: string)}
+	<img src={nav.usingKeyboard ? enterSvg : clickSvg} alt={nav.usingKeyboard ? 'Enter' : 'Click'} class="enter-hint-key" />
+	<span class="font-bricolage text-[12px] text-black font-semibold">{text}</span>
+{/snippet}
+
+{#snippet hintPill(text: string)}
+	<div class="enter-hint">
+		{@render hintRow(text)}
+	</div>
+{/snippet}
+
+{#snippet popoverWithHint(description: string, hintText: string)}
+	<div class="card-popover">
+		<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{description}</p>
+		<div class="popover-hint">
+			{@render hintRow(hintText)}
+		</div>
+	</div>
+{/snippet}
+
 {#if !hideCirc}
 	<CircleIn />
 {/if}
@@ -362,10 +384,11 @@
 										BUY STUFF FOR YOURSELF!
 									</p>
 								</div>
+								{#if nav.isSelected(2, 0) && !postOnboarding}
+									{@render hintPill('TO VISIT SHOP')}
+								{/if}
 								{#if postOnboarding && nav.isSelected(2, 0)}
-									<div class="card-popover">
-										<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['2-0']}</p>
-									</div>
+									{@render popoverWithHint(cardDescriptions['2-0'], 'TO VISIT SHOP')}
 								{/if}
 							</a>
 						</div>
@@ -385,10 +408,11 @@
 										SEE WHAT'S HAPPENING!
 									</p>
 								</div>
+								{#if nav.isSelected(3, 0) && !postOnboarding}
+									{@render hintPill('TO VIEW COMMUNITY')}
+								{/if}
 								{#if postOnboarding && nav.isSelected(3, 0)}
-									<div class="card-popover">
-										<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['3-0']}</p>
-									</div>
+									{@render popoverWithHint(cardDescriptions['3-0'], 'TO VIEW COMMUNITY')}
 								{/if}
 							</a>
 						</div>
@@ -414,10 +438,11 @@
 								NEED HELP?
 							</p>
 						</div>
+						{#if nav.isSelected(4, 0) && !postOnboarding}
+							{@render hintPill('TO VIEW FAQ')}
+						{/if}
 						{#if postOnboarding && nav.isSelected(4, 0)}
-							<div class="card-popover">
-								<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['4-0']}</p>
-							</div>
+							{@render popoverWithHint(cardDescriptions['4-0'], 'TO VIEW FAQ')}
 						{/if}
 					</a>
 				</div>
@@ -441,6 +466,9 @@
 									MANAGE HORIZONS
 								</p>
 							</div>
+							{#if nav.isSelected(5, 0)}
+								{@render hintPill('TO ADMIN PANEL')}
+							{/if}
 						</a>
 					</div>
 				{/if}
@@ -870,11 +898,40 @@
 		bottom: 12px;
 		left: 12px;
 		right: 12px;
-		z-index: 20;
+		z-index: 40;
 		background: #f3e8d8;
 		border: 3px solid black;
 		border-radius: 12px;
 		box-shadow: 3px 3px 0px 0px black;
 		padding: 12px 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.popover-hint {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		align-self: flex-end;
+	}
+
+	.enter-hint {
+		position: absolute;
+		bottom: 12px;
+		right: 12px;
+		z-index: 30;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 5px 12px;
+		background: #f3e8d8;
+		border: 2px solid black;
+		border-radius: 8px;
+	}
+
+	.enter-hint-key {
+		height: 22px;
+		width: auto;
 	}
 </style>
