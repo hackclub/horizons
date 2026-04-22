@@ -3,6 +3,7 @@
 	import TextWave from '$lib/components/TextWave.svelte';
 	import CommunityEventsCard from '$lib/components/CommunityEventsCard.svelte';
 	import ProjectsCard from '$lib/components/ProjectsCard.svelte';
+	import EventsCard from '$lib/components/EventsCard.svelte';
 	import logoSvg from '$lib/assets/Logo.svg';
 	import communitySvg from '$lib/assets/home/community.svg';
 
@@ -266,31 +267,16 @@
 
 					<!-- Events -->
 					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
-						<a href="/app/events" class="card nav-card events-half-card"
-							class:selected={nav.isSelected(1, 1)}
-							class:disabled={isDisabled(1, 1)}
-							class:shaking={isShaking(1, 1)}
+						<EventsCard
+							selected={nav.isSelected(1, 1)}
+							disabled={isDisabled(1, 1)}
+							shaking={isShaking(1, 1)}
+							postOnboarding={postOnboarding}
+							description={cardDescriptions['1-1']}
 							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(1, 1); }}
 							onclick={(e) => { e.preventDefault(); if (isDisabled(1, 1)) triggerShake(1, 1); else navigateTo('/app/events'); }}
-							onanimationend={() => { shakingKey = null; }}>
-							<!-- Starburst background -->
-							<div class="card-bg-icon" style="right: -60px; top: 50%; transform: translateY(-50%) rotate(130deg); height: 140%;">
-								<svg class="w-full h-full" viewBox="0 0 462.191 348.83" fill="none" xmlns="http://www.w3.org/2000/svg">
-									<path d="M462.191 174.415L368.982 196.212L415.83 279.962L329.164 236.143L327.669 333.165L265.904 257.94L231.095 348.83L196.287 257.94L134.522 333.165L133.027 236.143L46.3612 279.962L93.2084 196.212L0 174.415L93.2084 152.618L46.3612 68.8687L133.027 112.688L134.522 15.6656L196.287 90.8903L231.095 0L265.904 90.8903L327.669 15.6656L329.164 112.688L415.83 68.8687L368.982 152.618L462.191 174.415Z" fill="currentColor"/>
-								</svg>
-							</div>
-							<div class="card-text z-10">
-								<p class="font-cook text-[40px] font-semibold text-black m-0">EVENTS</p>
-								<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-									CHECK OUT HORIZONS EVENTS!
-								</p>
-							</div>
-							{#if postOnboarding && nav.isSelected(1, 1)}
-								<div class="card-popover">
-									<p class="font-bricolage text-[16px] font-semibold text-black/70 m-0">{cardDescriptions['1-1']}</p>
-								</div>
-							{/if}
-						</a>
+							onanimationend={() => { shakingKey = null; }}
+						/>
 					</div>
 				</div>
 
@@ -599,10 +585,6 @@
 		z-index: 10;
 	}
 
-	.card.disabled {
-		cursor: not-allowed;
-	}
-
 	/* Card background icons */
 	.card-bg-icon {
 		position: absolute;
@@ -630,15 +612,6 @@
 		gap: 24px;
 		width: 471px;
 		height: 100%;
-	}
-
-	.events-half-card {
-		position: relative;
-		display: block;
-		width: 100%;
-		height: 100%;
-		overflow: hidden;
-		background-color: #f86d95;
 	}
 
 	.event-card-wrapper {
