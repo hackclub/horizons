@@ -423,6 +423,15 @@ export class HackatimeService {
     return result._sum.approvedHours ?? 0;
   }
 
+  async getActiveCodersToday(): Promise<number> {
+    const latest = await this.prisma.historicalMetric.findFirst({
+      where: { metric: 'dau' },
+      orderBy: { date: 'desc' },
+      select: { value: true },
+    });
+    return (latest?.value as number) ?? 0;
+  }
+
   async recalculateNowHackatimeHours(
     userId: number,
   ): Promise<{ updatedProjects: number; totalNowHackatimeHours: number }> {

@@ -48,6 +48,7 @@
 	let approvedHours = $state(0);
 	let completedHours = $state(0);
 	let targetHours = $state(30);
+	let activeCodersToday = $state<number | null>(null);
 
 	const round1 = (n: number) => Number((Math.round(n * 10) / 10).toFixed(1));
 	let approvedDisplay = $derived(round1(approvedHours));
@@ -78,6 +79,10 @@
 	}
 
 	onMount(async () => {
+		api.GET('/api/hackatime/active-coders-today')
+			.then((r) => { if (r.data) activeCodersToday = r.data.count; })
+			.catch(() => {});
+
 		await Promise.all([userStore.load(), fetchHours()]);
 
 		// Refresh from API and update cache
@@ -266,6 +271,12 @@
 									<path d="M127.149 64.6041C127.372 64.5862 127.596 64.5729 127.82 64.5647C133.057 64.387 137.36 70.003 140.9 73.3669C136.473 78.2101 130.69 83.7063 125.978 88.3513C115.997 98.0139 106.1 107.763 96.2878 117.597L93.5025 120.281C90.4049 116.827 82.9349 111.17 85.1679 106.032C86.5266 102.906 92.8282 97.1025 95.4678 94.504C104.615 85.4992 113.471 76.3087 122.739 67.4494C124.146 66.104 125.387 65.3728 127.149 64.6041Z" fill="currentColor"/>
 								</svg>
 							</div>
+							{#if activeCodersToday !== null}
+								<div class="active-coders-tag">
+									<span class="active-coders-dot"></span>
+									<span class="font-bricolage text-[12px] text-black">{activeCodersToday} {activeCodersToday === 1 ? 'person' : 'people'} coding today</span>
+								</div>
+							{/if}
 							<div class="card-text z-10">
 								<p class="font-cook text-[40px] font-semibold text-black m-0">PROJECTS</p>
 								<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
@@ -655,6 +666,29 @@
 		height: 100%;
 		overflow: hidden;
 		background-color: #ffa936;
+	}
+
+	.active-coders-tag {
+		position: absolute;
+		top: 16px;
+		right: 16px;
+		z-index: 11;
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		padding: 5px 12px;
+		background: white;
+		border: 2px solid black;
+		border-radius: 8px;
+		width: fit-content;
+	}
+
+	.active-coders-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background-color: #22c55e;
+		flex-shrink: 0;
 	}
 
 	.events-half-card {

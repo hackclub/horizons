@@ -55,6 +55,11 @@ export class RecalculateHoursResponse {
   message?: string;
 }
 
+export class ActiveCodersTodayResponse {
+  @ApiProperty({ description: 'Distinct users with project activity since start of today (UTC)' })
+  count: number;
+}
+
 export class HackatimeAccountStatusResponse {
   @ApiProperty({ description: 'User email' })
   email: string;

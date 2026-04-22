@@ -383,7 +383,7 @@ model GlobalSettings {
 
 model HistoricalMetric {
   id        Int      @id @default(autoincrement())
-  date      DateTime @db.Date
+  date      DateTime @db.Timestamptz(6)
   metric    String   @db.VarChar(100)
   value     Json
   createdAt DateTime @default(now()) @map("created_at")
