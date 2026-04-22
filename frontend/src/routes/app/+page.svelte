@@ -47,7 +47,10 @@
 	let completedHours = $state(0);
 	let targetHours = $state(30);
 
-	let remainingHours = $derived(Math.round(Math.max(0, targetHours - completedHours) * 10) / 10);
+	const round1 = (n: number) => Number((Math.round(n * 10) / 10).toFixed(1));
+	let approvedDisplay = $derived(round1(approvedHours));
+	let completedMinusApprovedHours = $derived(round1(Math.max(0, completedHours - approvedHours)));
+	let remainingHours = $derived(round1(Math.max(0, targetHours - completedHours)));
 	let approvedPct = $derived(targetHours > 0 ? Math.min(100, (approvedHours / targetHours) * 100) : 0);
 	let completedPct = $derived(targetHours > 0 ? Math.min(100, ((completedHours - approvedHours) / targetHours) * 100) : 0);
 
@@ -301,7 +304,7 @@
 							{/if}
 							<!-- Full progress view -->
 							<div class="full-progress">
-								<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0 z-10">PROGRESS</p>
+								<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0 z-10" style="-webkit-text-stroke: 8px #f3e8d8; paint-order: stroke fill;">PROGRESS</p>
 								<div class="flex flex-col gap-3 w-full relative flex-1 min-h-0">
 									<div class="flex-1 min-h-0 w-full">
 										<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-full w-full object-contain object-left" />
@@ -310,12 +313,12 @@
 										<div class="progress-bar">
 											{#if approvedPct > 0}
 												<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.progressBar?.approved ?? '#ffa936'};">
-													<span class="progress-label">{approvedHours} HOURS APPROVED</span>
+													<span class="progress-label">{approvedDisplay} HOURS APPROVED</span>
 												</div>
 											{/if}
 											{#if completedPct > 0}
 												<div class="progress-segment" style="width: {completedPct}%; background-color: {pinnedEventConfig?.progressBar?.completed ?? '#f86d95'};">
-													<span class="progress-label">{completedHours - approvedHours} HOURS COMPLETED</span>
+													<span class="progress-label">{completedMinusApprovedHours} HOURS COMPLETED</span>
 												</div>
 											{/if}
 											<div class="flex-1" style="background-color: {pinnedEventConfig?.progressBar?.remaining ?? '#46467c'};"></div>
@@ -720,7 +723,7 @@
 	.progress-bar {
 		display: flex;
 		width: 100%;
-		height: 40px;
+		height: clamp(32px, 6cqh, 40px);
 		border-radius: 4px;
 		overflow: hidden;
 	}
