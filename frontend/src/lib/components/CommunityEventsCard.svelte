@@ -143,6 +143,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div bind:this={element} role="link" tabindex="-1" class="card nav-card community-events-card"
 	class:selected
+	class:input-keyboard={usingKeyboard}
 	{onmouseenter}
 	{onclick}>
 	<p class="font-cook text-[16px] text-black m-0">UPCOMING COMMUNITY EVENTS</p>
@@ -288,6 +289,22 @@
 
 	.ce-event:hover,
 	.ce-event.focused {
+		background-color: rgba(0, 0, 0, 0.08);
+	}
+
+	/* In keyboard mode, suppress mouse-hover styling so only the focused event highlights */
+	.community-events-card.input-keyboard .ce-event:hover {
+		background-color: transparent;
+	}
+	.community-events-card.input-keyboard .ce-event.focused {
+		background-color: rgba(0, 0, 0, 0.08);
+	}
+
+	/* In mouse mode, suppress keyboard-focus styling so only the hovered event highlights */
+	.community-events-card:not(.input-keyboard) .ce-event.focused {
+		background-color: transparent;
+	}
+	.community-events-card:not(.input-keyboard) .ce-event:hover {
 		background-color: rgba(0, 0, 0, 0.08);
 	}
 
