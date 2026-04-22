@@ -1,6 +1,7 @@
 <script lang="ts">
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { EXIT_DURATION } from '$lib';
 	import { onMount } from 'svelte';
 	import { createListNav } from '$lib/nav/wasd.svelte';
@@ -180,6 +181,17 @@
 
 		const interval = setInterval(() => { now = new Date(); }, 60000);
 		return () => clearInterval(interval);
+	});
+
+	let initialEventApplied = false;
+	$effect(() => {
+		if (initialEventApplied || events.length === 0) return;
+		const wanted = page.url.searchParams.get('event');
+		if (wanted) {
+			const idx = events.findIndex((e) => e.id === wanted);
+			if (idx >= 0) nav.selectedIndex = idx;
+		}
+		initialEventApplied = true;
 	});
 </script>
 
