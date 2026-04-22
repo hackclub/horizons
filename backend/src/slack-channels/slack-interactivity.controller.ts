@@ -11,8 +11,8 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { Public } from '../auth/public.decorator';
 import {
   REMOVE_ACTION_ID,
-  SlackBackfillService,
-} from './slack-backfill.service';
+  SlackChannelsService,
+} from './slack-channels.service';
 
 interface SlackBlockAction {
   action_id?: string;
@@ -28,7 +28,7 @@ interface SlackInteractivityPayload {
 @Controller('api/slack/interactivity')
 @Public()
 export class SlackInteractivityController {
-  constructor(private backfill: SlackBackfillService) {}
+  constructor(private channels: SlackChannelsService) {}
 
   @Post()
   async handle(@Req() req: RawBodyRequest<Request>) {
@@ -59,7 +59,7 @@ export class SlackInteractivityController {
     }
 
     if (action.action_id === REMOVE_ACTION_ID) {
-      const result = await this.backfill.removeUserFromAllChannels(slackUserId);
+      const result = await this.channels.removeUserFromAllChannels(slackUserId);
 
       // Leave the original DM intact in every case. Show a small ephemeral
       // ack for each outcome.

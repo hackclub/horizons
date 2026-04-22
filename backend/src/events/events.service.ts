@@ -6,10 +6,14 @@ import {
 import { PrismaService } from '../prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { SlackChannelsService } from '../slack-channels/slack-channels.service';
 
 @Injectable()
 export class EventsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private slackChannelsService: SlackChannelsService,
+  ) {}
 
   // ── Admin CRUD ──
 
@@ -114,7 +118,7 @@ export class EventsService {
       throw new BadRequestException('Event is not active');
     }
 
-    return this.prisma.pinnedEvent.upsert({
+    const result = await this.prisma.pinnedEvent.upsert({
       where: { userId },
       create: { userId, eventId: event.eventId },
       update: { eventId: event.eventId },
@@ -134,6 +138,14 @@ export class EventsService {
         },
       },
     });
+
+    this.slackChannelsService
+      .inviteToSubeventChannel(userId)
+      .catch((err) =>
+        console.error('[SlackChannels] inviteToSubeventChannel failed:', err),
+      );
+
+    return result;
   }
 
   async removePinnedEvent(userId: number) {

@@ -15,7 +15,7 @@ import { ShopModule } from './shop/shop.module';
 import { EventsModule } from './events/events.module';
 import { GiftCodesModule } from './gift-codes/gift-codes.module';
 import { SlackModule } from './slack/slack.module';
-import { SlackBackfillModule } from './slack-backfill/slack-backfill.module';
+import { SlackChannelsModule } from './slack-channels/slack-channels.module';
 import { HackatimeModule } from './hackatime/hackatime.module';
 import { UtilsModule } from './utils/utils.module';
 import { GitHubModule } from './github/github.module';
@@ -45,7 +45,7 @@ import { PrismaService } from './prisma.service';
     EventsModule,
     GiftCodesModule,
     SlackModule,
-    SlackBackfillModule,
+    SlackChannelsModule,
     HackatimeModule,
     UtilsModule,
     GitHubModule,
