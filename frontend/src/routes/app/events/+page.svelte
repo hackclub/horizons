@@ -202,6 +202,11 @@
 								class="h-18.75 w-auto object-contain object-left"
 								style="max-width: {event.config.logoMaxWidth ?? '264px'};"
 							/>
+							{#if event.config.dates}
+								<span class="font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black self-start mt-1" style="background-color: {getCardBgSelected(event)};">
+									{event.config.dates}
+								</span>
+							{/if}
 							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease]" style="font-size: {selected ? '32px' : '20px'};">
 								{event.api?.description ?? event.config.tagline}
 							</p>
