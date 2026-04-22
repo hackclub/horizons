@@ -9,6 +9,7 @@ import {
 import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { CachetService } from '../cachet/cachet.service';
+import { SlackChannelsService } from '../slack-channels/slack-channels.service';
 
 import { createHmac } from 'crypto';
 import * as jose from 'jose';
@@ -110,6 +111,7 @@ export class AuthService {
     private prisma: PrismaService,
     private airtableService: AirtableService,
     private cachetService: CachetService,
+    private slackChannelsService: SlackChannelsService,
   ) {}
 
   getAuthUrl(
@@ -646,6 +648,12 @@ export class AuthService {
           'Error syncing onboardingCompleted event to Airtable:',
           err,
         ),
+      );
+
+    this.slackChannelsService
+      .inviteSingleUser(userId)
+      .catch((err) =>
+        console.error('[SlackChannels] inviteSingleUser failed:', err),
       );
 
     return {

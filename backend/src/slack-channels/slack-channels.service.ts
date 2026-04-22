@@ -134,7 +134,7 @@ function buildDmBlocks(subeventChannelId: string | null): any[] {
 }
 
 @Injectable()
-export class SlackBackfillService implements OnModuleInit {
+export class SlackChannelsService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private slack: SlackService,
@@ -146,16 +146,16 @@ export class SlackBackfillService implements OnModuleInit {
     }
 
     console.log(
-      '[SlackBackfill] RUN_SLACK_CHANNEL_BACKFILL=true — starting backfill in background...',
+      '[SlackChannels] RUN_SLACK_CHANNEL_BACKFILL=true — starting backfill in background...',
     );
     this.run()
       .then((summary) =>
         console.log(
-          `[SlackBackfill] Done. users=${summary.usersProcessed} invited=${summary.totalInvites} usersSkipped=${summary.usersSkipped} dmSent=${summary.dmSent} errors=${summary.errors}. You can now unset RUN_SLACK_CHANNEL_BACKFILL.`,
+          `[SlackChannels] Done. users=${summary.usersProcessed} invited=${summary.totalInvites} usersSkipped=${summary.usersSkipped} dmSent=${summary.dmSent} errors=${summary.errors}. You can now unset RUN_SLACK_CHANNEL_BACKFILL.`,
         ),
       )
       .catch((error) =>
-        console.error('[SlackBackfill] Backfill failed:', error),
+        console.error('[SlackChannels] Backfill failed:', error),
       );
   }
 
@@ -179,7 +179,7 @@ export class SlackBackfillService implements OnModuleInit {
       },
     });
 
-    console.log(`[SlackBackfill] Processing ${users.length} users...`);
+    console.log(`[SlackChannels] Processing ${users.length} users...`);
 
     let totalInvites = 0;
     let usersSkipped = 0;
@@ -187,85 +187,165 @@ export class SlackBackfillService implements OnModuleInit {
     let errors = 0;
 
     for (const user of users) {
-      const slackUserId = user.slackUserId!;
-      const subeventSlug = user.pinnedEvent?.event.slug ?? null;
-      const subeventChannelId = subeventSlug
-        ? (SUBEVENT_CHANNELS[subeventSlug] ?? null)
-        : null;
-
-      if (subeventSlug && !subeventChannelId) {
-        console.warn(
-          `[SlackBackfill] No subevent channel mapped for slug="${subeventSlug}" (user=${slackUserId}) — skipping subevent invite`,
-        );
-      }
-
-      const targetChannels = subeventChannelId
-        ? [...SHARED_CHANNELS, subeventChannelId]
-        : [...SHARED_CHANNELS];
-
-      // If the user is already in ANY of the target channels, assume they've
-      // been through this flow before (or joined manually) and skip entirely.
-      const existing = await this.slack.getUserChannels(slackUserId);
-      const alreadyIn = targetChannels.filter((id) => existing.has(id));
-
-      if (alreadyIn.length > 0) {
-        usersSkipped += 1;
-        console.log(
-          `[SlackBackfill] user=${slackUserId} subevent=${subeventSlug ?? 'none'} skipped (alreadyIn=${alreadyIn.length}/${targetChannels.length})`,
-        );
-        continue;
-      }
-
-      // DM first so the user gets context before the channel-invite pings
-      // start arriving in their Slack.
-      let dmStatus: 'sent' | 'failed' = 'sent';
-      let dmError: string | undefined;
-      const dm = await this.slack.sendDirectMessageAsUser(
-        slackUserId,
-        DM_FALLBACK_TEXT,
-        buildDmBlocks(subeventChannelId),
-      );
-      if (dm.success) {
-        dmSent += 1;
-      } else {
-        errors += 1;
-        dmStatus = 'failed';
-        dmError = dm.error;
-      }
-
-      let invitedThisUser = 0;
-      for (const channelId of targetChannels) {
-        const result = await this.slack.inviteUserToChannel(
-          slackUserId,
-          channelId,
-        );
-
-        if (!result.success) {
-          errors += 1;
-          console.warn(
-            `[SlackBackfill] Invite failed user=${slackUserId} channel=${channelId} error=${result.error}`,
-          );
-          continue;
-        }
-
-        if (!result.alreadyInChannel) {
-          invitedThisUser += 1;
-          totalInvites += 1;
-        }
-
-        // Light pacing between channel invites (Tier 3 = ~50/min)
-        await sleep(1200);
-      }
-
-      console.log(
-        `[SlackBackfill] user=${slackUserId} subevent=${subeventSlug ?? 'none'} invited=${invitedThisUser}/${targetChannels.length} dm=${dmStatus}${dmError ? ` dmError=${dmError}` : ''}`,
-      );
+      const outcome = await this.processUser({
+        slackUserId: user.slackUserId!,
+        subeventSlug: user.pinnedEvent?.event.slug ?? null,
+        sendDm: true,
+      });
+      totalInvites += outcome.invited;
+      if (outcome.skipped) usersSkipped += 1;
+      if (outcome.dmSent) dmSent += 1;
+      errors += outcome.errors;
     }
 
     return {
       usersProcessed: users.length,
       totalInvites,
       usersSkipped,
+      dmSent,
+      errors,
+    };
+  }
+
+  async inviteSingleUser(userId: number): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: {
+        slackUserId: true,
+        pinnedEvent: { select: { event: { select: { slug: true } } } },
+      },
+    });
+
+    if (!user?.slackUserId) return;
+
+    await this.processUser({
+      slackUserId: user.slackUserId,
+      subeventSlug: user.pinnedEvent?.event.slug ?? null,
+      sendDm: false,
+    });
+  }
+
+  async inviteToSubeventChannel(userId: number): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: {
+        slackUserId: true,
+        pinnedEvent: { select: { event: { select: { slug: true } } } },
+      },
+    });
+
+    if (!user?.slackUserId) return;
+    const slug = user.pinnedEvent?.event.slug;
+    if (!slug) return;
+    const channelId = SUBEVENT_CHANNELS[slug];
+    if (!channelId) {
+      console.warn(
+        `[SlackChannels] No subevent channel mapped for slug="${slug}" (user=${user.slackUserId}) — skipping`,
+      );
+      return;
+    }
+
+    const result = await this.slack.inviteUserToChannel(
+      user.slackUserId,
+      channelId,
+    );
+    if (!result.success) {
+      console.warn(
+        `[SlackChannels] Subevent invite failed user=${user.slackUserId} channel=${channelId} error=${result.error}`,
+      );
+    } else {
+      console.log(
+        `[SlackChannels] Subevent invite user=${user.slackUserId} channel=${channelId} ${result.alreadyInChannel ? 'alreadyIn' : 'invited'}`,
+      );
+    }
+  }
+
+  private async processUser(input: {
+    slackUserId: string;
+    subeventSlug: string | null;
+    sendDm: boolean;
+  }): Promise<{
+    invited: number;
+    skipped: boolean;
+    dmSent: boolean;
+    errors: number;
+  }> {
+    const { slackUserId, subeventSlug, sendDm } = input;
+    const subeventChannelId = subeventSlug
+      ? (SUBEVENT_CHANNELS[subeventSlug] ?? null)
+      : null;
+
+    if (subeventSlug && !subeventChannelId) {
+      console.warn(
+        `[SlackChannels] No subevent channel mapped for slug="${subeventSlug}" (user=${slackUserId}) — skipping subevent invite`,
+      );
+    }
+
+    const targetChannels = subeventChannelId
+      ? [...SHARED_CHANNELS, subeventChannelId]
+      : [...SHARED_CHANNELS];
+
+    // If the user is already in ANY of the target channels, assume they've
+    // been through this flow before (or joined manually) and skip entirely.
+    const existing = await this.slack.getUserChannels(slackUserId);
+    const alreadyIn = targetChannels.filter((id) => existing.has(id));
+
+    if (alreadyIn.length > 0) {
+      console.log(
+        `[SlackChannels] user=${slackUserId} subevent=${subeventSlug ?? 'none'} skipped (alreadyIn=${alreadyIn.length}/${targetChannels.length})`,
+      );
+      return { invited: 0, skipped: true, dmSent: false, errors: 0 };
+    }
+
+    let errors = 0;
+    let dmStatus: 'sent' | 'failed' | 'skipped' = 'skipped';
+    let dmError: string | undefined;
+    let dmSent = false;
+    if (sendDm) {
+      const dm = await this.slack.sendDirectMessageAsUser(
+        slackUserId,
+        DM_FALLBACK_TEXT,
+        buildDmBlocks(subeventChannelId),
+      );
+      if (dm.success) {
+        dmSent = true;
+        dmStatus = 'sent';
+      } else {
+        errors += 1;
+        dmStatus = 'failed';
+        dmError = dm.error;
+      }
+    }
+
+    let invited = 0;
+    for (const channelId of targetChannels) {
+      const result = await this.slack.inviteUserToChannel(
+        slackUserId,
+        channelId,
+      );
+
+      if (!result.success) {
+        errors += 1;
+        console.warn(
+          `[SlackChannels] Invite failed user=${slackUserId} channel=${channelId} error=${result.error}`,
+        );
+        continue;
+      }
+
+      if (!result.alreadyInChannel) {
+        invited += 1;
+      }
+
+      await sleep(1200);
+    }
+
+    console.log(
+      `[SlackChannels] user=${slackUserId} subevent=${subeventSlug ?? 'none'} invited=${invited}/${targetChannels.length} dm=${dmStatus}${dmError ? ` dmError=${dmError}` : ''}`,
+    );
+
+    return {
+      invited,
+      skipped: false,
       dmSent,
       errors,
     };
@@ -290,7 +370,7 @@ export class SlackBackfillService implements OnModuleInit {
       if (!result.success) {
         errors += 1;
         console.warn(
-          `[SlackBackfill] Kick failed user=${slackUserId} channel=${channelId} error=${result.error}`,
+          `[SlackChannels] Kick failed user=${slackUserId} channel=${channelId} error=${result.error}`,
         );
         continue;
       }
