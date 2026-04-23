@@ -87,6 +87,11 @@ model Project {
   // null = not yet reviewed; true = passed; false = auto-rejected
   joeFraudPassed     Boolean?     @map("joe_fraud_passed")
   joeFraudReviewedAt DateTime?    @map("joe_fraud_reviewed_at")
+  joeTrustScore         Float?    @map("joe_trust_score")
+  joeJustification      String?   @map("joe_justification") @db.Text
+  joeOutcomeStatus      String?   @map("joe_outcome_status")
+  joeOutcomeReason      String?   @map("joe_outcome_reason") @db.Text
+  joeOutcomeRecordedAt  DateTime? @map("joe_outcome_recorded_at")
   user               User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
   submissions        Submission[]
   @@index([userId])
