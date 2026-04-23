@@ -16,6 +16,123 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
+	// Derived state-matrix data for the Review Stats — Projects section.
+	// `funnelMatrix` is on the backend DTO but may not be in the regenerated
+	// admin types yet; cast through `any` to unblock until types are refreshed.
+	type FraudRow = { fraudPassed: number; fraudPending: number; fraudFailed: number };
+	type FunnelMatrix = {
+		reviewApproved: FraudRow;
+		reviewPending: FraudRow;
+		reviewRejected: FraudRow;
+	};
+	const funnelMatrix = $derived<FunnelMatrix | null>(
+		stats ? (((stats.reviewProjects as any).funnelMatrix as FunnelMatrix) ?? null) : null,
+	);
+	const finalApproved = $derived(funnelMatrix ? funnelMatrix.reviewApproved.fraudPassed : 0);
+	const finalSilentReject = $derived(funnelMatrix ? funnelMatrix.reviewApproved.fraudFailed : 0);
+	const finalInFlight = $derived(
+		funnelMatrix
+			? funnelMatrix.reviewApproved.fraudPending +
+					funnelMatrix.reviewPending.fraudPassed +
+					funnelMatrix.reviewPending.fraudPending
+			: 0,
+	);
+	const finalRejected = $derived(
+		funnelMatrix
+			? funnelMatrix.reviewRejected.fraudPassed +
+					funnelMatrix.reviewRejected.fraudPending +
+					funnelMatrix.reviewRejected.fraudFailed +
+					funnelMatrix.reviewPending.fraudFailed
+			: 0,
+	);
+
+	type MatrixCellMeaning =
+		| 'approved'
+		| 'silent-reject'
+		| 'awaiting-fraud'
+		| 'awaiting-review'
+		| 'awaiting-both'
+		| 'fraud-auto-reject'
+		| 'rejected';
+
+	const matrixRows = $derived<
+		{
+			key: keyof FunnelMatrix;
+			label: string;
+			data: FraudRow;
+			cellMeaning: Record<keyof FraudRow, MatrixCellMeaning>;
+		}[]
+	>(
+		funnelMatrix
+			? [
+					{
+						key: 'reviewApproved',
+						label: 'Reviewer: approved',
+						data: funnelMatrix.reviewApproved,
+						cellMeaning: {
+							fraudPassed: 'approved',
+							fraudPending: 'awaiting-fraud',
+							fraudFailed: 'silent-reject',
+						},
+					},
+					{
+						key: 'reviewPending',
+						label: 'Reviewer: pending',
+						data: funnelMatrix.reviewPending,
+						cellMeaning: {
+							fraudPassed: 'awaiting-review',
+							fraudPending: 'awaiting-both',
+							fraudFailed: 'fraud-auto-reject',
+						},
+					},
+					{
+						key: 'reviewRejected',
+						label: 'Reviewer: rejected',
+						data: funnelMatrix.reviewRejected,
+						cellMeaning: {
+							fraudPassed: 'rejected',
+							fraudPending: 'rejected',
+							fraudFailed: 'rejected',
+						},
+					},
+				]
+			: [],
+	);
+
+	function cellStyle(meaning: MatrixCellMeaning) {
+		switch (meaning) {
+			case 'approved':
+				return 'bg-green-500/15 border-green-500 text-green-700';
+			case 'silent-reject':
+				return 'bg-orange-500/15 border-orange-500 text-orange-700';
+			case 'awaiting-fraud':
+			case 'awaiting-review':
+			case 'awaiting-both':
+				return 'bg-yellow-500/15 border-yellow-500 text-yellow-800';
+			case 'fraud-auto-reject':
+			case 'rejected':
+				return 'bg-red-500/15 border-red-500 text-red-700';
+		}
+	}
+	function cellLabel(meaning: MatrixCellMeaning) {
+		switch (meaning) {
+			case 'approved':
+				return 'Final approved';
+			case 'silent-reject':
+				return 'Silent reject';
+			case 'awaiting-fraud':
+				return 'Awaiting fraud';
+			case 'awaiting-review':
+				return 'Awaiting reviewer';
+			case 'awaiting-both':
+				return 'Awaiting both';
+			case 'fraud-auto-reject':
+				return 'Fraud auto-reject';
+			case 'rejected':
+				return 'Rejected';
+		}
+	}
+
 	// Chart instances for cleanup
 	let charts: EChart[] = [];
 
@@ -258,114 +375,91 @@
 		svg.appendChild(ySubLabel);
 	}
 
+	// Render a Sankey flow showing how projects move through the two independent
+	// gates. Left column = Shipped. Middle = Fraud gate (passed / pending / failed).
+	// Right = Review gate (approved / pending / rejected). Link widths reflect
+	// project counts, using the project's most recent submission for review state.
 	function renderProjectFunnel() {
-		if (!projectFunnelEl || !stats) return;
-		projectFunnelEl.innerHTML = '';
+		const chart = initChart(projectFunnelEl);
+		if (!chart || !stats) return;
 
-		const rp = stats.reviewProjects;
-		const total = rp.shipped || 1;
+		const m = (stats.reviewProjects as any).funnelMatrix as FunnelMatrix | undefined;
+		if (!m) return;
+		const dark = isDark();
+		const axis = textColor();
 
-		const stages = [
-			{ value: rp.shipped, name: 'Shipped' },
-			{ value: rp.fraudChecked, name: 'Fraud\nChecked' },
-			{ value: rp.reviewed, name: 'Reviewed' },
-			{ value: rp.approved, name: 'Approved' },
+		// Colors per gate state
+		const greenBg = dark ? '#22c55e' : '#16a34a';
+		const yellowBg = dark ? '#eab308' : '#ca8a04';
+		const redBg = dark ? '#ef4444' : '#dc2626';
+		const blueBg = dark ? '#60a5fa' : '#3b82f6';
+
+		const shippedTotal =
+			m.reviewApproved.fraudPassed + m.reviewApproved.fraudFailed + m.reviewApproved.fraudPending +
+			m.reviewPending.fraudPassed + m.reviewPending.fraudFailed + m.reviewPending.fraudPending +
+			m.reviewRejected.fraudPassed + m.reviewRejected.fraudFailed + m.reviewRejected.fraudPending;
+
+		const fraudPassedTotal = m.reviewApproved.fraudPassed + m.reviewPending.fraudPassed + m.reviewRejected.fraudPassed;
+		const fraudPendingTotal = m.reviewApproved.fraudPending + m.reviewPending.fraudPending + m.reviewRejected.fraudPending;
+		const fraudFailedTotal = m.reviewApproved.fraudFailed + m.reviewPending.fraudFailed + m.reviewRejected.fraudFailed;
+
+		const nodes = [
+			{ name: `Shipped\n${shippedTotal}`, itemStyle: { color: blueBg } },
+			{ name: `Fraud: passed\n${fraudPassedTotal}`, itemStyle: { color: greenBg } },
+			{ name: `Fraud: pending\n${fraudPendingTotal}`, itemStyle: { color: yellowBg } },
+			{ name: `Fraud: failed\n${fraudFailedTotal}`, itemStyle: { color: redBg } },
+			{ name: `Reviewer: approved\n${m.reviewApproved.fraudPassed + m.reviewApproved.fraudPending + m.reviewApproved.fraudFailed}`, itemStyle: { color: greenBg } },
+			{ name: `Reviewer: pending\n${m.reviewPending.fraudPassed + m.reviewPending.fraudPending + m.reviewPending.fraudFailed}`, itemStyle: { color: yellowBg } },
+			{ name: `Reviewer: rejected\n${m.reviewRejected.fraudPassed + m.reviewRejected.fraudPending + m.reviewRejected.fraudFailed}`, itemStyle: { color: redBg } },
 		];
 
-		const w = projectFunnelEl.clientWidth;
-		const h = projectFunnelEl.clientHeight || 220;
-		const dark = isDark();
-		const fill = dark ? '#818cf8' : '#6366f1';
-		const labelColor = dark ? '#e2e8f0' : '#334155';
-		const dimLabel = dark ? '#94a3b8' : '#64748b';
+		const links = [
+			// Shipped → Fraud gate
+			{ source: nodes[0].name, target: nodes[1].name, value: fraudPassedTotal || 0.0001 },
+			{ source: nodes[0].name, target: nodes[2].name, value: fraudPendingTotal || 0.0001 },
+			{ source: nodes[0].name, target: nodes[3].name, value: fraudFailedTotal || 0.0001 },
+			// Fraud → Reviewer (flow through the 3×3 matrix)
+			{ source: nodes[1].name, target: nodes[4].name, value: m.reviewApproved.fraudPassed || 0.0001 },
+			{ source: nodes[1].name, target: nodes[5].name, value: m.reviewPending.fraudPassed || 0.0001 },
+			{ source: nodes[1].name, target: nodes[6].name, value: m.reviewRejected.fraudPassed || 0.0001 },
+			{ source: nodes[2].name, target: nodes[4].name, value: m.reviewApproved.fraudPending || 0.0001 },
+			{ source: nodes[2].name, target: nodes[5].name, value: m.reviewPending.fraudPending || 0.0001 },
+			{ source: nodes[2].name, target: nodes[6].name, value: m.reviewRejected.fraudPending || 0.0001 },
+			{ source: nodes[3].name, target: nodes[4].name, value: m.reviewApproved.fraudFailed || 0.0001 },
+			{ source: nodes[3].name, target: nodes[5].name, value: m.reviewPending.fraudFailed || 0.0001 },
+			{ source: nodes[3].name, target: nodes[6].name, value: m.reviewRejected.fraudFailed || 0.0001 },
+		];
 
-		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		svg.setAttribute('width', String(w));
-		svg.setAttribute('height', String(h));
-		svg.style.display = 'block';
-		projectFunnelEl.appendChild(svg);
-
-		const n = stages.length;
-		const headerH = 32;
-		const footerH = 38;
-		const bodyTop = headerH;
-		const bodyBottom = h - footerH;
-		const bodyH = bodyBottom - bodyTop;
-		const midY = bodyTop + bodyH / 2;
-		const maxHalfH = bodyH / 2;
-		const colW = w / n;
-		const minHalfH = 2;
-
-		const halfHeights = stages.map((s) => {
-			const ratio = total > 0 ? s.value / total : 0;
-			return Math.max(minHalfH, ratio * maxHalfH);
+		chart.setOption({
+			backgroundColor: 'transparent',
+			tooltip: {
+				trigger: 'item',
+				triggerOn: 'mousemove',
+				formatter: (p: any) => {
+					if (p.dataType === 'edge') {
+						return `${p.data.source.split('\n')[0]} → ${p.data.target.split('\n')[0]}<br/><b>${Math.round(p.data.value).toLocaleString()}</b> projects`;
+					}
+					return `<b>${p.name.split('\n')[0]}</b><br/>${p.name.split('\n')[1]} projects`;
+				},
+			},
+			series: [
+				{
+					type: 'sankey',
+					left: 8,
+					right: 160,
+					top: 8,
+					bottom: 8,
+					nodeWidth: 18,
+					nodeGap: 12,
+					draggable: false,
+					data: nodes,
+					links,
+					lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.5 },
+					label: { color: axis, fontSize: 11, fontWeight: 600 },
+					emphasis: { focus: 'adjacency' },
+				},
+			],
 		});
-
-		const topPoints: string[] = [];
-		const bottomPoints: string[] = [];
-		for (let i = 0; i < n; i++) {
-			const cx = colW * i + colW / 2;
-			topPoints.push(`${cx},${midY - halfHeights[i]}`);
-			bottomPoints.push(`${cx},${midY + halfHeights[i]}`);
-		}
-		const polyPoints = [...topPoints, ...bottomPoints.reverse()].join(' ');
-		const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-		polygon.setAttribute('points', polyPoints);
-		polygon.setAttribute('fill', fill);
-		polygon.setAttribute('opacity', '0.85');
-		svg.appendChild(polygon);
-
-		for (let i = 0; i < n; i++) {
-			const cx = colW * i + colW / 2;
-			const leftX = colW * i;
-			const pct = total > 0 ? ((stages[i].value / total) * 100).toFixed(1) : '0.0';
-
-			if (i > 0) {
-				const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-				line.setAttribute('x1', String(leftX));
-				line.setAttribute('y1', String(bodyTop));
-				line.setAttribute('x2', String(leftX));
-				line.setAttribute('y2', String(bodyBottom));
-				line.setAttribute('stroke', dark ? '#475569' : '#cbd5e1');
-				line.setAttribute('stroke-width', '1');
-				line.setAttribute('stroke-dasharray', '3,3');
-				line.setAttribute('opacity', '0.5');
-				svg.appendChild(line);
-			}
-
-			const headerLines = stages[i].name.split('\n');
-			for (let li = 0; li < headerLines.length; li++) {
-				const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-				text.setAttribute('x', String(cx));
-				text.setAttribute('y', String(4 + li * 13));
-				text.setAttribute('text-anchor', 'middle');
-				text.setAttribute('dominant-baseline', 'hanging');
-				text.setAttribute('fill', labelColor);
-				text.setAttribute('font-size', '11');
-				text.setAttribute('font-weight', '600');
-				text.textContent = headerLines[li];
-				svg.appendChild(text);
-			}
-
-			const pctText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-			pctText.setAttribute('x', String(cx));
-			pctText.setAttribute('y', String(bodyBottom + 12));
-			pctText.setAttribute('text-anchor', 'middle');
-			pctText.setAttribute('fill', dimLabel);
-			pctText.setAttribute('font-size', '10');
-			pctText.textContent = `${pct}%`;
-			svg.appendChild(pctText);
-
-			const countText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-			countText.setAttribute('x', String(cx));
-			countText.setAttribute('y', String(bodyBottom + 26));
-			countText.setAttribute('text-anchor', 'middle');
-			countText.setAttribute('fill', labelColor);
-			countText.setAttribute('font-size', '11');
-			countText.setAttribute('font-weight', '700');
-			countText.textContent = stages[i].value.toLocaleString();
-			svg.appendChild(countText);
-		}
 	}
 
 	function renderLineChart(
@@ -1004,9 +1098,55 @@
 			<!-- 5. Review Stats (Projects) -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Review Stats — Projects</h2>
+
+				<!-- Sankey: shipped → fraud gate → reviewer gate -->
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
-					<div bind:this={projectFunnelEl} style="height: 220px;"></div>
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Project flow through the two gates</p>
+					<div bind:this={projectFunnelEl} style="height: 320px;"></div>
 				</div>
+
+				<!-- 3×3 state matrix: reviewer × fraud, with derived final outcome per cell -->
+				{#if funnelMatrix}
+					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Where every project sits right now (latest submission)</p>
+						<div class="grid grid-cols-[max-content_repeat(3,minmax(0,1fr))] gap-2">
+							<div></div>
+							<div class="text-center text-[11px] font-semibold text-ds-text-secondary pb-1">Fraud: passed</div>
+							<div class="text-center text-[11px] font-semibold text-ds-text-secondary pb-1">Fraud: pending</div>
+							<div class="text-center text-[11px] font-semibold text-ds-text-secondary pb-1">Fraud: failed</div>
+							{#each matrixRows as row}
+								<div class="flex items-center text-[11px] font-semibold text-ds-text-secondary pr-3 whitespace-nowrap">{row.label}</div>
+								{#each ['fraudPassed', 'fraudPending', 'fraudFailed'] as const as fraudKey}
+									<div class={`rounded-md border px-3 py-2.5 ${cellStyle(row.cellMeaning[fraudKey])}`}>
+										<div class="text-[10px] font-semibold uppercase tracking-wide opacity-80">{cellLabel(row.cellMeaning[fraudKey])}</div>
+										<div class="text-lg font-bold">{formatCount(row.data[fraudKey])}</div>
+									</div>
+								{/each}
+							{/each}
+						</div>
+					</div>
+
+					<!-- Final-state totals derived from the matrix -->
+					<div class="grid gap-3 sm:grid-cols-4 mb-3">
+						<div class="space-y-1 rounded-lg border border-green-500/40 bg-green-500/5 p-4 shadow-[var(--color-ds-shadow)]">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-green-700">✓ Approved</p>
+							<p class="text-2xl font-bold text-ds-text">{formatCount(finalApproved)}</p>
+						</div>
+						<div class="space-y-1 rounded-lg border border-yellow-500/40 bg-yellow-500/5 p-4 shadow-[var(--color-ds-shadow)]">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-yellow-700">↻ In-flight</p>
+							<p class="text-2xl font-bold text-ds-text">{formatCount(finalInFlight)}</p>
+						</div>
+						<div class="space-y-1 rounded-lg border border-red-500/40 bg-red-500/5 p-4 shadow-[var(--color-ds-shadow)]">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-red-700">✗ Rejected</p>
+							<p class="text-2xl font-bold text-ds-text">{formatCount(finalRejected)}</p>
+						</div>
+						<div class="space-y-1 rounded-lg border border-orange-500/40 bg-orange-500/5 p-4 shadow-[var(--color-ds-shadow)]">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-orange-700">⚠ Silent reject</p>
+							<p class="text-2xl font-bold text-ds-text">{formatCount(finalSilentReject)}</p>
+						</div>
+					</div>
+				{/if}
+
 				<div class="grid gap-3 sm:grid-cols-3 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fraud Queue</p>
