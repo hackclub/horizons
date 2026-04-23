@@ -54,10 +54,6 @@
 	let activeTab = $state('readme');
 
 	onMount(async () => {
-		const { data, error } = await api.GET('/api/user/auth/me');
-		if (error || !data) { goto('/login'); return; }
-		if (data.role !== 'admin' && data.role !== 'superadmin' && data.role !== 'reviewer') { goto('/app/projects'); return; }
-
 		// Load queue for next/prev navigation
 		const { data: queueData } = await api.GET('/api/reviewer/queue');
 		queue = queueData ?? [];
