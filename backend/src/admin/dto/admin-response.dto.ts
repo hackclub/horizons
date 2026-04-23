@@ -726,6 +726,28 @@ class StatsReviewHours {
   lastProjectFraudCheckTime: number | null;
 }
 
+class StatsFunnelMatrixRow {
+  @ApiProperty()
+  fraudPassed: number;
+
+  @ApiProperty()
+  fraudFailed: number;
+
+  @ApiProperty()
+  fraudPending: number;
+}
+
+class StatsFunnelMatrix {
+  @ApiProperty({ type: StatsFunnelMatrixRow })
+  reviewApproved: StatsFunnelMatrixRow;
+
+  @ApiProperty({ type: StatsFunnelMatrixRow })
+  reviewRejected: StatsFunnelMatrixRow;
+
+  @ApiProperty({ type: StatsFunnelMatrixRow })
+  reviewPending: StatsFunnelMatrixRow;
+}
+
 class StatsReviewProjects {
   @ApiProperty()
   shipped: number;
@@ -738,6 +760,12 @@ class StatsReviewProjects {
 
   @ApiProperty()
   reviewQueue: number;
+
+  @ApiProperty()
+  awaitingFraud: number;
+
+  @ApiProperty()
+  fraudTeamDeliberation: number;
 
   @ApiProperty()
   reviewed: number;
@@ -753,6 +781,9 @@ class StatsReviewProjects {
 
   @ApiProperty()
   reviewedThisWeek: number;
+
+  @ApiProperty({ type: StatsFunnelMatrix })
+  funnelMatrix: StatsFunnelMatrix;
 }
 
 class StatsSignupEventEntry {

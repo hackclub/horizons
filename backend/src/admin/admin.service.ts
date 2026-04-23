@@ -770,6 +770,8 @@ export class AdminService {
       }),
     ]);
 
+    const funnelMatrix = await this.computeFunnelMatrix();
+
     return {
       shipped,
       fraudChecked,
@@ -782,6 +784,81 @@ export class AdminService {
       shippedThisWeek,
       fraudCheckedThisWeek,
       reviewedThisWeek,
+      funnelMatrix,
+    };
+  }
+
+  /**
+   * For every project with ≥1 submission, compute where it currently sits in the
+   * two-gate flow — reviewer gate × fraud gate — using the project's most recent
+   * submission. Returns a 3×3 count matrix the admin dashboard renders as a
+   * state grid.
+   *
+   * Review buckets:
+   *   reviewApproved  — latest submission has reviewPassed=true
+   *   reviewRejected  — latest submission has reviewPassed=false
+   *   reviewPending   — latest submission has reviewPassed=null (reviewer hasn't acted)
+   *
+   * Fraud buckets are driven by Project.joeFraudPassed (true/false/null).
+   */
+  private async computeFunnelMatrix() {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        review_bucket: 'approved' | 'rejected' | 'pending';
+        fraud_bucket: 'passed' | 'failed' | 'pending';
+        count: bigint;
+      }>
+    >`
+      WITH latest_submission AS (
+        SELECT DISTINCT ON (project_id)
+          project_id,
+          review_passed,
+          approval_status
+        FROM submissions
+        ORDER BY project_id, created_at DESC
+      )
+      SELECT
+        CASE
+          WHEN ls.review_passed = true  THEN 'approved'
+          WHEN ls.review_passed = false THEN 'rejected'
+          ELSE 'pending'
+        END AS review_bucket,
+        CASE
+          WHEN p.joe_fraud_passed = true  THEN 'passed'
+          WHEN p.joe_fraud_passed = false THEN 'failed'
+          ELSE 'pending'
+        END AS fraud_bucket,
+        COUNT(*)::bigint AS count
+      FROM latest_submission ls
+      JOIN projects p ON p.project_id = ls.project_id
+      GROUP BY review_bucket, fraud_bucket;
+    `;
+
+    const cell = (
+      review: 'approved' | 'rejected' | 'pending',
+      fraud: 'passed' | 'failed' | 'pending',
+    ) =>
+      Number(
+        rows.find((r) => r.review_bucket === review && r.fraud_bucket === fraud)
+          ?.count ?? 0,
+      );
+
+    return {
+      reviewApproved: {
+        fraudPassed: cell('approved', 'passed'),
+        fraudFailed: cell('approved', 'failed'),
+        fraudPending: cell('approved', 'pending'),
+      },
+      reviewRejected: {
+        fraudPassed: cell('rejected', 'passed'),
+        fraudFailed: cell('rejected', 'failed'),
+        fraudPending: cell('rejected', 'pending'),
+      },
+      reviewPending: {
+        fraudPassed: cell('pending', 'passed'),
+        fraudFailed: cell('pending', 'failed'),
+        fraudPending: cell('pending', 'pending'),
+      },
     };
   }
 
