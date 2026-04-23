@@ -311,10 +311,25 @@ export class ProjectsService {
       data: submissionData,
     });
 
-    // Always recalculate and update hours
+    // On resubmission, drop the prior Joe review state so this submission
+    // gets a fresh fraud review and stays out of the queue until it passes.
+    const projectUpdateData: any = { nowHackatimeHours: recalculatedHours };
+    if (isResubmission) {
+      Object.assign(projectUpdateData, {
+        joeProjectId: null,
+        joeFraudPassed: null,
+        joeFraudReviewedAt: null,
+        joeTrustScore: null,
+        joeJustification: null,
+        joeOutcomeStatus: null,
+        joeOutcomeReason: null,
+        joeOutcomeRecordedAt: null,
+      });
+    }
+
     await this.prisma.project.update({
       where: { projectId },
-      data: { nowHackatimeHours: recalculatedHours },
+      data: projectUpdateData,
     });
 
     this.posthog.capture({
