@@ -150,11 +150,19 @@ export class FraudReviewService {
         where: { projectId },
         include: {
           user: { select: { slackUserId: true, email: true } },
+          submissions: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { submissionId: true },
+          },
         },
       });
 
       if (!project) return;
       if (project.joeProjectId) return;
+
+      const latestSubmissionId = project.submissions[0]?.submissionId;
+      if (!latestSubmissionId) return;
 
       const submitter = project.user.slackUserId
         ? { slackId: project.user.slackUserId }
@@ -169,8 +177,9 @@ export class FraudReviewService {
           project.nowHackatimeProjects.length > 0
             ? project.nowHackatimeProjects
             : undefined,
-        // Stable dedup key so resubmissions don't create duplicate review entries
-        organizerPlatformId: `project-${projectId}`,
+        // Per-submission dedup key so each resubmission triggers a fresh
+        // Joe review instead of returning the cached previous decision.
+        organizerPlatformId: `project-${projectId}-submission-${latestSubmissionId}`,
       });
 
       if (fraudReviewId) {
@@ -187,10 +196,13 @@ export class FraudReviewService {
     }
   }
 
-  /** Determine pass/fail from a Joe project's review data. */
+  /**
+   * Pass/fail is driven solely by Joe's recorded outcome. Auto-rejected
+   * projects (trustScore ≤ 4) never get an outcome and remain null here,
+   * which the queue filter also excludes.
+   */
   private didPassFraudReview(joeProject: JoeProject): boolean {
-    if (joeProject.status !== 'complete' || !joeProject.review) return false;
-    return joeProject.review.trustScore > 4;
+    return joeProject.outcome?.status === 'approved';
   }
 
   /**
@@ -227,11 +239,14 @@ export class FraudReviewService {
     const joeProjects = await this.listAllProjects();
     if (!joeProjects) return { submitted, updated: 0 };
 
-    // Step 3: find our DB projects that are still awaiting a fraud decision
+    // Step 3: re-sync any project that has been submitted to Joe AND still
+    // has a pending submission. We can't restrict this to joeFraudPassed=null
+    // because Joe may flip a previously-passed project to rejected (manual
+    // outcome) and we need to pick that up so it leaves the review queue.
     const pendingProjects = await this.prisma.project.findMany({
       where: {
         joeProjectId: { not: null },
-        joeFraudPassed: null,
+        submissions: { some: { approvalStatus: 'pending' } },
       },
       select: { projectId: true, joeProjectId: true },
     });
@@ -245,7 +260,9 @@ export class FraudReviewService {
         joeProjects.get(project.joeProjectId) ??
         joeProjects.get(`project-${project.projectId}`);
 
-      if (!joeProject || joeProject.status !== 'complete') continue;
+      // Skip if Joe hasn't recorded an outcome yet — leave joeFraudPassed
+      // null rather than overwriting with false for still-pending projects.
+      if (!joeProject || !joeProject.outcome) continue;
 
       const passed = this.didPassFraudReview(joeProject);
 
