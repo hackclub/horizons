@@ -5,7 +5,6 @@
 	import {
 		Home,
 		PlaySquare,
-		FileText,
 		FolderKanban,
 		Users,
 		ShoppingBag,
@@ -38,7 +37,6 @@
 	const navItems: NavItem[] = [
 		{ href: '/home', label: 'Home', icon: Home },
 		{ href: '/review', label: 'Review', icon: PlaySquare, tint: 'accent' },
-		{ href: '/submissions', label: 'Submissions', icon: FileText },
 		{ href: '/projects', label: 'Projects', icon: FolderKanban },
 		{ href: '/users', label: 'Users', icon: Users },
 		{ href: '/shop', label: 'Shop', icon: ShoppingBag },
