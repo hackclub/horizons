@@ -37,7 +37,7 @@
 
 	const navItems: NavItem[] = [
 		{ href: '/home', label: 'Home', icon: Home },
-		{ href: '/review-select', label: 'Review', icon: PlaySquare, tint: 'accent' },
+		{ href: '/review', label: 'Review', icon: PlaySquare, tint: 'accent' },
 		{ href: '/submissions', label: 'Submissions', icon: FileText },
 		{ href: '/projects', label: 'Projects', icon: FolderKanban },
 		{ href: '/users', label: 'Users', icon: Users },

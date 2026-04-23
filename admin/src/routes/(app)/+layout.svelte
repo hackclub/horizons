@@ -1,6 +1,8 @@
 <script lang="ts">
     import { api } from '$lib/api';
     import { onMount } from 'svelte';
+    import { page } from '$app/stores';
+    import { base } from '$app/paths';
     import { Sidebar } from '$lib/components';
 
     let { children } = $props();
@@ -8,6 +10,7 @@
     let user = $state<{ email: string; role: string; name?: string } | null>(null);
     let loading = $state(true);
     let sidebarCollapsed = $state(false);
+    let wasOnReview = $state(false);
 
     onMount(async () => {
         const { data: userData, error } = await api.GET('/api/user/auth/me');
@@ -21,6 +24,14 @@
         }
         user = userData as any;
         loading = false;
+    });
+
+    $effect(() => {
+        const isOnReview = $page.url.pathname.startsWith(`${base}/review`);
+        if (isOnReview && !wasOnReview) {
+            sidebarCollapsed = true;
+        }
+        wasOnReview = isOnReview;
     });
 </script>
 

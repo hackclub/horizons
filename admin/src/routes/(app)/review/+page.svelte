@@ -62,15 +62,6 @@
 	let activeTab = $state('readme');
 
 	onMount(async () => {
-		const { data, error } = await api.GET('/api/user/auth/me');
-		if (error || !data) {
-			goto('/login');
-			return;
-		}
-		if (data.role !== 'admin' && data.role !== 'superadmin' && data.role !== 'reviewer') {
-			goto('/app/projects');
-			return;
-		}
 		await loadQueue();
 
 		// Periodically poll fraud review statuses and refresh the queue
