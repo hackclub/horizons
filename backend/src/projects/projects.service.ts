@@ -25,16 +25,40 @@ export class ProjectsService {
     private fraudReviewService: FraudReviewService,
   ) {}
 
-  private excludeAdminFields<
-    T extends { hoursJustification?: any; isFraud?: any },
-  >(obj: T): Omit<T, 'hoursJustification' | 'isFraud'> {
-    const { hoursJustification, isFraud, ...rest } = obj;
+  private excludeAdminFields<T extends Record<string, any>>(
+    obj: T,
+  ): Omit<
+    T,
+    | 'hoursJustification'
+    | 'isFraud'
+    | 'adminComment'
+    | 'joeProjectId'
+    | 'joeFraudPassed'
+    | 'joeFraudReviewedAt'
+    | 'joeTrustScore'
+    | 'joeJustification'
+    | 'joeOutcomeStatus'
+    | 'joeOutcomeReason'
+    | 'joeOutcomeRecordedAt'
+  > {
+    const {
+      hoursJustification,
+      isFraud,
+      adminComment,
+      joeProjectId,
+      joeFraudPassed,
+      joeFraudReviewedAt,
+      joeTrustScore,
+      joeJustification,
+      joeOutcomeStatus,
+      joeOutcomeReason,
+      joeOutcomeRecordedAt,
+      ...rest
+    } = obj;
     return rest;
   }
 
-  private excludeAdminFieldsFromArray<
-    T extends { hoursJustification?: any; isFraud?: any },
-  >(arr: T[]): Omit<T, 'hoursJustification' | 'isFraud'>[] {
+  private excludeAdminFieldsFromArray<T extends Record<string, any>>(arr: T[]) {
     return arr.map((item) => this.excludeAdminFields(item));
   }
 

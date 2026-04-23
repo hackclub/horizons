@@ -255,7 +255,17 @@ export class FraudReviewService {
 
       await this.prisma.project.update({
         where: { projectId: project.projectId },
-        data: { joeFraudPassed: passed, joeFraudReviewedAt: fraudReviewedAt },
+        data: {
+          joeFraudPassed: passed,
+          joeFraudReviewedAt: fraudReviewedAt,
+          joeTrustScore: joeProject.review?.trustScore ?? null,
+          joeJustification: joeProject.review?.justification ?? null,
+          joeOutcomeStatus: joeProject.outcome?.status ?? null,
+          joeOutcomeReason: joeProject.outcome?.reason ?? null,
+          joeOutcomeRecordedAt: joeProject.outcome?.recordedAt
+            ? new Date(joeProject.outcome.recordedAt)
+            : null,
+        },
       });
 
       updated++;

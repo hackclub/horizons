@@ -553,7 +553,20 @@ export class AuthService {
     } = user;
     if (userWithoutAddress.projects) {
       userWithoutAddress.projects = userWithoutAddress.projects.map(
-        ({ isFraud: _, hoursJustification: __, ...project }: any) => project,
+        ({
+          isFraud: _isFraud,
+          hoursJustification: _hoursJustification,
+          adminComment: _adminComment,
+          joeProjectId: _joeProjectId,
+          joeFraudPassed: _joeFraudPassed,
+          joeFraudReviewedAt: _joeFraudReviewedAt,
+          joeTrustScore: _joeTrustScore,
+          joeJustification: _joeJustification,
+          joeOutcomeStatus: _joeOutcomeStatus,
+          joeOutcomeReason: _joeOutcomeReason,
+          joeOutcomeRecordedAt: _joeOutcomeRecordedAt,
+          ...project
+        }: any) => project,
       );
     }
 
