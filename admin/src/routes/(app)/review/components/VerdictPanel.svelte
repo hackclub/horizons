@@ -6,6 +6,7 @@
 		submissionId: number;
 		hackatimeHours: number | null;
 		editedHours?: number | null;
+		joeFraudPassed?: boolean | null;
 		onReviewComplete: () => void;
 	}
 
@@ -13,6 +14,7 @@
 		submissionId,
 		hackatimeHours,
 		editedHours = null,
+		joeFraudPassed = null,
 		onReviewComplete,
 	}: Props = $props();
 
@@ -129,6 +131,15 @@
 			<h3 class="text-sm font-bold mb-3 flex items-center gap-1.5">
 				<span class="w-2 h-2 rounded-full bg-rv-green"></span> Approve Project
 			</h3>
+			{#if joeFraudPassed === null}
+				<div class="mb-3 rounded-md border border-yellow-500 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-800">
+					Fraud review still pending — this will finalize once fraud passes.
+				</div>
+			{:else if joeFraudPassed === false}
+				<div class="mb-3 rounded-md border border-red-500 bg-red-500/10 px-3 py-2 text-xs text-red-700">
+					Fraud review failed — approving here will silent-reject the submission internally.
+				</div>
+			{/if}
 			<div class="mb-3">
 				<label for="approved-hours" class="block text-xs font-semibold text-rv-dim mb-1">
 					Approved Hours

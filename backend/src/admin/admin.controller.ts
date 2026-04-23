@@ -37,7 +37,6 @@ import {
   AdminUserResponse,
   AdminMetricsResponse,
   ReviewerLeaderboardEntry,
-  AdminFraudFlagResponse,
   AdminUserFlagResponse,
   AdminUserSusFlagResponse,
   AdminUserSlackResponse,
@@ -225,17 +224,6 @@ export class AdminController {
   @ApiOkResponse({ type: [ReviewerLeaderboardEntry] })
   async getReviewerLeaderboard() {
     return this.adminService.getReviewerLeaderboard();
-  }
-
-  @Put('projects/:id/fraud-flag')
-  @UseGuards(RolesGuard)
-  @Roles(Role.Admin)
-  @ApiOkResponse({ type: AdminFraudFlagResponse })
-  async toggleFraudFlag(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() body: ToggleFraudFlagDto,
-  ) {
-    return this.adminService.toggleFraudFlag(id, body.isFraud);
   }
 
   @Put('users/:id/fraud-flag')

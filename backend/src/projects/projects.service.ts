@@ -30,7 +30,6 @@ export class ProjectsService {
   ): Omit<
     T,
     | 'hoursJustification'
-    | 'isFraud'
     | 'adminComment'
     | 'joeProjectId'
     | 'joeFraudPassed'
@@ -43,7 +42,6 @@ export class ProjectsService {
   > {
     const {
       hoursJustification,
-      isFraud,
       adminComment,
       joeProjectId,
       joeFraudPassed,
@@ -60,6 +58,45 @@ export class ProjectsService {
 
   private excludeAdminFieldsFromArray<T extends Record<string, any>>(arr: T[]) {
     return arr.map((item) => this.excludeAdminFields(item));
+  }
+
+  /**
+   * User-facing view of a Submission. Strips admin-only fields and maps
+   * silent-reject (reviewer approved + fraud failed) to 'pending' so the user
+   * sees no difference between "waiting for review" and "handled off-service".
+   */
+  scopeSubmissionForUser<
+    T extends {
+      approvalStatus: 'pending' | 'approved' | 'rejected';
+      reviewPassed: boolean | null;
+    },
+  >(
+    submission: T,
+  ): Omit<
+    T,
+    | 'reviewPassed'
+    | 'pendingSendEmail'
+    | 'finalizedAt'
+    | 'reviewedBy'
+    | 'airtableRecId'
+    | 'reviewerAnalysis'
+  > {
+    const isSilentReject =
+      submission.approvalStatus === 'rejected' &&
+      submission.reviewPassed === true;
+    const {
+      reviewPassed: _rp,
+      pendingSendEmail: _pe,
+      finalizedAt: _fa,
+      reviewedBy: _rb,
+      airtableRecId: _ar,
+      reviewerAnalysis: _ra,
+      ...rest
+    } = submission as any;
+    return {
+      ...rest,
+      approvalStatus: isSilentReject ? 'pending' : submission.approvalStatus,
+    };
   }
 
   async createProject(createProjectDto: CreateProjectDto, userId: number) {
@@ -289,32 +326,53 @@ export class ProjectsService {
       user.hackatimeStartDate,
     );
 
-    // Check if this is a resubmission
-    const existingSubmissions = await this.prisma.submission.findMany({
+    // Inspect the most recent prior submission to gate eligibility and decide
+    // whether this resubmission needs fresh fraud review.
+    //
+    // Resubmit rules:
+    //   - none                        → allow (first submission)
+    //   - approved                    → allow, clear joe* + re-submit to fraud
+    //   - rejected + reviewPassed=false → reviewer-rejected, allow, reuse joe*
+    //   - rejected + reviewPassed=null  → fraud-auto-rejected, allow, reuse joe*
+    //   - rejected + reviewPassed=true  → silent reject (user sees pending) → block
+    //   - pending                     → block (still in flight)
+    const priorSubmission = await this.prisma.submission.findFirst({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
-      take: 1,
+      select: { approvalStatus: true, reviewPassed: true },
     });
 
-    const isResubmission = existingSubmissions.length > 0;
+    const isResubmission = !!priorSubmission;
+    if (priorSubmission) {
+      const blocked =
+        priorSubmission.approvalStatus === 'pending' ||
+        (priorSubmission.approvalStatus === 'rejected' &&
+          priorSubmission.reviewPassed === true);
+      if (blocked) {
+        throw new BadRequestException('You have a pending submission.');
+      }
+    }
 
-    const submissionData = {
-      projectId,
-      playableUrl: project.playableUrl,
-      screenshotUrl: project.screenshotUrl,
-      description: project.description,
-      repoUrl: project.repoUrl,
-      hackatimeHours: recalculatedHours,
-    };
+    const reuseFraud =
+      priorSubmission?.approvalStatus === 'rejected' &&
+      priorSubmission.reviewPassed !== true;
 
     const submission = await this.prisma.submission.create({
-      data: submissionData,
+      data: {
+        projectId,
+        playableUrl: project.playableUrl,
+        screenshotUrl: project.screenshotUrl,
+        description: project.description,
+        repoUrl: project.repoUrl,
+        hackatimeHours: recalculatedHours,
+      },
     });
 
-    // On resubmission, drop the prior Joe review state so this submission
-    // gets a fresh fraud review and stays out of the queue until it passes.
     const projectUpdateData: any = { nowHackatimeHours: recalculatedHours };
-    if (isResubmission) {
+    // Only reset fraud state when the prior submission was approved or when
+    // this is a brand new project. Reviewer-rejected resubmissions reuse the
+    // prior fraud outcome — the FigJam rule.
+    if (isResubmission && !reuseFraud) {
       Object.assign(projectUpdateData, {
         joeProjectId: null,
         joeFraudPassed: null,
@@ -342,6 +400,7 @@ export class ProjectsService {
         projectType: project.projectType,
         submissionId: submission.submissionId,
         isResubmission,
+        reuseFraud,
       },
     });
 
@@ -353,8 +412,11 @@ export class ProjectsService {
         );
     }
 
-    // Submit to fraud review in the background — does not block the response
-    this.fraudReviewService.submitAndPersist(projectId).catch(() => {});
+    // Submit to fraud review only when we're starting fresh. Reviewer-rejected
+    // resubmissions deliberately reuse the prior fraud outcome.
+    if (!reuseFraud) {
+      this.fraudReviewService.submitAndPersist(projectId).catch(() => {});
+    }
 
     return submission;
   }
@@ -377,7 +439,7 @@ export class ProjectsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return submissions;
+    return submissions.map((s) => this.scopeSubmissionForUser(s));
   }
 
   async updateProject(

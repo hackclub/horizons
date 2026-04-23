@@ -388,8 +388,8 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 | Model | Key Fields | Purpose |
 |-------|------------|---------|
 | **User** | hcaId, email, firstName, lastName, birthday, address fields, role, onboardComplete, hackatimeAccount, hackatimeAccessToken, rafflePos, airtableRecId, isFraud, isSus | Student profiles |
-| **Project** | userId, projectTitle, projectType, description, approvedHours, nowHackatimeHours, nowHackatimeProjects[], URLs, isLocked, isFraud | Student projects |
-| **Submission** | projectId, approvalStatus, approvedHours, hackatimeHours, hoursJustification, reviewedBy, reviewedAt, airtableRecId | Per-project submissions |
+| **Project** | userId, projectTitle, projectType, description, approvedHours, nowHackatimeHours, nowHackatimeProjects[], URLs, isLocked, joeFraudPassed, joeTrustScore (+ other joe\*) | Student projects |
+| **Submission** | projectId, approvalStatus (reconciled final outcome), reviewPassed (reviewer gate), approvedHours, hackatimeHours, hoursJustification, reviewerAnalysis, pendingSendEmail, reviewedBy, reviewedAt, finalizedAt, airtableRecId | Per-project submissions |
 | **SubmissionAuditLog** | submissionId, adminId, action, newStatus, approvedHours, changes (JSON) | Review audit trail |
 | **ReviewerNote** | projectId or userId, content | Shared reviewer notes |
 | **ReviewerChecklist** | submissionId, checkedItems (JSON) | 7-item per-submission checklist |

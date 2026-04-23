@@ -104,9 +104,6 @@ class AdminSubmissionProjectResponse {
   @ApiProperty({ type: String, nullable: true })
   adminComment: string | null;
 
-  @ApiProperty()
-  isFraud: boolean;
-
   @ApiProperty({ type: AdminSubmissionProjectUserResponse })
   user: AdminSubmissionProjectUserResponse;
 }
@@ -219,8 +216,11 @@ export class AdminProjectResponse {
   @ApiProperty()
   isLocked: boolean;
 
-  @ApiProperty()
-  isFraud: boolean;
+  @ApiProperty({ type: Boolean, nullable: true })
+  joeFraudPassed: boolean | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  joeTrustScore: number | null;
 
   @ApiProperty()
   createdAt: Date;
@@ -267,9 +267,6 @@ class AdminUserProjectResponse {
 
   @ApiProperty()
   isLocked: boolean;
-
-  @ApiProperty()
-  isFraud: boolean;
 
   @ApiProperty()
   createdAt: Date;
@@ -332,17 +329,6 @@ export class ReviewerLeaderboardEntry {
 
   @ApiProperty({ type: Date, nullable: true })
   lastReviewedAt: Date | null;
-}
-
-export class AdminFraudFlagResponse {
-  @ApiProperty()
-  projectId: number;
-
-  @ApiProperty()
-  projectTitle: string;
-
-  @ApiProperty()
-  isFraud: boolean;
 }
 
 export class AdminUserFlagResponse {

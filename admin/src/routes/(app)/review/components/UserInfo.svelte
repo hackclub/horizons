@@ -10,11 +10,30 @@
 		readmeUrl: string | null;
 		hackatimeHours: number | null;
 		hackatimeProjects: string[];
+		joeFraudPassed?: boolean | null;
+		joeTrustScore?: number | null;
 		onHoursChange?: (hours: number) => void;
 	}
 
-	let { user, repoUrl, playableUrl, readmeUrl, hackatimeHours, hackatimeProjects, onHoursChange }: Props =
-		$props();
+	let {
+		user,
+		repoUrl,
+		playableUrl,
+		readmeUrl,
+		hackatimeHours,
+		hackatimeProjects,
+		joeFraudPassed = null,
+		joeTrustScore = null,
+		onHoursChange,
+	}: Props = $props();
+
+	const fraudBadge = $derived(
+		joeFraudPassed === true
+			? { label: 'Fraud: passed', class: 'border-green-500 text-green-600 bg-green-500/10' }
+			: joeFraudPassed === false
+				? { label: 'Fraud: failed', class: 'border-red-500 text-red-600 bg-red-500/10' }
+				: { label: 'Fraud: pending', class: 'border-gray-400 text-gray-500 bg-gray-500/10' },
+	);
 
 	// Build Slack DM link from user's Slack ID
 	const slackDmUrl = $derived(
@@ -41,6 +60,17 @@
 <div class="p-4">
 	<div class="flex items-center gap-2 mb-0.5">
 		<span class="text-[18px] font-bold font-[Space_Mono,monospace]">{user.firstName} {user.lastName}</span>
+	</div>
+
+	<div class="flex items-center gap-2 mb-3">
+		<span class={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${fraudBadge.class}`}>
+			{fraudBadge.label}
+		</span>
+		{#if joeTrustScore != null}
+			<span class="inline-flex items-center rounded-full border border-rv-border text-rv-dim px-2 py-0.5 text-[11px] font-medium font-[Space_Mono,monospace]">
+				Trust: {joeTrustScore}
+			</span>
+		{/if}
 	</div>
 
 	{#if slackDmUrl}

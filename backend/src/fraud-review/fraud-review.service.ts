@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
+import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
 
 const FRAUD_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -39,7 +40,10 @@ export class FraudReviewService {
   private readonly eventId: string;
   private readonly enabled: boolean;
 
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    private submissionApprovalService: SubmissionApprovalService,
+  ) {
     this.baseUrl = (process.env.JOE_API_BASE_URL || '').replace(/\/$/, '');
     this.apiKey = process.env.JOE_API_KEY || '';
     this.eventId = process.env.JOE_EVENT_ID || '';
@@ -284,6 +288,12 @@ export class FraudReviewService {
             : null,
         },
       });
+
+      // Re-run the approval state machine for every pending submission on this
+      // project — the fraud gate may have just resolved and allowed a transition.
+      await this.submissionApprovalService.onFraudStatusChanged(
+        project.projectId,
+      );
 
       updated++;
     }

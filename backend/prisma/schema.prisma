@@ -80,7 +80,6 @@ model Project {
   journalUrl         String?      @map("journal_url")
   screenshotUrl      String?      @map("screenshot_url")
   isLocked           Boolean      @default(false) @map("is_locked")
-  isFraud             Boolean      @default(false) @map("is_fraud")
   adminComment       String?      @map("admin_comment") @db.VarChar(1000)
   // Fraud review integration: stores the external review platform's project UUID
   joeProjectId       String?      @map("joe_project_id")
@@ -108,9 +107,19 @@ model Submission {
   approvedHours    Float?         @map("approved_hours")
   hackatimeHours   Float?         @map("hackatime_hours")
   hoursJustification String?      @map("hours_justification") @db.Text
+  // Reconciled final outcome of both gates (reviewer + fraud).
+  // Stays `pending` until the state machine finalizes via SubmissionApprovalService.
   approvalStatus   ApprovalStatus @default(pending) @map("approval_status")
+  // Reviewer's independent decision. null = undecided, true = approve, false = reject.
+  reviewPassed     Boolean?       @map("review_passed")
+  // Raw reviewer analysis text — wrapped with boilerplate at finalization to build project.hoursJustification.
+  reviewerAnalysis String?        @map("reviewer_analysis") @db.Text
+  // Reviewer's intent to send an email on finalization (honored when fraud-delayed finalization fires).
+  pendingSendEmail Boolean        @default(false) @map("pending_send_email")
   reviewedBy       String?        @map("reviewed_by")
   reviewedAt       DateTime?      @map("reviewed_at")
+  // When approvalStatus transitioned from pending to approved/rejected.
+  finalizedAt      DateTime?      @map("finalized_at")
   airtableRecId    String?        @map("airtable_rec_id")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
