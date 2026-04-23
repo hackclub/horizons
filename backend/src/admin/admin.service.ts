@@ -701,7 +701,19 @@ export class AdminService {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
 
-    const [shipped, fraudChecked, fraudQueue, reviewQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek] = await Promise.all([
+    const [
+      shipped,
+      fraudChecked,
+      fraudQueue,
+      reviewQueue,
+      awaitingFraud,
+      fraudTeamDeliberation,
+      reviewed,
+      approved,
+      shippedThisWeek,
+      fraudCheckedThisWeek,
+      reviewedThisWeek,
+    ] = await Promise.all([
       // Projects with >= 1 submission
       this.prisma.project.count({ where: { submissions: { some: {} } } }),
       // Projects that passed fraud check (includes reviewed)
@@ -718,15 +730,18 @@ export class AdminService {
           submissions: { some: {} },
         },
       }),
-      // Review queue: fraud-checked projects with NO approved/rejected submissions (waiting for review)
-      this.prisma.project.count({
-        where: {
-          joeFraudPassed: true,
-          submissions: { some: { approvalStatus: 'pending' } },
-          NOT: {
-            submissions: { some: { approvalStatus: { in: ['approved', 'rejected'] } } },
-          },
-        },
+      // Review queue: pending submissions the reviewer hasn't decided on yet.
+      // Fraud state is independent; the reviewer can act regardless.
+      this.prisma.submission.count({
+        where: { approvalStatus: 'pending', reviewPassed: null },
+      }),
+      // Awaiting fraud: reviewer decided, state machine is waiting on fraud.
+      this.prisma.submission.count({
+        where: { approvalStatus: 'pending', reviewPassed: { not: null } },
+      }),
+      // Silent rejects (reviewer approved + fraud failed) — "fraud team deliberation".
+      this.prisma.submission.count({
+        where: { approvalStatus: 'rejected', reviewPassed: true },
       }),
       this.prisma.project.count({
         where: {
@@ -755,7 +770,19 @@ export class AdminService {
       }),
     ]);
 
-    return { shipped, fraudChecked, fraudQueue, reviewQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek };
+    return {
+      shipped,
+      fraudChecked,
+      fraudQueue,
+      reviewQueue,
+      awaitingFraud,
+      fraudTeamDeliberation,
+      reviewed,
+      approved,
+      shippedThisWeek,
+      fraudCheckedThisWeek,
+      reviewedThisWeek,
+    };
   }
 
   private async computeSignups() {
@@ -1226,28 +1253,6 @@ export class AdminService {
     leaderboard.sort((a, b) => b.total - a.total);
 
     return leaderboard;
-  }
-
-  async toggleFraudFlag(projectId: number, isFraud: boolean) {
-    const project = await this.prisma.project.findUnique({
-      where: { projectId },
-    });
-
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
-
-    const updatedProject = await this.prisma.project.update({
-      where: { projectId },
-      data: { isFraud },
-      select: {
-        projectId: true,
-        projectTitle: true,
-        isFraud: true,
-      },
-    });
-
-    return updatedProject;
   }
 
   async toggleUserFraudFlag(userId: number, isFraud: boolean) {

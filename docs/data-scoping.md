@@ -26,21 +26,17 @@ Users can only see **their own data**. All project/submission endpoints check `u
 | Project fields (title, description, URLs, hours) | Yes | |
 | Submissions (status, hours) | Yes | |
 | `hoursJustification` | **No** | Stripped via `excludeAdminFields()` |
-| `isFraud` flag on project | **No** | Stripped via `excludeAdminFields()` |
+| Fraud review fields (`joeFraudPassed`, `joeTrustScore`, `joeJustification`, etc.) | **No** | Stripped via `excludeAdminFields()` |
 | `adminComment` on project | **No** | Never included |
+| Submission `reviewPassed` | **No** | Reviewer gate — stripped via `scopeSubmissionForUser()` |
+| Submission `finalizedAt`, `pendingSendEmail`, `reviewedBy`, `airtableRecId`, `reviewerAnalysis` | **No** | Stripped via `scopeSubmissionForUser()` |
+| Silent-reject state (reviewer approved + fraud failed) | **No** | Remapped to `approvalStatus='pending'` for users via `scopeSubmissionForUser()` |
+
+The legacy `Project.isFraud` admin flag has been removed. Fraud state is driven exclusively by Joe (`joeFraudPassed`).
 
 ### Enforcement
 
-`projects.service.ts` uses `excludeAdminFields()` on all user-facing responses:
-
-```typescript
-private excludeAdminFields<T extends { hoursJustification?: any; isFraud?: any }>(obj: T) {
-  const { hoursJustification, isFraud, ...rest } = obj;
-  return rest;
-}
-```
-
-Applied to both individual projects and arrays via `excludeAdminFieldsFromArray()`.
+`projects.service.ts` uses `excludeAdminFields()` for Project-level scoping and `scopeSubmissionForUser()` for Submission-level scoping. Both are applied to all user-facing responses (including the `/me` endpoint in `auth.service.ts`).
 
 ## Reviewers
 
@@ -125,7 +121,7 @@ Admins have **full access** to all data.
 | User emails | Full email addresses |
 | User birthdays | Raw dates, not just age |
 | User addresses | Complete: line 1, line 2, city, state, country, zip |
-| Fraud/sus flags | `isFraud`, `isSus` on both users and projects |
+| Fraud signals | `User.isFraud`, `User.isSus` (manual admin flags) and `Project.joeFraudPassed` / `joeTrustScore` / `joeJustification` (Joe-driven) |
 | Admin comments | Read/write on users and projects |
 | Submission audit logs | Full history: who reviewed, what changed, before/after values |
 | Hackatime access tokens | Stored but not returned in API responses |
@@ -140,7 +136,7 @@ const projectAdminInclude = {
       birthday,
       addressLine1, addressLine2, city, state, country, zipCode,
       hackatimeAccount,
-      isFraud, isSus,
+      isFraud, isSus, // user-level manual flags
       createdAt, updatedAt,
     },
   },
@@ -152,7 +148,7 @@ const projectAdminInclude = {
 
 | Data | Notes |
 |------|-------|
-| Fraud flag on users | `PUT /api/admin/users/:id/fraud-flag` |
+| Fraud flag on users | `PUT /api/admin/users/:id/fraud-flag` (project-level fraud is read-only, driven by Joe) |
 | Sus flag on users | `PUT /api/admin/users/:id/sus-flag` |
 | Slack ID on users | `PUT /api/admin/users/:id/slack` |
 | Unlock projects | `PUT /api/admin/projects/:id/unlock` |

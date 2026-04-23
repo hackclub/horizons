@@ -42,6 +42,9 @@ class QueueProjectResponse {
   @ApiProperty({ type: [String] })
   nowHackatimeProjects: string[];
 
+  @ApiProperty({ type: Boolean, nullable: true })
+  joeFraudPassed: boolean | null;
+
   @ApiProperty({ type: ScopedUserResponse })
   user: ScopedUserResponse;
 }
@@ -91,6 +94,12 @@ class SubmissionProjectResponse {
   @ApiProperty({ type: [String] })
   nowHackatimeProjects: string[];
 
+  @ApiProperty({ type: Boolean, nullable: true })
+  joeFraudPassed: boolean | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  joeTrustScore: number | null;
+
   @ApiProperty({ type: ScopedUserResponse })
   user: ScopedUserResponse;
 }
@@ -130,6 +139,12 @@ export class SubmissionDetailResponse {
 
   @ApiProperty()
   approvalStatus: string;
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  reviewPassed: boolean | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  finalizedAt: Date | null;
 
   @ApiProperty({ type: Number, nullable: true })
   hackatimeHours: number | null;

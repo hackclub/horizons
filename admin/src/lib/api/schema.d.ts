@@ -271,6 +271,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/slack/interactivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SlackInteractivityController_handle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/auth": {
         parameters: {
             query?: never;
@@ -1536,6 +1552,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/hackatime/active-coders-today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get count of distinct users with project activity today */
+        get: operations["HackatimeController_getActiveCodersToday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/hackatime/hours/recalculate": {
         parameters: {
             query?: never;
@@ -2780,6 +2813,10 @@ export interface components {
             /** @description Total approved hours */
             totalApprovedHours: number;
         };
+        ActiveCodersTodayResponse: {
+            /** @description Distinct users with project activity since start of today (UTC) */
+            count: number;
+        };
         RecalculateHoursResponse: {
             /** @description Whether recalculation was successful */
             success: boolean;
@@ -3184,6 +3221,23 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AuthUrlResponse"];
                 };
+            };
+        };
+    };
+    SlackInteractivityController_handle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5334,6 +5388,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TotalApprovedHoursResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_getActiveCodersToday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active coders today */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveCodersTodayResponse"];
                 };
             };
         };

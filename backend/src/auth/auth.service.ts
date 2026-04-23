@@ -554,7 +554,6 @@ export class AuthService {
     if (userWithoutAddress.projects) {
       userWithoutAddress.projects = userWithoutAddress.projects.map(
         ({
-          isFraud: _isFraud,
           hoursJustification: _hoursJustification,
           adminComment: _adminComment,
           joeProjectId: _joeProjectId,
@@ -565,8 +564,28 @@ export class AuthService {
           joeOutcomeStatus: _joeOutcomeStatus,
           joeOutcomeReason: _joeOutcomeReason,
           joeOutcomeRecordedAt: _joeOutcomeRecordedAt,
+          submissions,
           ...project
-        }: any) => project,
+        }: any) => ({
+          ...project,
+          submissions: (submissions || []).map((s: any) => {
+            const isSilentReject =
+              s.approvalStatus === 'rejected' && s.reviewPassed === true;
+            const {
+              reviewPassed: _rp,
+              pendingSendEmail: _pe,
+              finalizedAt: _fa,
+              reviewedBy: _rb,
+              airtableRecId: _ar,
+              reviewerAnalysis: _ra,
+              ...safe
+            } = s;
+            return {
+              ...safe,
+              approvalStatus: isSilentReject ? 'pending' : s.approvalStatus,
+            };
+          }),
+        }),
       );
     }
 

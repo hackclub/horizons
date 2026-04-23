@@ -461,19 +461,6 @@
     }
 
     // --- Project-level actions ---
-    async function toggleFraudFlag() {
-        if (!project) return;
-        try {
-            const { error } = await api.PUT('/api/admin/projects/{id}/fraud-flag', {
-                params: { path: { id: projectId } },
-                body: { isFraud: !project.isFraud },
-            });
-            if (!error) await loadProject();
-        } catch (err) {
-            console.error('Failed to toggle fraud flag:', err);
-        }
-    }
-
     async function toggleSusFlag() {
         if (!project) return;
         try {
@@ -651,14 +638,14 @@
                 class={`p-6 space-y-4 backdrop-blur ${
                     project.user.isSus
                         ? 'border-yellow-500'
-                        : project.isFraud
+                        : (project as any).joeFraudPassed === false
                           ? 'border-red-500'
                           : 'border-ds-border'
                 }`}
             >
-                {#if project.isFraud}
+                {#if (project as any).joeFraudPassed === false}
                     <div class="bg-red-600/20 border-2 border-red-500 rounded-lg p-3">
-                        <p class="text-red-600 font-bold text-center uppercase tracking-wide">⚠️ FRAUD FLAGGED</p>
+                        <p class="text-red-600 font-bold text-center uppercase tracking-wide">⚠️ FRAUD (JOE)</p>
                     </div>
                 {/if}
                 {#if project.user.isSus}
@@ -705,13 +692,6 @@
                 {/if}
 
                 <div class="flex flex-wrap gap-2">
-                    <Button
-                        variant="ghost"
-                        class={project.isFraud ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30' : ''}
-                        onclick={toggleFraudFlag}
-                    >
-                        {project.isFraud ? '🚫 Fraud Flagged' : 'Flag as Fraud'}
-                    </Button>
                     <Button
                         variant="ghost"
                         class={project.user.isSus ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30' : ''}
