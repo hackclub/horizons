@@ -616,22 +616,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/projects/{id}/fraud-flag": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["AdminController_toggleFraudFlag"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/admin/users/{id}/fraud-flag": {
         parameters: {
             query?: never;
@@ -1875,7 +1859,6 @@ export interface components {
             approvedHours: number | null;
             hoursJustification: string | null;
             adminComment: string | null;
-            isFraud: boolean;
             user: components["schemas"]["AdminSubmissionProjectUserResponse"];
         };
         AdminSubmissionResponse: {
@@ -1961,7 +1944,8 @@ export interface components {
             hoursJustification: string | null;
             adminComment: string | null;
             isLocked: boolean;
-            isFraud: boolean;
+            joeFraudPassed: boolean | null;
+            joeTrustScore: number | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2054,7 +2038,6 @@ export interface components {
             nowHackatimeHours: number | null;
             approvedHours: number | null;
             isLocked: boolean;
-            isFraud: boolean;
             /** Format: date-time */
             createdAt: string;
             submissions: components["schemas"]["AdminUserSubmissionResponse"][];
@@ -2125,16 +2108,29 @@ export interface components {
             lastProjectReviewTime: number | null;
             lastProjectFraudCheckTime: number | null;
         };
+        StatsFunnelMatrixRow: {
+            fraudPassed: number;
+            fraudFailed: number;
+            fraudPending: number;
+        };
+        StatsFunnelMatrix: {
+            reviewApproved: components["schemas"]["StatsFunnelMatrixRow"];
+            reviewRejected: components["schemas"]["StatsFunnelMatrixRow"];
+            reviewPending: components["schemas"]["StatsFunnelMatrixRow"];
+        };
         StatsReviewProjects: {
             shipped: number;
             fraudChecked: number;
             fraudQueue: number;
             reviewQueue: number;
+            awaitingFraud: number;
+            fraudTeamDeliberation: number;
             reviewed: number;
             approved: number;
             shippedThisWeek: number;
             fraudCheckedThisWeek: number;
             reviewedThisWeek: number;
+            funnelMatrix: components["schemas"]["StatsFunnelMatrix"];
         };
         StatsSignupEventEntry: {
             eventId: number;
@@ -2252,11 +2248,6 @@ export interface components {
             lastReviewedAt: string | null;
         };
         ToggleFraudFlagDto: {
-            isFraud: boolean;
-        };
-        AdminFraudFlagResponse: {
-            projectId: number;
-            projectTitle: string;
             isFraud: boolean;
         };
         AdminUserFlagResponse: {
@@ -2397,6 +2388,7 @@ export interface components {
             playableUrl: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
+            joeFraudPassed: boolean | null;
             user: components["schemas"]["ScopedUserResponse"];
         };
         QueueItemResponse: {
@@ -2417,6 +2409,8 @@ export interface components {
             readmeUrl: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
+            joeFraudPassed: boolean | null;
+            joeTrustScore: number | null;
             user: components["schemas"]["ScopedUserResponse"];
         };
         TimelineEntryResponse: {
@@ -2435,6 +2429,9 @@ export interface components {
             submissionId: number;
             projectId: number;
             approvalStatus: string;
+            reviewPassed: boolean | null;
+            /** Format: date-time */
+            finalizedAt: string | null;
             hackatimeHours: number | null;
             description: string | null;
             playableUrl: string | null;
@@ -3806,31 +3803,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewerLeaderboardEntry"][];
-                };
-            };
-        };
-    };
-    AdminController_toggleFraudFlag: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ToggleFraudFlagDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminFraudFlagResponse"];
                 };
             };
         };

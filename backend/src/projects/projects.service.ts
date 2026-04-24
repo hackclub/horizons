@@ -56,36 +56,31 @@ export class ProjectsService {
     return rest;
   }
 
-  private excludeAdminFieldsFromArray<T extends Record<string, any>>(arr: T[]) {
-    return arr.map((item) => this.excludeAdminFields(item));
-  }
-
   /**
    * User-facing view of a Submission. Strips admin-only fields and maps
-   * silent-reject (reviewer approved + fraud failed) to 'pending' so the user
-   * sees no difference between "waiting for review" and "handled off-service".
+   * silent-reject rows to 'pending' so fraud actors get no feedback that their
+   * submission was rejected.
    */
   scopeSubmissionForUser<
     T extends {
       approvalStatus: 'pending' | 'approved' | 'rejected';
-      reviewPassed: boolean | null;
+      silentReject: boolean;
     },
   >(
     submission: T,
   ): Omit<
     T,
     | 'reviewPassed'
+    | 'silentReject'
     | 'pendingSendEmail'
     | 'finalizedAt'
     | 'reviewedBy'
     | 'airtableRecId'
     | 'reviewerAnalysis'
   > {
-    const isSilentReject =
-      submission.approvalStatus === 'rejected' &&
-      submission.reviewPassed === true;
     const {
       reviewPassed: _rp,
+      silentReject: _sr,
       pendingSendEmail: _pe,
       finalizedAt: _fa,
       reviewedBy: _rb,
@@ -95,8 +90,24 @@ export class ProjectsService {
     } = submission as any;
     return {
       ...rest,
-      approvalStatus: isSilentReject ? 'pending' : submission.approvalStatus,
+      approvalStatus: submission.silentReject ? 'pending' : submission.approvalStatus,
     };
+  }
+
+  /**
+   * User-facing view of a Project that may have a `submissions` array included.
+   * Strips admin fields on the project AND recursively scopes every nested
+   * submission. Use this on any endpoint that returns a Project with submissions.
+   */
+  private scopeProjectForUser<T extends Record<string, any>>(project: T) {
+    const stripped = this.excludeAdminFields(project);
+    const submissions = (project as any).submissions;
+    if (Array.isArray(submissions)) {
+      (stripped as any).submissions = submissions.map((s) =>
+        this.scopeSubmissionForUser(s),
+      );
+    }
+    return stripped;
   }
 
   async createProject(createProjectDto: CreateProjectDto, userId: number) {
@@ -201,7 +212,7 @@ export class ProjectsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return this.excludeAdminFieldsFromArray(projects);
+    return projects.map((p) => this.scopeProjectForUser(p));
   }
 
   async getProject(projectId: number, userId: number) {
@@ -227,7 +238,7 @@ export class ProjectsService {
       throw new ForbiddenException('Access denied');
     }
 
-    return this.excludeAdminFields(project);
+    return this.scopeProjectForUser(project);
   }
 
   async createSubmission(
@@ -330,24 +341,26 @@ export class ProjectsService {
     // whether this resubmission needs fresh fraud review.
     //
     // Resubmit rules:
-    //   - none                        → allow (first submission)
-    //   - approved                    → allow, clear joe* + re-submit to fraud
-    //   - rejected + reviewPassed=false → reviewer-rejected, allow, reuse joe*
-    //   - rejected + reviewPassed=null  → fraud-auto-rejected, allow, reuse joe*
-    //   - rejected + reviewPassed=true  → silent reject (user sees pending) → block
-    //   - pending                     → block (still in flight)
+    //   - none                            → allow (first submission)
+    //   - approved                        → allow, clear joe* + re-submit to fraud
+    //   - rejected + silentReject=true    → fraud-indicted, user sees it as pending → block
+    //   - rejected (normal)               → reviewer-rejected, allow, reuse joe*
+    //   - pending                         → block (still in flight)
     const priorSubmission = await this.prisma.submission.findFirst({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
-      select: { approvalStatus: true, reviewPassed: true },
+      select: {
+        approvalStatus: true,
+        reviewPassed: true,
+        silentReject: true,
+      },
     });
 
     const isResubmission = !!priorSubmission;
     if (priorSubmission) {
       const blocked =
         priorSubmission.approvalStatus === 'pending' ||
-        (priorSubmission.approvalStatus === 'rejected' &&
-          priorSubmission.reviewPassed === true);
+        priorSubmission.silentReject;
       if (blocked) {
         throw new BadRequestException('You have a pending submission.');
       }
@@ -355,7 +368,7 @@ export class ProjectsService {
 
     const reuseFraud =
       priorSubmission?.approvalStatus === 'rejected' &&
-      priorSubmission.reviewPassed !== true;
+      !priorSubmission.silentReject;
 
     const submission = await this.prisma.submission.create({
       data: {
@@ -418,7 +431,7 @@ export class ProjectsService {
       this.fraudReviewService.submitAndPersist(projectId).catch(() => {});
     }
 
-    return submission;
+    return this.scopeSubmissionForUser(submission);
   }
 
   async getProjectSubmissions(projectId: number, userId: number) {

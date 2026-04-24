@@ -739,9 +739,9 @@ export class AdminService {
       this.prisma.submission.count({
         where: { approvalStatus: 'pending', reviewPassed: { not: null } },
       }),
-      // Silent rejects (reviewer approved + fraud failed) — "fraud team deliberation".
+      // Silent rejects (fraud failed, no user notification fired).
       this.prisma.submission.count({
-        where: { approvalStatus: 'rejected', reviewPassed: true },
+        where: { approvalStatus: 'rejected', silentReject: true },
       }),
       this.prisma.project.count({
         where: {
@@ -794,12 +794,11 @@ export class AdminService {
    * submission. Returns a 3×3 count matrix the admin dashboard renders as a
    * state grid.
    *
-   * Review buckets:
-   *   reviewApproved  — latest submission has reviewPassed=true
-   *   reviewRejected  — latest submission has reviewPassed=false
-   *   reviewPending   — latest submission has reviewPassed=null (reviewer hasn't acted)
-   *
-   * Fraud buckets are driven by Project.joeFraudPassed (true/false/null).
+   * Under the fraud-wins rule (fraud=false → silent reject regardless of reviewer),
+   * fraud-failed column cells are all silent-rejects. The reviewer bucket is
+   * determined by what the reviewer had recorded at the time of the transition,
+   * which may be null (fraud fired first) / true (reviewer approved but fraud
+   * then failed) / false (reviewer rejected first, then fraud later failed).
    */
   private async computeFunnelMatrix() {
     const rows = await this.prisma.$queryRaw<
@@ -813,7 +812,8 @@ export class AdminService {
         SELECT DISTINCT ON (project_id)
           project_id,
           review_passed,
-          approval_status
+          approval_status,
+          silent_reject
         FROM submissions
         ORDER BY project_id, created_at DESC
       )

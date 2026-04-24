@@ -562,11 +562,6 @@
                                                     >Hackatime {formatHours(
                                                         project.nowHackatimeHours,
                                                     )}</span>
-                                                    {#if project.isFraud}
-                                                        <span
-                                                            class="rounded-full border border-red-500 bg-red-600/20 text-red-600 px-2 py-1"
-                                                        >Fraud</span>
-                                                    {/if}
                                                     <span
                                                         class="rounded-full border border-ds-border px-2 py-1"
                                                     >{project.isLocked ? "Locked" : "Unlocked"}</span>

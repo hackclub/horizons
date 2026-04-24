@@ -193,12 +193,20 @@ export class SubmissionApprovalService {
    * CAS on approvalStatus='pending' makes this idempotent under reviewer + fraud-poll
    * races — exactly one caller wins the transition and fires side effects.
    *
+   * Rule: fraud=false ALWAYS silent-rejects, regardless of reviewer state. Users who
+   * committed fraud get no feedback — their submission silently drops off the queue.
+   * Reviewer-rejection only fires user notifications when fraud has NOT failed.
+   *
    * Truth table:
-   *   reviewPassed=null, fraud=any              → pending (reviewer not done)
-   *   any, joeFraudPassed=null (fraud enabled)  → pending (fraud not done)
-   *   true, true  (or fraud disabled)           → approved + side effects
-   *   true, false                               → rejected (silent; no side effects)
-   *   false, any                                → rejected (normal; rejection notifications)
+   *   reviewPassed=null, fraud=null            → pending (both gates open)
+   *   reviewPassed=null, fraud=true            → pending (awaiting reviewer)
+   *   reviewPassed=null, fraud=false           → rejected, silent (fraud kicks out)
+   *   reviewPassed=true, fraud=null            → pending (awaiting fraud)
+   *   reviewPassed=true, fraud=true            → approved + full side effects
+   *   reviewPassed=true, fraud=false           → rejected, silent
+   *   reviewPassed=false, fraud=null           → rejected, normal (reviewer wins)
+   *   reviewPassed=false, fraud=true           → rejected, normal
+   *   reviewPassed=false, fraud=false          → rejected, silent (fraud wins)
    */
   private async evaluateAndFinalize(
     submissionId: number,
@@ -217,27 +225,87 @@ export class SubmissionApprovalService {
     const fraudRaw = submission.project.joeFraudPassed;
     const fraudEffective = fraudEnabled ? fraudRaw : true;
 
-    // Undecided — waiting on at least one gate.
-    if (reviewPassed === null) return;
-    if (reviewPassed === true && fraudEffective === null) return;
-
-    let newStatus: 'approved' | 'rejected';
-    let isSilent = false;
-    if (reviewPassed === true && fraudEffective === true) {
-      newStatus = 'approved';
-    } else if (reviewPassed === true && fraudEffective === false) {
-      newStatus = 'rejected';
-      isSilent = true;
-    } else {
-      // reviewPassed === false (any fraud value)
-      newStatus = 'rejected';
+    // Fraud failure short-circuits everything: silent-reject, remove from queue,
+    // no user-facing signal regardless of what the reviewer did.
+    if (fraudEffective === false) {
+      await this.commitTransition(
+        submission,
+        'rejected',
+        true,
+        actorUserId,
+        fraudRaw,
+      );
+      return;
     }
 
+    // Reviewer hasn't decided; wait.
+    if (reviewPassed === null) return;
+
+    // Reviewer approved but fraud hasn't returned; wait.
+    if (reviewPassed === true && fraudEffective === null) return;
+
+    if (reviewPassed === true && fraudEffective === true) {
+      await this.commitTransition(
+        submission,
+        'approved',
+        false,
+        actorUserId,
+        fraudRaw,
+      );
+      return;
+    }
+
+    // reviewPassed === false and fraud is not failed — normal rejection.
+    await this.commitTransition(
+      submission,
+      'rejected',
+      false,
+      actorUserId,
+      fraudRaw,
+    );
+  }
+
+  private async commitTransition(
+    submission: {
+      submissionId: number;
+      projectId: number;
+      hackatimeHours: number | null;
+      createdAt: Date;
+      playableUrl: string | null;
+      repoUrl: string | null;
+      screenshotUrl: string | null;
+      description: string | null;
+      approvedHours: number | null;
+      hoursJustification: string | null;
+      reviewerAnalysis: string | null;
+      reviewPassed: boolean | null;
+      reviewedBy: string | null;
+      pendingSendEmail: boolean;
+      project: {
+        projectTitle: string;
+        projectId: number;
+        playableUrl: string | null;
+        repoUrl: string | null;
+        screenshotUrl: string | null;
+        description: string | null;
+        joeProjectId: string | null;
+        joeFraudPassed: boolean | null;
+        joeFraudReviewedAt: Date | null;
+        nowHackatimeProjects: string[];
+        user: { email: string; slackUserId: string | null };
+      };
+    },
+    newStatus: 'approved' | 'rejected',
+    isSilent: boolean,
+    actorUserId: number,
+    fraudRaw: boolean | null,
+  ): Promise<void> {
     // CAS: only the first caller wins the pending → terminal transition.
     const result = await this.prisma.submission.updateMany({
-      where: { submissionId, approvalStatus: 'pending' },
+      where: { submissionId: submission.submissionId, approvalStatus: 'pending' },
       data: {
         approvalStatus: newStatus,
+        silentReject: isSilent,
         finalizedAt: new Date(),
       },
     });
@@ -245,13 +313,13 @@ export class SubmissionApprovalService {
 
     await this.prisma.submissionAuditLog.create({
       data: {
-        submissionId,
+        submissionId: submission.submissionId,
         adminId: actorUserId,
         action: 'finalize',
         newStatus,
         approvedHours: submission.approvedHours ?? null,
         changes: {
-          reviewPassed,
+          reviewPassed: submission.reviewPassed,
           joeFraudPassed: fraudRaw,
           silent: isSilent,
         },
