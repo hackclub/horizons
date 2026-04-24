@@ -192,6 +192,49 @@ export class ChecklistResponse {
   checkedItems: number[];
 }
 
+export class PastReviewEntry {
+  @ApiProperty()
+  submissionId: number;
+
+  @ApiProperty()
+  projectId: number;
+
+  @ApiProperty()
+  projectTitle: string;
+
+  @ApiProperty()
+  projectType: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  reviewerId: string | null;
+
+  @ApiProperty()
+  reviewerName: string;
+
+  @ApiProperty({ enum: ['approved', 'rejected'] })
+  verdict: string;
+
+  @ApiProperty({ type: Number, nullable: true })
+  approvedHours: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  hackatimeHours: number | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  reviewedAt: Date | null;
+
+  @ApiProperty({ type: ScopedUserResponse })
+  user: ScopedUserResponse;
+}
+
+export class PastReviewsResponse {
+  @ApiProperty()
+  currentReviewerId: number;
+
+  @ApiProperty({ type: [PastReviewEntry] })
+  reviews: PastReviewEntry[];
+}
+
 class LeaderboardEntry {
   @ApiProperty()
   reviewerId: string;

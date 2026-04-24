@@ -25,6 +25,7 @@ import {
   NoteResponse,
   ChecklistResponse,
   ReviewStatsResponse,
+  PastReviewsResponse,
 } from './dto/reviewer-response.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -47,6 +48,13 @@ export class ReviewerController {
   @ApiOkResponse({ type: ReviewStatsResponse })
   async getStats() {
     return this.reviewerService.getReviewStats();
+  }
+
+  /** List all finalized reviews; response includes currentReviewerId so the UI can split "mine" vs "all" */
+  @Get('past-reviews')
+  @ApiOkResponse({ type: PastReviewsResponse })
+  async getPastReviews(@Req() req: Request) {
+    return this.reviewerService.getPastReviews(req.user.userId);
   }
 
   /** Get the pending submissions queue with scoped data */

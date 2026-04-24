@@ -1,6 +1,9 @@
 <script lang="ts">
-	import type { components } from '$lib/api';
+	import { onMount } from 'svelte';
+	import { api, type components } from '$lib/api';
+	import { timeAgo } from '../utils';
 	type QueueItem = components['schemas']['QueueItemResponse'];
+	type PastReview = components['schemas']['PastReviewEntry'];
 
 	interface Props {
 		items: QueueItem[];
@@ -24,20 +27,86 @@
 	let selectedTypes = $state<Set<string>>(new Set());
 	let searchQuery = $state('');
 
+	let pastReviews = $state<PastReview[]>([]);
+	let currentReviewerId = $state<number | null>(null);
+	let pastLoading = $state(true);
+
+	onMount(async () => {
+		try {
+			const { data } = await api.GET('/api/reviewer/past-reviews');
+			if (data) {
+				pastReviews = data.reviews;
+				currentReviewerId = data.currentReviewerId;
+			}
+		} finally {
+			pastLoading = false;
+		}
+	});
+
+	function matchesFilters(
+		projectTitle: string,
+		projectType: string,
+		authorName: string,
+	): boolean {
+		const matchesType =
+			selectedTypes.size === 0 || selectedTypes.has(projectType);
+		const q = searchQuery.toLowerCase();
+		const matchesSearch =
+			q === '' ||
+			projectTitle.toLowerCase().includes(q) ||
+			authorName.toLowerCase().includes(q);
+		return matchesType && matchesSearch;
+	}
+
 	let filteredItems = $derived(
 		items
 			.map((item, index) => ({ item, index }))
-			.filter(({ item }) => {
-				const matchesType =
-					selectedTypes.size === 0 || selectedTypes.has(item.project.projectType);
-				const matchesSearch =
-					searchQuery === '' ||
-					item.project.projectTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					`${item.project.user.firstName} ${item.project.user.lastName}`
-						.toLowerCase()
-						.includes(searchQuery.toLowerCase());
-				return matchesType && matchesSearch;
-			}),
+			.filter(({ item }) =>
+				matchesFilters(
+					item.project.projectTitle,
+					item.project.projectType,
+					`${item.project.user.firstName} ${item.project.user.lastName}`,
+				),
+			)
+			.sort(
+				(a, b) =>
+					new Date(b.item.createdAt).getTime() - new Date(a.item.createdAt).getTime(),
+			),
+	);
+
+	function sortByReviewedAt(a: PastReview, b: PastReview): number {
+		const aT = a.reviewedAt ? new Date(a.reviewedAt).getTime() : 0;
+		const bT = b.reviewedAt ? new Date(b.reviewedAt).getTime() : 0;
+		return bT - aT;
+	}
+
+	let myPastReviews = $derived(
+		pastReviews
+			.filter(
+				(r) =>
+					currentReviewerId !== null &&
+					r.reviewerId === String(currentReviewerId) &&
+					matchesFilters(
+						r.projectTitle,
+						r.projectType,
+						`${r.user.firstName} ${r.user.lastName}`,
+					),
+			)
+			.slice()
+			.sort(sortByReviewedAt),
+	);
+
+	let allPastReviews = $derived(
+		pastReviews
+			.filter((r) =>
+				matchesFilters(
+					r.projectTitle,
+					r.projectType,
+					`${r.user.firstName} ${r.user.lastName}`,
+				),
+			)
+			.slice()
+			.sort(sortByReviewedAt),
 	);
 
 	function toggleType(type: string) {
@@ -104,17 +173,95 @@
 		</div>
 	</div>
 
-	<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4 p-6 overflow-y-auto flex-1">
-		{#each filteredItems as { item, index } (item.submissionId)}
-			<button class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] cursor-pointer transition-all duration-150 text-left font-inherit color-inherit hover:border-rv-accent hover:bg-rv-surface2" onclick={() => onSelect(index)}>
-				<p class="text-[15px] font-semibold text-rv-text m-0">{item.project.projectTitle}</p>
-				<p class="text-[13px] text-rv-dim m-0">
-					{item.project.user.firstName} {item.project.user.lastName}
-				</p>
-				<span class="inline-block mt-1 py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px] self-start">{formatTypeName(item.project.projectType)}</span>
-			</button>
-		{:else}
-			<p class="col-span-full text-center text-rv-dim py-10 text-sm">No projects match your filters.</p>
-		{/each}
+	<div class="overflow-y-auto flex-1">
+		<section class="px-6 pt-6 pb-2">
+			<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold mb-3">
+				Pending Queue <span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
+			</h2>
+			<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
+				{#each filteredItems as { item, index } (item.submissionId)}
+					<button class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] cursor-pointer transition-all duration-150 text-left font-inherit color-inherit hover:border-rv-accent hover:bg-rv-surface2" onclick={() => onSelect(index)}>
+						<p class="text-[15px] font-semibold text-rv-text m-0">{item.project.projectTitle}</p>
+						<p class="text-[13px] text-rv-dim m-0">
+							{item.project.user.firstName} {item.project.user.lastName}
+						</p>
+						<span class="inline-block mt-1 py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px] self-start">{formatTypeName(item.project.projectType)}</span>
+					</button>
+				{:else}
+					<p class="col-span-full text-center text-rv-dim py-6 text-sm">No projects match your filters.</p>
+				{/each}
+			</div>
+		</section>
+
+		<hr class="border-none border-t border-rv-border mx-6 my-4" />
+
+		<section class="px-6 py-2">
+			<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold mb-3">
+				My Past Reviews <span class="text-rv-text/60 font-normal normal-case ml-1">({myPastReviews.length})</span>
+			</h2>
+			{#if pastLoading}
+				<p class="text-rv-dim py-6 text-sm">Loading past reviews…</p>
+			{:else}
+				<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
+					{#each myPastReviews as review (review.submissionId)}
+						<div class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] text-left">
+							<div class="flex items-start justify-between gap-2">
+								<p class="text-[15px] font-semibold text-rv-text m-0 flex-1">{review.projectTitle}</p>
+								<span class="py-0.5 px-2 rounded-xl text-[11px] shrink-0 {review.verdict === 'approved' ? 'bg-rv-green/15 text-rv-green' : 'bg-rv-red/15 text-rv-red'}">
+									{review.verdict === 'approved' ? 'Approved' : 'Rejected'}
+								</span>
+							</div>
+							<p class="text-[13px] text-rv-dim m-0">
+								{review.user.firstName} {review.user.lastName}
+							</p>
+							<div class="flex items-center gap-2 mt-1 flex-wrap">
+								<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(review.projectType)}</span>
+								{#if review.reviewedAt}
+									<span class="text-[11px] text-rv-dim">{timeAgo(review.reviewedAt)}</span>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<p class="col-span-full text-rv-dim py-6 text-sm">You haven't reviewed any projects yet.</p>
+					{/each}
+				</div>
+			{/if}
+		</section>
+
+		<hr class="border-none border-t border-rv-border mx-6 my-4" />
+
+		<section class="px-6 py-2 pb-6">
+			<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold mb-3">
+				All Past Reviews <span class="text-rv-text/60 font-normal normal-case ml-1">({allPastReviews.length})</span>
+			</h2>
+			{#if pastLoading}
+				<p class="text-rv-dim py-6 text-sm">Loading past reviews…</p>
+			{:else}
+				<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
+					{#each allPastReviews as review (review.submissionId)}
+						<div class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] text-left">
+							<div class="flex items-start justify-between gap-2">
+								<p class="text-[15px] font-semibold text-rv-text m-0 flex-1">{review.projectTitle}</p>
+								<span class="py-0.5 px-2 rounded-xl text-[11px] shrink-0 {review.verdict === 'approved' ? 'bg-rv-green/15 text-rv-green' : 'bg-rv-red/15 text-rv-red'}">
+									{review.verdict === 'approved' ? 'Approved' : 'Rejected'}
+								</span>
+							</div>
+							<p class="text-[13px] text-rv-dim m-0">
+								{review.user.firstName} {review.user.lastName}
+							</p>
+							<div class="flex items-center gap-2 mt-1 flex-wrap">
+								<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(review.projectType)}</span>
+								<span class="text-[11px] text-rv-dim">by {review.reviewerName}</span>
+								{#if review.reviewedAt}
+									<span class="text-[11px] text-rv-dim">· {timeAgo(review.reviewedAt)}</span>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<p class="col-span-full text-rv-dim py-6 text-sm">No past reviews match your filters.</p>
+					{/each}
+				</div>
+			{/if}
+		</section>
 	</div>
 </div>
