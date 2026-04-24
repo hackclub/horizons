@@ -27,6 +27,8 @@
 
 	let selectedTypes = $state<Set<string>>(new Set());
 	let searchQuery = $state('');
+	let shipSortOrder = $state<'newest' | 'oldest'>('newest');
+	let fraudFilter = $state<'all' | 'reviewed' | 'unreviewed'>('all');
 
 	let pastReviews = $state<PastReview[]>([]);
 	let currentReviewerId = $state<number | null>(null);
@@ -59,20 +61,28 @@
 		return matchesType && matchesSearch;
 	}
 
+	function matchesFraudFilter(joeFraudPassed: boolean | null): boolean {
+		if (fraudFilter === 'all') return true;
+		if (fraudFilter === 'reviewed') return joeFraudPassed !== null;
+		return joeFraudPassed === null;
+	}
+
 	let filteredItems = $derived(
 		items
 			.map((item, index) => ({ item, index }))
-			.filter(({ item }) =>
-				matchesFilters(
-					item.project.projectTitle,
-					item.project.projectType,
-					`${item.project.user.firstName} ${item.project.user.lastName}`,
-				),
+			.filter(
+				({ item }) =>
+					matchesFilters(
+						item.project.projectTitle,
+						item.project.projectType,
+						`${item.project.user.firstName} ${item.project.user.lastName}`,
+					) && matchesFraudFilter(item.project.joeFraudPassed),
 			)
-			.sort(
-				(a, b) =>
-					new Date(b.item.createdAt).getTime() - new Date(a.item.createdAt).getTime(),
-			),
+			.sort((a, b) => {
+				const aT = new Date(a.item.createdAt).getTime();
+				const bT = new Date(b.item.createdAt).getTime();
+				return shipSortOrder === 'newest' ? bT - aT : aT - bT;
+			}),
 	);
 
 	function sortByReviewedAt(a: PastReview, b: PastReview): number {
@@ -200,6 +210,41 @@
 			<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold mb-3">
 				Pending Queue <span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
 			</h2>
+			<div class="flex flex-wrap gap-2 items-center mb-3">
+				<span class="text-[11px] text-rv-dim">Ship time</span>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {shipSortOrder === 'newest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (shipSortOrder = 'newest')}
+				>
+					Newest
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {shipSortOrder === 'oldest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (shipSortOrder = 'oldest')}
+				>
+					Oldest
+				</button>
+
+				<span class="text-[11px] text-rv-dim ml-3">Fraud</span>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {fraudFilter === 'all' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (fraudFilter = 'all')}
+				>
+					All
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {fraudFilter === 'reviewed' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (fraudFilter = 'reviewed')}
+				>
+					Reviewed
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {fraudFilter === 'unreviewed' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (fraudFilter = 'unreviewed')}
+				>
+					Unreviewed
+				</button>
+			</div>
 			<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
 				{#each filteredItems as { item, index } (item.submissionId)}
 					<button class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] cursor-pointer transition-all duration-150 text-left font-inherit color-inherit hover:border-rv-accent hover:bg-rv-surface2" onclick={() => onSelect(index)}>
