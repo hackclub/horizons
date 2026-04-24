@@ -496,6 +496,8 @@ void main(){
 					<input
 						id="signup-email"
 						type="email"
+						name="email"
+						autocomplete="email"
 						class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-['Bricolage_Grotesque',sans-serif] text-base font-semibold text-black/50 outline-none w-[280px]"
 						placeholder="orpheus@hackclub.com"
 						bind:value={signupEmail}
@@ -542,6 +544,8 @@ void main(){
 			{:else}
 				<input
 					type="email"
+					name="email"
+					autocomplete="email"
 					class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black/50 outline-none w-full"
 					placeholder="orpheus@hackclub.com"
 					bind:value={signupEmail}
@@ -869,6 +873,8 @@ void main(){
 						<input
 							id="cta-email"
 							type="email"
+							name="email"
+							autocomplete="email"
 							class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-base font-semibold text-black/50 outline-none w-70"
 							placeholder="orpheus@hackclub.com"
 							bind:value={ctaEmail}
@@ -915,6 +921,8 @@ void main(){
 				{:else}
 					<input
 						type="email"
+						name="email"
+						autocomplete="email"
 						class="email-input bg-[#f3e8d8] border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black/50 outline-none w-full"
 						placeholder="orpheus@hackclub.com"
 						bind:value={ctaEmail}
