@@ -119,13 +119,36 @@ export class ReviewerService {
       reviewerMap,
     );
 
+    // Compact list of sibling submissions so reviewers can jump between
+    // resubmissions of the same project without leaving the detail view.
+    const submissionsList = submission.project.submissions
+      .map((s) => ({
+        submissionId: s.submissionId,
+        createdAt: s.createdAt,
+        approvalStatus: s.approvalStatus,
+        reviewPassed: s.reviewPassed,
+        reviewedAt: s.reviewedAt,
+        hackatimeHours: s.hackatimeHours,
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+
     return {
       submissionId: submission.submissionId,
       projectId: submission.projectId,
       approvalStatus: submission.approvalStatus,
       reviewPassed: submission.reviewPassed,
       finalizedAt: submission.finalizedAt,
+      reviewedAt: submission.reviewedAt,
+      approvedHours: submission.approvedHours,
       hackatimeHours: submission.hackatimeHours,
+      // submission.hoursJustification stores the reviewer's user-facing feedback
+      // (the DTO field `userFeedback` is persisted here — name is historical).
+      userFeedback: submission.hoursJustification,
+      // Raw reviewer analysis used to build the Airtable "ship justification".
+      reviewerAnalysis: submission.reviewerAnalysis,
       description: submission.description,
       playableUrl: submission.playableUrl,
       repoUrl: submission.repoUrl,
@@ -139,6 +162,7 @@ export class ReviewerService {
         playableUrl: submission.project.playableUrl,
         repoUrl: submission.project.repoUrl,
         readmeUrl: submission.project.readmeUrl,
+        adminComment: submission.project.adminComment,
         nowHackatimeHours: submission.project.nowHackatimeHours,
         nowHackatimeProjects: submission.project.nowHackatimeProjects,
         joeFraudPassed: submission.project.joeFraudPassed,
@@ -146,6 +170,7 @@ export class ReviewerService {
         user: this.scopeUserData(submission.project.user),
       },
       timeline,
+      submissions: submissionsList,
     };
   }
 
@@ -477,6 +502,7 @@ export class ReviewerService {
         submissionId: true,
         projectId: true,
         approvalStatus: true,
+        reviewPassed: true,
         approvedHours: true,
         hackatimeHours: true,
         reviewedBy: true,
@@ -522,7 +548,11 @@ export class ReviewerService {
           : s.reviewedBy
             ? `User ${s.reviewedBy}`
             : 'Unknown',
-        verdict: s.approvalStatus,
+        // Overall reconciled outcome (reviewer + fraud gates).
+        approvalStatus: s.approvalStatus,
+        // Reviewer's own decision — can diverge from approvalStatus when fraud
+        // silently rejects a reviewer-approved submission.
+        reviewPassed: s.reviewPassed,
         approvedHours: s.approvedHours,
         hackatimeHours: s.hackatimeHours,
         reviewedAt: s.reviewedAt,

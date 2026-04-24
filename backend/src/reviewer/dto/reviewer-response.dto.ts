@@ -88,6 +88,9 @@ class SubmissionProjectResponse {
   @ApiProperty({ type: String, nullable: true })
   readmeUrl: string | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  adminComment: string | null;
+
   @ApiProperty({ type: Number, nullable: true })
   nowHackatimeHours: number | null;
 
@@ -130,6 +133,26 @@ export class TimelineEntryResponse {
   timestamp: Date;
 }
 
+export class ProjectSubmissionSummary {
+  @ApiProperty()
+  submissionId: number;
+
+  @ApiProperty({ format: 'date-time' })
+  createdAt: Date;
+
+  @ApiProperty({ enum: ['pending', 'approved', 'rejected'] })
+  approvalStatus: string;
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  reviewPassed: boolean | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  reviewedAt: Date | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  hackatimeHours: number | null;
+}
+
 export class SubmissionDetailResponse {
   @ApiProperty()
   submissionId: number;
@@ -146,8 +169,20 @@ export class SubmissionDetailResponse {
   @ApiProperty({ type: String, nullable: true, format: 'date-time' })
   finalizedAt: Date | null;
 
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  reviewedAt: Date | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  approvedHours: number | null;
+
   @ApiProperty({ type: Number, nullable: true })
   hackatimeHours: number | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  userFeedback: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  reviewerAnalysis: string | null;
 
   @ApiProperty({ type: String, nullable: true })
   description: string | null;
@@ -169,6 +204,9 @@ export class SubmissionDetailResponse {
 
   @ApiProperty({ type: [TimelineEntryResponse] })
   timeline: TimelineEntryResponse[];
+
+  @ApiProperty({ type: [ProjectSubmissionSummary] })
+  submissions: ProjectSubmissionSummary[];
 }
 
 export class ReviewResultResponse {
@@ -211,8 +249,13 @@ export class PastReviewEntry {
   @ApiProperty()
   reviewerName: string;
 
-  @ApiProperty({ enum: ['approved', 'rejected'] })
-  verdict: string;
+  /** Reconciled outcome across reviewer + fraud gates. */
+  @ApiProperty({ enum: ['pending', 'approved', 'rejected'] })
+  approvalStatus: string;
+
+  /** Reviewer's own decision (pre-fraud reconciliation). */
+  @ApiProperty({ type: Boolean, nullable: true })
+  reviewPassed: boolean | null;
 
   @ApiProperty({ type: Number, nullable: true })
   approvedHours: number | null;
