@@ -116,6 +116,10 @@ model Submission {
   reviewerAnalysis String?        @map("reviewer_analysis") @db.Text
   // Reviewer's intent to send an email on finalization (honored when fraud-delayed finalization fires).
   pendingSendEmail Boolean        @default(false) @map("pending_send_email")
+  // True when fraud failed (`joeFraudPassed=false`), meaning the submission was silently
+  // rejected without notifying the user. User-facing responses map such rows back to 'pending'
+  // so fraud actors receive no feedback.
+  silentReject     Boolean        @default(false) @map("silent_reject")
   reviewedBy       String?        @map("reviewed_by")
   reviewedAt       DateTime?      @map("reviewed_at")
   // When approvalStatus transitioned from pending to approved/rejected.

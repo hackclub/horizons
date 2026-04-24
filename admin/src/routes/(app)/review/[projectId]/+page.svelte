@@ -228,8 +228,8 @@
 					readmeUrl={currentSubmission.project.readmeUrl}
 					hackatimeHours={currentSubmission.hackatimeHours}
 					hackatimeProjects={currentSubmission.project.nowHackatimeProjects ?? []}
-					joeFraudPassed={(currentSubmission.project as any).joeFraudPassed ?? null}
-					joeTrustScore={(currentSubmission.project as any).joeTrustScore ?? null}
+					joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
+					joeTrustScore={currentSubmission.project.joeTrustScore ?? null}
 					onHoursChange={handleHoursChange}
 				/>
 
@@ -285,7 +285,7 @@
 							submissionId={currentSubmission.submissionId}
 							hackatimeHours={currentSubmission.hackatimeHours}
 							{editedHours}
-							joeFraudPassed={(currentSubmission.project as any).joeFraudPassed ?? null}
+							joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
 							onReviewComplete={handleReviewComplete}
 						/>
 					</div>

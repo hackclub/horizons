@@ -638,12 +638,12 @@
                 class={`p-6 space-y-4 backdrop-blur ${
                     project.user.isSus
                         ? 'border-yellow-500'
-                        : (project as any).joeFraudPassed === false
+                        : project.joeFraudPassed === false
                           ? 'border-red-500'
                           : 'border-ds-border'
                 }`}
             >
-                {#if (project as any).joeFraudPassed === false}
+                {#if project.joeFraudPassed === false}
                     <div class="bg-red-600/20 border-2 border-red-500 rounded-lg p-3">
                         <p class="text-red-600 font-bold text-center uppercase tracking-wide">⚠️ FRAUD (JOE)</p>
                     </div>

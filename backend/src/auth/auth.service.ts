@@ -569,10 +569,9 @@ export class AuthService {
         }: any) => ({
           ...project,
           submissions: (submissions || []).map((s: any) => {
-            const isSilentReject =
-              s.approvalStatus === 'rejected' && s.reviewPassed === true;
             const {
               reviewPassed: _rp,
+              silentReject: _sr,
               pendingSendEmail: _pe,
               finalizedAt: _fa,
               reviewedBy: _rb,
@@ -582,7 +581,7 @@ export class AuthService {
             } = s;
             return {
               ...safe,
-              approvalStatus: isSilentReject ? 'pending' : s.approvalStatus,
+              approvalStatus: s.silentReject ? 'pending' : s.approvalStatus,
             };
           }),
         }),

@@ -17,19 +17,18 @@
 	let error = $state<string | null>(null);
 
 	// Derived state-matrix data for the Review Stats — Projects section.
-	// `funnelMatrix` is on the backend DTO but may not be in the regenerated
-	// admin types yet; cast through `any` to unblock until types are refreshed.
-	type FraudRow = { fraudPassed: number; fraudPending: number; fraudFailed: number };
-	type FunnelMatrix = {
-		reviewApproved: FraudRow;
-		reviewPending: FraudRow;
-		reviewRejected: FraudRow;
-	};
+	type FunnelMatrix = components['schemas']['StatsFunnelMatrix'];
+	type FraudRow = components['schemas']['StatsFunnelMatrixRow'];
 	const funnelMatrix = $derived<FunnelMatrix | null>(
-		stats ? (((stats.reviewProjects as any).funnelMatrix as FunnelMatrix) ?? null) : null,
+		stats ? (stats.reviewProjects.funnelMatrix ?? null) : null,
 	);
 	const finalApproved = $derived(funnelMatrix ? funnelMatrix.reviewApproved.fraudPassed : 0);
-	const finalSilentReject = $derived(funnelMatrix ? funnelMatrix.reviewApproved.fraudFailed : 0);
+	const finalSilentReject = $derived(
+		funnelMatrix
+			? funnelMatrix.reviewApproved.fraudFailed +
+					funnelMatrix.reviewPending.fraudFailed
+			: 0,
+	);
 	const finalInFlight = $derived(
 		funnelMatrix
 			? funnelMatrix.reviewApproved.fraudPending +
@@ -41,8 +40,7 @@
 		funnelMatrix
 			? funnelMatrix.reviewRejected.fraudPassed +
 					funnelMatrix.reviewRejected.fraudPending +
-					funnelMatrix.reviewRejected.fraudFailed +
-					funnelMatrix.reviewPending.fraudFailed
+					funnelMatrix.reviewRejected.fraudFailed
 			: 0,
 	);
 
@@ -52,7 +50,6 @@
 		| 'awaiting-fraud'
 		| 'awaiting-review'
 		| 'awaiting-both'
-		| 'fraud-auto-reject'
 		| 'rejected';
 
 	const matrixRows = $derived<
@@ -82,7 +79,9 @@
 						cellMeaning: {
 							fraudPassed: 'awaiting-review',
 							fraudPending: 'awaiting-both',
-							fraudFailed: 'fraud-auto-reject',
+							// Fraud failed before reviewer acted — the state machine
+							// removes it from the queue and silent-rejects it.
+							fraudFailed: 'silent-reject',
 						},
 					},
 					{
@@ -92,6 +91,7 @@
 						cellMeaning: {
 							fraudPassed: 'rejected',
 							fraudPending: 'rejected',
+							// Reviewer rejected first; their decision stood before fraud flipped.
 							fraudFailed: 'rejected',
 						},
 					},
@@ -109,7 +109,6 @@
 			case 'awaiting-review':
 			case 'awaiting-both':
 				return 'bg-yellow-500/15 border-yellow-500 text-yellow-800';
-			case 'fraud-auto-reject':
 			case 'rejected':
 				return 'bg-red-500/15 border-red-500 text-red-700';
 		}
@@ -126,8 +125,6 @@
 				return 'Awaiting reviewer';
 			case 'awaiting-both':
 				return 'Awaiting both';
-			case 'fraud-auto-reject':
-				return 'Fraud auto-reject';
 			case 'rejected':
 				return 'Rejected';
 		}
@@ -383,7 +380,7 @@
 		const chart = initChart(projectFunnelEl);
 		if (!chart || !stats) return;
 
-		const m = (stats.reviewProjects as any).funnelMatrix as FunnelMatrix | undefined;
+		const m = stats.reviewProjects.funnelMatrix;
 		if (!m) return;
 		const dark = isDark();
 		const axis = textColor();

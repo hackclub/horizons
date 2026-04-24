@@ -183,7 +183,7 @@
 
     function matchesFraud(project: AdminProject): boolean {
         // Fraud is now driven by Joe only; a project is "fraud" when joeFraudPassed === false.
-        return showFraudProjects || (project as any).joeFraudPassed !== false;
+        return showFraudProjects || project.joeFraudPassed !== false;
     }
 
     function matchesSus(project: AdminProject): boolean {
@@ -464,7 +464,7 @@
                                     {/if}
                                 </div>
                                 <div class="flex flex-wrap gap-2 text-sm text-ds-text-secondary">
-                                    {#if (project as any).joeFraudPassed === false}
+                                    {#if project.joeFraudPassed === false}
                                         <span class="rounded-full border border-red-500 bg-red-600/20 text-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide">Fraud</span>
                                     {/if}
                                     {#if project.user.isSus}
