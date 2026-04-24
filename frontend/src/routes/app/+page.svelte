@@ -133,6 +133,25 @@
 	let exitRight = $state(false);
 	let hasInteracted = $state(false);
 
+	// Hover-cascade guard: when a mouseenter-triggered nav.select shifts the cards row, the
+	// shifting cards slide under the stationary cursor and fire more mouseenter events. A real
+	// hover has a mousemove fire right before the mouseenter; a cascade has no mousemove because
+	// the cursor didn't move. Only accept mouseenter if we've seen a mousemove very recently,
+	// and only if the cursor has moved meaningfully since the last select (filters hand tremor).
+	let mouseX = -Infinity;
+	let mouseY = -Infinity;
+	let lastMouseMoveTime = -Infinity;
+	let lastSelectMouseX = -Infinity;
+	let lastSelectMouseY = -Infinity;
+	function handleCardHover(col: number, row: number) {
+		if (nav.usingKeyboard) return;
+		if (performance.now() - lastMouseMoveTime > 50) return;
+		if (Math.hypot(mouseX - lastSelectMouseX, mouseY - lastSelectMouseY) < 10) return;
+		lastSelectMouseX = mouseX;
+		lastSelectMouseY = mouseY;
+		nav.select(col, row);
+	}
+
 	async function navigateTo(href: string, opts: { exitRight?: boolean } = {}) {
 		navigating = true;
 		if (opts.exitRight) exitRight = true;
@@ -210,7 +229,7 @@
 	});
 </script>
 
-<svelte:window onkeydown={(e) => { nav.handleKeydown(e); hasInteracted = true; }} onmousemove={() => { hasInteracted = true; }} />
+<svelte:window onkeydown={(e) => { nav.handleKeydown(e); hasInteracted = true; }} onmousemove={(e) => { mouseX = e.clientX; mouseY = e.clientY; lastMouseMoveTime = performance.now(); hasInteracted = true; }} />
 
 {#snippet hintRow(text: string)}
 	<img src={nav.usingKeyboard ? enterSvg : clickSvg} alt={nav.usingKeyboard ? 'Enter' : 'Click'} class="enter-hint-key" />
@@ -269,7 +288,7 @@
 						usingKeyboard={nav.usingKeyboard}
 						postOnboarding={postOnboarding}
 						description={cardDescriptions['0-0']}
-						onmouseenter={() => { if (!nav.usingKeyboard) nav.select(0, 0); }}
+						onmouseenter={() => handleCardHover(0, 0)}
 						onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
 						onEventClick={(id) => navigateTo(`/app/community?event=${encodeURIComponent(id)}`)}
 					/>
@@ -284,7 +303,7 @@
 							usingKeyboard={nav.usingKeyboard}
 							postOnboarding={postOnboarding}
 							description={cardDescriptions['1-0']}
-							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(1, 0); }}
+							onmouseenter={() => handleCardHover(1, 0)}
 							onclick={(e) => { e.preventDefault(); navigateTo('/app/projects?back'); }}
 						/>
 					</div>
@@ -298,7 +317,7 @@
 							shaking={isShaking(1, 1)}
 							postOnboarding={postOnboarding}
 							description={cardDescriptions['1-1']}
-							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(1, 1); }}
+							onmouseenter={() => handleCardHover(1, 1)}
 							onclick={(e) => { e.preventDefault(); if (isDisabled(1, 1)) triggerShake(1, 1); else navigateTo('/app/events'); }}
 							onanimationend={() => { shakingKey = null; }}
 						/>
@@ -370,7 +389,7 @@
 						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="60ms" style:--enter-delay="150ms" style:--exit-right-delay="150ms">
 							<a bind:this={cardRefs[2]} href="/app/shop" class="card nav-card shop-card"
 								class:selected={nav.isSelected(2, 0)}
-								onmouseenter={() => { if (!nav.usingKeyboard) nav.select(2, 0); }}
+								onmouseenter={() => handleCardHover(2, 0)}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/shop?back'); }}>
 								<!-- Shop bag icon -->
 								<div class="card-bg-icon" style="right: -10px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
@@ -397,7 +416,7 @@
 						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms" style:--exit-right-delay="150ms">
 							<a bind:this={cardRefs[3]} href="/app/community" class="card nav-card community-card"
 								class:selected={nav.isSelected(3, 0)}
-								onmouseenter={() => { if (!nav.usingKeyboard) nav.select(3, 0); }}
+								onmouseenter={() => handleCardHover(3, 0)}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}>
 								<div class="card-bg-icon" style="right: -20px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
 									<img src={communitySvg} alt="" class="w-full h-full" />
@@ -424,7 +443,7 @@
 					<a bind:this={cardRefs[4]} href="/faq?from=app" class="card nav-card faq-card"
 						class:selected={nav.isSelected(4, 0)}
 						class:shaking={isShaking(4, 0)}
-						onmouseenter={() => { if (!nav.usingKeyboard) nav.select(4, 0); }}
+						onmouseenter={() => handleCardHover(4, 0)}
 						onanimationend={() => { shakingKey = null; }}>
 						<!-- HUH icon -->
 						<div class="card-bg-icon" style="right: 20px; top: 50%; transform: translateY(-50%); width: 145px; height: 145px;">
@@ -452,7 +471,7 @@
 					<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="150ms" style:--enter-delay="300ms" style:--exit-right-delay="150ms">
 						<a bind:this={cardRefs[5]} href="/admin" class="card nav-card admin-card"
 							class:selected={nav.isSelected(5, 0)}
-							onmouseenter={() => { if (!nav.usingKeyboard) nav.select(5, 0); }}
+							onmouseenter={() => handleCardHover(5, 0)}
 							onclick={(e) => { e.preventDefault(); window.location.href = '/admin'; }}>
 							<!-- Shield icon -->
 							<div class="card-bg-icon" style="right: 20px; top: 50%; transform: translateY(-50%); width: 145px; height: 145px;">
@@ -556,7 +575,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 24px;
-		width: 812px;
+		width: 966px;
 		height: 100%;
 	}
 
