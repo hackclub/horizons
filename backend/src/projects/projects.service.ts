@@ -345,7 +345,8 @@ export class ProjectsService {
     //   - none                            → allow (first submission)
     //   - approved                        → allow, clear joe* + re-submit to fraud
     //   - rejected + silentReject=true    → fraud-indicted, user sees it as pending → block
-    //   - rejected (normal)               → reviewer-rejected, allow, reuse joe*
+    //   - rejected (normal), no new hours → reviewer-rejected, allow, reuse joe*
+    //   - rejected (normal), new hours    → allow, clear joe* + re-submit to fraud
     //   - pending                         → block (still in flight)
     const priorSubmission = await this.prisma.submission.findFirst({
       where: { projectId },
@@ -355,6 +356,7 @@ export class ProjectsService {
         approvalStatus: true,
         reviewPassed: true,
         silentReject: true,
+        hackatimeHours: true,
       },
     });
 
@@ -368,9 +370,19 @@ export class ProjectsService {
       }
     }
 
+    // Reuse the prior fraud outcome only when the prior submission was
+    // reviewer-rejected AND no new hackatime hours have been logged since.
+    // Adding hours forces a fresh fraud review — the FigJam rule.
     const reuseFraud =
       priorSubmission?.approvalStatus === 'rejected' &&
-      !priorSubmission.silentReject;
+      !priorSubmission.silentReject &&
+      recalculatedHours <= (priorSubmission.hackatimeHours ?? 0);
+
+    // Fraud already determined this project is fraudulent (e.g. fraud returned
+    // AFTER a reviewer-normal-rejection on the prior submission). Silent-reject
+    // this resubmission at creation so the user stays cloaked — same outcome
+    // as if fraud had landed before the reviewer on the prior round.
+    const preDeterminedFraud = project.joeFraudPassed === false;
 
     const submission = await this.prisma.submission.create({
       data: {
@@ -380,14 +392,36 @@ export class ProjectsService {
         description: project.description,
         repoUrl: project.repoUrl,
         hackatimeHours: recalculatedHours,
+        ...(preDeterminedFraud && {
+          approvalStatus: 'rejected' as const,
+          silentReject: true,
+          finalizedAt: new Date(),
+        }),
       },
     });
 
+    if (preDeterminedFraud) {
+      await this.prisma.submissionAuditLog.create({
+        data: {
+          submissionId: submission.submissionId,
+          adminId: userId,
+          action: AUDIT_ACTIONS.finalize,
+          newStatus: 'rejected',
+          changes: {
+            reviewPassed: null,
+            joeFraudPassed: false,
+            silent: true,
+            preDetermined: true,
+          },
+        },
+      });
+    }
+
     const projectUpdateData: any = { nowHackatimeHours: recalculatedHours };
-    // Only reset fraud state when the prior submission was approved or when
-    // this is a brand new project. Reviewer-rejected resubmissions reuse the
-    // prior fraud outcome — the FigJam rule.
-    if (isResubmission && !reuseFraud) {
+    // Reset fraud state only when starting fresh — prior approved, or
+    // reviewer-rejected with new hours. Reviewer-rejected-no-new-hours reuses
+    // the prior outcome; pre-determined fraud must preserve its failing state.
+    if (isResubmission && !reuseFraud && !preDeterminedFraud) {
       Object.assign(projectUpdateData, {
         joeProjectId: null,
         joeFraudPassed: null,
@@ -416,6 +450,7 @@ export class ProjectsService {
         submissionId: submission.submissionId,
         isResubmission,
         reuseFraud,
+        preDeterminedFraud,
       },
     });
 
@@ -427,9 +462,12 @@ export class ProjectsService {
         );
     }
 
-    // Submit to fraud review only when we're starting fresh. Reviewer-rejected
-    // resubmissions deliberately reuse the prior fraud outcome.
-    if (!reuseFraud) {
+    // Submit to fraud review only when starting fresh. Skip for reuseFraud
+    // (outcome reused) and for preDeterminedFraud (outcome already terminal —
+    // submission was silent-rejected at creation, finalize log recorded above).
+    if (preDeterminedFraud) {
+      // no-op: already finalized as silent-reject
+    } else if (!reuseFraud) {
       this.fraudReviewService.submitAndPersist(projectId).catch(() => {});
     } else if (priorSubmission) {
       await this.prisma.submissionAuditLog.create({
