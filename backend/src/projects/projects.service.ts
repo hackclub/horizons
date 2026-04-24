@@ -14,6 +14,7 @@ import { randomBytes } from 'crypto';
 import { PosthogService } from '../posthog/posthog.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
+import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 
 @Injectable()
 export class ProjectsService {
@@ -350,6 +351,7 @@ export class ProjectsService {
       where: { projectId },
       orderBy: { createdAt: 'desc' },
       select: {
+        submissionId: true,
         approvalStatus: true,
         reviewPassed: true,
         silentReject: true,
@@ -429,6 +431,20 @@ export class ProjectsService {
     // resubmissions deliberately reuse the prior fraud outcome.
     if (!reuseFraud) {
       this.fraudReviewService.submitAndPersist(projectId).catch(() => {});
+    } else if (priorSubmission) {
+      await this.prisma.submissionAuditLog.create({
+        data: {
+          submissionId: submission.submissionId,
+          adminId: userId,
+          action: AUDIT_ACTIONS.fraudReused,
+          changes: {
+            priorSubmissionId: priorSubmission.submissionId,
+            joeFraudPassed: project.joeFraudPassed,
+            joeTrustScore: project.joeTrustScore,
+            joeOutcomeStatus: project.joeOutcomeStatus,
+          },
+        },
+      });
     }
 
     return this.scopeSubmissionForUser(submission);

@@ -110,8 +110,9 @@ export class ReviewerController {
   async saveProjectNote(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SaveNoteDto,
+    @Req() req: Request,
   ) {
-    return this.reviewerService.saveNote('project', id, dto);
+    return this.reviewerService.saveNote('project', id, dto, req.user.userId);
   }
 
   /** Get the shared note for a user */
@@ -127,8 +128,9 @@ export class ReviewerController {
   async saveUserNote(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SaveNoteDto,
+    @Req() req: Request,
   ) {
-    return this.reviewerService.saveNote('user', id, dto);
+    return this.reviewerService.saveNote('user', id, dto, req.user.userId);
   }
 
   /** Get shared checklist state for a submission */

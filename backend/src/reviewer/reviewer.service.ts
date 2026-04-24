@@ -8,6 +8,7 @@ import {
 } from './dto/review-submission.dto';
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
 import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
+import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 
 // Scoped user fields — no PII like email, address, birthday
 const SCOPED_USER_SELECT = {
@@ -568,13 +569,43 @@ export class ReviewerService {
     targetType: 'project' | 'user',
     targetId: number,
     dto: SaveNoteDto,
+    reviewerId: number,
   ) {
     if (targetType === 'project') {
+      const prior = await this.prisma.project.findUnique({
+        where: { projectId: targetId },
+        select: { adminComment: true },
+      });
       await this.prisma.project.update({
         where: { projectId: targetId },
         data: { adminComment: dto.content },
       });
+      // Anchor the audit entry to the latest submission on this project.
+      // Projects with no submissions yet won't be audited — notes before a
+      // first submission have nothing to show up on in the timeline.
+      const latest = await this.prisma.submission.findFirst({
+        where: { projectId: targetId },
+        orderBy: { createdAt: 'desc' },
+        select: { submissionId: true },
+      });
+      if (latest) {
+        await this.prisma.submissionAuditLog.create({
+          data: {
+            submissionId: latest.submissionId,
+            adminId: reviewerId,
+            action: AUDIT_ACTIONS.noteUpdate,
+            changes: {
+              targetType: 'project',
+              targetId,
+              previous: prior?.adminComment ?? '',
+              next: dto.content,
+            },
+          },
+        });
+      }
     } else {
+      // TODO: user-level note audit has no natural submission anchor.
+      // Revisit if we add a user-scoped audit log.
       await this.prisma.user.update({
         where: { userId: targetId },
         data: { adminComment: dto.content },

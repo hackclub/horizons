@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
+import {
+  AUDIT_ACTIONS,
+  SYSTEM_ACTOR_ID,
+} from '../submission-approval/audit-actions';
 
 const FRAUD_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -172,6 +176,7 @@ export class FraudReviewService {
         ? { slackId: project.user.slackUserId }
         : { email: project.user.email };
 
+      const organizerPlatformId = `project-${projectId}-submission-${latestSubmissionId}`;
       const fraudReviewId = await this.submitProject({
         name: project.projectTitle,
         codeLink: project.repoUrl || '',
@@ -183,7 +188,7 @@ export class FraudReviewService {
             : undefined,
         // Per-submission dedup key so each resubmission triggers a fresh
         // Joe review instead of returning the cached previous decision.
-        organizerPlatformId: `project-${projectId}-submission-${latestSubmissionId}`,
+        organizerPlatformId,
       });
 
       if (fraudReviewId) {
@@ -191,12 +196,47 @@ export class FraudReviewService {
           where: { projectId },
           data: { joeProjectId: fraudReviewId },
         });
+        await this.prisma.submissionAuditLog.create({
+          data: {
+            submissionId: latestSubmissionId,
+            adminId: SYSTEM_ACTOR_ID,
+            action: AUDIT_ACTIONS.fraudEnqueued,
+            changes: {
+              joeProjectId: fraudReviewId,
+              organizerPlatformId,
+            },
+          },
+        });
       }
     } catch (error) {
       this.logger.error(
         `submitAndPersist failed for project ${projectId}`,
         error,
       );
+      try {
+        const latest = await this.prisma.submission.findFirst({
+          where: { projectId },
+          orderBy: { createdAt: 'desc' },
+          select: { submissionId: true },
+        });
+        if (latest) {
+          await this.prisma.submissionAuditLog.create({
+            data: {
+              submissionId: latest.submissionId,
+              adminId: SYSTEM_ACTOR_ID,
+              action: AUDIT_ACTIONS.fraudEnqueueFailed,
+              changes: {
+                error: error instanceof Error ? error.message : String(error),
+              },
+            },
+          });
+        }
+      } catch (logError) {
+        this.logger.error(
+          `failed to write fraud_enqueue_failed audit for project ${projectId}`,
+          logError,
+        );
+      }
     }
   }
 
@@ -252,7 +292,11 @@ export class FraudReviewService {
         joeProjectId: { not: null },
         submissions: { some: { approvalStatus: 'pending' } },
       },
-      select: { projectId: true, joeProjectId: true },
+      select: {
+        projectId: true,
+        joeProjectId: true,
+        joeFraudPassed: true,
+      },
     });
 
     let updated = 0;
@@ -274,6 +318,10 @@ export class FraudReviewService {
         ? new Date(joeProject.review.reviewedAt)
         : new Date();
 
+      // Detect the terminal transition before mutating so we only audit
+      // null → true/false flips, not idempotent re-syncs.
+      const isTerminalTransition = project.joeFraudPassed === null;
+
       await this.prisma.project.update({
         where: { projectId: project.projectId },
         data: {
@@ -288,6 +336,30 @@ export class FraudReviewService {
             : null,
         },
       });
+
+      if (isTerminalTransition) {
+        const pendingSubmissions = await this.prisma.submission.findMany({
+          where: { projectId: project.projectId, approvalStatus: 'pending' },
+          select: { submissionId: true },
+        });
+        for (const sub of pendingSubmissions) {
+          await this.prisma.submissionAuditLog.create({
+            data: {
+              submissionId: sub.submissionId,
+              adminId: SYSTEM_ACTOR_ID,
+              action: AUDIT_ACTIONS.fraudResolved,
+              changes: {
+                joeFraudPassed: passed,
+                joeTrustScore: joeProject.review?.trustScore ?? null,
+                joeOutcomeStatus: joeProject.outcome?.status ?? null,
+                joeOutcomeReason: joeProject.outcome?.reason ?? null,
+                joeJustification: joeProject.review?.justification ?? null,
+                joeProjectId: project.joeProjectId,
+              },
+            },
+          });
+        }
+      }
 
       // Re-run the approval state machine for every pending submission on this
       // project — the fraud gate may have just resolved and allowed a transition.
