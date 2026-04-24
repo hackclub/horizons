@@ -4,6 +4,27 @@ import { AirtableService } from '../airtable/airtable.service';
 import { MailService } from '../mail/mail.service';
 import { SlackService } from '../slack/slack.service';
 import { ReviewSubmissionDto } from '../reviewer/dto/review-submission.dto';
+import { AUDIT_ACTIONS } from './audit-actions';
+
+function describeDetermination(
+  newStatus: 'approved' | 'rejected',
+  reviewPassed: boolean | null,
+  fraudRaw: boolean | null,
+  isSilent: boolean,
+): string {
+  if (newStatus === 'approved') {
+    if (fraudRaw === null) return 'approved: fraud gate disabled, passed review';
+    return 'approved: passed fraud and passed review';
+  }
+  if (isSilent) {
+    if (reviewPassed === true) return 'rejected (silent): failed fraud, passed review';
+    if (reviewPassed === false) return 'rejected (silent): failed both gates';
+    return 'rejected (silent): failed fraud before review';
+  }
+  if (fraudRaw === true) return 'rejected: failed review, passed fraud';
+  if (fraudRaw === null) return 'rejected: failed review, fraud gate disabled';
+  return 'rejected: failed review';
+}
 
 /** Format decimal hours as "Xh Ymin". */
 function formatHoursMin(hours: number): string {
@@ -315,13 +336,19 @@ export class SubmissionApprovalService {
       data: {
         submissionId: submission.submissionId,
         adminId: actorUserId,
-        action: 'finalize',
+        action: AUDIT_ACTIONS.finalize,
         newStatus,
         approvedHours: submission.approvedHours ?? null,
         changes: {
           reviewPassed: submission.reviewPassed,
           joeFraudPassed: fraudRaw,
           silent: isSilent,
+          determination: describeDetermination(
+            newStatus,
+            submission.reviewPassed,
+            fraudRaw,
+            isSilent,
+          ),
         },
       },
     });
