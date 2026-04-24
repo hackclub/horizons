@@ -7,6 +7,11 @@
 		hackatimeHours: number | null;
 		editedHours?: number | null;
 		joeFraudPassed?: boolean | null;
+		/** Reviewer's own decision — null when the reviewer hasn't voted yet. */
+		reviewPassed?: boolean | null;
+		priorApprovedHours?: number | null;
+		priorReviewerAnalysis?: string | null;
+		priorUserFeedback?: string | null;
 		onReviewComplete: () => void;
 	}
 
@@ -15,6 +20,10 @@
 		hackatimeHours,
 		editedHours = null,
 		joeFraudPassed = null,
+		reviewPassed = null,
+		priorApprovedHours = null,
+		priorReviewerAnalysis = null,
+		priorUserFeedback = null,
 		onReviewComplete,
 	}: Props = $props();
 
@@ -32,16 +41,22 @@
 	let changesComment = $state('');
 	let rejectSendEmail = $state(false);
 
-	// Reset fields when submission changes
+	// Reset fields when submission changes. Autofill keys off the reviewer's own
+	// decision (reviewPassed), not approvalStatus — a reviewer-approved submission
+	// stuck on pending fraud should still surface the prior verdict.
 	$effect(() => {
 		submissionId; // track
-		activeForm = 'changes';
-		hoursJustification = '';
-		approveComment = '';
-		approvedHours = hackatimeHours ?? 0;
-		reviewerManuallyEditedHours = false;
+		const reviewerApproved = reviewPassed === true;
+		const reviewerRejected = reviewPassed === false;
+		activeForm = reviewerApproved ? 'approve' : 'changes';
+		hoursJustification = reviewerApproved ? priorReviewerAnalysis ?? '' : '';
+		approveComment = reviewerApproved ? priorUserFeedback ?? '' : '';
+		approvedHours = reviewerApproved
+			? priorApprovedHours ?? hackatimeHours ?? 0
+			: hackatimeHours ?? 0;
+		reviewerManuallyEditedHours = reviewerApproved;
 		sendEmail = false;
-		changesComment = '';
+		changesComment = reviewerRejected ? priorUserFeedback ?? '' : '';
 		rejectSendEmail = false;
 	});
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
 	import { timeAgo } from '../utils';
 	type QueueItem = components['schemas']['QueueItemResponse'];
@@ -80,9 +81,31 @@
 		return bT - aT;
 	}
 
+	/**
+	 * A project may have multiple finalized submissions (resubmissions). The
+	 * gallery shows one card per project — using the latest review — and
+	 * surfaces the count so reviewers can tell it's a multi-submission project
+	 * without exposing which specific submission is represented.
+	 */
+	function dedupeByProject(
+		reviews: PastReview[],
+	): Array<PastReview & { reviewCount: number }> {
+		const sorted = reviews.slice().sort(sortByReviewedAt);
+		const map = new Map<number, PastReview & { reviewCount: number }>();
+		for (const r of sorted) {
+			const existing = map.get(r.projectId);
+			if (existing) {
+				existing.reviewCount += 1;
+			} else {
+				map.set(r.projectId, { ...r, reviewCount: 1 });
+			}
+		}
+		return [...map.values()];
+	}
+
 	let myPastReviews = $derived(
-		pastReviews
-			.filter(
+		dedupeByProject(
+			pastReviews.filter(
 				(r) =>
 					currentReviewerId !== null &&
 					r.reviewerId === String(currentReviewerId) &&
@@ -91,22 +114,20 @@
 						r.projectType,
 						`${r.user.firstName} ${r.user.lastName}`,
 					),
-			)
-			.slice()
-			.sort(sortByReviewedAt),
+			),
+		),
 	);
 
 	let allPastReviews = $derived(
-		pastReviews
-			.filter((r) =>
+		dedupeByProject(
+			pastReviews.filter((r) =>
 				matchesFilters(
 					r.projectTitle,
 					r.projectType,
 					`${r.user.firstName} ${r.user.lastName}`,
 				),
-			)
-			.slice()
-			.sort(sortByReviewedAt),
+			),
+		),
 	);
 
 	function toggleType(type: string) {
@@ -124,6 +145,7 @@
 			.replace(/_/g, ' ')
 			.replace(/\b\w/g, (char) => char.toUpperCase());
 	}
+
 </script>
 
 <div class="flex flex-col h-screen overflow-hidden">
@@ -204,23 +226,44 @@
 			{:else}
 				<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
 					{#each myPastReviews as review (review.submissionId)}
-						<div class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] text-left">
-							<div class="flex items-start justify-between gap-2">
-								<p class="text-[15px] font-semibold text-rv-text m-0 flex-1">{review.projectTitle}</p>
-								<span class="py-0.5 px-2 rounded-xl text-[11px] shrink-0 {review.verdict === 'approved' ? 'bg-rv-green/15 text-rv-green' : 'bg-rv-red/15 text-rv-red'}">
-									{review.verdict === 'approved' ? 'Approved' : 'Rejected'}
-								</span>
-							</div>
+						<a
+							href="{base}/review/{review.projectId}"
+							class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit hover:border-rv-accent hover:bg-rv-surface2"
+						>
+							<p class="text-[15px] font-semibold text-rv-text m-0">{review.projectTitle}</p>
 							<p class="text-[13px] text-rv-dim m-0">
 								{review.user.firstName} {review.user.lastName}
 							</p>
+							<div class="flex items-center gap-1.5 flex-wrap mt-1">
+								{#if review.reviewPassed !== null}
+									<span
+										class="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-xl text-[11px] font-semibold border bg-yellow-500/15 text-yellow-600 border-yellow-500/40"
+										title="Reviewer has already voted on this project's latest review."
+									>
+										<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+											<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+											<line x1="12" y1="9" x2="12" y2="13" />
+											<line x1="12" y1="17" x2="12.01" y2="17" />
+										</svg>
+										Already {review.reviewPassed ? 'Approved' : 'Rejected'}
+									</span>
+								{/if}
+								{#if review.reviewCount > 1}
+									<span
+										class="py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-rv-tag-bg text-rv-accent"
+										title="This project has {review.reviewCount} reviewed submissions. Latest shown."
+									>
+										Reviewed {review.reviewCount}×
+									</span>
+								{/if}
+							</div>
 							<div class="flex items-center gap-2 mt-1 flex-wrap">
 								<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(review.projectType)}</span>
 								{#if review.reviewedAt}
 									<span class="text-[11px] text-rv-dim">{timeAgo(review.reviewedAt)}</span>
 								{/if}
 							</div>
-						</div>
+						</a>
 					{:else}
 						<p class="col-span-full text-rv-dim py-6 text-sm">You haven't reviewed any projects yet.</p>
 					{/each}
@@ -239,16 +282,37 @@
 			{:else}
 				<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
 					{#each allPastReviews as review (review.submissionId)}
-						<div class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] text-left">
-							<div class="flex items-start justify-between gap-2">
-								<p class="text-[15px] font-semibold text-rv-text m-0 flex-1">{review.projectTitle}</p>
-								<span class="py-0.5 px-2 rounded-xl text-[11px] shrink-0 {review.verdict === 'approved' ? 'bg-rv-green/15 text-rv-green' : 'bg-rv-red/15 text-rv-red'}">
-									{review.verdict === 'approved' ? 'Approved' : 'Rejected'}
-								</span>
-							</div>
+						<a
+							href="{base}/review/{review.projectId}"
+							class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit hover:border-rv-accent hover:bg-rv-surface2"
+						>
+							<p class="text-[15px] font-semibold text-rv-text m-0">{review.projectTitle}</p>
 							<p class="text-[13px] text-rv-dim m-0">
 								{review.user.firstName} {review.user.lastName}
 							</p>
+							<div class="flex items-center gap-1.5 flex-wrap mt-1">
+								{#if review.reviewPassed !== null}
+									<span
+										class="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-xl text-[11px] font-semibold border bg-yellow-500/15 text-yellow-600 border-yellow-500/40"
+										title="Reviewer has already voted on this project's latest review."
+									>
+										<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+											<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+											<line x1="12" y1="9" x2="12" y2="13" />
+											<line x1="12" y1="17" x2="12.01" y2="17" />
+										</svg>
+										Already {review.reviewPassed ? 'Approved' : 'Rejected'}
+									</span>
+								{/if}
+								{#if review.reviewCount > 1}
+									<span
+										class="py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-rv-tag-bg text-rv-accent"
+										title="This project has {review.reviewCount} reviewed submissions. Latest shown."
+									>
+										Reviewed {review.reviewCount}×
+									</span>
+								{/if}
+							</div>
 							<div class="flex items-center gap-2 mt-1 flex-wrap">
 								<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(review.projectType)}</span>
 								<span class="text-[11px] text-rv-dim">by {review.reviewerName}</span>
@@ -256,7 +320,7 @@
 									<span class="text-[11px] text-rv-dim">· {timeAgo(review.reviewedAt)}</span>
 								{/if}
 							</div>
-						</div>
+						</a>
 					{:else}
 						<p class="col-span-full text-rv-dim py-6 text-sm">No past reviews match your filters.</p>
 					{/each}

@@ -7,9 +7,20 @@
 		onNext: () => void;
 		onPrev: () => void;
 		onBackToGallery?: () => void;
+		/** Reviewer's own decision — null when the reviewer hasn't voted yet. */
+		reviewPassed?: boolean | null;
 	}
 
-	let { currentIndex, totalCount, onNext, onPrev, onBackToGallery }: Props = $props();
+	let {
+		currentIndex,
+		totalCount,
+		onNext,
+		onPrev,
+		onBackToGallery,
+		reviewPassed = null,
+	}: Props = $props();
+
+	let alreadyReviewed = $derived(reviewPassed !== null);
 
 	const btnClass = "bg-rv-surface2 border border-rv-border text-rv-dim px-3.5 py-1.5 rounded-md cursor-pointer text-[12px] font-inherit transition-all duration-150 hover:not-disabled:text-rv-text hover:not-disabled:border-rv-accent disabled:opacity-40 disabled:cursor-not-allowed";
 </script>
@@ -20,12 +31,27 @@
 			<button class={btnClass} onclick={onBackToGallery}>← Gallery</button>
 		{/if}
 		<a href="/admin/review/stats" class="{btnClass} no-underline inline-block">Stats</a>
+		{#if alreadyReviewed}
+			<span
+				class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border bg-yellow-500/15 text-yellow-600 border-yellow-500/40"
+				title="Reviewer has already voted on this submission. Submitting again will overwrite the prior decision."
+			>
+				<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+					<line x1="12" y1="9" x2="12" y2="13" />
+					<line x1="12" y1="17" x2="12.01" y2="17" />
+				</svg>
+				Already {reviewPassed ? 'Approved' : 'Rejected'}
+			</span>
+		{/if}
 	</div>
 
 	<div class="flex items-center gap-3">
-		<div class="text-[12px] text-rv-dim">
-			Reviewing <strong class="text-rv-accent">{currentIndex + 1}</strong> of <strong class="text-rv-accent">{totalCount}</strong> pending
-		</div>
+		{#if !alreadyReviewed}
+			<div class="text-[12px] text-rv-dim">
+				Reviewing <strong class="text-rv-accent">{currentIndex + 1}</strong> of <strong class="text-rv-accent">{totalCount}</strong> pending
+			</div>
+		{/if}
 
 		<!-- Dark/Light toggle -->
 		<button
@@ -54,7 +80,9 @@
 			{/if}
 		</button>
 
-		<button class={btnClass} onclick={onPrev} disabled={currentIndex <= 0}>Previous</button>
-		<button class={btnClass} onclick={onNext} disabled={currentIndex >= totalCount - 1}>Skip</button>
+		{#if !alreadyReviewed}
+			<button class={btnClass} onclick={onPrev} disabled={currentIndex <= 0}>Previous</button>
+			<button class={btnClass} onclick={onNext} disabled={currentIndex >= totalCount - 1}>Skip</button>
+		{/if}
 	</div>
 </div>

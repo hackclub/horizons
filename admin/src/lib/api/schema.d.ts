@@ -2404,7 +2404,8 @@ export interface components {
             reviewerId: string | null;
             reviewerName: string;
             /** @enum {string} */
-            verdict: "approved" | "rejected";
+            approvalStatus: "pending" | "approved" | "rejected";
+            reviewPassed: boolean | null;
             approvedHours: number | null;
             hackatimeHours: number | null;
             /** Format: date-time */
@@ -2442,6 +2443,7 @@ export interface components {
             playableUrl: string | null;
             repoUrl: string | null;
             readmeUrl: string | null;
+            adminComment: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
             joeFraudPassed: boolean | null;
@@ -2460,6 +2462,17 @@ export interface components {
             /** Format: date-time */
             timestamp: string;
         };
+        ProjectSubmissionSummary: {
+            submissionId: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            approvalStatus: "pending" | "approved" | "rejected";
+            reviewPassed: boolean | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            hackatimeHours: number | null;
+        };
         SubmissionDetailResponse: {
             submissionId: number;
             projectId: number;
@@ -2467,7 +2480,12 @@ export interface components {
             reviewPassed: boolean | null;
             /** Format: date-time */
             finalizedAt: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            approvedHours: number | null;
             hackatimeHours: number | null;
+            userFeedback: string | null;
+            reviewerAnalysis: string | null;
             description: string | null;
             playableUrl: string | null;
             repoUrl: string | null;
@@ -2476,6 +2494,7 @@ export interface components {
             createdAt: string;
             project: components["schemas"]["SubmissionProjectResponse"];
             timeline: components["schemas"]["TimelineEntryResponse"][];
+            submissions: components["schemas"]["ProjectSubmissionSummary"][];
         };
         ReviewSubmissionDto: {
             /** @enum {string} */

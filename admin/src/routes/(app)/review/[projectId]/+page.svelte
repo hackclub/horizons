@@ -8,6 +8,7 @@
 	import UserInfo from '../components/UserInfo.svelte';
 	import NotesSection from '../components/NotesSection.svelte';
 	import ReviewHistory from '../components/ReviewHistory.svelte';
+	import SubmissionsList from '../components/SubmissionsList.svelte';
 	import DemoIframe from '../components/DemoIframe.svelte';
 	import TabBar, { type Tab } from '../components/TabBar.svelte';
 	import ReadmePanel from '../components/ReadmePanel.svelte';
@@ -58,14 +59,47 @@
 		const { data: queueData } = await api.GET('/api/reviewer/queue');
 		queue = queueData ?? [];
 
+		// Honor ?submissionId=X so reviewers can deep-link to a specific
+		// submission (e.g. an older resubmission) rather than always landing
+		// on the latest.
+		const queryParam = $page.url.searchParams.get('submissionId');
+		if (queryParam) {
+			const qId = Number(queryParam);
+			if (!Number.isNaN(qId)) {
+				const item = queue.find((q) => q.submissionId === qId);
+				if (item) currentIndex = queue.indexOf(item);
+				await loadSubmissionDetail(qId);
+				return;
+			}
+		}
+
 		const item = queue.find(q => q.projectId === projectId);
-		if (!item) {
+		if (item) {
+			currentIndex = queue.indexOf(item);
+			await loadSubmissionDetail(item.submissionId);
+			return;
+		}
+
+		// Not in pending queue — fall back to past reviews so already-reviewed
+		// projects remain viewable from the gallery.
+		const { data: pastData } = await api.GET('/api/reviewer/past-reviews');
+		const past = pastData?.reviews.find((r) => r.projectId === projectId);
+		if (!past) {
 			goto(`${base}/review`);
 			return;
 		}
-		currentIndex = queue.indexOf(item);
-		await loadSubmissionDetail(item.submissionId);
+		await loadSubmissionDetail(past.submissionId);
 	});
+
+	async function selectSubmission(submissionId: number) {
+		if (submissionId === currentSubmission?.submissionId) return;
+		// Keep the URL in sync without triggering a full navigation so in-memory
+		// state (notes, checklist) reloads cleanly via loadSubmissionDetail.
+		const url = new URL($page.url);
+		url.searchParams.set('submissionId', String(submissionId));
+		history.replaceState(history.state, '', url);
+		await loadSubmissionDetail(submissionId);
+	}
 
 	async function loadSubmissionDetail(submissionId: number) {
 		submissionLoading = true;
@@ -216,6 +250,7 @@
 			onNext={navigateNext}
 			onPrev={navigatePrev}
 			onBackToGallery={goBack}
+			reviewPassed={currentSubmission.reviewPassed}
 		/>
 
 		<div class="grid grid-cols-[300px_1fr_320px] flex-1 overflow-hidden">
@@ -253,6 +288,15 @@
 
 				<hr class="border-none border-t border-rv-border m-0" />
 
+				{#if currentSubmission.submissions && currentSubmission.submissions.length > 1}
+					<SubmissionsList
+						submissions={currentSubmission.submissions}
+						activeSubmissionId={currentSubmission.submissionId}
+						onSelect={selectSubmission}
+					/>
+					<hr class="border-none border-t border-rv-border m-0" />
+				{/if}
+
 				<ReviewHistory timeline={currentSubmission.timeline} />
 			</div>
 
@@ -286,6 +330,10 @@
 							hackatimeHours={currentSubmission.hackatimeHours}
 							{editedHours}
 							joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
+							reviewPassed={currentSubmission.reviewPassed}
+							priorApprovedHours={currentSubmission.approvedHours}
+							priorReviewerAnalysis={currentSubmission.reviewerAnalysis}
+							priorUserFeedback={currentSubmission.userFeedback}
 							onReviewComplete={handleReviewComplete}
 						/>
 					</div>
