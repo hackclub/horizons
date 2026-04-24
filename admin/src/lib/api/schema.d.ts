@@ -872,6 +872,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/past-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getPastReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/queue": {
         parameters: {
             query?: never;
@@ -2379,6 +2395,25 @@ export interface components {
             age: number | null;
             /** Format: date-time */
             hackatimeStartDate: string | null;
+        };
+        PastReviewEntry: {
+            submissionId: number;
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            reviewerId: string | null;
+            reviewerName: string;
+            /** @enum {string} */
+            verdict: "approved" | "rejected";
+            approvedHours: number | null;
+            hackatimeHours: number | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            user: components["schemas"]["ScopedUserResponse"];
+        };
+        PastReviewsResponse: {
+            currentReviewerId: number;
+            reviews: components["schemas"]["PastReviewEntry"][];
         };
         QueueProjectResponse: {
             projectId: number;
@@ -4139,6 +4174,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewStatsResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_getPastReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PastReviewsResponse"];
                 };
             };
         };

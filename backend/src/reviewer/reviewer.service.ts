@@ -462,6 +462,77 @@ export class ReviewerService {
     };
   }
 
+  /**
+   * List all finalized (approved/rejected) submissions, newest first.
+   * Frontend splits this into "mine" vs "all" using currentReviewerId.
+   */
+  async getPastReviews(currentReviewerId: number) {
+    const submissions = await this.prisma.submission.findMany({
+      where: {
+        approvalStatus: { in: ['approved', 'rejected'] },
+        reviewedBy: { not: null },
+      },
+      orderBy: { reviewedAt: 'desc' },
+      select: {
+        submissionId: true,
+        projectId: true,
+        approvalStatus: true,
+        approvedHours: true,
+        hackatimeHours: true,
+        reviewedBy: true,
+        reviewedAt: true,
+        project: {
+          select: {
+            projectId: true,
+            projectTitle: true,
+            projectType: true,
+            user: { select: SCOPED_USER_SELECT },
+          },
+        },
+      },
+    });
+
+    const reviewerIds = [
+      ...new Set(
+        submissions
+          .map((s) => s.reviewedBy)
+          .filter((id): id is string => id !== null)
+          .map((id) => parseInt(id))
+          .filter((id) => !isNaN(id)),
+      ),
+    ];
+    const reviewers = await this.prisma.user.findMany({
+      where: { userId: { in: reviewerIds } },
+      select: { userId: true, firstName: true, lastName: true },
+    });
+    const reviewerMap = new Map(
+      reviewers.map((r) => [r.userId.toString(), r]),
+    );
+
+    const reviews = submissions.map((s) => {
+      const reviewer = s.reviewedBy ? reviewerMap.get(s.reviewedBy) : null;
+      return {
+        submissionId: s.submissionId,
+        projectId: s.projectId,
+        projectTitle: s.project.projectTitle,
+        projectType: s.project.projectType,
+        reviewerId: s.reviewedBy,
+        reviewerName: reviewer
+          ? `${reviewer.firstName} ${reviewer.lastName}`
+          : s.reviewedBy
+            ? `User ${s.reviewedBy}`
+            : 'Unknown',
+        verdict: s.approvalStatus,
+        approvedHours: s.approvedHours,
+        hackatimeHours: s.hackatimeHours,
+        reviewedAt: s.reviewedAt,
+        user: this.scopeUserData(s.project.user),
+      };
+    });
+
+    return { currentReviewerId, reviews };
+  }
+
   /** Save the adminComment field on a project or user. */
   async saveNote(
     targetType: 'project' | 'user',
