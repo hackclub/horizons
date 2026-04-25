@@ -42,8 +42,8 @@ Learn how to make a game using godot!
 
 ## Sound Design Workshop!
 ```yaml
-Start: 2026-04-25T22:00:00+00:00
-End: 2026-04-25T23:00:00+00:00
+Start: 2026-04-26T15:00:00+00:00
+End: 2026-04-26T16:00:00+00:00
 JoinInfo: "[Join the huddle in #horizons!](https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476)"
 Tagline: "Learn sound design using LMMS"
 ```
