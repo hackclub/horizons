@@ -16,11 +16,13 @@
 	import VerdictPanel from '../components/VerdictPanel.svelte';
 	import GitHubPanel from '../components/GitHubPanel.svelte';
 	import ReviewChecklist from '../components/ReviewChecklist.svelte';
+	import ManifestLookup from '../components/ManifestLookup.svelte';
 	import { api, type components } from '$lib/api';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
 	type GitHubRepo = components['schemas']['GitHubRepoResponse'];
+	type ManifestLookupResponse = components['schemas']['ManifestLookupResponse'];
 
 	let projectId = $derived(Number($page.params.projectId));
 
@@ -44,6 +46,8 @@
 	let userNote = $state('');
 	let checkedItems = $state<number[]>([]);
 	let editedHours = $state<number | null>(null);
+	let manifestLookup = $state<ManifestLookupResponse | null>(null);
+	let manifestLoading = $state(false);
 
 	// Center tabs
 	const centerTabs: Tab[] = [
@@ -106,6 +110,7 @@
 		currentSubmission = null;
 		githubRepo = null;
 		readmeMarkdown = '';
+		manifestLookup = null;
 
 		try {
 			const { data, error } = await api.GET('/api/reviewer/submissions/{id}', {
@@ -124,12 +129,27 @@
 
 			promises.push(loadNotes(data.project.projectId, data.project.user.userId));
 			promises.push(loadChecklist(submissionId));
+			promises.push(loadManifestLookup(data.project.projectId));
 
 			await Promise.all(promises);
 		} catch (error) {
 			console.error('Failed to load submission detail:', error);
 		} finally {
 			submissionLoading = false;
+		}
+	}
+
+	async function loadManifestLookup(projectId: number) {
+		manifestLoading = true;
+		try {
+			const { data } = await api.GET('/api/reviewer/projects/{id}/manifest-lookup', {
+				params: { path: { id: projectId } },
+			});
+			manifestLookup = data ?? null;
+		} catch {
+			manifestLookup = null;
+		} finally {
+			manifestLoading = false;
 		}
 	}
 
@@ -285,6 +305,10 @@
 					targetId={currentSubmission.project.user.userId}
 					bind:content={userNote}
 				/>
+
+				<hr class="border-none border-t border-rv-border m-0" />
+
+				<ManifestLookup lookup={manifestLookup} loading={manifestLoading} />
 
 				<hr class="border-none border-t border-rv-border m-0" />
 

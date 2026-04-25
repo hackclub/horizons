@@ -324,3 +324,57 @@ export class ReviewStatsResponse {
   @ApiProperty({ type: GeneralStats })
   general: GeneralStats;
 }
+
+export class ManifestSubmissionResponse {
+  @ApiProperty()
+  submissionId: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  ysws: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  yswsName: string | null;
+
+  @ApiProperty({ enum: ['draft', 'shipped'] })
+  shipStatus: 'draft' | 'shipped';
+
+  @ApiProperty({ type: Number, nullable: true })
+  hoursShipped: number | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  airtableRecord: string | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  approvedAt: string | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  shippedAt: string | null;
+
+  @ApiProperty({ format: 'date-time' })
+  createdAt: string;
+}
+
+export class ManifestProjectResponse {
+  @ApiProperty()
+  projectId: string;
+
+  @ApiProperty({ format: 'uri' })
+  codeUrl: string;
+
+  @ApiProperty({ format: 'date-time' })
+  createdAt: string;
+
+  @ApiProperty({ type: [ManifestSubmissionResponse] })
+  submissions: ManifestSubmissionResponse[];
+
+  @ApiPropertyOptional()
+  warning?: string;
+}
+
+export class ManifestLookupResponse {
+  @ApiProperty({ type: String, nullable: true })
+  codeUrl: string | null;
+
+  @ApiProperty({ type: ManifestProjectResponse, nullable: true })
+  manifest: ManifestProjectResponse | null;
+}

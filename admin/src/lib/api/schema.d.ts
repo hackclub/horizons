@@ -952,6 +952,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/projects/{id}/manifest-lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getProjectManifestLookup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/projects/{id}/notes": {
         parameters: {
             query?: never;
@@ -2526,6 +2542,34 @@ export interface components {
         };
         SaveChecklistDto: {
             checkedItems: number[];
+        };
+        ManifestSubmissionResponse: {
+            submissionId: string;
+            ysws: string | null;
+            yswsName: string | null;
+            /** @enum {string} */
+            shipStatus: "draft" | "shipped";
+            hoursShipped: number | null;
+            airtableRecord: string | null;
+            /** Format: date-time */
+            approvedAt: string | null;
+            /** Format: date-time */
+            shippedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ManifestProjectResponse: {
+            projectId: string;
+            /** Format: uri */
+            codeUrl: string;
+            /** Format: date-time */
+            createdAt: string;
+            submissions: components["schemas"]["ManifestSubmissionResponse"][];
+            warning?: string;
+        };
+        ManifestLookupResponse: {
+            codeUrl: string | null;
+            manifest: components["schemas"]["ManifestProjectResponse"] | null;
         };
         ShopResponse: {
             shopId: number;
@@ -4309,6 +4353,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ReviewerController_getProjectManifestLookup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManifestLookupResponse"];
+                };
             };
         };
     };

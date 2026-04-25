@@ -6,9 +6,10 @@ import { GeocodingService } from './geocoding.service';
 import { PrismaService } from '../prisma.service';
 import { SlackModule } from '../slack/slack.module';
 import { CachetModule } from '../cachet/cachet.module';
+import { ManifestModule } from '../manifest/manifest.module';
 
 @Module({
-  imports: [SlackModule, CachetModule],
+  imports: [SlackModule, CachetModule, ManifestModule],
   controllers: [AdminController],
   providers: [AdminService, MetricsSnapshotService, GeocodingService, PrismaService],
 })
