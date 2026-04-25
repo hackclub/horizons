@@ -14,6 +14,7 @@ import { randomBytes } from 'crypto';
 import { PosthogService } from '../posthog/posthog.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
+import { ManifestService } from '../manifest/manifest.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 
 @Injectable()
@@ -24,6 +25,7 @@ export class ProjectsService {
     private posthog: PosthogService,
     private airtableService: AirtableService,
     private fraudReviewService: FraudReviewService,
+    private manifestService: ManifestService,
   ) {}
 
   private excludeAdminFields<T extends Record<string, any>>(
@@ -140,6 +142,7 @@ export class ProjectsService {
           projectType: createProjectDto.projectType,
           description: createProjectDto.projectDescription,
           readmeUrl: createProjectDto.readmeUrl,
+          repoUrl: createProjectDto.repoUrl,
         },
         include: {
           user: {
@@ -161,6 +164,12 @@ export class ProjectsService {
           projectType: project.projectType,
         },
       });
+
+      if (project.repoUrl) {
+        this.manifestService
+          .createDraft(project.repoUrl)
+          .catch(() => {});
+      }
 
       if (existingProjectsCount === 0) {
         await this.prisma.user.update({
@@ -563,6 +572,16 @@ export class ProjectsService {
       where: { projectId },
       data: updateData,
     });
+
+    if (
+      updateProjectDto.repoUrl !== undefined &&
+      updatedProject.repoUrl &&
+      updatedProject.repoUrl !== project.repoUrl
+    ) {
+      this.manifestService
+        .createDraft(updatedProject.repoUrl)
+        .catch(() => {});
+    }
 
     return {
       message: 'Project updated successfully.',

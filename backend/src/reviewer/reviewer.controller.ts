@@ -26,6 +26,7 @@ import {
   ChecklistResponse,
   ReviewStatsResponse,
   PastReviewsResponse,
+  ManifestLookupResponse,
 } from './dto/reviewer-response.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -95,6 +96,13 @@ export class ReviewerController {
       req.user.userId,
       dto,
     );
+  }
+
+  /** Look up this project's codeUrl in the Manifest registry to see other YSWS submissions */
+  @Get('projects/:id/manifest-lookup')
+  @ApiOkResponse({ type: ManifestLookupResponse })
+  async getProjectManifestLookup(@Param('id', ParseIntPipe) id: number) {
+    return this.reviewerService.getProjectManifestLookup(id);
   }
 
   /** Get the shared note for a project */

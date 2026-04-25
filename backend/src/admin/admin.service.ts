@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
 import { CachetService } from '../cachet/cachet.service';
 import { GeocodingService } from './geocoding.service';
+import { ManifestService } from '../manifest/manifest.service';
 import * as Papa from 'papaparse';
 
 const projectAdminInclude = {
@@ -46,6 +47,7 @@ export class AdminService {
     private slackService: SlackService,
     private cachetService: CachetService,
     private geocodingService: GeocodingService,
+    private manifestService: ManifestService,
   ) {}
 
   async getAllSubmissions() {
@@ -160,6 +162,7 @@ export class AdminService {
       select: {
         projectId: true,
         nowHackatimeProjects: true,
+        repoUrl: true,
       },
     });
 
@@ -214,6 +217,14 @@ export class AdminService {
       } catch {
         // best-effort; caller sees updated fields even if recalc fails
       }
+    }
+
+    if (
+      data.repoUrl !== undefined &&
+      data.repoUrl &&
+      data.repoUrl !== existing.repoUrl
+    ) {
+      this.manifestService.createDraft(data.repoUrl).catch(() => {});
     }
 
     return this.getProject(projectId);

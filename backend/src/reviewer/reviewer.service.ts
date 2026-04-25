@@ -7,6 +7,7 @@ import {
   SaveChecklistDto,
 } from './dto/review-submission.dto';
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
+import { ManifestService } from '../manifest/manifest.service';
 import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 
@@ -26,7 +27,32 @@ export class ReviewerService {
     private prisma: PrismaService,
     private fraudReviewService: FraudReviewService,
     private submissionApprovalService: SubmissionApprovalService,
+    private manifestService: ManifestService,
   ) {}
+
+  /**
+   * Reviewer-facing Manifest lookup: shows whether this project's codeUrl has
+   * been submitted to other YSWS programs (for cross-program fraud signal).
+   * Returns null when the project has no codeUrl, manifest is disabled, or
+   * the project isn't registered.
+   */
+  async getProjectManifestLookup(projectId: number) {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: { repoUrl: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (!project.repoUrl || !this.manifestService.isEnabled()) {
+      return { codeUrl: project.repoUrl, manifest: null };
+    }
+
+    const manifest = await this.manifestService.lookup(project.repoUrl);
+    return { codeUrl: project.repoUrl, manifest };
+  }
 
   /**
    * Get the review queue: all pending submissions with scoped project/user data.

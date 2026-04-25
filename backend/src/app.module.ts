@@ -20,6 +20,7 @@ import { HackatimeModule } from './hackatime/hackatime.module';
 import { UtilsModule } from './utils/utils.module';
 import { GitHubModule } from './github/github.module';
 import { CachetModule } from './cachet/cachet.module';
+import { ManifestModule } from './manifest/manifest.module';
 import { AuthGuard } from './auth/auth.guard';
 import { PrismaService } from './prisma.service';
 
@@ -50,6 +51,7 @@ import { PrismaService } from './prisma.service';
     UtilsModule,
     GitHubModule,
     CachetModule,
+    ManifestModule,
   ],
   providers: [
     PrismaService,
