@@ -34,6 +34,32 @@
 	let currentIndex = $state(0);
 	let queueLength = $derived(queue.length);
 
+	// Projects this reviewer has already voted on (any submission). Used to
+	// skip them in next/prev so reviewers don't re-encounter resubmissions or
+	// projects they've finalized in the same session.
+	let seenProjectIds = $state<Set<number>>(new Set());
+
+	// Next skips ahead past projects this reviewer already voted on AND past
+	// projects another reviewer is actively claiming, so reviewers always land
+	// on something fresh and don't fight over claims. Previous deliberately
+	// allows revisiting a reviewed project (e.g. to double-check or amend a
+	// verdict). Stale claims fall through — the next reviewer takes them over.
+	function isActivelyClaimedByOther(item: QueueItem): boolean {
+		return !!(item.claim && !item.claim.isMine && !item.claim.isStale);
+	}
+
+	function findNextUnseen(fromIndex: number): number {
+		for (let i = fromIndex + 1; i < queue.length; i++) {
+			const item = queue[i];
+			if (seenProjectIds.has(item.projectId)) continue;
+			if (isActivelyClaimedByOther(item)) continue;
+			return i;
+		}
+		return -1;
+	}
+
+	let hasNextUnseen = $derived(findNextUnseen(currentIndex) !== -1);
+
 	// Current submission detail + loading
 	let currentSubmission = $state<SubmissionDetail | null>(null);
 	let submissionLoading = $state(true);
@@ -67,9 +93,23 @@
 	let activeTab = $state('readme');
 
 	onMount(async () => {
-		// Load queue for next/prev navigation
-		const { data: queueData } = await api.GET('/api/reviewer/queue');
-		queue = queueData ?? [];
+		// Load queue + past reviews in parallel. Past reviews powers two things:
+		// (1) the seenProjectIds set that drives next/prev skip-already-reviewed,
+		// and (2) the deep-link fallback when a project isn't in the pending queue.
+		const [queueRes, pastRes] = await Promise.all([
+			api.GET('/api/reviewer/queue'),
+			api.GET('/api/reviewer/past-reviews'),
+		]);
+		queue = queueRes.data ?? [];
+
+		if (pastRes.data) {
+			const myId = String(pastRes.data.currentReviewerId);
+			seenProjectIds = new Set(
+				pastRes.data.reviews
+					.filter((r) => r.reviewerId === myId)
+					.map((r) => r.projectId),
+			);
+		}
 
 		// Honor ?submissionId=X so reviewers can deep-link to a specific
 		// submission (e.g. an older resubmission) rather than always landing
@@ -94,8 +134,7 @@
 
 		// Not in pending queue — fall back to past reviews so already-reviewed
 		// projects remain viewable from the gallery.
-		const { data: pastData } = await api.GET('/api/reviewer/past-reviews');
-		const past = pastData?.reviews.find((r) => r.projectId === projectId);
+		const past = pastRes.data?.reviews.find((r) => r.projectId === projectId);
 		if (!past) {
 			// Render the "not found" view rather than silently bouncing to the
 			// gallery — a quiet redirect looks like a bug to reviewers.
@@ -296,9 +335,8 @@
 	}
 
 	async function navigateNext() {
-		if (currentIndex < queueLength - 1) {
-			await navigateTo(currentIndex + 1);
-		}
+		const idx = findNextUnseen(currentIndex);
+		if (idx !== -1) await navigateTo(idx);
 	}
 
 	async function navigatePrev() {
@@ -318,8 +356,17 @@
 		// Skip the unsaved-changes prompt — this navigation is the natural
 		// follow-through of a submitted verdict.
 		skipLeavePrompt = true;
-		if (currentIndex < queueLength - 1) {
-			navigateNext();
+		// Mark this project seen so navigateNext skips past it (and any future
+		// resubmission of the same project) for the rest of the session.
+		if (currentSubmission) {
+			seenProjectIds = new Set([
+				...seenProjectIds,
+				currentSubmission.project.projectId,
+			]);
+		}
+		const nextIdx = findNextUnseen(currentIndex);
+		if (nextIdx !== -1) {
+			navigateTo(nextIdx);
 		} else {
 			goBack();
 		}
@@ -355,6 +402,7 @@
 			onPrev={navigatePrev}
 			onBackToGallery={goBack}
 			reviewPassed={currentSubmission.reviewPassed}
+			nextDisabled={!hasNextUnseen}
 		/>
 
 		<div class="grid grid-cols-[300px_1fr_320px] flex-1 overflow-hidden">
