@@ -16,6 +16,7 @@ import { ManifestService } from '../manifest/manifest.service';
 import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 import { CachetService } from '../cachet/cachet.service';
+import { HackatimeService } from '../hackatime/hackatime.service';
 
 // Scoped user fields — no PII like email, address, birthday, or real name
 const SCOPED_USER_SELECT = {
@@ -33,7 +34,17 @@ export class ReviewerService {
     private submissionApprovalService: SubmissionApprovalService,
     private manifestService: ManifestService,
     private cachetService: CachetService,
+    private hackatimeService: HackatimeService,
   ) {}
+
+  /**
+   * Per-Hackatime-project hour breakdown for a project, fetched live from
+   * Hackatime so the review UI can show real per-project numbers instead of
+   * an even split.
+   */
+  async getProjectHackatimeBreakdown(projectId: number) {
+    return this.hackatimeService.getProjectHoursBreakdown(projectId);
+  }
 
   /**
    * Reviewer-facing Manifest lookup: shows whether this project's codeUrl has

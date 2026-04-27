@@ -30,6 +30,7 @@ import {
   PastReviewsResponse,
   ManifestLookupResponse,
   ClaimResultResponse,
+  HackatimeProjectHours,
 } from './dto/reviewer-response.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -154,6 +155,13 @@ export class ReviewerController {
   @ApiOkResponse({ type: ManifestLookupResponse })
   async getProjectManifestLookup(@Param('id', ParseIntPipe) id: number) {
     return this.reviewerService.getProjectManifestLookup(id);
+  }
+
+  /** Live per-Hackatime-project hour breakdown for the review UI */
+  @Get('projects/:id/hackatime-breakdown')
+  @ApiOkResponse({ type: [HackatimeProjectHours] })
+  async getProjectHackatimeBreakdown(@Param('id', ParseIntPipe) id: number) {
+    return this.reviewerService.getProjectHackatimeBreakdown(id);
   }
 
   /** Get the shared note for a project */

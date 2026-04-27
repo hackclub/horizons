@@ -6,6 +6,7 @@ import { FraudReviewModule } from '../fraud-review/fraud-review.module';
 import { SubmissionApprovalModule } from '../submission-approval/submission-approval.module';
 import { ManifestModule } from '../manifest/manifest.module';
 import { CachetModule } from '../cachet/cachet.module';
+import { HackatimeModule } from '../hackatime/hackatime.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { CachetModule } from '../cachet/cachet.module';
     SubmissionApprovalModule,
     ManifestModule,
     CachetModule,
+    HackatimeModule,
   ],
   controllers: [ReviewerController],
   providers: [ReviewerService, PrismaService],
