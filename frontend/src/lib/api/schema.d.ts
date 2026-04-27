@@ -616,22 +616,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/projects/{id}/fraud-flag": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["AdminController_toggleFraudFlag"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/admin/users/{id}/fraud-flag": {
         parameters: {
             query?: never;
@@ -888,6 +872,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/past-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getPastReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/queue": {
         parameters: {
             query?: never;
@@ -920,6 +920,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/submissions/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewerController_claimSubmission"];
+        delete: operations["ReviewerController_releaseClaim"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/submissions/{id}/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewerController_heartbeatClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/submissions/{id}/review": {
         parameters: {
             query?: never;
@@ -946,6 +978,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["ReviewerController_quickApproveSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/projects/{id}/manifest-lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getProjectManifestLookup"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1875,7 +1923,6 @@ export interface components {
             approvedHours: number | null;
             hoursJustification: string | null;
             adminComment: string | null;
-            isFraud: boolean;
             user: components["schemas"]["AdminSubmissionProjectUserResponse"];
         };
         AdminSubmissionResponse: {
@@ -1961,7 +2008,8 @@ export interface components {
             hoursJustification: string | null;
             adminComment: string | null;
             isLocked: boolean;
-            isFraud: boolean;
+            joeFraudPassed: boolean | null;
+            joeTrustScore: number | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2054,7 +2102,6 @@ export interface components {
             nowHackatimeHours: number | null;
             approvedHours: number | null;
             isLocked: boolean;
-            isFraud: boolean;
             /** Format: date-time */
             createdAt: string;
             submissions: components["schemas"]["AdminUserSubmissionResponse"][];
@@ -2125,16 +2172,29 @@ export interface components {
             lastProjectReviewTime: number | null;
             lastProjectFraudCheckTime: number | null;
         };
+        StatsFunnelMatrixRow: {
+            fraudPassed: number;
+            fraudFailed: number;
+            fraudPending: number;
+        };
+        StatsFunnelMatrix: {
+            reviewApproved: components["schemas"]["StatsFunnelMatrixRow"];
+            reviewRejected: components["schemas"]["StatsFunnelMatrixRow"];
+            reviewPending: components["schemas"]["StatsFunnelMatrixRow"];
+        };
         StatsReviewProjects: {
             shipped: number;
             fraudChecked: number;
             fraudQueue: number;
             reviewQueue: number;
+            awaitingFraud: number;
+            fraudTeamDeliberation: number;
             reviewed: number;
             approved: number;
             shippedThisWeek: number;
             fraudCheckedThisWeek: number;
             reviewedThisWeek: number;
+            funnelMatrix: components["schemas"]["StatsFunnelMatrix"];
         };
         StatsSignupEventEntry: {
             eventId: number;
@@ -2252,11 +2312,6 @@ export interface components {
             lastReviewedAt: string | null;
         };
         ToggleFraudFlagDto: {
-            isFraud: boolean;
-        };
-        AdminFraudFlagResponse: {
-            projectId: number;
-            projectTitle: string;
             isFraud: boolean;
         };
         AdminUserFlagResponse: {
@@ -2382,12 +2437,31 @@ export interface components {
         };
         ScopedUserResponse: {
             userId: number;
-            firstName: string;
-            lastName: string;
+            displayName: string | null;
             slackUserId: string | null;
             age: number | null;
             /** Format: date-time */
             hackatimeStartDate: string | null;
+        };
+        PastReviewEntry: {
+            submissionId: number;
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            reviewerId: string | null;
+            reviewerName: string;
+            /** @enum {string} */
+            approvalStatus: "pending" | "approved" | "rejected";
+            reviewPassed: boolean | null;
+            approvedHours: number | null;
+            hackatimeHours: number | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            user: components["schemas"]["ScopedUserResponse"];
+        };
+        PastReviewsResponse: {
+            currentReviewerId: number;
+            reviews: components["schemas"]["PastReviewEntry"][];
         };
         QueueProjectResponse: {
             projectId: number;
@@ -2397,7 +2471,19 @@ export interface components {
             playableUrl: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
+            joeFraudPassed: boolean | null;
             user: components["schemas"]["ScopedUserResponse"];
+        };
+        ClaimInfoResponse: {
+            userId: number;
+            firstName: string;
+            lastName: string;
+            /** Format: date-time */
+            claimedAt: string;
+            /** Format: date-time */
+            heartbeatAt: string;
+            isStale: boolean;
+            isMine: boolean;
         };
         QueueItemResponse: {
             submissionId: number;
@@ -2406,6 +2492,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             project: components["schemas"]["QueueProjectResponse"];
+            claim: components["schemas"]["ClaimInfoResponse"] | null;
         };
         SubmissionProjectResponse: {
             projectId: number;
@@ -2415,8 +2502,11 @@ export interface components {
             playableUrl: string | null;
             repoUrl: string | null;
             readmeUrl: string | null;
+            adminComment: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
+            joeFraudPassed: boolean | null;
+            joeTrustScore: number | null;
             user: components["schemas"]["ScopedUserResponse"];
         };
         TimelineEntryResponse: {
@@ -2431,11 +2521,30 @@ export interface components {
             /** Format: date-time */
             timestamp: string;
         };
+        ProjectSubmissionSummary: {
+            submissionId: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            approvalStatus: "pending" | "approved" | "rejected";
+            reviewPassed: boolean | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            hackatimeHours: number | null;
+        };
         SubmissionDetailResponse: {
             submissionId: number;
             projectId: number;
             approvalStatus: string;
+            reviewPassed: boolean | null;
+            /** Format: date-time */
+            finalizedAt: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            approvedHours: number | null;
             hackatimeHours: number | null;
+            userFeedback: string | null;
+            reviewerAnalysis: string | null;
             description: string | null;
             playableUrl: string | null;
             repoUrl: string | null;
@@ -2444,6 +2553,15 @@ export interface components {
             createdAt: string;
             project: components["schemas"]["SubmissionProjectResponse"];
             timeline: components["schemas"]["TimelineEntryResponse"][];
+            submissions: components["schemas"]["ProjectSubmissionSummary"][];
+            claim: components["schemas"]["ClaimInfoResponse"] | null;
+        };
+        ClaimSubmissionDto: {
+            force?: boolean;
+        };
+        ClaimResultResponse: {
+            claimed: boolean;
+            claim: components["schemas"]["ClaimInfoResponse"] | null;
         };
         ReviewSubmissionDto: {
             /** @enum {string} */
@@ -2463,6 +2581,34 @@ export interface components {
             userFeedback?: string;
             hoursJustification?: string;
             approvedHours?: number;
+        };
+        ManifestSubmissionResponse: {
+            submissionId: string;
+            ysws: string | null;
+            yswsName: string | null;
+            /** @enum {string} */
+            shipStatus: "draft" | "shipped";
+            hoursShipped: number | null;
+            airtableRecord: string | null;
+            /** Format: date-time */
+            approvedAt: string | null;
+            /** Format: date-time */
+            shippedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ManifestProjectResponse: {
+            projectId: string;
+            /** Format: uri */
+            codeUrl: string;
+            /** Format: date-time */
+            createdAt: string;
+            submissions: components["schemas"]["ManifestSubmissionResponse"][];
+            warning?: string;
+        };
+        ManifestLookupResponse: {
+            codeUrl: string | null;
+            manifest: components["schemas"]["ManifestProjectResponse"] | null;
         };
         NoteResponse: {
             content: string;
@@ -3386,7 +3532,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -3810,31 +3958,6 @@ export interface operations {
             };
         };
     };
-    AdminController_toggleFraudFlag: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ToggleFraudFlagDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminFraudFlagResponse"];
-                };
-            };
-        };
-    };
     AdminController_toggleUserFraudFlag: {
         parameters: {
             query?: never;
@@ -4171,6 +4294,25 @@ export interface operations {
             };
         };
     };
+    ReviewerController_getPastReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PastReviewsResponse"];
+                };
+            };
+        };
+    };
     ReviewerController_getQueue: {
         parameters: {
             query?: never;
@@ -4208,6 +4350,83 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SubmissionDetailResponse"];
                 };
+            };
+        };
+    };
+    ReviewerController_claimSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimSubmissionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimResultResponse"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewerController_releaseClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewerController_heartbeatClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimResultResponse"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4264,6 +4483,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ReviewerController_getProjectManifestLookup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManifestLookupResponse"];
+                };
             };
         };
     };

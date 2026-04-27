@@ -4,11 +4,13 @@ export class ScopedUserResponse {
   @ApiProperty()
   userId: number;
 
-  @ApiProperty()
-  firstName: string;
-
-  @ApiProperty()
-  lastName: string;
+  /**
+   * Cachet-resolved display name (the user's public Slack identity).
+   * Null when the user has no slackUserId or Cachet has no record.
+   * Reviewers intentionally do not see real first/last names.
+   */
+  @ApiProperty({ type: String, nullable: true })
+  displayName: string | null;
 
   @ApiProperty({ type: String, nullable: true })
   slackUserId: string | null;

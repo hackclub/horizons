@@ -67,6 +67,10 @@
 		return joeFraudPassed === null;
 	}
 
+	function userLabel(u: { displayName: string | null; slackUserId: string | null }): string {
+		return u.displayName ?? (u.slackUserId ? `@${u.slackUserId}` : 'Anonymous');
+	}
+
 	let filteredItems = $derived(
 		items
 			.map((item, index) => ({ item, index }))
@@ -75,7 +79,7 @@
 					matchesFilters(
 						item.project.projectTitle,
 						item.project.projectType,
-						`${item.project.user.firstName} ${item.project.user.lastName}`,
+						userLabel(item.project.user),
 					) && matchesFraudFilter(item.project.joeFraudPassed),
 			)
 			.sort((a, b) => {
@@ -122,7 +126,7 @@
 					matchesFilters(
 						r.projectTitle,
 						r.projectType,
-						`${r.user.firstName} ${r.user.lastName}`,
+						userLabel(r.user),
 					),
 			),
 		),
@@ -134,7 +138,7 @@
 				matchesFilters(
 					r.projectTitle,
 					r.projectType,
-					`${r.user.firstName} ${r.user.lastName}`,
+					userLabel(r.user),
 				),
 			),
 		),
@@ -258,7 +262,7 @@
 					>
 						<p class="text-[15px] font-semibold text-rv-text m-0">{item.project.projectTitle}</p>
 						<p class="text-[13px] text-rv-dim m-0">
-							{item.project.user.firstName} {item.project.user.lastName}
+							{userLabel(item.project.user)}
 						</p>
 						<div class="flex items-center gap-1.5 flex-wrap mt-1">
 							<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
@@ -297,7 +301,7 @@
 						>
 							<p class="text-[15px] font-semibold text-rv-text m-0">{review.projectTitle}</p>
 							<p class="text-[13px] text-rv-dim m-0">
-								{review.user.firstName} {review.user.lastName}
+								{userLabel(review.user)}
 							</p>
 							<div class="flex items-center gap-1.5 flex-wrap mt-1">
 								{#if review.reviewPassed !== null}
@@ -353,7 +357,7 @@
 						>
 							<p class="text-[15px] font-semibold text-rv-text m-0">{review.projectTitle}</p>
 							<p class="text-[13px] text-rv-dim m-0">
-								{review.user.firstName} {review.user.lastName}
+								{userLabel(review.user)}
 							</p>
 							<div class="flex items-center gap-1.5 flex-wrap mt-1">
 								{#if review.reviewPassed !== null}
