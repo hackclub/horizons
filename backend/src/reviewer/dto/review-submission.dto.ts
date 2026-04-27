@@ -67,3 +67,11 @@ export class SaveChecklistDto {
   @IsInt({ each: true })
   checkedItems: number[];
 }
+
+export class ClaimSubmissionDto {
+  // Set true to take over an active claim held by another reviewer. Without
+  // this flag, the endpoint refuses with conflict info so the UI can prompt.
+  @IsBoolean()
+  @IsOptional()
+  force?: boolean;
+}

@@ -3,6 +3,7 @@ import {
   Get,
   Put,
   Post,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -17,6 +18,7 @@ import {
   QuickApproveDto,
   SaveNoteDto,
   SaveChecklistDto,
+  ClaimSubmissionDto,
 } from './dto/review-submission.dto';
 import {
   QueueItemResponse,
@@ -27,6 +29,7 @@ import {
   ReviewStatsResponse,
   PastReviewsResponse,
   ManifestLookupResponse,
+  ClaimResultResponse,
 } from './dto/reviewer-response.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -61,15 +64,63 @@ export class ReviewerController {
   /** Get the pending submissions queue with scoped data */
   @Get('queue')
   @ApiOkResponse({ type: [QueueItemResponse] })
-  async getQueue() {
-    return this.reviewerService.getReviewQueue();
+  async getQueue(@Req() req: Request) {
+    return this.reviewerService.getReviewQueue(req.user.userId);
   }
 
   /** Get full scoped detail for a single submission */
   @Get('submissions/:id')
   @ApiOkResponse({ type: SubmissionDetailResponse })
-  async getSubmissionDetail(@Param('id', ParseIntPipe) id: number) {
-    return this.reviewerService.getSubmissionDetail(id);
+  async getSubmissionDetail(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ) {
+    return this.reviewerService.getSubmissionDetail(id, req.user.userId);
+  }
+
+  /**
+   * Claim a submission for review. The frontend calls this when opening a
+   * review so two reviewers can't grab the same project.
+   *
+   * - 200 + `{ claimed: true, claim }` when the caller now holds the claim
+   *   (no prior claim, stale claim, self-reclaim, or `force=true` takeover).
+   * - 200 + `{ claimed: false, claim }` when another reviewer has an active
+   *   claim and the caller didn't pass `force` — UI should prompt to override.
+   */
+  @Post('submissions/:id/claim')
+  @ApiOkResponse({ type: ClaimResultResponse })
+  async claimSubmission(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ClaimSubmissionDto,
+    @Req() req: Request,
+  ) {
+    return this.reviewerService.claimSubmission(
+      id,
+      req.user.userId,
+      dto.force ?? false,
+    );
+  }
+
+  /**
+   * Heartbeat the claim — the frontend pings this every ~30s while the
+   * review page is open so the claim doesn't go stale.
+   */
+  @Post('submissions/:id/heartbeat')
+  @ApiOkResponse({ type: ClaimResultResponse })
+  async heartbeatClaim(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ) {
+    return this.reviewerService.heartbeatClaim(id, req.user.userId);
+  }
+
+  /** Release the claim explicitly (e.g. when the reviewer navigates away). */
+  @Delete('submissions/:id/claim')
+  async releaseClaim(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ) {
+    return this.reviewerService.releaseClaim(id, req.user.userId);
   }
 
   /** Update a submission: change status, hours, feedback, comments */

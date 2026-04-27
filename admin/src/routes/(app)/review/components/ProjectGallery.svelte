@@ -247,12 +247,32 @@
 			</div>
 			<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
 				{#each filteredItems as { item, index } (item.submissionId)}
-					<button class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] cursor-pointer transition-all duration-150 text-left font-inherit color-inherit hover:border-rv-accent hover:bg-rv-surface2" onclick={() => onSelect(index)}>
+					{@const activeOtherClaim =
+						item.claim && !item.claim.isMine && !item.claim.isStale
+							? item.claim
+							: null}
+					<button
+						class="flex flex-col gap-1.5 p-5 bg-rv-surface border rounded-[10px] cursor-pointer transition-all duration-150 text-left font-inherit color-inherit hover:bg-rv-surface2 {activeOtherClaim ? 'border-yellow-500/50 hover:border-yellow-500' : 'border-rv-border hover:border-rv-accent'}"
+						onclick={() => onSelect(index)}
+						title={activeOtherClaim ? `Currently being reviewed by ${activeOtherClaim.firstName} ${activeOtherClaim.lastName}` : undefined}
+					>
 						<p class="text-[15px] font-semibold text-rv-text m-0">{item.project.projectTitle}</p>
 						<p class="text-[13px] text-rv-dim m-0">
 							{item.project.user.firstName} {item.project.user.lastName}
 						</p>
-						<span class="inline-block mt-1 py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px] self-start">{formatTypeName(item.project.projectType)}</span>
+						<div class="flex items-center gap-1.5 flex-wrap mt-1">
+							<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
+							{#if activeOtherClaim}
+								<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-yellow-500/15 text-yellow-600 border border-yellow-500/40">
+									<span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+									Reviewing: {activeOtherClaim.firstName} {activeOtherClaim.lastName}
+								</span>
+							{:else if item.claim?.isMine}
+								<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-rv-tag-bg text-rv-accent border border-rv-accent/40">
+									Open in your tab
+								</span>
+							{/if}
+						</div>
 					</button>
 				{:else}
 					<p class="col-span-full text-center text-rv-dim py-6 text-sm">No projects match your filters.</p>
