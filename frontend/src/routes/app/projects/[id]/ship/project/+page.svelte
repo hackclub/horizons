@@ -22,6 +22,7 @@
 	];
 
 	const projectId = $derived(page.params.id);
+	const bypassDemoCheck = $derived(page.url.searchParams.get('bypass') === 'demo');
 
 	let loading = $state(true);
 	let title = $state('');
@@ -264,11 +265,11 @@
 	}
 
 	let hasUrlErrors = $derived(
-		demoUrlStatus === 'error' || codeUrlStatus === 'error' || readmeUrlStatus === 'error'
+		(!bypassDemoCheck && demoUrlStatus === 'error') || codeUrlStatus === 'error' || readmeUrlStatus === 'error'
 	);
 
 	let urlsChecking = $derived(
-		demoUrlStatus === 'checking' || codeUrlStatus === 'checking' || readmeUrlStatus === 'checking'
+		(!bypassDemoCheck && demoUrlStatus === 'checking') || codeUrlStatus === 'checking' || readmeUrlStatus === 'checking'
 	);
 
 	let allFilled = $derived(
