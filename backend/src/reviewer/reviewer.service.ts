@@ -700,13 +700,15 @@ export class ReviewerService {
   }
 
   /**
-   * List all finalized (approved/rejected) submissions, newest first.
+   * List submissions a reviewer has voted on, newest first. Includes those
+   * still pending fraud reconciliation (reviewPassed set, approvalStatus
+   * stuck on pending) so opening such a project from the gallery can resolve
+   * to a real submission instead of silently redirecting.
    * Frontend splits this into "mine" vs "all" using currentReviewerId.
    */
   async getPastReviews(currentReviewerId: number) {
     const submissions = await this.prisma.submission.findMany({
       where: {
-        approvalStatus: { in: ['approved', 'rejected'] },
         reviewedBy: { not: null },
       },
       orderBy: { reviewedAt: 'desc' },

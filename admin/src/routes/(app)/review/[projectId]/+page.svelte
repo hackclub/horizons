@@ -97,7 +97,9 @@
 		const { data: pastData } = await api.GET('/api/reviewer/past-reviews');
 		const past = pastData?.reviews.find((r) => r.projectId === projectId);
 		if (!past) {
-			goto(`${base}/review`);
+			// Render the "not found" view rather than silently bouncing to the
+			// gallery — a quiet redirect looks like a bug to reviewers.
+			submissionLoading = false;
 			return;
 		}
 		await loadSubmissionDetail(past.submissionId);
@@ -306,9 +308,12 @@
 			<p>Loading submission...</p>
 		</div>
 	{:else if !currentSubmission}
-		<div class="flex flex-col items-center justify-center h-screen gap-2 text-rv-dim bg-rv-bg">
-			<p>Project not found in review queue.</p>
-			<button class="mt-3 bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit" onclick={goBack}>← Back to Gallery</button>
+		<div class="flex flex-col items-center justify-center h-screen gap-3 text-rv-dim bg-rv-bg px-6">
+			<p class="text-rv-text text-[15px] m-0">Project #{projectId} isn't in the review system.</p>
+			<p class="text-[12px] text-rv-dim max-w-105 text-center m-0">
+				It has no pending submission, no past review, and you may have followed a stale link or mistyped the URL.
+			</p>
+			<button class="mt-3 bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit hover:border-rv-accent" onclick={goBack}>← Back to Gallery</button>
 		</div>
 	{:else}
 		<TopBar
