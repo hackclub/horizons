@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api } from '$lib/api';
+	import { toast } from '$lib/toastStore';
 	import JustificationBuilder from './JustificationBuilder.svelte';
 
 	interface Props {
@@ -87,10 +88,13 @@
 				},
 			});
 			if (error) throw new Error(`Failed to approve submission ${submissionId}`);
+			toast.success('Project approved');
 			onReviewComplete();
 		} catch (error) {
 			console.error('Approval failed:', error);
-			alert(`Approval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			toast.error(
+				`Approval failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
 		} finally {
 			submitting = false;
 		}
@@ -98,7 +102,7 @@
 
 	async function submitChangesNeeded() {
 		if (!changesComment.trim()) {
-			alert('Please describe what needs to change.');
+			toast.error('Please describe what needs to change.');
 			return;
 		}
 
@@ -113,10 +117,13 @@
 				},
 			});
 			if (error) throw new Error(`Failed to reject submission ${submissionId}`);
+			toast.success('Changes requested');
 			onReviewComplete();
 		} catch (error) {
 			console.error('Review failed:', error);
-			alert(`Review failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			toast.error(
+				`Review failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
 		} finally {
 			submitting = false;
 		}
@@ -144,7 +151,9 @@
 			setTimeout(() => (draftSavedFlash = false), 2000);
 		} catch (error) {
 			console.error('Save draft failed:', error);
-			alert(`Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			toast.error(
+				`Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
 		} finally {
 			savingDraft = false;
 		}
