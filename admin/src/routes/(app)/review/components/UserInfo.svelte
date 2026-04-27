@@ -55,11 +55,29 @@
 			? new Date((user as any).hackatimeStartDate).toISOString().split('T')[0]
 			: null,
 	);
+
+	const displayLabel = $derived(
+		user.displayName ?? (user.slackUserId ? `@${user.slackUserId}` : 'Anonymous'),
+	);
+
+	let slackIdCopied = $state(false);
+	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
+	async function copySlackId() {
+		if (!user.slackUserId) return;
+		try {
+			await navigator.clipboard.writeText(user.slackUserId);
+			slackIdCopied = true;
+			if (copyTimeout) clearTimeout(copyTimeout);
+			copyTimeout = setTimeout(() => (slackIdCopied = false), 1200);
+		} catch {
+			// clipboard unavailable — silent
+		}
+	}
 </script>
 
 <div class="p-4">
 	<div class="flex items-center gap-2 mb-0.5">
-		<span class="text-[18px] font-bold font-[Space_Mono,monospace]">{user.firstName} {user.lastName}</span>
+		<span class="text-[18px] font-bold font-[Space_Mono,monospace]">{displayLabel}</span>
 	</div>
 
 	<div class="flex items-center gap-2 mb-3">
@@ -74,7 +92,7 @@
 	</div>
 
 	{#if slackDmUrl}
-		<div class="text-[12px] text-rv-dim mb-3.5">
+		<div class="text-[12px] text-rv-dim mb-3.5 flex items-center gap-2 flex-wrap">
 			<a href={slackDmUrl} target="_blank" rel="noopener noreferrer" class="text-rv-dim no-underline inline-flex items-center gap-1 transition-all duration-150 hover:text-rv-accent">
 				<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path
@@ -90,6 +108,27 @@
 				</svg>
 				DM on Slack ↗
 			</a>
+			<span class="inline-flex items-center gap-1 font-[Space_Mono,monospace] text-rv-dim/80">
+				<span>{user.slackUserId}</span>
+				<button
+					type="button"
+					onclick={copySlackId}
+					title={slackIdCopied ? 'Copied!' : 'Copy Slack ID'}
+					aria-label="Copy Slack ID"
+					class="inline-flex items-center justify-center p-0.5 rounded text-rv-dim hover:text-rv-accent transition-colors duration-150 cursor-pointer"
+				>
+					{#if slackIdCopied}
+						<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+							<polyline points="20 6 9 17 4 12" />
+						</svg>
+					{:else}
+						<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+							<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+						</svg>
+					{/if}
+				</button>
+			</span>
 		</div>
 	{/if}
 

@@ -2437,8 +2437,7 @@ export interface components {
         };
         ScopedUserResponse: {
             userId: number;
-            firstName: string;
-            lastName: string;
+            displayName: string | null;
             slackUserId: string | null;
             age: number | null;
             /** Format: date-time */

@@ -15,12 +15,11 @@ import { FraudReviewService } from '../fraud-review/fraud-review.service';
 import { ManifestService } from '../manifest/manifest.service';
 import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
+import { CachetService } from '../cachet/cachet.service';
 
-// Scoped user fields — no PII like email, address, birthday
+// Scoped user fields — no PII like email, address, birthday, or real name
 const SCOPED_USER_SELECT = {
   userId: true,
-  firstName: true,
-  lastName: true,
   slackUserId: true,
   birthday: true, // used to compute age only, never sent raw
   hackatimeStartDate: true,
@@ -33,6 +32,7 @@ export class ReviewerService {
     private fraudReviewService: FraudReviewService,
     private submissionApprovalService: SubmissionApprovalService,
     private manifestService: ManifestService,
+    private cachetService: CachetService,
   ) {}
 
   /**
@@ -97,6 +97,10 @@ export class ReviewerService {
       orderBy: { createdAt: 'asc' },
     });
 
+    const displayNameMap = await this.fetchDisplayNamesFor(
+      submissions.map((s) => s.project.user),
+    );
+
     return submissions.map((submission) => ({
       submissionId: submission.submissionId,
       projectId: submission.projectId,
@@ -104,7 +108,7 @@ export class ReviewerService {
       createdAt: submission.createdAt,
       project: {
         ...submission.project,
-        user: this.scopeUserData(submission.project.user),
+        user: this.scopeUserData(submission.project.user, displayNameMap),
       },
       claim: this.buildClaimInfo(submission, viewerId),
     }));
@@ -187,6 +191,10 @@ export class ReviewerService {
     });
     const reviewerMap = new Map(reviewers.map((r) => [r.userId, r]));
 
+    const displayNameMap = await this.fetchDisplayNamesFor([
+      submission.project.user,
+    ]);
+
     // Build timeline from all submissions on this project
     const timeline = this.buildTimeline(
       submission.project.submissions,
@@ -241,7 +249,7 @@ export class ReviewerService {
         nowHackatimeProjects: submission.project.nowHackatimeProjects,
         joeFraudPassed: submission.project.joeFraudPassed,
         joeTrustScore: submission.project.joeTrustScore,
-        user: this.scopeUserData(submission.project.user),
+        user: this.scopeUserData(submission.project.user, displayNameMap),
       },
       timeline,
       submissions: submissionsList,
@@ -749,6 +757,10 @@ export class ReviewerService {
       reviewers.map((r) => [r.userId.toString(), r]),
     );
 
+    const displayNameMap = await this.fetchDisplayNamesFor(
+      submissions.map((s) => s.project.user),
+    );
+
     const reviews = submissions.map((s) => {
       const reviewer = s.reviewedBy ? reviewerMap.get(s.reviewedBy) : null;
       return {
@@ -770,7 +782,7 @@ export class ReviewerService {
         approvedHours: s.approvedHours,
         hackatimeHours: s.hackatimeHours,
         reviewedAt: s.reviewedAt,
-        user: this.scopeUserData(s.project.user),
+        user: this.scopeUserData(s.project.user, displayNameMap),
       };
     });
 
@@ -862,17 +874,23 @@ export class ReviewerService {
   }
 
   /**
-   * Strip PII from user data — only expose what reviewers need.
-   * Age is computed from birthday, birthday itself is not returned.
+   * Strip PII from user data — only expose what reviewers need. Real name is
+   * intentionally omitted; reviewers see the cachet display name (the user's
+   * public Slack identity) instead. Age is computed from birthday; birthday
+   * itself is not returned.
+   *
+   * `displayNameMap` should be pre-fetched via `fetchDisplayNamesFor()` so we
+   * don't issue a Cachet round-trip per user inside a hot loop.
    */
-  private scopeUserData(user: {
-    userId: number;
-    firstName: string;
-    lastName: string;
-    slackUserId: string | null;
-    birthday: Date | null;
-    hackatimeStartDate: Date | null;
-  }) {
+  private scopeUserData(
+    user: {
+      userId: number;
+      slackUserId: string | null;
+      birthday: Date | null;
+      hackatimeStartDate: Date | null;
+    },
+    displayNameMap: Map<string, string>,
+  ) {
     let age: number | null = null;
     if (user.birthday) {
       const today = new Date();
@@ -889,12 +907,31 @@ export class ReviewerService {
 
     return {
       userId: user.userId,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      displayName: user.slackUserId
+        ? (displayNameMap.get(user.slackUserId) ?? null)
+        : null,
       slackUserId: user.slackUserId,
       age,
       hackatimeStartDate: user.hackatimeStartDate,
     };
+  }
+
+  /**
+   * Batch-fetch Cachet display names for any user with a slackUserId.
+   * Returns an empty map if no users have a slackUserId.
+   */
+  private async fetchDisplayNamesFor(
+    users: Array<{ slackUserId: string | null }>,
+  ): Promise<Map<string, string>> {
+    const ids = [
+      ...new Set(
+        users
+          .map((u) => u.slackUserId)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    if (ids.length === 0) return new Map();
+    return this.cachetService.getDisplayNames(ids);
   }
 
   /**
