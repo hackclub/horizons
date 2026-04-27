@@ -77,6 +77,9 @@
 	let editedHours = $state<number | null>(null);
 	let manifestLookup = $state<ManifestLookupResponse | null>(null);
 	let manifestLoading = $state(false);
+	// Real per-Hackatime-project hours (live-fetched). Null until loaded; the
+	// HoursBreakdown component falls back to an even split while we wait.
+	let hackatimeProjectHours = $state<Record<string, number> | null>(null);
 
 	// Claim/lock state — keeps two reviewers from working the same submission.
 	const claimManager = createClaimManager();
@@ -221,6 +224,7 @@
 		githubRepo = null;
 		readmeMarkdown = '';
 		manifestLookup = null;
+		hackatimeProjectHours = null;
 
 		try {
 			const { data, error } = await api.GET('/api/reviewer/submissions/{id}', {
@@ -244,12 +248,28 @@
 			promises.push(loadNotes(data.project.projectId, data.project.user.userId));
 			promises.push(loadChecklist(submissionId));
 			promises.push(loadManifestLookup(data.project.projectId));
+			promises.push(loadHackatimeBreakdown(data.project.projectId));
 
 			await Promise.all(promises);
 		} catch (error) {
 			console.error('Failed to load submission detail:', error);
 		} finally {
 			submissionLoading = false;
+		}
+	}
+
+	async function loadHackatimeBreakdown(projectId: number) {
+		try {
+			const { data } = await api.GET(
+				'/api/reviewer/projects/{id}/hackatime-breakdown',
+				{ params: { path: { id: projectId } } },
+			);
+			if (!data) return;
+			const map: Record<string, number> = {};
+			for (const entry of data) map[entry.name] = entry.hours;
+			hackatimeProjectHours = map;
+		} catch {
+			hackatimeProjectHours = null;
 		}
 	}
 
@@ -415,6 +435,7 @@
 					readmeUrl={currentSubmission.project.readmeUrl}
 					hackatimeHours={currentSubmission.hackatimeHours}
 					hackatimeProjects={currentSubmission.project.nowHackatimeProjects ?? []}
+					hackatimeProjectHours={hackatimeProjectHours}
 					joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
 					joeTrustScore={currentSubmission.project.joeTrustScore ?? null}
 					onHoursChange={handleHoursChange}

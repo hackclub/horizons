@@ -368,6 +368,14 @@ export class ReviewStatsResponse {
   general: GeneralStats;
 }
 
+export class HackatimeProjectHours {
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  hours: number;
+}
+
 export class ManifestSubmissionResponse {
   @ApiProperty()
   submissionId: string;

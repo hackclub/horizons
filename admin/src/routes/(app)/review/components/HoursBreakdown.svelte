@@ -2,29 +2,41 @@
 	interface Props {
 		totalHours: number | null;
 		projects: string[];
+		/** Real per-project hours from Hackatime. When null/undefined the
+		 *  component is still loading or no breakdown is available; we fall
+		 *  back to an even split so the totals stay sane. */
+		projectHours?: Record<string, number> | null;
 		onHoursChange?: (hours: number) => void;
 	}
 
-	let { totalHours, projects, onHoursChange }: Props = $props();
+	let { totalHours, projects, projectHours = null, onHoursChange }: Props = $props();
 
 	// Raw string values the user types — one per project, keyed by name
 	let inputValues = $state<Record<string, string>>({});
 
-	// Track which projects array we last initialized for, so we only
-	// reset inputs when the submission actually changes
-	let lastProjectsKey = $state('');
+	// Re-seed inputs whenever the submission, the project list, or the
+	// fetched per-project breakdown changes. Real Hackatime values take
+	// precedence; the even split is only a fallback while loading or when
+	// the user has no Hackatime data.
+	let lastSeedKey = $state('');
 
 	$effect(() => {
-		const key = projects.join('\0');
-		if (key === lastProjectsKey) return;
-		lastProjectsKey = key;
+		const breakdownKey = projectHours
+			? projects.map((p) => `${p}=${projectHours[p] ?? ''}`).join('\0')
+			: '';
+		const key = `${projects.join('\0')}|${totalHours ?? ''}|${breakdownKey}`;
+		if (key === lastSeedKey) return;
+		lastSeedKey = key;
 
 		const values: Record<string, string> = {};
 		for (const proj of projects) {
+			const real = projectHours?.[proj];
 			const perProject =
-				totalHours && projects.length > 0
-					? Math.round((totalHours / projects.length) * 10) / 10
-					: 0;
+				real != null
+					? Math.round(real * 10) / 10
+					: totalHours && projects.length > 0
+						? Math.round((totalHours / projects.length) * 10) / 10
+						: 0;
 			values[proj] = perProject.toFixed(1);
 		}
 		inputValues = values;

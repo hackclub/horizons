@@ -10,6 +10,7 @@
 		readmeUrl: string | null;
 		hackatimeHours: number | null;
 		hackatimeProjects: string[];
+		hackatimeProjectHours?: Record<string, number> | null;
 		joeFraudPassed?: boolean | null;
 		joeTrustScore?: number | null;
 		onHoursChange?: (hours: number) => void;
@@ -22,6 +23,7 @@
 		readmeUrl,
 		hackatimeHours,
 		hackatimeProjects,
+		hackatimeProjectHours = null,
 		joeFraudPassed = null,
 		joeTrustScore = null,
 		onHoursChange,
@@ -173,7 +175,12 @@
 		{/if}
 	</div>
 
-	<HoursBreakdown totalHours={hackatimeHours} projects={hackatimeProjects} {onHoursChange} />
+	<HoursBreakdown
+		totalHours={hackatimeHours}
+		projects={hackatimeProjects}
+		projectHours={hackatimeProjectHours}
+		{onHoursChange}
+	/>
 
 	{#if user.age !== null}
 		<div class="text-[13px] text-rv-text flex items-center gap-1.5 mb-1">
