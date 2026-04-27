@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 
@@ -147,6 +147,35 @@
 		claimManager.destroy();
 	});
 
+	// Skip the leave-prompt for navigations the page itself triggers after a
+	// completed verdict (handleReviewComplete) — those are deliberate.
+	let skipLeavePrompt = $state(false);
+
+	// Always confirm before navigating off the review page. Reviewers can have
+	// unsaved drafts (notes, verdict text, hours edits) that aren't tracked
+	// individually, so we prompt unconditionally rather than guess.
+	const LEAVE_PROMPT_MESSAGE = 'Are you sure you want to leave this page? Any unsaved changes will be lost.';
+
+	beforeNavigate(({ cancel, to }) => {
+		if (skipLeavePrompt) return;
+		// Same-page param-only changes (e.g. ?submissionId=…) shouldn't prompt.
+		if (to && to.url.pathname === $page.url.pathname) return;
+		if (!confirm(LEAVE_PROMPT_MESSAGE)) cancel();
+	});
+
+	$effect(() => {
+		const handler = (event: BeforeUnloadEvent) => {
+			if (skipLeavePrompt) return;
+			event.preventDefault();
+			// Modern browsers ignore the message text and show their own dialog,
+			// but returnValue must be set for the prompt to trigger.
+			event.returnValue = LEAVE_PROMPT_MESSAGE;
+			return LEAVE_PROMPT_MESSAGE;
+		};
+		window.addEventListener('beforeunload', handler);
+		return () => window.removeEventListener('beforeunload', handler);
+	});
+
 	async function loadSubmissionDetail(submissionId: number) {
 		submissionLoading = true;
 		currentSubmission = null;
@@ -286,6 +315,9 @@
 		// Backend auto-releases on verdict; tell the local manager to stop
 		// heartbeating so we don't ping a no-longer-ours claim.
 		claimManager.destroy();
+		// Skip the unsaved-changes prompt — this navigation is the natural
+		// follow-through of a submitted verdict.
+		skipLeavePrompt = true;
 		if (currentIndex < queueLength - 1) {
 			navigateNext();
 		} else {
