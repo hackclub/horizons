@@ -9,6 +9,9 @@
 		onBackToGallery?: () => void;
 		/** Reviewer's own decision — null when the reviewer hasn't voted yet. */
 		reviewPassed?: boolean | null;
+		/** Whether there is an unseen project ahead/behind to navigate to. */
+		nextDisabled?: boolean;
+		prevDisabled?: boolean;
 	}
 
 	let {
@@ -18,6 +21,8 @@
 		onPrev,
 		onBackToGallery,
 		reviewPassed = null,
+		nextDisabled,
+		prevDisabled,
 	}: Props = $props();
 
 	let alreadyReviewed = $derived(reviewPassed !== null);
@@ -81,8 +86,16 @@
 		</button>
 
 		{#if !alreadyReviewed}
-			<button class={btnClass} onclick={onPrev} disabled={currentIndex <= 0}>Previous</button>
-			<button class={btnClass} onclick={onNext} disabled={currentIndex >= totalCount - 1}>Skip</button>
+			<button
+				class={btnClass}
+				onclick={onPrev}
+				disabled={prevDisabled ?? currentIndex <= 0}
+			>Previous</button>
+			<button
+				class={btnClass}
+				onclick={onNext}
+				disabled={nextDisabled ?? currentIndex >= totalCount - 1}
+			>Skip</button>
 		{/if}
 	</div>
 </div>

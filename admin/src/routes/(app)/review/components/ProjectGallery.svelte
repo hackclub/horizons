@@ -71,11 +71,33 @@
 		return u.displayName ?? (u.slackUserId ? `@${u.slackUserId}` : 'Anonymous');
 	}
 
+	// Projects this reviewer has already voted on (any submission). Hide them
+	// from the pending queue so reviewers don't re-encounter resubmissions of
+	// projects they've already finalized.
+	let myReviewedProjectIds = $derived(
+		currentReviewerId === null
+			? new Set<number>()
+			: new Set(
+					pastReviews
+						.filter((r) => r.reviewerId === String(currentReviewerId))
+						.map((r) => r.projectId),
+				),
+	);
+
+	// Hide projects another reviewer is actively claiming so reviewers don't
+	// fight over claims from the gallery. Stale claims (no recent heartbeat)
+	// pass through — the next reviewer can take them over silently.
+	function isActivelyClaimedByOther(item: QueueItem): boolean {
+		return !!(item.claim && !item.claim.isMine && !item.claim.isStale);
+	}
+
 	let filteredItems = $derived(
 		items
 			.map((item, index) => ({ item, index }))
 			.filter(
 				({ item }) =>
+					!myReviewedProjectIds.has(item.project.projectId) &&
+					!isActivelyClaimedByOther(item) &&
 					matchesFilters(
 						item.project.projectTitle,
 						item.project.projectType,
