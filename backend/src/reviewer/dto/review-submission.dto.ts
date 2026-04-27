@@ -22,7 +22,7 @@ export class ReviewSubmissionDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(500)
+  @MaxLength(5000)
   userFeedback?: string; // Shown to the user via email/Slack
 
   @IsString()
