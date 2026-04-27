@@ -220,7 +220,7 @@
 				<textarea
 					id="approve-comment"
 					bind:value={approveComment}
-					maxlength={500}
+					maxlength={5000}
 					placeholder="Nice work! Any feedback you want to share..."
 					class="w-full bg-rv-surface border border-rv-border rounded-md p-2.5 text-rv-text font-inherit text-[13px] resize-vertical min-h-[60px] focus:outline-none focus:border-rv-accent"
 				></textarea>
@@ -266,7 +266,7 @@
 				<textarea
 					id="changes-comment"
 					bind:value={changesComment}
-					maxlength={500}
+					maxlength={5000}
 					placeholder="Describe what the user needs to fix or improve..."
 					class="w-full bg-rv-surface border border-rv-border rounded-md p-2.5 text-rv-text font-inherit text-[13px] resize-vertical min-h-[60px] focus:outline-none focus:border-rv-accent"
 				></textarea>
