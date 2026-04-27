@@ -223,13 +223,18 @@ export class ReviewerService {
       throw new NotFoundException(`Submission ${submissionId} not found`);
     }
 
-    // Persist field-level edits (hours / user feedback / admin comment) directly.
+    // Persist field-level edits (hours / user feedback / analysis / admin
+    // comment) directly. These run independent of the verdict so reviewers can
+    // save a draft comment or analysis without finalizing approve/reject.
     const fieldUpdates: Record<string, unknown> = {};
     if (dto.approvedHours !== undefined) {
       fieldUpdates.approvedHours = dto.approvedHours;
     }
     if (dto.userFeedback !== undefined) {
       fieldUpdates.hoursJustification = dto.userFeedback;
+    }
+    if (dto.hoursJustification !== undefined) {
+      fieldUpdates.reviewerAnalysis = dto.hoursJustification;
     }
     if (dto.adminComment !== undefined) {
       // adminComment lives on the Project row — write through.

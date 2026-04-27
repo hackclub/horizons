@@ -29,6 +29,8 @@
 
 	let activeForm: 'approve' | 'changes' = $state('changes');
 	let submitting = $state(false);
+	let savingDraft = $state(false);
+	let draftSavedFlash = $state(false);
 
 	// Approval form fields
 	let hoursJustification = $state('');
@@ -43,20 +45,20 @@
 
 	// Reset fields when submission changes. Autofill keys off the reviewer's own
 	// decision (reviewPassed), not approvalStatus — a reviewer-approved submission
-	// stuck on pending fraud should still surface the prior verdict.
+	// stuck on pending fraud should still surface the prior verdict. Drafts saved
+	// without a verdict also persist via priorUserFeedback / priorReviewerAnalysis.
 	$effect(() => {
 		submissionId; // track
 		const reviewerApproved = reviewPassed === true;
-		const reviewerRejected = reviewPassed === false;
 		activeForm = reviewerApproved ? 'approve' : 'changes';
-		hoursJustification = reviewerApproved ? priorReviewerAnalysis ?? '' : '';
+		hoursJustification = priorReviewerAnalysis ?? '';
 		approveComment = reviewerApproved ? priorUserFeedback ?? '' : '';
 		approvedHours = reviewerApproved
 			? priorApprovedHours ?? hackatimeHours ?? 0
 			: hackatimeHours ?? 0;
 		reviewerManuallyEditedHours = reviewerApproved;
 		sendEmail = false;
-		changesComment = reviewerRejected ? priorUserFeedback ?? '' : '';
+		changesComment = reviewerApproved ? '' : priorUserFeedback ?? '';
 		rejectSendEmail = false;
 	});
 
@@ -117,6 +119,34 @@
 			alert(`Review failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		} finally {
 			submitting = false;
+		}
+	}
+
+	// Save the current tab's text fields without finalizing a verdict — lets a
+	// reviewer leave a draft comment / analysis without forcing approve or reject.
+	async function saveDraft() {
+		savingDraft = true;
+		try {
+			const body =
+				activeForm === 'approve'
+					? {
+							userFeedback: approveComment,
+							hoursJustification,
+							approvedHours,
+						}
+					: { userFeedback: changesComment };
+			const { error } = await api.PUT('/api/reviewer/submissions/{id}/review', {
+				params: { path: { id: submissionId } },
+				body,
+			});
+			if (error) throw new Error(`Failed to save draft for submission ${submissionId}`);
+			draftSavedFlash = true;
+			setTimeout(() => (draftSavedFlash = false), 2000);
+		} catch (error) {
+			console.error('Save draft failed:', error);
+			alert(`Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		} finally {
+			savingDraft = false;
 		}
 	}
 </script>
@@ -201,11 +231,21 @@
 					Send email notification to user
 				</label>
 			</div>
-			<div class="flex gap-2 justify-end">
+			<div class="flex gap-2 justify-end items-center">
+				{#if draftSavedFlash}
+					<span class="text-[11px] text-rv-green mr-1">Draft saved</span>
+				{/if}
+				<button
+					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
+					onclick={saveDraft}
+					disabled={submitting || savingDraft}
+				>
+					{savingDraft ? 'Saving...' : 'Save Draft'}
+				</button>
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-green text-white border-rv-green disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitApproval}
-					disabled={submitting}
+					disabled={submitting || savingDraft}
 				>
 					{submitting ? 'Submitting...' : 'Submit Approval'}
 				</button>
@@ -237,13 +277,23 @@
 					Send email notification to user
 				</label>
 			</div>
-			<div class="flex gap-2 justify-end">
+			<div class="flex gap-2 justify-end items-center">
+				{#if draftSavedFlash}
+					<span class="text-[11px] text-rv-green mr-1">Draft saved</span>
+				{/if}
+				<button
+					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
+					onclick={saveDraft}
+					disabled={submitting || savingDraft}
+				>
+					{savingDraft ? 'Saving...' : 'Save Draft'}
+				</button>
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-red text-white border-rv-red disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitChangesNeeded}
-					disabled={submitting}
+					disabled={submitting || savingDraft}
 				>
-					{submitting ? 'Submitting...' : 'Submit'}
+					{submitting ? 'Submitting...' : 'Request Changes'}
 				</button>
 			</div>
 		</div>
