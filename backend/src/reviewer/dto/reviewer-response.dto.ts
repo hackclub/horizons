@@ -49,6 +49,31 @@ class QueueProjectResponse {
   user: ScopedUserResponse;
 }
 
+export class ClaimInfoResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+
+  @ApiProperty({ format: 'date-time' })
+  claimedAt: Date;
+
+  @ApiProperty({ format: 'date-time' })
+  heartbeatAt: Date;
+
+  // True when the holder has stopped heartbeating; UI may take over without prompting.
+  @ApiProperty()
+  isStale: boolean;
+
+  // True when the requesting user holds the claim themselves.
+  @ApiProperty()
+  isMine: boolean;
+}
+
 export class QueueItemResponse {
   @ApiProperty()
   submissionId: number;
@@ -64,6 +89,19 @@ export class QueueItemResponse {
 
   @ApiProperty({ type: QueueProjectResponse })
   project: QueueProjectResponse;
+
+  @ApiProperty({ type: ClaimInfoResponse, nullable: true })
+  claim: ClaimInfoResponse | null;
+}
+
+export class ClaimResultResponse {
+  // True when the caller now holds the claim. False when blocked by an
+  // active claim held by another reviewer (see `claim` for details).
+  @ApiProperty()
+  claimed: boolean;
+
+  @ApiProperty({ type: ClaimInfoResponse, nullable: true })
+  claim: ClaimInfoResponse | null;
 }
 
 class SubmissionProjectResponse {
@@ -207,6 +245,9 @@ export class SubmissionDetailResponse {
 
   @ApiProperty({ type: [ProjectSubmissionSummary] })
   submissions: ProjectSubmissionSummary[];
+
+  @ApiProperty({ type: ClaimInfoResponse, nullable: true })
+  claim: ClaimInfoResponse | null;
 }
 
 export class ReviewResultResponse {

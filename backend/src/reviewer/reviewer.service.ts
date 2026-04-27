@@ -6,6 +6,11 @@ import {
   SaveNoteDto,
   SaveChecklistDto,
 } from './dto/review-submission.dto';
+
+// A claim is "active" while heartbeats arrive within this window. Past it,
+// the holder is assumed to have closed their tab (or crashed) and the next
+// reviewer can claim without prompting. Tuned for ~3 missed 30s heartbeats.
+const CLAIM_STALE_AFTER_MS = 90_000;
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
 import { ManifestService } from '../manifest/manifest.service';
 import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
@@ -58,7 +63,7 @@ export class ReviewerService {
    * Get the review queue: all pending submissions with scoped project/user data.
    * Returns minimal info for the queue list, not full details.
    */
-  async getReviewQueue() {
+  async getReviewQueue(viewerId?: number) {
     // Fraud and review run independently now, but still refresh fraud state on
     // queue open so any late fraud results can finalize pending submissions
     // before the reviewer sees them.
@@ -85,6 +90,9 @@ export class ReviewerService {
             user: { select: SCOPED_USER_SELECT },
           },
         },
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
+        },
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -98,14 +106,50 @@ export class ReviewerService {
         ...submission.project,
         user: this.scopeUserData(submission.project.user),
       },
+      claim: this.buildClaimInfo(submission, viewerId),
     }));
+  }
+
+  /**
+   * Shape claim metadata for the API: returns null when no claim is held,
+   * otherwise the holder's name plus stale/mine flags so the UI can decide
+   * whether to warn or take over silently.
+   */
+  private buildClaimInfo(
+    submission: {
+      claimedById: number | null;
+      claimedAt: Date | null;
+      claimHeartbeatAt: Date | null;
+      claimedBy: { userId: number; firstName: string; lastName: string } | null;
+    },
+    viewerId?: number,
+  ) {
+    if (
+      !submission.claimedById ||
+      !submission.claimedAt ||
+      !submission.claimHeartbeatAt ||
+      !submission.claimedBy
+    ) {
+      return null;
+    }
+    const isStale =
+      Date.now() - submission.claimHeartbeatAt.getTime() > CLAIM_STALE_AFTER_MS;
+    return {
+      userId: submission.claimedBy.userId,
+      firstName: submission.claimedBy.firstName,
+      lastName: submission.claimedBy.lastName,
+      claimedAt: submission.claimedAt,
+      heartbeatAt: submission.claimHeartbeatAt,
+      isStale,
+      isMine: viewerId !== undefined && submission.claimedById === viewerId,
+    };
   }
 
   /**
    * Get full details for a single submission, scoped for reviewer access.
    * Includes project info, user info (no PII), hours breakdown, and review history.
    */
-  async getSubmissionDetail(submissionId: number) {
+  async getSubmissionDetail(submissionId: number, viewerId?: number) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
       include: {
@@ -121,6 +165,9 @@ export class ReviewerService {
               },
             },
           },
+        },
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
         },
       },
     });
@@ -198,7 +245,127 @@ export class ReviewerService {
       },
       timeline,
       submissions: submissionsList,
+      claim: this.buildClaimInfo(submission, viewerId),
     };
+  }
+
+  /**
+   * Acquire a review claim on a submission so multiple reviewers don't pick
+   * up the same project. Returns `claimed: true` on success. When another
+   * reviewer holds an active claim and `force` is not set, returns
+   * `claimed: false` with the holder's info so the UI can prompt to take over.
+   * Stale claims (no heartbeat past CLAIM_STALE_AFTER_MS) are silently
+   * overwritten — taking over a tab someone abandoned shouldn't need a prompt.
+   */
+  async claimSubmission(
+    submissionId: number,
+    reviewerId: number,
+    force: boolean,
+  ) {
+    const existing = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      include: {
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
+        },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+
+    const now = new Date();
+    const heldByOther =
+      existing.claimedById !== null && existing.claimedById !== reviewerId;
+    const heldByOtherActive =
+      heldByOther &&
+      existing.claimHeartbeatAt !== null &&
+      now.getTime() - existing.claimHeartbeatAt.getTime() <=
+        CLAIM_STALE_AFTER_MS;
+
+    if (heldByOtherActive && !force) {
+      return {
+        claimed: false,
+        claim: this.buildClaimInfo(existing, reviewerId),
+      };
+    }
+
+    const updated = await this.prisma.submission.update({
+      where: { submissionId },
+      data: {
+        claimedById: reviewerId,
+        // Preserve original claimedAt when extending our own claim so the UI
+        // can show "claimed 5min ago"; reset only when (re)acquiring.
+        claimedAt:
+          existing.claimedById === reviewerId && existing.claimedAt
+            ? existing.claimedAt
+            : now,
+        claimHeartbeatAt: now,
+      },
+      include: {
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
+        },
+      },
+    });
+
+    return {
+      claimed: true,
+      claim: this.buildClaimInfo(updated, reviewerId),
+    };
+  }
+
+  /**
+   * Bump claim heartbeat. No-op (returns null claim) if the caller doesn't
+   * currently hold the claim — the UI should re-acquire rather than steal.
+   */
+  async heartbeatClaim(submissionId: number, reviewerId: number) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      select: { claimedById: true },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+    if (submission.claimedById !== reviewerId) {
+      return { claimed: false, claim: null };
+    }
+    const updated = await this.prisma.submission.update({
+      where: { submissionId },
+      data: { claimHeartbeatAt: new Date() },
+      include: {
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
+        },
+      },
+    });
+    return {
+      claimed: true,
+      claim: this.buildClaimInfo(updated, reviewerId),
+    };
+  }
+
+  /**
+   * Release the claim if the caller holds it. Idempotent — releasing a claim
+   * the caller doesn't own is a no-op (the next reviewer's stale check will
+   * handle it anyway).
+   */
+  async releaseClaim(submissionId: number, reviewerId: number) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      select: { claimedById: true },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+    if (submission.claimedById !== reviewerId) {
+      return { released: false };
+    }
+    await this.prisma.submission.update({
+      where: { submissionId },
+      data: { claimedById: null, claimedAt: null, claimHeartbeatAt: null },
+    });
+    return { released: true };
   }
 
   /**
@@ -299,6 +466,13 @@ export class ReviewerService {
         );
       }
       // If already rejected, no edit path — reviewer decision is a no-op.
+
+      // Verdict submitted — release the claim so the next reviewer can pick
+      // up another project without waiting for the stale timeout.
+      await this.prisma.submission.update({
+        where: { submissionId },
+        data: { claimedById: null, claimedAt: null, claimHeartbeatAt: null },
+      });
     } else if (submission.approvalStatus === 'approved') {
       // Field-only edit on an already-approved submission still needs Airtable sync.
       await this.submissionApprovalService.updateFinalizedSubmission(
@@ -373,6 +547,12 @@ export class ReviewerService {
         sendEmail: false,
       },
     );
+
+    // Quick-approve finalizes the verdict — release any active claim.
+    await this.prisma.submission.update({
+      where: { submissionId },
+      data: { claimedById: null, claimedAt: null, claimHeartbeatAt: null },
+    });
 
     return { success: true, submissionId, status: 'approved' };
   }

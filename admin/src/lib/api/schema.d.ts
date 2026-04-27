@@ -920,6 +920,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/submissions/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewerController_claimSubmission"];
+        delete: operations["ReviewerController_releaseClaim"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/submissions/{id}/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewerController_heartbeatClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/submissions/{id}/review": {
         parameters: {
             query?: never;
@@ -2443,6 +2475,17 @@ export interface components {
             joeFraudPassed: boolean | null;
             user: components["schemas"]["ScopedUserResponse"];
         };
+        ClaimInfoResponse: {
+            userId: number;
+            firstName: string;
+            lastName: string;
+            /** Format: date-time */
+            claimedAt: string;
+            /** Format: date-time */
+            heartbeatAt: string;
+            isStale: boolean;
+            isMine: boolean;
+        };
         QueueItemResponse: {
             submissionId: number;
             projectId: number;
@@ -2450,6 +2493,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             project: components["schemas"]["QueueProjectResponse"];
+            claim: components["schemas"]["ClaimInfoResponse"] | null;
         };
         SubmissionProjectResponse: {
             projectId: number;
@@ -2511,6 +2555,14 @@ export interface components {
             project: components["schemas"]["SubmissionProjectResponse"];
             timeline: components["schemas"]["TimelineEntryResponse"][];
             submissions: components["schemas"]["ProjectSubmissionSummary"][];
+            claim: components["schemas"]["ClaimInfoResponse"] | null;
+        };
+        ClaimSubmissionDto: {
+            force?: boolean;
+        };
+        ClaimResultResponse: {
+            claimed: boolean;
+            claim: components["schemas"]["ClaimInfoResponse"] | null;
         };
         ReviewSubmissionDto: {
             /** @enum {string} */
@@ -2530,18 +2582,6 @@ export interface components {
             userFeedback?: string;
             hoursJustification?: string;
             approvedHours?: number;
-        };
-        NoteResponse: {
-            content: string;
-        };
-        SaveNoteDto: {
-            content: string;
-        };
-        ChecklistResponse: {
-            checkedItems: number[];
-        };
-        SaveChecklistDto: {
-            checkedItems: number[];
         };
         ManifestSubmissionResponse: {
             submissionId: string;
@@ -2570,6 +2610,18 @@ export interface components {
         ManifestLookupResponse: {
             codeUrl: string | null;
             manifest: components["schemas"]["ManifestProjectResponse"] | null;
+        };
+        NoteResponse: {
+            content: string;
+        };
+        SaveNoteDto: {
+            content: string;
+        };
+        ChecklistResponse: {
+            checkedItems: number[];
+        };
+        SaveChecklistDto: {
+            checkedItems: number[];
         };
         ShopResponse: {
             shopId: number;
@@ -3481,7 +3533,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -4297,6 +4351,83 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SubmissionDetailResponse"];
                 };
+            };
+        };
+    };
+    ReviewerController_claimSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimSubmissionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimResultResponse"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewerController_releaseClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewerController_heartbeatClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimResultResponse"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
@@ -17,12 +17,15 @@
 	import GitHubPanel from '../components/GitHubPanel.svelte';
 	import ReviewChecklist from '../components/ReviewChecklist.svelte';
 	import ManifestLookup from '../components/ManifestLookup.svelte';
+	import ClaimConflictModal from '../components/ClaimConflictModal.svelte';
+	import { createClaimManager } from '../claimManager';
 	import { api, type components } from '$lib/api';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
 	type GitHubRepo = components['schemas']['GitHubRepoResponse'];
 	type ManifestLookupResponse = components['schemas']['ManifestLookupResponse'];
+	type ClaimInfo = components['schemas']['ClaimInfoResponse'];
 
 	let projectId = $derived(Number($page.params.projectId));
 
@@ -48,6 +51,11 @@
 	let editedHours = $state<number | null>(null);
 	let manifestLookup = $state<ManifestLookupResponse | null>(null);
 	let manifestLoading = $state(false);
+
+	// Claim/lock state — keeps two reviewers from working the same submission.
+	const claimManager = createClaimManager();
+	let conflictClaim = $state<ClaimInfo | null>(null);
+	let takingOver = $state(false);
 
 	// Center tabs
 	const centerTabs: Tab[] = [
@@ -105,6 +113,38 @@
 		await loadSubmissionDetail(submissionId);
 	}
 
+	async function attachClaim(submissionId: number) {
+		conflictClaim = null;
+		await claimManager.attach(submissionId, {
+			onConflict: (claim) => {
+				conflictClaim = claim;
+			},
+		});
+	}
+
+	async function takeOverClaim() {
+		if (!currentSubmission) return;
+		takingOver = true;
+		try {
+			const ok = await claimManager.takeover(currentSubmission.submissionId);
+			if (ok) conflictClaim = null;
+		} finally {
+			takingOver = false;
+		}
+	}
+
+	function dismissClaimConflict() {
+		conflictClaim = null;
+		goto(`${base}/review`);
+	}
+
+	onDestroy(() => {
+		// Best-effort release on unmount. Tab-close won't await this; the backend's
+		// stale timeout handles that path.
+		void claimManager.release();
+		claimManager.destroy();
+	});
+
 	async function loadSubmissionDetail(submissionId: number) {
 		submissionLoading = true;
 		currentSubmission = null;
@@ -118,6 +158,10 @@
 			});
 			if (error || !data) throw new Error(`Failed to fetch submission ${submissionId}`);
 			currentSubmission = data;
+
+			// Try to claim the submission. If another reviewer holds an active
+			// claim, attachClaim sets conflictClaim and the modal handles it.
+			void attachClaim(submissionId);
 
 			const repoUrl = data.project.repoUrl || data.repoUrl;
 			const promises: Promise<void>[] = [];
@@ -237,6 +281,9 @@
 	}
 
 	function handleReviewComplete() {
+		// Backend auto-releases on verdict; tell the local manager to stop
+		// heartbeating so we don't ping a no-longer-ours claim.
+		claimManager.destroy();
 		if (currentIndex < queueLength - 1) {
 			navigateNext();
 		} else {
@@ -379,5 +426,14 @@
 				/>
 			</div>
 		</div>
+	{/if}
+
+	{#if conflictClaim}
+		<ClaimConflictModal
+			claim={conflictClaim}
+			taking={takingOver}
+			onCancel={dismissClaimConflict}
+			onTakeover={takeOverClaim}
+		/>
 	{/if}
 </div>
