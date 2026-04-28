@@ -984,7 +984,7 @@
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Daily Active Users</h2>
 				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">DAUs today</p>
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">DAUs yesterday</p>
 						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.dau.today)}</p>
 					</div>
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
@@ -1022,7 +1022,7 @@
 							<thead>
 								<tr class="border-b border-ds-border text-ds-text-secondary text-[11px] uppercase tracking-wide">
 									<th class="text-left px-4 py-2.5">Event</th>
-									<th class="text-right px-4 py-2.5 w-24">DAUs today</th>
+									<th class="text-right px-4 py-2.5 w-24">DAUs yesterday</th>
 								</tr>
 							</thead>
 							<tbody>
