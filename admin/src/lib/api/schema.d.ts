@@ -2228,11 +2228,7 @@ export interface components {
         };
         StatsSignupRoute: {
             originCountry: string;
-            originLat: number | null;
-            originLng: number | null;
             eventCountry: string;
-            eventLat: number | null;
-            eventLng: number | null;
             eventTitle: string;
             count: number;
         };
@@ -2241,6 +2237,8 @@ export interface components {
             perEvent: components["schemas"]["StatsSignupEventEntry"][];
             qualification: components["schemas"]["StatsSignupQualificationEntry"][];
             routes: components["schemas"]["StatsSignupRoute"][];
+            signupsMissingOrigin: number;
+            eventsMissingCountry: string[];
         };
         StatsUtmEntry: {
             source: string;
