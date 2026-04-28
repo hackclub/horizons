@@ -142,6 +142,7 @@ export class AuthService {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope:
+        process.env.HACKCLUB_OAUTH_SCOPES ||
         'openid email name profile birthdate address verification_status slack_id basic_info',
       state,
     });
