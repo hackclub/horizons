@@ -139,8 +139,10 @@ export class MetricsSnapshotService implements OnModuleInit {
       this.computeUtmSources(dayEnd),
     ]);
 
-    // Per-event DAU (users with project activity that day, grouped by pinned event)
-    const dauPerEvent = await this.computeDauPerEvent(dayStart, dayEnd);
+    // Per-event DAU is derived from the same Hackatime activity as the
+    // top-level DAU so the per-event sums reconcile (an active user is
+    // attributed to their pinned event, if any).
+    const dauPerEvent = hackatimeDaily.dauPerEvent;
 
     const metrics: Record<string, unknown> = {
       dau: hackatimeDaily.dau,
@@ -177,8 +179,13 @@ export class MetricsSnapshotService implements OnModuleInit {
    */
   private async computeHackatimeDaily(
     dayStart: Date,
-  ): Promise<{ dau: number; totalHours: number }> {
-    // Fetch users who have linked Hackatime projects in Horizon
+  ): Promise<{
+    dau: number;
+    totalHours: number;
+    dauPerEvent: Array<{ slug: string; count: number }>;
+  }> {
+    // Fetch users who have linked Hackatime projects in Horizon, plus the
+    // pinned event slug used to attribute their DAU contribution.
     const usersWithProjects = await this.prisma.user.findMany({
       where: {
         hackatimeAccount: { not: null },
@@ -194,27 +201,29 @@ export class MetricsSnapshotService implements OnModuleInit {
           where: { nowHackatimeProjects: { isEmpty: false } },
           select: { nowHackatimeProjects: true },
         },
+        pinnedEvent: { select: { event: { select: { slug: true } } } },
       },
     });
 
-    // Build a set of allowed Hackatime project names per user
     const userProjectNames = usersWithProjects.map((user) => ({
       hackatimeAccount: user.hackatimeAccount!,
       allowedNames: new Set(
         user.projects.flatMap((p) => p.nowHackatimeProjects),
       ),
+      eventSlug: user.pinnedEvent?.event.slug ?? null,
     }));
 
     const dateStr = dayStart.toISOString().split('T')[0];
     const apiKey = process.env.HACKATIME_API_KEY;
     let activeCount = 0;
     let totalSeconds = 0;
+    const perEventCounts = new Map<string, number>();
 
     const batchSize = 10;
     for (let i = 0; i < userProjectNames.length; i += batchSize) {
       const batch = userProjectNames.slice(i, i + batchSize);
       const results = await Promise.allSettled(
-        batch.map(async ({ hackatimeAccount, allowedNames }) => {
+        batch.map(async ({ hackatimeAccount, allowedNames, eventSlug }) => {
           try {
             const headers: Record<string, string> = {
               'Content-Type': 'application/json',
@@ -227,7 +236,7 @@ export class MetricsSnapshotService implements OnModuleInit {
             const url = `https://hackatime.hackclub.com/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${dateStr}&end_date=${endDateStr}`;
             const response = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
 
-            if (!response.ok) return 0;
+            if (!response.ok) return { userSeconds: 0, eventSlug };
             const data = await response.json();
 
             // Only sum seconds for Hackatime projects linked to Horizon projects
@@ -240,17 +249,23 @@ export class MetricsSnapshotService implements OnModuleInit {
                 }
               }
             }
-            return userSeconds;
+            return { userSeconds, eventSlug };
           } catch {
-            return 0;
+            return { userSeconds: 0, eventSlug };
           }
         }),
       );
 
       for (const result of results) {
-        if (result.status === 'fulfilled' && typeof result.value === 'number') {
-          if (result.value > 0) activeCount++;
-          totalSeconds += result.value;
+        if (result.status === 'fulfilled') {
+          const { userSeconds, eventSlug } = result.value;
+          if (userSeconds > 0) {
+            activeCount++;
+            if (eventSlug) {
+              perEventCounts.set(eventSlug, (perEventCounts.get(eventSlug) ?? 0) + 1);
+            }
+          }
+          totalSeconds += userSeconds;
         }
       }
     }
@@ -258,26 +273,8 @@ export class MetricsSnapshotService implements OnModuleInit {
     return {
       dau: activeCount,
       totalHours: Math.round((totalSeconds / 3600) * 10) / 10,
+      dauPerEvent: Array.from(perEventCounts, ([slug, count]) => ({ slug, count })),
     };
-  }
-
-
-  private async computeDauPerEvent(
-    dayStart: Date,
-    dayEnd: Date,
-  ): Promise<Array<{ slug: string; count: number }>> {
-    const result = await this.prisma.$queryRaw<
-      Array<{ slug: string; count: bigint }>
-    >`
-      SELECT e.slug, COUNT(DISTINCT p.user_id) as count
-      FROM projects p
-      INNER JOIN pinned_events pe ON pe.user_id = p.user_id
-      INNER JOIN events e ON e.event_id = pe.event_id
-      WHERE p.updated_at >= ${dayStart} AND p.updated_at <= ${dayEnd}
-      GROUP BY e.slug
-    `;
-
-    return result.map((r) => ({ slug: r.slug, count: Number(r.count) }));
   }
 
   private async computeMedianReviewTime(

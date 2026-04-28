@@ -473,27 +473,46 @@ export class AdminService {
   }
 
   private async computeDauPerEvent() {
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    // Read yesterday's per-event DAU from the snapshot table. The snapshot job
+    // derives both top-level DAU and the per-event breakdown from the same
+    // Hackatime activity data, so per-event sums reconcile with the overall
+    // DAU. Showing today's value would be a partial mid-stream count and
+    // wouldn't match the Hackatime-based top metric.
+    const yesterdayStart = new Date();
+    yesterdayStart.setUTCHours(0, 0, 0, 0);
+    yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1);
 
-    const result = await this.prisma.$queryRaw<
-      Array<{ event_id: number; title: string; slug: string; count: bigint }>
-    >`
-      SELECT e.event_id, e.title, e.slug, COUNT(DISTINCT p.user_id) as count
-      FROM projects p
-      INNER JOIN pinned_events pe ON pe.user_id = p.user_id
-      INNER JOIN events e ON e.event_id = pe.event_id
-      WHERE p.updated_at >= ${todayStart}
-      GROUP BY e.event_id, e.title, e.slug
-      ORDER BY count DESC
-    `;
+    const rows = await this.prisma.historicalMetric.findMany({
+      where: {
+        date: yesterdayStart,
+        metric: { startsWith: 'dau_event.' },
+      },
+    });
 
-    return result.map((r) => ({
-      eventId: r.event_id,
-      title: r.title,
-      slug: r.slug,
-      count: Number(r.count),
-    }));
+    if (rows.length === 0) return [];
+
+    const slugToCount = new Map<string, number>();
+    for (const row of rows) {
+      const slug = row.metric.slice('dau_event.'.length);
+      const count = typeof row.value === 'number' ? row.value : Number(row.value) || 0;
+      if (count > 0) slugToCount.set(slug, count);
+    }
+
+    if (slugToCount.size === 0) return [];
+
+    const events = await this.prisma.event.findMany({
+      where: { slug: { in: [...slugToCount.keys()] } },
+      select: { eventId: true, title: true, slug: true },
+    });
+
+    return events
+      .map((e) => ({
+        eventId: e.eventId,
+        title: e.title,
+        slug: e.slug,
+        count: slugToCount.get(e.slug) ?? 0,
+      }))
+      .sort((a, b) => b.count - a.count);
   }
 
   private async computeFunnel() {
