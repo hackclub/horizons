@@ -33,14 +33,26 @@
 	// Post-onboarding popovers
 	let postOnboarding = $state(page.url.searchParams.has('post-onboarding'));
 
+	// Temporarily hide the community events card; flip to false to restore it.
+	const HIDE_COMMUNITY_EVENTS = true;
+
+	// Column index constants — when CE card is hidden, all columns to its right shift left by 1.
+	const COL_LEFT = HIDE_COMMUNITY_EVENTS ? 0 : 1;
+	const COL_SHOP = HIDE_COMMUNITY_EVENTS ? 1 : 2;
+	const COL_COMMUNITY = HIDE_COMMUNITY_EVENTS ? 2 : 3;
+	const COL_FAQ = HIDE_COMMUNITY_EVENTS ? 3 : 4;
+	const COL_ADMIN = HIDE_COMMUNITY_EVENTS ? 4 : 5;
+
 	const cardDescriptions: Record<string, string> = {
-		'0-0': 'See what\'s coming up in the community!',
-		'1-0': 'Create projects, track your progress, and submit them for review!',
-		'1-1': 'Check out upcoming Horizons events!',
-		'2-0': 'Spend your approved hours on rewards!',
-		'3-0': 'Check out online events we\'re running for the community!',
-		'4-0': 'Got questions? Find answers here.',
+		[`${COL_LEFT}-0`]: 'Create projects, track your progress, and submit them for review!',
+		[`${COL_LEFT}-1`]: 'Check out upcoming Horizons events!',
+		[`${COL_SHOP}-0`]: 'Spend your approved hours on rewards!',
+		[`${COL_COMMUNITY}-0`]: 'Check out online events we\'re running for the community!',
+		[`${COL_FAQ}-0`]: 'Got questions? Find answers here.',
 	};
+	if (!HIDE_COMMUNITY_EVENTS) {
+		cardDescriptions['0-0'] = 'See what\'s coming up in the community!';
+	}
 
 	let userName = $derived($userStore.userName);
 	let referralCode = $derived($userStore.referralCode);
@@ -100,14 +112,22 @@
 
 	});
 
-	const hrefs = [
-		['/app/community'],
-		['/app/projects?back', '/app/events'],
-		['/app/shop?back'],
-		['/app/community'],
-		['/faq?from=app'],
-		['/admin'],
-	];
+	const hrefs: string[][] = HIDE_COMMUNITY_EVENTS
+		? [
+			['/app/projects?back', '/app/events'],
+			['/app/shop?back'],
+			['/app/community'],
+			['/faq?from=app'],
+			['/admin'],
+		]
+		: [
+			['/app/community'],
+			['/app/projects?back', '/app/events'],
+			['/app/shop?back'],
+			['/app/community'],
+			['/faq?from=app'],
+			['/admin'],
+		];
 
 	function isDisabled(col: number, row: number) {
 		return false;
@@ -162,11 +182,14 @@
 	let ceFocusedEventId = $state<string | null>(null);
 
 	const nav = createGridNav({
-		columns: () => isAdmin ? [1, 2, 1, 1, 1, 1] : [1, 2, 1, 1, 1],
+		columns: () => {
+			const base = HIDE_COMMUNITY_EVENTS ? [2, 1, 1, 1] : [1, 2, 1, 1, 1];
+			return isAdmin ? [...base, 1] : base;
+		},
 		onSelect: (col, row) => {
 			if (isDisabled(col, row)) {
 				triggerShake(col, row);
-			} else if (col === 0 && ceFocusedEventId) {
+			} else if (!HIDE_COMMUNITY_EVENTS && col === 0 && ceFocusedEventId) {
 				navigateTo(`/app/community?event=${encodeURIComponent(ceFocusedEventId)}`);
 			} else {
 				navigateTo(hrefs[col][row]);
@@ -208,7 +231,7 @@
 			// and a peek of the previous card by offsetting to the right.
 			const peekAmount = 60;
 			const isFirst = nav.col === 0;
-			const colCount = isAdmin ? 6 : 5;
+			const colCount = isAdmin ? COL_ADMIN + 1 : COL_FAQ + 1;
 			const isLast = nav.col === colCount - 1;
 
 			let target;
@@ -280,30 +303,32 @@
 		<div class="scroll-wrapper" bind:this={scrollContainer}>
 			<div class="cards-row" bind:this={cardsRow}>
 				<!-- Community Events (preview card, leftmost) -->
-				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="0ms" style:--exit-right-delay="150ms">
-					<CommunityEventsCard
-						bind:element={cardRefs[0]}
-						bind:focusedEventId={ceFocusedEventId}
-						selected={nav.isSelected(0, 0)}
-						usingKeyboard={nav.usingKeyboard}
-						postOnboarding={postOnboarding}
-						description={cardDescriptions['0-0']}
-						onmouseenter={() => handleCardHover(0, 0)}
-						onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
-						onEventClick={(id) => navigateTo(`/app/community?event=${encodeURIComponent(id)}`)}
-					/>
-				</div>
+				{#if !HIDE_COMMUNITY_EVENTS}
+					<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="0ms" style:--exit-right-delay="150ms">
+						<CommunityEventsCard
+							bind:element={cardRefs[0]}
+							bind:focusedEventId={ceFocusedEventId}
+							selected={nav.isSelected(0, 0)}
+							usingKeyboard={nav.usingKeyboard}
+							postOnboarding={postOnboarding}
+							description={cardDescriptions['0-0']}
+							onmouseenter={() => handleCardHover(0, 0)}
+							onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
+							onEventClick={(id) => navigateTo(`/app/community?event=${encodeURIComponent(id)}`)}
+						/>
+					</div>
+				{/if}
 
 				<!-- Projects (top) + Events (bottom) -->
-				<div class="left-col shrink-0" bind:this={cardRefs[1]}>
+				<div class="left-col shrink-0" bind:this={cardRefs[COL_LEFT]}>
 					<!-- Projects -->
 					<div class="enter-up flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="50ms" style:--exit-right-delay="150ms">
 						<ProjectsCard
-							selected={nav.isSelected(1, 0)}
+							selected={nav.isSelected(COL_LEFT, 0)}
 							usingKeyboard={nav.usingKeyboard}
 							postOnboarding={postOnboarding}
-							description={cardDescriptions['1-0']}
-							onmouseenter={() => handleCardHover(1, 0)}
+							description={cardDescriptions[`${COL_LEFT}-0`]}
+							onmouseenter={() => handleCardHover(COL_LEFT, 0)}
 							onclick={(e) => { e.preventDefault(); navigateTo('/app/projects?back'); }}
 						/>
 					</div>
@@ -311,14 +336,14 @@
 					<!-- Events -->
 					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
 						<EventsCard
-							selected={nav.isSelected(1, 1)}
+							selected={nav.isSelected(COL_LEFT, 1)}
 							usingKeyboard={nav.usingKeyboard}
-							disabled={isDisabled(1, 1)}
-							shaking={isShaking(1, 1)}
+							disabled={isDisabled(COL_LEFT, 1)}
+							shaking={isShaking(COL_LEFT, 1)}
 							postOnboarding={postOnboarding}
-							description={cardDescriptions['1-1']}
-							onmouseenter={() => handleCardHover(1, 1)}
-							onclick={(e) => { e.preventDefault(); if (isDisabled(1, 1)) triggerShake(1, 1); else navigateTo('/app/events'); }}
+							description={cardDescriptions[`${COL_LEFT}-1`]}
+							onmouseenter={() => handleCardHover(COL_LEFT, 1)}
+							onclick={(e) => { e.preventDefault(); if (isDisabled(COL_LEFT, 1)) triggerShake(COL_LEFT, 1); else navigateTo('/app/events'); }}
 							onanimationend={() => { shakingKey = null; }}
 						/>
 					</div>
@@ -387,9 +412,9 @@
 					<div class="bottom-row">
 						<!-- Shop -->
 						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="60ms" style:--enter-delay="150ms" style:--exit-right-delay="150ms">
-							<a bind:this={cardRefs[2]} href="/app/shop" class="card nav-card shop-card"
-								class:selected={nav.isSelected(2, 0)}
-								onmouseenter={() => handleCardHover(2, 0)}
+							<a bind:this={cardRefs[COL_SHOP]} href="/app/shop" class="card nav-card shop-card"
+								class:selected={nav.isSelected(COL_SHOP, 0)}
+								onmouseenter={() => handleCardHover(COL_SHOP, 0)}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/shop?back'); }}>
 								<!-- Shop bag icon -->
 								<div class="card-bg-icon" style="right: -10px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
@@ -403,20 +428,20 @@
 										BUY STUFF FOR YOURSELF!
 									</p>
 								</div>
-								{#if nav.isSelected(2, 0) && !postOnboarding}
+								{#if nav.isSelected(COL_SHOP, 0) && !postOnboarding}
 									{@render hintPill('TO VISIT SHOP')}
 								{/if}
-								{#if postOnboarding && nav.isSelected(2, 0)}
-									{@render popoverWithHint(cardDescriptions['2-0'], 'TO VISIT SHOP')}
+								{#if postOnboarding && nav.isSelected(COL_SHOP, 0)}
+									{@render popoverWithHint(cardDescriptions[`${COL_SHOP}-0`], 'TO VISIT SHOP')}
 								{/if}
 							</a>
 						</div>
 
 						<!-- Community -->
 						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms" style:--exit-right-delay="150ms">
-							<a bind:this={cardRefs[3]} href="/app/community" class="card nav-card community-card"
-								class:selected={nav.isSelected(3, 0)}
-								onmouseenter={() => handleCardHover(3, 0)}
+							<a bind:this={cardRefs[COL_COMMUNITY]} href="/app/community" class="card nav-card community-card"
+								class:selected={nav.isSelected(COL_COMMUNITY, 0)}
+								onmouseenter={() => handleCardHover(COL_COMMUNITY, 0)}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}>
 								<div class="card-bg-icon" style="right: -20px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
 									<img src={communitySvg} alt="" class="w-full h-full" />
@@ -427,11 +452,11 @@
 										SEE WHAT'S HAPPENING!
 									</p>
 								</div>
-								{#if nav.isSelected(3, 0) && !postOnboarding}
+								{#if nav.isSelected(COL_COMMUNITY, 0) && !postOnboarding}
 									{@render hintPill('TO VIEW COMMUNITY')}
 								{/if}
-								{#if postOnboarding && nav.isSelected(3, 0)}
-									{@render popoverWithHint(cardDescriptions['3-0'], 'TO VIEW COMMUNITY')}
+								{#if postOnboarding && nav.isSelected(COL_COMMUNITY, 0)}
+									{@render popoverWithHint(cardDescriptions[`${COL_COMMUNITY}-0`], 'TO VIEW COMMUNITY')}
 								{/if}
 							</a>
 						</div>
@@ -440,10 +465,10 @@
 
 				<!-- FAQ (tall right card) -->
 				<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="120ms" style:--enter-delay="250ms" style:--exit-right-delay="150ms">
-					<a bind:this={cardRefs[4]} href="/faq?from=app" class="card nav-card faq-card"
-						class:selected={nav.isSelected(4, 0)}
-						class:shaking={isShaking(4, 0)}
-						onmouseenter={() => handleCardHover(4, 0)}
+					<a bind:this={cardRefs[COL_FAQ]} href="/faq?from=app" class="card nav-card faq-card"
+						class:selected={nav.isSelected(COL_FAQ, 0)}
+						class:shaking={isShaking(COL_FAQ, 0)}
+						onmouseenter={() => handleCardHover(COL_FAQ, 0)}
 						onanimationend={() => { shakingKey = null; }}>
 						<!-- HUH icon -->
 						<div class="card-bg-icon" style="right: 20px; top: 50%; transform: translateY(-50%); width: 145px; height: 145px;">
@@ -457,11 +482,11 @@
 								NEED HELP?
 							</p>
 						</div>
-						{#if nav.isSelected(4, 0) && !postOnboarding}
+						{#if nav.isSelected(COL_FAQ, 0) && !postOnboarding}
 							{@render hintPill('TO VIEW FAQ')}
 						{/if}
-						{#if postOnboarding && nav.isSelected(4, 0)}
-							{@render popoverWithHint(cardDescriptions['4-0'], 'TO VIEW FAQ')}
+						{#if postOnboarding && nav.isSelected(COL_FAQ, 0)}
+							{@render popoverWithHint(cardDescriptions[`${COL_FAQ}-0`], 'TO VIEW FAQ')}
 						{/if}
 					</a>
 				</div>
@@ -469,9 +494,9 @@
 				<!-- Admin (only visible for admins) -->
 				{#if isAdmin}
 					<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="150ms" style:--enter-delay="300ms" style:--exit-right-delay="150ms">
-						<a bind:this={cardRefs[5]} href="/admin" class="card nav-card admin-card"
-							class:selected={nav.isSelected(5, 0)}
-							onmouseenter={() => handleCardHover(5, 0)}
+						<a bind:this={cardRefs[COL_ADMIN]} href="/admin" class="card nav-card admin-card"
+							class:selected={nav.isSelected(COL_ADMIN, 0)}
+							onmouseenter={() => handleCardHover(COL_ADMIN, 0)}
 							onclick={(e) => { e.preventDefault(); window.location.href = '/admin'; }}>
 							<!-- Shield icon -->
 							<div class="card-bg-icon" style="right: 20px; top: 50%; transform: translateY(-50%); width: 145px; height: 145px;">
@@ -485,7 +510,7 @@
 									MANAGE HORIZONS
 								</p>
 							</div>
-							{#if nav.isSelected(5, 0)}
+							{#if nav.isSelected(COL_ADMIN, 0)}
 								{@render hintPill('TO ADMIN PANEL')}
 							{/if}
 						</a>
