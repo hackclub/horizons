@@ -147,6 +147,7 @@
 	let projectsReviewedEl = $state<HTMLDivElement | null>(null);
 	let signupsEl = $state<HTMLDivElement | null>(null);
 	let signupMapEl = $state<HTMLDivElement | null>(null);
+	let signupQualificationEl = $state<HTMLDivElement | null>(null);
 	let utmEl = $state<HTMLDivElement | null>(null);
 
 	onMount(() => {
@@ -228,6 +229,7 @@
 		renderProjectFunnel();
 		renderProjectsMultiLine();
 		renderLineChart(signupsEl, stats.historical.newSignups, '#22c55e', 'rgba(34,197,94,0.15)');
+		renderSignupQualificationChart();
 		renderSignupMap();
 		renderUtmChart();
 	}
@@ -768,6 +770,122 @@
 		legend.addTo(leafletMap);
 	}
 
+	function renderSignupQualificationChart() {
+		if (!stats || !stats.signups.qualification?.length) return;
+		const chart = initChart(signupQualificationEl);
+		if (!chart) return;
+
+		const data = stats.signups.qualification;
+		const dark = isDark();
+
+		// Three-segment funnel per event: Qualified (≥30h) ⊂ RSVPed (≥15h) ⊂ Signed up.
+		const qualifiedColor = dark ? '#16a34a' : '#15803d';
+		const rsvpedOnlyColor = dark ? '#60a5fa' : '#3b82f6';
+		const signedUpOnlyColor = dark ? '#475569' : '#e2e8f0';
+
+		const qualifiedData = data.map((d) => d.qualified);
+		const rsvpedOnlyData = data.map((d) => Math.max(0, d.rsvped - d.qualified));
+		const signedUpOnlyData = data.map((d) => Math.max(0, d.signedUp - d.rsvped));
+
+		const segmentLabel = (value: number, total: number) => {
+			if (!value || !total) return '';
+			const pct = (value / total) * 100;
+			return pct >= 8 ? `${value} (${pct.toFixed(0)}%)` : '';
+		};
+
+		chart.setOption({
+			backgroundColor: bgColor(),
+			grid: { left: 140, right: 60, top: 32, bottom: 8 },
+			legend: {
+				top: 0,
+				textStyle: { color: dimColor(), fontSize: 10 },
+				itemWidth: 14,
+				itemHeight: 8,
+				data: ['Qualified (≥30h)', 'RSVPed (≥15h)', 'Signed up'],
+			},
+			xAxis: {
+				type: 'value',
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				splitLine: { lineStyle: { color: gridColor(), type: 'dashed' } },
+				axisLine: { show: false },
+			},
+			yAxis: {
+				type: 'category',
+				data: data.map((d) => d.title),
+				axisLabel: { color: textColor(), fontSize: 11 },
+				axisLine: { lineStyle: { color: gridColor() } },
+				axisTick: { show: false },
+				inverse: true,
+			},
+			tooltip: {
+				trigger: 'axis',
+				axisPointer: { type: 'shadow' },
+				formatter: (params: any) => {
+					const idx = params[0].dataIndex;
+					const d = data[idx];
+					const rsvpPct = d.signedUp ? ((d.rsvped / d.signedUp) * 100).toFixed(1) : '0.0';
+					const qualPct = d.signedUp ? ((d.qualified / d.signedUp) * 100).toFixed(1) : '0.0';
+					return `<b>${d.title}</b><br/>`
+						+ `Signed up: ${d.signedUp} (100%)<br/>`
+						+ `RSVPed (≥15h): ${d.rsvped} (${rsvpPct}%)<br/>`
+						+ `Qualified (≥30h): ${d.qualified} (${qualPct}%)`;
+				},
+			},
+			series: [
+				{
+					name: 'Qualified (≥30h)',
+					type: 'bar',
+					stack: 'qualification',
+					data: qualifiedData,
+					barWidth: 22,
+					itemStyle: { color: qualifiedColor },
+					label: {
+						show: true,
+						position: 'inside',
+						color: '#fff',
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].signedUp),
+					},
+				},
+				{
+					name: 'RSVPed (≥15h)',
+					type: 'bar',
+					stack: 'qualification',
+					data: rsvpedOnlyData,
+					barWidth: 22,
+					itemStyle: { color: rsvpedOnlyColor },
+					label: {
+						show: true,
+						position: 'inside',
+						color: '#fff',
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].signedUp),
+					},
+				},
+				{
+					name: 'Signed up',
+					type: 'bar',
+					stack: 'qualification',
+					data: signedUpOnlyData,
+					barWidth: 22,
+					itemStyle: {
+						color: signedUpOnlyColor,
+						borderRadius: [0, 3, 3, 0],
+					},
+					label: {
+						show: true,
+						position: 'right',
+						color: dimColor(),
+						fontSize: 11,
+						formatter: (p: any) => String(data[p.dataIndex].signedUp),
+					},
+				},
+			],
+		});
+	}
+
 	function renderUtmChart() {
 		if (!stats || stats.utm.sources.length === 0) return;
 		const chart = initChart(utmEl);
@@ -1237,6 +1355,15 @@
 						</div>
 					{/if}
 				</div>
+				{#if stats.signups.qualification.length > 0}
+					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Qualification Funnel by Event</p>
+						<div
+							bind:this={signupQualificationEl}
+							style="height: {Math.max(180, stats.signups.qualification.length * 38 + 48)}px;"
+						></div>
+					</div>
+				{/if}
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Signup Origins → Event Destinations</p>
 					<div bind:this={signupMapEl} style="width: 100%; height: 400px;"></div>
