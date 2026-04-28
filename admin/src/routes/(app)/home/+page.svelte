@@ -23,10 +23,13 @@
 		stats ? (stats.reviewProjects.funnelMatrix ?? null) : null,
 	);
 	const finalApproved = $derived(funnelMatrix ? funnelMatrix.reviewApproved.fraudPassed : 0);
+	// Fraud-wins rule: any fraud-failed cell is a silent reject regardless of
+	// what the reviewer recorded.
 	const finalSilentReject = $derived(
 		funnelMatrix
 			? funnelMatrix.reviewApproved.fraudFailed +
-					funnelMatrix.reviewPending.fraudFailed
+					funnelMatrix.reviewPending.fraudFailed +
+					funnelMatrix.reviewRejected.fraudFailed
 			: 0,
 	);
 	const finalInFlight = $derived(
@@ -39,8 +42,7 @@
 	const finalRejected = $derived(
 		funnelMatrix
 			? funnelMatrix.reviewRejected.fraudPassed +
-					funnelMatrix.reviewRejected.fraudPending +
-					funnelMatrix.reviewRejected.fraudFailed
+					funnelMatrix.reviewRejected.fraudPending
 			: 0,
 	);
 
@@ -91,8 +93,9 @@
 						cellMeaning: {
 							fraudPassed: 'rejected',
 							fraudPending: 'rejected',
-							// Reviewer rejected first; their decision stood before fraud flipped.
-							fraudFailed: 'rejected',
+							// Fraud-wins rule: a fraud failure silent-rejects regardless of
+							// what the reviewer recorded.
+							fraudFailed: 'silent-reject',
 						},
 					},
 				]
@@ -400,14 +403,25 @@
 		const fraudPendingTotal = m.reviewApproved.fraudPending + m.reviewPending.fraudPending + m.reviewRejected.fraudPending;
 		const fraudFailedTotal = m.reviewApproved.fraudFailed + m.reviewPending.fraudFailed + m.reviewRejected.fraudFailed;
 
+		// Fraud-wins rule: anything that fails fraud terminates at Silent reject,
+		// no matter what the reviewer recorded. So fraud-failed flow bypasses the
+		// reviewer column entirely. The reviewer column only counts fraud-passed
+		// and fraud-pending projects.
+		const reviewerApprovedTotal = m.reviewApproved.fraudPassed + m.reviewApproved.fraudPending;
+		const reviewerPendingTotal = m.reviewPending.fraudPassed + m.reviewPending.fraudPending;
+		const reviewerRejectedTotal = m.reviewRejected.fraudPassed + m.reviewRejected.fraudPending;
+
+		const orangeBg = dark ? '#fb923c' : '#ea580c';
+
 		const nodes = [
 			{ name: `Shipped\n${shippedTotal}`, itemStyle: { color: blueBg } },
 			{ name: `Fraud: passed\n${fraudPassedTotal}`, itemStyle: { color: greenBg } },
 			{ name: `Fraud: pending\n${fraudPendingTotal}`, itemStyle: { color: yellowBg } },
 			{ name: `Fraud: failed\n${fraudFailedTotal}`, itemStyle: { color: redBg } },
-			{ name: `Reviewer: approved\n${m.reviewApproved.fraudPassed + m.reviewApproved.fraudPending + m.reviewApproved.fraudFailed}`, itemStyle: { color: greenBg } },
-			{ name: `Reviewer: pending\n${m.reviewPending.fraudPassed + m.reviewPending.fraudPending + m.reviewPending.fraudFailed}`, itemStyle: { color: yellowBg } },
-			{ name: `Reviewer: rejected\n${m.reviewRejected.fraudPassed + m.reviewRejected.fraudPending + m.reviewRejected.fraudFailed}`, itemStyle: { color: redBg } },
+			{ name: `Reviewer: approved\n${reviewerApprovedTotal}`, itemStyle: { color: greenBg } },
+			{ name: `Reviewer: pending\n${reviewerPendingTotal}`, itemStyle: { color: yellowBg } },
+			{ name: `Reviewer: rejected\n${reviewerRejectedTotal}`, itemStyle: { color: redBg } },
+			{ name: `Silent reject\n${fraudFailedTotal}`, itemStyle: { color: orangeBg } },
 		];
 
 		const links = [
@@ -415,16 +429,16 @@
 			{ source: nodes[0].name, target: nodes[1].name, value: fraudPassedTotal || 0.0001 },
 			{ source: nodes[0].name, target: nodes[2].name, value: fraudPendingTotal || 0.0001 },
 			{ source: nodes[0].name, target: nodes[3].name, value: fraudFailedTotal || 0.0001 },
-			// Fraud → Reviewer (flow through the 3×3 matrix)
+			// Fraud passed → Reviewer
 			{ source: nodes[1].name, target: nodes[4].name, value: m.reviewApproved.fraudPassed || 0.0001 },
 			{ source: nodes[1].name, target: nodes[5].name, value: m.reviewPending.fraudPassed || 0.0001 },
 			{ source: nodes[1].name, target: nodes[6].name, value: m.reviewRejected.fraudPassed || 0.0001 },
+			// Fraud pending → Reviewer
 			{ source: nodes[2].name, target: nodes[4].name, value: m.reviewApproved.fraudPending || 0.0001 },
 			{ source: nodes[2].name, target: nodes[5].name, value: m.reviewPending.fraudPending || 0.0001 },
 			{ source: nodes[2].name, target: nodes[6].name, value: m.reviewRejected.fraudPending || 0.0001 },
-			{ source: nodes[3].name, target: nodes[4].name, value: m.reviewApproved.fraudFailed || 0.0001 },
-			{ source: nodes[3].name, target: nodes[5].name, value: m.reviewPending.fraudFailed || 0.0001 },
-			{ source: nodes[3].name, target: nodes[6].name, value: m.reviewRejected.fraudFailed || 0.0001 },
+			// Fraud failed → Silent reject (terminal — reviewer outcome is moot)
+			{ source: nodes[3].name, target: nodes[7].name, value: fraudFailedTotal || 0.0001 },
 		];
 
 		chart.setOption({
@@ -449,6 +463,9 @@
 					nodeWidth: 18,
 					nodeGap: 12,
 					draggable: false,
+					// Preserve data-array order within each column; otherwise the
+					// barycenter pass floats Silent reject above the reviewer nodes.
+					layoutIterations: 0,
 					data: nodes,
 					links,
 					lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.5 },
