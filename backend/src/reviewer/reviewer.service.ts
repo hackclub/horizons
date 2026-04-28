@@ -15,7 +15,7 @@ import { FraudReviewService } from '../fraud-review/fraud-review.service';
 import { ManifestService } from '../manifest/manifest.service';
 import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
-import { CachetService } from '../cachet/cachet.service';
+import { SlackService } from '../slack/slack.service';
 import { HackatimeService } from '../hackatime/hackatime.service';
 
 // Scoped user fields — no PII like email, address, birthday, or real name
@@ -33,7 +33,7 @@ export class ReviewerService {
     private fraudReviewService: FraudReviewService,
     private submissionApprovalService: SubmissionApprovalService,
     private manifestService: ManifestService,
-    private cachetService: CachetService,
+    private slackService: SlackService,
     private hackatimeService: HackatimeService,
   ) {}
 
@@ -886,12 +886,12 @@ export class ReviewerService {
 
   /**
    * Strip PII from user data — only expose what reviewers need. Real name is
-   * intentionally omitted; reviewers see the cachet display name (the user's
-   * public Slack identity) instead. Age is computed from birthday; birthday
+   * intentionally omitted; reviewers see the Slack username (the user's
+   * public Slack handle) instead. Age is computed from birthday; birthday
    * itself is not returned.
    *
    * `displayNameMap` should be pre-fetched via `fetchDisplayNamesFor()` so we
-   * don't issue a Cachet round-trip per user inside a hot loop.
+   * don't issue a Slack round-trip per user inside a hot loop.
    */
   private scopeUserData(
     user: {
@@ -928,7 +928,7 @@ export class ReviewerService {
   }
 
   /**
-   * Batch-fetch Cachet display names for any user with a slackUserId.
+   * Batch-fetch Slack usernames for any user with a slackUserId.
    * Returns an empty map if no users have a slackUserId.
    */
   private async fetchDisplayNamesFor(
@@ -942,7 +942,7 @@ export class ReviewerService {
       ),
     ];
     if (ids.length === 0) return new Map();
-    return this.cachetService.getDisplayNames(ids);
+    return this.slackService.getUsernames(ids);
   }
 
   /**

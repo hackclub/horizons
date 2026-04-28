@@ -142,6 +142,53 @@ export class SlackService {
     }
   }
 
+  async getUsername(slackUserId: string): Promise<string | null> {
+    if (!this.botToken || !slackUserId) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(
+        `https://slack.com/api/users.info?user=${slackUserId}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.botToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!data.ok) {
+        console.error('Failed to fetch Slack username:', data.error);
+        return null;
+      }
+
+      return data.user?.name ?? null;
+    } catch (error) {
+      console.error('Error fetching Slack username:', error);
+      return null;
+    }
+  }
+
+  async getUsernames(slackUserIds: string[]): Promise<Map<string, string>> {
+    const results = await Promise.allSettled(
+      slackUserIds.map(async (id) => ({
+        id,
+        name: await this.getUsername(id),
+      })),
+    );
+    const map = new Map<string, string>();
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value.name) {
+        map.set(result.value.id, result.value.name);
+      }
+    }
+    return map;
+  }
+
   async getUserChannels(slackUserId: string): Promise<Set<string>> {
     const result = new Set<string>();
     if (!this.botToken) return result;

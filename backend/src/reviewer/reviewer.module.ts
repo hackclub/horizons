@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma.service';
 import { FraudReviewModule } from '../fraud-review/fraud-review.module';
 import { SubmissionApprovalModule } from '../submission-approval/submission-approval.module';
 import { ManifestModule } from '../manifest/manifest.module';
-import { CachetModule } from '../cachet/cachet.module';
+import { SlackModule } from '../slack/slack.module';
 import { HackatimeModule } from '../hackatime/hackatime.module';
 
 @Module({
@@ -13,7 +13,7 @@ import { HackatimeModule } from '../hackatime/hackatime.module';
     FraudReviewModule,
     SubmissionApprovalModule,
     ManifestModule,
-    CachetModule,
+    SlackModule,
     HackatimeModule,
   ],
   controllers: [ReviewerController],

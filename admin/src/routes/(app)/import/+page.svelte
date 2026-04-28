@@ -210,7 +210,7 @@
     <Card class="p-6 space-y-4">
         <h2 class="text-xl font-semibold">Export Users CSV</h2>
         <p class="text-sm text-ds-text-secondary">
-            Export all users with Cachet username, Slack ID, and lifecycle milestones (sign-up, Hackatime link, first project, first submission, pinned event).
+            Export all users with Slack username, Slack ID, and lifecycle milestones (sign-up, Hackatime link, first project, first submission, pinned event).
         </p>
         <Button onclick={handleExport} disabled={exporting}>
             {exporting ? 'Exporting...' : 'Export CSV'}
