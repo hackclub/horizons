@@ -804,20 +804,8 @@ class StatsSignupRoute {
   @ApiProperty()
   originCountry: string;
 
-  @ApiProperty({ type: Number, nullable: true })
-  originLat: number | null;
-
-  @ApiProperty({ type: Number, nullable: true })
-  originLng: number | null;
-
   @ApiProperty()
   eventCountry: string;
-
-  @ApiProperty({ type: Number, nullable: true })
-  eventLat: number | null;
-
-  @ApiProperty({ type: Number, nullable: true })
-  eventLng: number | null;
 
   @ApiProperty()
   eventTitle: string;
@@ -858,6 +846,12 @@ class StatsSignups {
 
   @ApiProperty({ type: [StatsSignupRoute] })
   routes: StatsSignupRoute[];
+
+  @ApiProperty()
+  signupsMissingOrigin: number;
+
+  @ApiProperty({ type: [String] })
+  eventsMissingCountry: string[];
 }
 
 class StatsUtmEntry {

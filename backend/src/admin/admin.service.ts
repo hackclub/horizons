@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
-import { GeocodingService } from './geocoding.service';
 import { ManifestService } from '../manifest/manifest.service';
 import * as Papa from 'papaparse';
 
@@ -44,7 +43,6 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private slackService: SlackService,
-    private geocodingService: GeocodingService,
     private manifestService: ManifestService,
   ) {}
 
@@ -937,10 +935,13 @@ export class AdminService {
     `;
 
     // Origin country → destination event country routes for map
+    // Only require an origin country — events without a country still
+    // contribute their attendees to the origin choropleth. Empty event
+    // country is normalized to '' and skipped on the host-highlight side.
     const routesResult = await this.prisma.$queryRaw<
       Array<{
         origin_country: string;
-        event_country: string;
+        event_country: string | null;
         event_title: string;
         count: bigint;
       }>
@@ -949,32 +950,37 @@ export class AdminService {
       FROM pinned_events pe
       INNER JOIN users u ON u.user_id = pe.user_id
       INNER JOIN events e ON e.event_id = pe.event_id
-      WHERE u.country IS NOT NULL AND u.country != '' AND e.country IS NOT NULL AND e.country != ''
+      WHERE u.country IS NOT NULL AND u.country != ''
       GROUP BY u.country, e.country, e.title
       ORDER BY count DESC
     `;
 
-    // Geocode all unique countries
-    const allCountries = [
-      ...routesResult.map((r) => r.origin_country),
-      ...routesResult.map((r) => r.event_country),
-    ];
-    const coords = await this.geocodingService.geocodeMany(allCountries);
+    const routes = routesResult.map((r) => ({
+      originCountry: r.origin_country,
+      eventCountry: r.event_country ?? '',
+      eventTitle: r.event_title,
+      count: Number(r.count),
+    }));
 
-    const routes = routesResult.map((r) => {
-      const originCoords = coords.get(r.origin_country.toLowerCase().trim());
-      const eventCoords = coords.get(r.event_country.toLowerCase().trim());
-      return {
-        originCountry: r.origin_country,
-        originLat: originCoords?.lat ?? null,
-        originLng: originCoords?.lng ?? null,
-        eventCountry: r.event_country,
-        eventLat: eventCoords?.lat ?? null,
-        eventLng: eventCoords?.lng ?? null,
-        eventTitle: r.event_title,
-        count: Number(r.count),
-      };
-    });
+    // Counts to surface as map warnings: pinned users with no country, and
+    // events that have pinned users but no country set themselves.
+    const [signupsMissingOriginRow, eventsMissingCountry] = await Promise.all([
+      this.prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*) AS count
+        FROM pinned_events pe
+        INNER JOIN users u ON u.user_id = pe.user_id
+        WHERE u.country IS NULL OR u.country = ''
+      `,
+      this.prisma.event.findMany({
+        where: {
+          OR: [{ country: null }, { country: '' }],
+          pinnedBy: { some: {} },
+        },
+        select: { title: true },
+        orderBy: { title: 'asc' },
+      }),
+    ]);
+    const signupsMissingOrigin = Number(signupsMissingOriginRow[0]?.count ?? 0);
 
     return {
       total,
@@ -993,6 +999,8 @@ export class AdminService {
         qualified: Number(r.qualified),
       })),
       routes,
+      signupsMissingOrigin,
+      eventsMissingCountry: eventsMissingCountry.map((e) => e.title),
     };
   }
 
