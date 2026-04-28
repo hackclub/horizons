@@ -465,9 +465,6 @@
 					nodeWidth: 18,
 					nodeGap: 12,
 					draggable: false,
-					// Preserve data-array order within each column; otherwise the
-					// barycenter pass floats Silent reject above the reviewer nodes.
-					layoutIterations: 0,
 					data: nodes,
 					links,
 					lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.5 },
