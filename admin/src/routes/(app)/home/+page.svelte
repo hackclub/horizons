@@ -985,7 +985,7 @@
 				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">DAUs yesterday</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.dau.today)}</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.dau.yesterday)}</p>
 					</div>
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Avg. DAU in the past 7 days</p>

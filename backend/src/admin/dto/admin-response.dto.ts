@@ -909,7 +909,7 @@ class StatsDauEventEntry {
 
 class StatsDau {
   @ApiProperty()
-  today: number;
+  yesterday: number;
 
   @ApiProperty()
   avg7: number;
@@ -1067,7 +1067,7 @@ export class EventStatsResponse {
   notMetHourGoal: number;
 
   @ApiProperty()
-  dauToday: number;
+  dauYesterday: number;
 
   @ApiProperty({ type: [EventStatsPinnedTimelineEntry] })
   pinnedTimeline: EventStatsPinnedTimelineEntry[];
