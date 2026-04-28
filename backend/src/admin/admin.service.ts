@@ -446,9 +446,11 @@ export class AdminService {
       this.computeHistorical(thirtyDaysAgo),
     ]);
 
-    // Compute DAU summary from historical data
+    // The latest historical DAU snapshot is yesterday (cron runs at midnight
+    // UTC and snapshots the prior day). Today is mid-stream and not in the
+    // snapshot table, so this is genuinely yesterday's count.
     const dauData = historical.dau;
-    const dauToday = dauData.length > 0 ? dauData[dauData.length - 1].value : 0;
+    const dauYesterday = dauData.length > 0 ? dauData[dauData.length - 1].value : 0;
     const last7Dau = dauData.slice(-7);
     const last30Dau = dauData;
     const avg7 = last7Dau.length > 0 ? last7Dau.reduce((s, d) => s + d.value, 0) / last7Dau.length : 0;
@@ -462,7 +464,7 @@ export class AdminService {
     const dauPerEvent = await this.computeDauPerEvent();
 
     const dau = {
-      today: dauToday,
+      yesterday: dauYesterday,
       avg7: Math.round(avg7 * 10) / 10,
       avg30: Math.round(avg30 * 10) / 10,
       growthPercent7: dauGrowthPercent,
@@ -1131,8 +1133,9 @@ export class AdminService {
     const eventId = event.eventId;
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    const yesterdayStart = new Date();
+    yesterdayStart.setUTCHours(0, 0, 0, 0);
+    yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1);
 
     // Pinned users who have/haven't met the hour goal
     const pinnedUsers = await this.prisma.pinnedEvent.findMany({
@@ -1160,15 +1163,18 @@ export class AdminService {
       }
     }
 
-    // DAU for this event (users with project activity today who are pinned to this event)
-    const dauResult = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(DISTINCT p.user_id) as count
-      FROM projects p
-      INNER JOIN pinned_events pe ON pe.user_id = p.user_id
-      WHERE pe.event_id = ${eventId}
-        AND p.updated_at >= ${todayStart}
-    `;
-    const dauToday = Number(dauResult[0]?.count ?? 0);
+    // Yesterday's DAU for this event — read from the snapshot table so the
+    // value is consistent with the dashboard top-level DAU and the per-event
+    // breakdown (both Hackatime-activity-derived). Today's value would be a
+    // partial mid-stream count and wouldn't reconcile.
+    const dauRow = await this.prisma.historicalMetric.findUnique({
+      where: { date_metric: { date: yesterdayStart, metric: `dau_event.${slug}` } },
+    });
+    const dauYesterday = dauRow
+      ? typeof dauRow.value === 'number'
+        ? dauRow.value
+        : Number(dauRow.value) || 0
+      : 0;
 
     // Pinned over the last 30 days (daily counts from pinned_events.created_at)
     const pinnedOverTime = await this.prisma.$queryRaw<
@@ -1223,7 +1229,7 @@ export class AdminService {
       pinnedCount: event._count.pinnedBy,
       metHourGoal: metGoal,
       notMetHourGoal: notMetGoal,
-      dauToday,
+      dauYesterday,
       pinnedTimeline,
       dauTimeline,
     };

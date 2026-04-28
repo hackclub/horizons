@@ -2264,7 +2264,7 @@ export interface components {
             count: number;
         };
         StatsDau: {
-            today: number;
+            yesterday: number;
             avg7: number;
             avg30: number;
             growthPercent7: number;
@@ -2312,7 +2312,7 @@ export interface components {
             pinnedCount: number;
             metHourGoal: number;
             notMetHourGoal: number;
-            dauToday: number;
+            dauYesterday: number;
             pinnedTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
             dauTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
         };
