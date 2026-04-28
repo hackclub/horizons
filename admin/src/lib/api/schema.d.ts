@@ -2218,6 +2218,14 @@ export interface components {
             slug: string;
             count: number;
         };
+        StatsSignupQualificationEntry: {
+            eventId: number;
+            title: string;
+            slug: string;
+            signedUp: number;
+            rsvped: number;
+            qualified: number;
+        };
         StatsSignupRoute: {
             originCountry: string;
             originLat: number | null;
@@ -2231,6 +2239,7 @@ export interface components {
         StatsSignups: {
             total: number;
             perEvent: components["schemas"]["StatsSignupEventEntry"][];
+            qualification: components["schemas"]["StatsSignupQualificationEntry"][];
             routes: components["schemas"]["StatsSignupRoute"][];
         };
         StatsUtmEntry: {

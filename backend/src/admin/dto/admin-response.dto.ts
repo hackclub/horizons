@@ -826,12 +826,35 @@ class StatsSignupRoute {
   count: number;
 }
 
+class StatsSignupQualificationEntry {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  signedUp: number;
+
+  @ApiProperty()
+  rsvped: number;
+
+  @ApiProperty()
+  qualified: number;
+}
+
 class StatsSignups {
   @ApiProperty()
   total: number;
 
   @ApiProperty({ type: [StatsSignupEventEntry] })
   perEvent: StatsSignupEventEntry[];
+
+  @ApiProperty({ type: [StatsSignupQualificationEntry] })
+  qualification: StatsSignupQualificationEntry[];
 
   @ApiProperty({ type: [StatsSignupRoute] })
   routes: StatsSignupRoute[];

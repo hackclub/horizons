@@ -905,6 +905,37 @@ export class AdminService {
       ORDER BY count DESC
     `;
 
+    // Per-event qualification funnel: signed up → ≥15h approved (RSVPed) →
+    // ≥30h approved (qualified). Approved hours sum across all of a user's
+    // projects.
+    const qualificationResult = await this.prisma.$queryRaw<
+      Array<{
+        event_id: number;
+        title: string;
+        slug: string;
+        signed_up: bigint;
+        rsvped: bigint;
+        qualified: bigint;
+      }>
+    >`
+      SELECT
+        e.event_id,
+        e.title,
+        e.slug,
+        COUNT(pe.id) AS signed_up,
+        COUNT(*) FILTER (WHERE COALESCE(ut.total_hours, 0) >= 15) AS rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.total_hours, 0) >= 30) AS qualified
+      FROM pinned_events pe
+      INNER JOIN events e ON e.event_id = pe.event_id
+      LEFT JOIN (
+        SELECT user_id, SUM(approved_hours) AS total_hours
+        FROM projects
+        GROUP BY user_id
+      ) ut ON ut.user_id = pe.user_id
+      GROUP BY e.event_id, e.title, e.slug
+      ORDER BY signed_up DESC
+    `;
+
     // Origin country → destination event country routes for map
     const routesResult = await this.prisma.$queryRaw<
       Array<{
@@ -952,6 +983,14 @@ export class AdminService {
         title: r.title,
         slug: r.slug,
         count: Number(r.count),
+      })),
+      qualification: qualificationResult.map((r) => ({
+        eventId: r.event_id,
+        title: r.title,
+        slug: r.slug,
+        signedUp: Number(r.signed_up),
+        rsvped: Number(r.rsvped),
+        qualified: Number(r.qualified),
       })),
       routes,
     };
