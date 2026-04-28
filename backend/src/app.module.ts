@@ -19,7 +19,6 @@ import { SlackChannelsModule } from './slack-channels/slack-channels.module';
 import { HackatimeModule } from './hackatime/hackatime.module';
 import { UtilsModule } from './utils/utils.module';
 import { GitHubModule } from './github/github.module';
-import { CachetModule } from './cachet/cachet.module';
 import { ManifestModule } from './manifest/manifest.module';
 import { AuthGuard } from './auth/auth.guard';
 import { PrismaService } from './prisma.service';
@@ -50,7 +49,6 @@ import { PrismaService } from './prisma.service';
     HackatimeModule,
     UtilsModule,
     GitHubModule,
-    CachetModule,
     ManifestModule,
   ],
   providers: [

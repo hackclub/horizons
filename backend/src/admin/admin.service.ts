@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
-import { CachetService } from '../cachet/cachet.service';
 import { GeocodingService } from './geocoding.service';
 import { ManifestService } from '../manifest/manifest.service';
 import * as Papa from 'papaparse';
@@ -45,7 +44,6 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private slackService: SlackService,
-    private cachetService: CachetService,
     private geocodingService: GeocodingService,
     private manifestService: ManifestService,
   ) {}
@@ -2418,7 +2416,7 @@ export class AdminService {
     const slackIds = users
       .map((u) => u.slackUserId)
       .filter((id): id is string => !!id);
-    const displayNames = await this.cachetService.getDisplayNames(slackIds);
+    const displayNames = await this.slackService.getUsernames(slackIds);
 
     const rows = users.map((user) => ({
       email: user.email,

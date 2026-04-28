@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
-import { CachetService } from '../cachet/cachet.service';
+import { SlackService } from '../slack/slack.service';
 import { SlackChannelsService } from '../slack-channels/slack-channels.service';
 
 import { createHmac } from 'crypto';
@@ -110,7 +110,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private airtableService: AirtableService,
-    private cachetService: CachetService,
+    private slackService: SlackService,
     private slackChannelsService: SlackChannelsService,
   ) {}
 
@@ -589,7 +589,7 @@ export class AuthService {
     }
 
     const slackDisplayName = user.slackUserId
-      ? await this.cachetService.getDisplayName(user.slackUserId)
+      ? await this.slackService.getUsername(user.slackUserId)
       : null;
 
     return { ...userWithoutAddress, hasAddress, slackDisplayName };
@@ -652,7 +652,7 @@ export class AuthService {
     const slackIds = users
       .map((u) => u.slackUserId)
       .filter((id): id is string => !!id);
-    const displayNames = await this.cachetService.getDisplayNames(slackIds);
+    const displayNames = await this.slackService.getUsernames(slackIds);
 
     return {
       referrals: users.map((u) => ({
