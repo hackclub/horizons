@@ -586,34 +586,66 @@ export class AdminService {
   }
 
   private async computeReviewStats() {
-    const [trackedAgg, unshippedAgg, shippedAgg, hoursInReviewResult, approvedAgg] =
-      await Promise.all([
-        this.prisma.project.aggregate({ _sum: { nowHackatimeHours: true } }),
-        this.prisma.project.aggregate({
-          _sum: { nowHackatimeHours: true },
-          where: { submissions: { none: {} } },
-        }),
-        this.prisma.project.aggregate({
-          _sum: { nowHackatimeHours: true },
-          where: { submissions: { some: {} } },
-        }),
-        this.prisma.$queryRaw<Array<{ total_hours: number }>>`
+    const [
+      trackedAgg,
+      unshippedAgg,
+      shippedAgg,
+      hoursInReviewResult,
+      approvedHoursResult,
+      rejectedHoursResult,
+    ] = await Promise.all([
+      this.prisma.project.aggregate({ _sum: { nowHackatimeHours: true } }),
+      this.prisma.project.aggregate({
+        _sum: { nowHackatimeHours: true },
+        where: { submissions: { none: {} } },
+      }),
+      this.prisma.project.aggregate({
+        _sum: { nowHackatimeHours: true },
+        where: { submissions: { some: {} } },
+      }),
+      // Hours in review: latest submission is pending AND reviewer hasn't decided yet
+      this.prisma.$queryRaw<Array<{ total_hours: number }>>`
           SELECT COALESCE(SUM(p.now_hackatime_hours), 0) as total_hours
           FROM projects p
           WHERE EXISTS (
             SELECT 1 FROM submissions s
             WHERE s.project_id = p.project_id
               AND s.approval_status = 'pending'
+              AND s.review_passed IS NULL
               AND s.created_at = (
                 SELECT MAX(s2.created_at) FROM submissions s2
                 WHERE s2.project_id = p.project_id
               )
           )
         `,
-        this.prisma.project.aggregate({ _sum: { approvedHours: true } }),
-      ]);
+      // Approved hours: latest approved submission per fraud-passed project
+      this.prisma.$queryRaw<Array<{ total_hours: number }>>`
+          SELECT COALESCE(SUM(s.approved_hours), 0) as total_hours
+          FROM submissions s
+          JOIN projects p ON p.project_id = s.project_id
+          WHERE s.approval_status = 'approved'
+            AND p.joe_fraud_passed = true
+            AND s.created_at = (
+              SELECT MAX(s2.created_at) FROM submissions s2
+              WHERE s2.project_id = p.project_id
+                AND s2.approval_status = 'approved'
+            )
+        `,
+      // Rejected hours: latest submission is rejected and not a silent fraud reject
+      this.prisma.$queryRaw<Array<{ total_hours: number }>>`
+          SELECT COALESCE(SUM(s.hackatime_hours), 0) as total_hours
+          FROM submissions s
+          WHERE s.approval_status = 'rejected'
+            AND s.silent_reject = false
+            AND s.created_at = (
+              SELECT MAX(s2.created_at) FROM submissions s2
+              WHERE s2.project_id = s.project_id
+            )
+        `,
+    ]);
 
-    const approved = approvedAgg._sum.approvedHours ?? 0;
+    const approved = Number(approvedHoursResult[0]?.total_hours ?? 0);
+    const rejected = Number(rejectedHoursResult[0]?.total_hours ?? 0);
 
     // Median review time this week
     const weekStart = new Date();
@@ -717,6 +749,7 @@ export class AdminService {
       shippedHours: shippedAgg._sum.nowHackatimeHours ?? 0,
       hoursInReview: Number(hoursInReviewResult[0]?.total_hours ?? 0),
       approvedHours: approved,
+      rejectedHours: rejected,
       weightedGrants: Math.round((approved / 10) * 100) / 100,
       medianReviewTimeThisWeek,
       medianFraudCheckTimeThisWeek,

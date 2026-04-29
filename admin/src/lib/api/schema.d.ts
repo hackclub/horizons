@@ -2182,6 +2182,7 @@ export interface components {
             shippedHours: number;
             hoursInReview: number;
             approvedHours: number;
+            rejectedHours: number;
             weightedGrants: number;
             medianReviewTimeThisWeek: number | null;
             medianFraudCheckTimeThisWeek: number | null;

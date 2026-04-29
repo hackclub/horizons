@@ -1238,10 +1238,11 @@
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Approved Hours</p>
 						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.approvedHours)}</p>
+						<p class="text-[10px] text-ds-text-secondary">{formatHours(stats.reviewStats.weightedGrants)} weighted grants</p>
 					</div>
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Weighted Grants</p>
-						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.weightedGrants)}</p>
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Rejected Hours</p>
+						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.rejectedHours)}</p>
 					</div>
 				</div>
 			</section>
