@@ -214,9 +214,11 @@ export class SubmissionApprovalService {
    * CAS on approvalStatus='pending' makes this idempotent under reviewer + fraud-poll
    * races — exactly one caller wins the transition and fires side effects.
    *
-   * Rule: fraud=false ALWAYS silent-rejects, regardless of reviewer state. Users who
-   * committed fraud get no feedback — their submission silently drops off the queue.
-   * Reviewer-rejection only fires user notifications when fraud has NOT failed.
+   * Rule: fraud=false silent-rejects only when the reviewer has NOT explicitly
+   * rejected. If the reviewer rejected, that decision is authoritative and the
+   * user gets normal feedback (DM, in-app status, resubmit allowed). Pure
+   * fraud-only rejections stay silent — the user sees "pending" and can't
+   * resubmit, so fraud actors get no signal.
    *
    * Truth table:
    *   reviewPassed=null, fraud=null            → pending (both gates open)
@@ -227,7 +229,7 @@ export class SubmissionApprovalService {
    *   reviewPassed=true, fraud=false           → rejected, silent
    *   reviewPassed=false, fraud=null           → rejected, normal (reviewer wins)
    *   reviewPassed=false, fraud=true           → rejected, normal
-   *   reviewPassed=false, fraud=false          → rejected, silent (fraud wins)
+   *   reviewPassed=false, fraud=false          → rejected, normal (reviewer's call stands)
    */
   private async evaluateAndFinalize(
     submissionId: number,
@@ -246,13 +248,14 @@ export class SubmissionApprovalService {
     const fraudRaw = submission.project.joeFraudPassed;
     const fraudEffective = fraudEnabled ? fraudRaw : true;
 
-    // Fraud failure short-circuits everything: silent-reject, remove from queue,
-    // no user-facing signal regardless of what the reviewer did.
+    // Fraud failure rejects, but only silently if the reviewer hasn't also
+    // rejected. A reviewer rejection is authoritative — the user deserves the
+    // feedback even when fraud also fired.
     if (fraudEffective === false) {
       await this.commitTransition(
         submission,
         'rejected',
-        true,
+        reviewPassed !== false,
         actorUserId,
         fraudRaw,
       );

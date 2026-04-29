@@ -457,14 +457,15 @@ export class SlackService {
     }
 
     const projectUrl = `${process.env.FRONTEND_URL || 'https://horizons.hackclub.com'}/app/projects/${data.projectId}`;
-    const statusEmoji = data.approved ? '✅' : '❌';
 
     const blocks: SlackMessageBlock[] = [
       {
         type: 'header',
         text: {
           type: 'plain_text',
-          text: `${statusEmoji} Submission ${data.approved ? 'Approved' : 'Needs Changes'}`,
+          text: data.approved
+            ? 'Submission is ship certified :check:'
+            : 'Submission failed ship certification :X:',
           emoji: true,
         },
       },
@@ -473,8 +474,8 @@ export class SlackService {
         text: {
           type: 'mrkdwn',
           text: data.approved
-            ? `Your submission for *${data.projectTitle}* has been approved.`
-            : `Your submission for *${data.projectTitle}* needs changes.`,
+            ? `Your submission for *${data.projectTitle}* is ship certified.`
+            : `Your submission for *${data.projectTitle}* failed ship certification.`,
         },
       },
     ];
@@ -508,8 +509,8 @@ export class SlackService {
     });
 
     const fallbackText = data.approved
-      ? `Your submission for "${data.projectTitle}" has been approved.${data.feedback ? ` Feedback: ${data.feedback}` : ''}`
-      : `Your submission for "${data.projectTitle}" needs changes.${data.feedback ? ` Feedback: ${data.feedback}` : ''}`;
+      ? `Your submission for "${data.projectTitle}" is ship certified.${data.feedback ? ` Feedback: ${data.feedback}` : ''}`
+      : `Your submission for "${data.projectTitle}" failed ship certification.${data.feedback ? ` Feedback: ${data.feedback}` : ''}`;
 
     return this.sendDirectMessage(user.slackUserId, fallbackText, blocks);
   }
