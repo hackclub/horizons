@@ -85,6 +85,10 @@ DATABASE_URL=              # PostgreSQL connection string
 HACKCLUB_CLIENT_ID=        # HCA OAuth app client ID
 HACKCLUB_CLIENT_SECRET=    # HCA OAuth app client secret
 HACKCLUB_REDIRECT_URI=     # OAuth redirect URI
+HACKCLUB_OAUTH_SCOPES=     # HCA OAuth scopes ("openid email name" etc)
+HACKATIME_CLIENT_ID=       # Hackatime OAuth app client ID
+HACKATIME_CLIENT_SECRET=   # Hackatime OAuth app client secret
+HACKATIME_REDIRECT_URI=    # Hackatime OAuth Redirect URI
 STATE_SECRET=              # Run: openssl rand -base64 32
 ```
 
