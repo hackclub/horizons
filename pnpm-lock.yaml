@@ -330,7 +330,7 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       dompurify:
-        specifier: ^3.3.3
+        specifier: ^3.4.0
         version: 3.4.0
       gsap:
         specifier: ^3.14.2
@@ -5370,7 +5370,7 @@ packages:
     engines: {node: '>= 18.0.0'}
     hasBin: true
     peerDependencies:
-      svelte: '>=5.53.5'
+      svelte: '>=5.51.5'
       typescript: '>=5.0.0'
 
   svelte@5.55.1:
