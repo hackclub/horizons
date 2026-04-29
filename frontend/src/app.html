@@ -12,6 +12,36 @@
 		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<div id="global-loading" style="position:fixed;inset:0;z-index:99999;background:black;">
+			<div style="position:absolute;bottom:32px;right:40px;opacity:0;text-align:right;transition:opacity 0.4s ease-in-out;" id="global-loading-wrap">
+				<div id="global-loading-text" style="font-family:'Hypebuzz',monospace;font-size:32px;font-weight:600;color:white;letter-spacing:0.1em;margin:0;display:flex;gap:0;justify-content:flex-end;">
+				</div>
+				<p id="global-loading-sub" style="font-family:'Bricolage Grotesque',sans-serif;font-size:14px;color:rgba(255,255,255,0.5);margin:6px 0 0 0;text-align:right;"></p>
+			</div>
+		</div>
+		<style>
+			@keyframes gwave{
+				0%,100%{transform:translateY(0)}
+				12.5%{transform:translateY(-2.1px)}
+				25%{transform:translateY(-3px)}
+				37.5%{transform:translateY(-2.1px)}
+				50%{transform:translateY(0)}
+				62.5%{transform:translateY(2.1px)}
+				75%{transform:translateY(3px)}
+				87.5%{transform:translateY(2.1px)}
+			}
+			.gw-char{display:inline-block;animation:gwave 2s linear infinite}
+		</style>
+		<script>
+			(function(){
+				var text='LOADING...',el=document.getElementById('global-loading-text');
+				for(var i=0;i<text.length;i++){var s=document.createElement('span');s.className='gw-char';s.textContent=text[i];s.style.animationDelay=-i*0.08+'s';el.appendChild(s)}
+				var subs=["It's okay, my hotspot sucks too.","Your computer just needs time to cook","The coolness is almost here","How's your day going?"];
+				document.getElementById('global-loading-sub').textContent=subs[Math.floor(Math.random()*subs.length)];
+				var _lt=setTimeout(function(){document.getElementById('global-loading-wrap').style.opacity='1'},2000);
+				window._lt=_lt;
+			})();
+		</script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>
