@@ -34,7 +34,7 @@
 	let postOnboarding = $state(page.url.searchParams.has('post-onboarding'));
 
 	// Temporarily hide the community events card; flip to false to restore it.
-	const HIDE_COMMUNITY_EVENTS = true;
+	const HIDE_COMMUNITY_EVENTS = false;
 
 	// Column index constants — when CE card is hidden, all columns to its right shift left by 1.
 	const COL_LEFT = HIDE_COMMUNITY_EVENTS ? 0 : 1;
