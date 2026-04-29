@@ -1,21 +1,141 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { theme, toggleTheme } from '$lib/themeStore';
 	import { api, type components } from '$lib/api';
+	import * as echarts from 'echarts';
 
 	type ReviewStats = components['schemas']['ReviewStatsResponse'];
 	type LeaderboardEntry = components['schemas']['LeaderboardEntry'];
+	type FunnelMatrix = components['schemas']['StatsFunnelMatrix'];
+	type FraudRow = components['schemas']['StatsFunnelMatrixRow'];
+	type DataPoint = { date: string; value: number };
+	type EChart = echarts.ECharts;
 
 	let stats = $state<ReviewStats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
 	let leaderboardTab = $state<'allTime' | 'week' | 'day'>('allTime');
+	let breakdownTab = $state<'hours' | 'median' | 'projects' | 'leaderboard'>('projects');
 
 	let currentLeaderboard = $derived<LeaderboardEntry[]>(
 		stats ? stats.leaderboard[leaderboardTab] : [],
 	);
+
+	const funnelMatrix = $derived<FunnelMatrix | null>(
+		stats ? (stats.reviewProjects.funnelMatrix ?? null) : null,
+	);
+	const finalApproved = $derived(funnelMatrix ? funnelMatrix.reviewApproved.fraudPassed : 0);
+	const finalSilentReject = $derived(
+		funnelMatrix
+			? funnelMatrix.reviewApproved.fraudFailed +
+					funnelMatrix.reviewPending.fraudFailed +
+					funnelMatrix.reviewRejected.fraudFailed
+			: 0,
+	);
+	const finalInFlight = $derived(
+		funnelMatrix
+			? funnelMatrix.reviewApproved.fraudPending +
+					funnelMatrix.reviewPending.fraudPassed +
+					funnelMatrix.reviewPending.fraudPending
+			: 0,
+	);
+	const finalRejected = $derived(
+		funnelMatrix
+			? funnelMatrix.reviewRejected.fraudPassed +
+					funnelMatrix.reviewRejected.fraudPending
+			: 0,
+	);
+
+	type MatrixCellMeaning =
+		| 'approved'
+		| 'silent-reject'
+		| 'awaiting-fraud'
+		| 'awaiting-review'
+		| 'awaiting-both'
+		| 'rejected';
+
+	const matrixRows = $derived<
+		{
+			key: keyof FunnelMatrix;
+			label: string;
+			data: FraudRow;
+			cellMeaning: Record<keyof FraudRow, MatrixCellMeaning>;
+		}[]
+	>(
+		funnelMatrix
+			? [
+					{
+						key: 'reviewApproved',
+						label: 'Reviewer: approved',
+						data: funnelMatrix.reviewApproved,
+						cellMeaning: {
+							fraudPassed: 'approved',
+							fraudPending: 'awaiting-fraud',
+							fraudFailed: 'silent-reject',
+						},
+					},
+					{
+						key: 'reviewPending',
+						label: 'Reviewer: pending',
+						data: funnelMatrix.reviewPending,
+						cellMeaning: {
+							fraudPassed: 'awaiting-review',
+							fraudPending: 'awaiting-both',
+							fraudFailed: 'silent-reject',
+						},
+					},
+					{
+						key: 'reviewRejected',
+						label: 'Reviewer: rejected',
+						data: funnelMatrix.reviewRejected,
+						cellMeaning: {
+							fraudPassed: 'rejected',
+							fraudPending: 'rejected',
+							fraudFailed: 'silent-reject',
+						},
+					},
+				]
+			: [],
+	);
+
+	function cellStyle(meaning: MatrixCellMeaning) {
+		switch (meaning) {
+			case 'approved':
+				return 'bg-green-500/15 border-green-500 text-green-700';
+			case 'silent-reject':
+				return 'bg-orange-500/15 border-orange-500 text-orange-700';
+			case 'awaiting-fraud':
+			case 'awaiting-review':
+			case 'awaiting-both':
+				return 'bg-yellow-500/15 border-yellow-500 text-yellow-800';
+			case 'rejected':
+				return 'bg-red-500/15 border-red-500 text-red-700';
+		}
+	}
+	function cellLabel(meaning: MatrixCellMeaning) {
+		switch (meaning) {
+			case 'approved':
+				return 'Final approved';
+			case 'silent-reject':
+				return 'Silent reject';
+			case 'awaiting-fraud':
+				return 'Awaiting fraud';
+			case 'awaiting-review':
+				return 'Awaiting reviewer';
+			case 'awaiting-both':
+				return 'Awaiting both';
+			case 'rejected':
+				return 'Rejected';
+		}
+	}
+
+	let charts: EChart[] = [];
+	let medianReviewEl = $state<HTMLDivElement | null>(null);
+	let medianFraudCheckEl = $state<HTMLDivElement | null>(null);
+	let projectFunnelEl = $state<HTMLDivElement | null>(null);
+	let projectsReviewedEl = $state<HTMLDivElement | null>(null);
 
 	onMount(async () => {
 		const { data: me, error: authErr } = await api.GET('/api/user/auth/me');
@@ -28,7 +148,18 @@
 			return;
 		}
 		await loadStats();
+		window.addEventListener('resize', handleResize);
 	});
+
+	onDestroy(() => {
+		charts.forEach((c) => c.dispose());
+		charts = [];
+		if (typeof window !== 'undefined') window.removeEventListener('resize', handleResize);
+	});
+
+	function handleResize() {
+		charts.forEach((c) => c.resize());
+	}
 
 	async function loadStats() {
 		loading = true;
@@ -37,11 +168,306 @@
 			const { data, error: fetchErr } = await api.GET('/api/reviewer/stats');
 			if (fetchErr) throw new Error('Failed to fetch review stats');
 			stats = data ?? null;
+			loading = false;
+			await tick();
+			renderCharts();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load stats';
 		} finally {
 			loading = false;
 		}
+	}
+
+	function isDark() {
+		return $theme === 'dark';
+	}
+	function textColor() {
+		return isDark() ? '#e2e8f0' : '#334155';
+	}
+	function dimColor() {
+		return isDark() ? '#94a3b8' : '#64748b';
+	}
+	function gridColor() {
+		return isDark() ? '#334155' : '#e2e8f0';
+	}
+
+	function initChart(el: HTMLDivElement | null): EChart | null {
+		if (!el) return null;
+		const existing = echarts.getInstanceByDom(el);
+		if (existing) existing.dispose();
+		const chart = echarts.init(el, undefined, { renderer: 'canvas' });
+		charts.push(chart);
+		return chart;
+	}
+
+	function renderCharts() {
+		if (!stats) return;
+		charts.forEach((c) => c.dispose());
+		charts = [];
+		renderLineChart(
+			medianReviewEl,
+			stats.historical.medianReviewTimeHours,
+			'#f97316',
+			'rgba(249,115,22,0.15)',
+			'h',
+		);
+		renderLineChart(
+			medianFraudCheckEl,
+			stats.historical.medianFraudCheckTimeHours,
+			'#ef4444',
+			'rgba(239,68,68,0.15)',
+			'h',
+		);
+		renderProjectFunnel();
+		renderProjectsMultiLine();
+	}
+
+	$effect(() => {
+		// Re-render charts when theme flips or tab changes so axis colors track
+		// and bindings into newly-mounted DOM nodes get hooked up.
+		$theme;
+		breakdownTab;
+		if (stats) tick().then(() => renderCharts());
+	});
+
+	function renderLineChart(
+		el: HTMLDivElement | null,
+		data: DataPoint[],
+		color: string,
+		areaColor: string,
+		suffix = '',
+	) {
+		const chart = initChart(el);
+		if (!chart) return;
+
+		const hasData = data && data.length > 0;
+		const emptyLabels = Array.from({ length: 30 }, (_, i) => {
+			const d = new Date();
+			d.setDate(d.getDate() - 29 + i);
+			return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+		});
+
+		chart.setOption({
+			backgroundColor: 'transparent',
+			grid: { left: 45, right: 12, top: 10, bottom: 24 },
+			xAxis: {
+				type: 'category',
+				data: hasData ? data.map((d) => d.date.slice(5)) : emptyLabels,
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				axisLine: { lineStyle: { color: gridColor() } },
+				axisTick: { show: false },
+			},
+			yAxis: {
+				type: 'value',
+				axisLabel: { color: dimColor(), fontSize: 10, formatter: `{value}${suffix}` },
+				splitLine: { lineStyle: { color: gridColor(), type: 'dashed' } },
+				axisLine: { show: false },
+				min: 0,
+				max: hasData ? undefined : 100,
+			},
+			tooltip: hasData
+				? {
+						trigger: 'axis',
+						formatter: (params: any) => {
+							const p = params[0];
+							return `${p.axisValue}<br/>${p.value}${suffix}`;
+						},
+					}
+				: { show: false },
+			series: [
+				{
+					type: 'line',
+					data: hasData ? data.map((d) => d.value) : [],
+					smooth: true,
+					symbol: 'circle',
+					symbolSize: 5,
+					lineStyle: { color, width: 2 },
+					itemStyle: { color },
+					areaStyle: { color: areaColor },
+				},
+			],
+		});
+	}
+
+	function renderProjectFunnel() {
+		const chart = initChart(projectFunnelEl);
+		if (!chart || !stats) return;
+
+		const m = stats.reviewProjects.funnelMatrix;
+		if (!m) return;
+		const dark = isDark();
+		const axis = textColor();
+
+		const greenBg = dark ? '#22c55e' : '#16a34a';
+		const yellowBg = dark ? '#eab308' : '#ca8a04';
+		const redBg = dark ? '#ef4444' : '#dc2626';
+		const blueBg = dark ? '#60a5fa' : '#3b82f6';
+		const orangeBg = dark ? '#fb923c' : '#ea580c';
+
+		const shippedTotal =
+			m.reviewApproved.fraudPassed + m.reviewApproved.fraudFailed + m.reviewApproved.fraudPending +
+			m.reviewPending.fraudPassed + m.reviewPending.fraudFailed + m.reviewPending.fraudPending +
+			m.reviewRejected.fraudPassed + m.reviewRejected.fraudFailed + m.reviewRejected.fraudPending;
+
+		const fraudPassedTotal =
+			m.reviewApproved.fraudPassed + m.reviewPending.fraudPassed + m.reviewRejected.fraudPassed;
+		const fraudPendingTotal =
+			m.reviewApproved.fraudPending + m.reviewPending.fraudPending + m.reviewRejected.fraudPending;
+		const fraudFailedTotal =
+			m.reviewApproved.fraudFailed + m.reviewPending.fraudFailed + m.reviewRejected.fraudFailed;
+
+		const reviewerApprovedTotal = m.reviewApproved.fraudPassed + m.reviewApproved.fraudPending;
+		const reviewerPendingTotal = m.reviewPending.fraudPassed + m.reviewPending.fraudPending;
+		const reviewerRejectedTotal = m.reviewRejected.fraudPassed + m.reviewRejected.fraudPending;
+
+		const nodes = [
+			{ name: `Shipped\n${shippedTotal}`, itemStyle: { color: blueBg } },
+			{ name: `Fraud: passed\n${fraudPassedTotal}`, itemStyle: { color: greenBg } },
+			{ name: `Fraud: pending\n${fraudPendingTotal}`, itemStyle: { color: yellowBg } },
+			{ name: `Fraud: failed\n${fraudFailedTotal}`, itemStyle: { color: redBg } },
+			{ name: `Reviewer: approved\n${reviewerApprovedTotal}`, itemStyle: { color: greenBg } },
+			{ name: `Reviewer: pending\n${reviewerPendingTotal}`, itemStyle: { color: yellowBg } },
+			{ name: `Reviewer: rejected\n${reviewerRejectedTotal}`, itemStyle: { color: redBg } },
+			{ name: `Silent reject\n${fraudFailedTotal}`, itemStyle: { color: orangeBg } },
+		];
+
+		const links = [
+			{ source: nodes[0].name, target: nodes[1].name, value: fraudPassedTotal || 0.0001 },
+			{ source: nodes[0].name, target: nodes[2].name, value: fraudPendingTotal || 0.0001 },
+			{ source: nodes[0].name, target: nodes[3].name, value: fraudFailedTotal || 0.0001 },
+			{ source: nodes[1].name, target: nodes[4].name, value: m.reviewApproved.fraudPassed || 0.0001 },
+			{ source: nodes[1].name, target: nodes[5].name, value: m.reviewPending.fraudPassed || 0.0001 },
+			{ source: nodes[1].name, target: nodes[6].name, value: m.reviewRejected.fraudPassed || 0.0001 },
+			{ source: nodes[2].name, target: nodes[4].name, value: m.reviewApproved.fraudPending || 0.0001 },
+			{ source: nodes[2].name, target: nodes[5].name, value: m.reviewPending.fraudPending || 0.0001 },
+			{ source: nodes[2].name, target: nodes[6].name, value: m.reviewRejected.fraudPending || 0.0001 },
+			{ source: nodes[3].name, target: nodes[7].name, value: fraudFailedTotal || 0.0001 },
+		];
+
+		chart.setOption({
+			backgroundColor: 'transparent',
+			tooltip: {
+				trigger: 'item',
+				triggerOn: 'mousemove',
+				formatter: (p: any) => {
+					if (p.dataType === 'edge') {
+						return `${p.data.source.split('\n')[0]} → ${p.data.target.split('\n')[0]}<br/><b>${Math.round(p.data.value).toLocaleString()}</b> projects`;
+					}
+					return `<b>${p.name.split('\n')[0]}</b><br/>${p.name.split('\n')[1]} projects`;
+				},
+			},
+			series: [
+				{
+					type: 'sankey',
+					left: 8,
+					right: 160,
+					top: 8,
+					bottom: 8,
+					nodeWidth: 18,
+					nodeGap: 12,
+					draggable: false,
+					data: nodes,
+					links,
+					lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.5 },
+					label: { color: axis, fontSize: 11, fontWeight: 600 },
+					emphasis: { focus: 'adjacency' },
+				},
+			],
+		});
+	}
+
+	function renderProjectsMultiLine() {
+		const chart = initChart(projectsReviewedEl);
+		if (!chart || !stats) return;
+
+		const reviewed = stats.historical.reviewsCompleted;
+		const shipped = stats.historical.projectsShipped;
+		const fraudChecked = stats.historical.projectsFraudChecked;
+		const hasData =
+			(reviewed && reviewed.length > 0) ||
+			(shipped && shipped.length > 0) ||
+			(fraudChecked && fraudChecked.length > 0);
+
+		const allDates = new Set<string>();
+		[reviewed, shipped, fraudChecked].forEach((arr) =>
+			(arr || []).forEach((d) => allDates.add(d.date.slice(5))),
+		);
+		const dates = [...allDates].sort();
+
+		const emptyLabels = Array.from({ length: 30 }, (_, i) => {
+			const d = new Date();
+			d.setDate(d.getDate() - 29 + i);
+			return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+		});
+
+		const toMap = (arr: DataPoint[]) => {
+			const m = new Map<string, number>();
+			(arr || []).forEach((d) => m.set(d.date.slice(5), d.value));
+			return m;
+		};
+		const reviewedMap = toMap(reviewed);
+		const shippedMap = toMap(shipped);
+		const fraudCheckedMap = toMap(fraudChecked);
+		const xLabels = hasData ? dates : emptyLabels;
+
+		chart.setOption({
+			backgroundColor: 'transparent',
+			grid: { left: 45, right: 12, top: 30, bottom: 24 },
+			legend: {
+				top: 0,
+				textStyle: { color: dimColor(), fontSize: 10 },
+				itemWidth: 14,
+				itemHeight: 8,
+			},
+			xAxis: {
+				type: 'category',
+				data: xLabels,
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				axisLine: { lineStyle: { color: gridColor() } },
+				axisTick: { show: false },
+			},
+			yAxis: {
+				type: 'value',
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				splitLine: { lineStyle: { color: gridColor(), type: 'dashed' } },
+				axisLine: { show: false },
+				min: 0,
+				max: hasData ? undefined : 100,
+			},
+			tooltip: hasData ? { trigger: 'axis' } : { show: false },
+			series: [
+				{
+					name: 'Shipped',
+					type: 'line',
+					data: hasData ? xLabels.map((d) => shippedMap.get(d) ?? null) : [],
+					smooth: true,
+					symbol: 'circle',
+					symbolSize: 4,
+					lineStyle: { color: '#3b82f6', width: 2 },
+					itemStyle: { color: '#3b82f6' },
+				},
+				{
+					name: 'Fraud Checked',
+					type: 'line',
+					data: hasData ? xLabels.map((d) => fraudCheckedMap.get(d) ?? null) : [],
+					smooth: true,
+					symbol: 'circle',
+					symbolSize: 4,
+					lineStyle: { color: '#f97316', width: 2 },
+					itemStyle: { color: '#f97316' },
+				},
+				{
+					name: 'Reviewed',
+					type: 'line',
+					data: hasData ? xLabels.map((d) => reviewedMap.get(d) ?? null) : [],
+					smooth: true,
+					symbol: 'circle',
+					symbolSize: 4,
+					lineStyle: { color: '#22c55e', width: 2 },
+					itemStyle: { color: '#22c55e' },
+				},
+			],
+		});
 	}
 
 	function formatHours(hours: number | null): string {
@@ -51,6 +477,14 @@
 		const m = Math.round((hours - h) * 60);
 		if (m === 0) return `${h}h`;
 		return `${h}h ${m}min`;
+	}
+
+	function formatTotal(value: number): string {
+		return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+	}
+
+	function formatCount(value: number): string {
+		return value.toLocaleString();
 	}
 
 	const tabBtnClass =
@@ -133,7 +567,7 @@
 			>
 		</div>
 	{:else if stats}
-		<div class="max-w-4xl mx-auto px-5 py-6 flex flex-col gap-6">
+		<div class="max-w-6xl mx-auto px-5 py-6 flex flex-col gap-6">
 			<!-- General stats cards -->
 			<section>
 				<h2 class="text-[13px] uppercase tracking-wider text-rv-dim mb-3 font-semibold">
@@ -178,12 +612,303 @@
 				</div>
 			</section>
 
+			<!-- Breakdown tabs -->
+			<div class="flex gap-1.5 border-b border-rv-border -mb-2">
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {breakdownTab ===
+					'projects'
+						? 'border-rv-accent text-rv-accent'
+						: 'border-transparent text-rv-dim hover:text-rv-text'}"
+					onclick={() => (breakdownTab = 'projects')}>Projects</button
+				>
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {breakdownTab ===
+					'leaderboard'
+						? 'border-rv-accent text-rv-accent'
+						: 'border-transparent text-rv-dim hover:text-rv-text'}"
+					onclick={() => (breakdownTab = 'leaderboard')}>Leaderboard</button
+				>
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {breakdownTab ===
+					'hours'
+						? 'border-rv-accent text-rv-accent'
+						: 'border-transparent text-rv-dim hover:text-rv-text'}"
+					onclick={() => (breakdownTab = 'hours')}>Hours</button
+				>
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {breakdownTab ===
+					'median'
+						? 'border-rv-accent text-rv-accent'
+						: 'border-transparent text-rv-dim hover:text-rv-text'}"
+					onclick={() => (breakdownTab = 'median')}>Median Review Time</button
+				>
+			</div>
+
+			{#if breakdownTab === 'hours'}
+			<!-- Hours breakdown -->
+			<section>
+				<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+							Tracked Hours
+						</div>
+						<div class="text-xl font-bold text-rv-text">
+							{formatTotal(stats.hours.trackedHours)}
+						</div>
+					</div>
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+							Unshipped Hours
+						</div>
+						<div class="text-xl font-bold text-rv-text">
+							{formatTotal(stats.hours.unshippedHours)}
+						</div>
+					</div>
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+							Shipped Hours
+						</div>
+						<div class="text-xl font-bold text-rv-text">
+							{formatTotal(stats.hours.shippedHours)}
+						</div>
+					</div>
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+							Hours in Review
+						</div>
+						<div class="text-xl font-bold text-rv-text">
+							{formatTotal(stats.hours.hoursInReview)}
+						</div>
+					</div>
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+							Approved Hours
+						</div>
+						<div class="text-xl font-bold text-rv-text">
+							{formatTotal(stats.hours.approvedHours)}
+						</div>
+						<div class="text-[10px] text-rv-dim mt-0.5">
+							{formatTotal(stats.hours.weightedGrants)} weighted grants
+						</div>
+					</div>
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+							Rejected Hours
+						</div>
+						<div class="text-xl font-bold text-rv-text">
+							{formatTotal(stats.hours.rejectedHours)}
+						</div>
+					</div>
+				</div>
+			</section>
+			{/if}
+
+			{#if breakdownTab === 'median'}
+				<!-- Median Review Time -->
+				<section>
+					<div class="grid gap-3 sm:grid-cols-2 mb-3">
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+								Median Fraud Check Time This Week
+							</div>
+							<div class="text-xl font-bold text-rv-text">
+								{stats.reviewStats.medianFraudCheckTimeThisWeek != null
+									? formatHours(stats.reviewStats.medianFraudCheckTimeThisWeek)
+									: '—'}
+							</div>
+						</div>
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+								Last Project Fraud Check Time
+							</div>
+							<div class="text-xl font-bold text-rv-text">
+								{stats.reviewStats.lastProjectFraudCheckTime != null
+									? formatHours(stats.reviewStats.lastProjectFraudCheckTime)
+									: '—'}
+							</div>
+						</div>
+					</div>
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4 mb-3">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-2">
+							Median Fraud Check Time — Weekly Avg
+						</div>
+						<div bind:this={medianFraudCheckEl} style="height: 180px;"></div>
+						{#if stats.historical.medianFraudCheckTimeHours.length === 0}
+							<p class="text-[10px] text-rv-dim text-center mt-1">No historical data yet</p>
+						{/if}
+					</div>
+					<hr class="my-4 border-rv-border opacity-50" />
+					<div class="grid gap-3 sm:grid-cols-2 mb-3">
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+								Median Review Time This Week
+							</div>
+							<div class="text-xl font-bold text-rv-text">
+								{stats.reviewStats.medianReviewTimeThisWeek != null
+									? formatHours(stats.reviewStats.medianReviewTimeThisWeek)
+									: '—'}
+							</div>
+						</div>
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+								Last Project Review Time
+							</div>
+							<div class="text-xl font-bold text-rv-text">
+								{stats.reviewStats.lastProjectReviewTime != null
+									? formatHours(stats.reviewStats.lastProjectReviewTime)
+									: '—'}
+							</div>
+						</div>
+					</div>
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-2">
+							Median Review Time — Weekly Avg
+						</div>
+						<div bind:this={medianReviewEl} style="height: 180px;"></div>
+						{#if stats.historical.medianReviewTimeHours.length === 0}
+							<p class="text-[10px] text-rv-dim text-center mt-1">No historical data yet</p>
+						{/if}
+					</div>
+				</section>
+			{/if}
+
+			{#if breakdownTab === 'projects'}
+				<!-- Review Stats — Projects -->
+				<section>
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4 mb-3">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-2">
+							Project flow through the two gates
+						</div>
+						<div bind:this={projectFunnelEl} style="height: 320px;"></div>
+					</div>
+
+					{#if funnelMatrix}
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4 mb-3">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-3">
+								Where every project sits right now (latest submission)
+							</div>
+							<div class="grid grid-cols-[max-content_repeat(3,minmax(0,1fr))] gap-2">
+								<div></div>
+								<div class="text-center text-[11px] font-semibold text-rv-dim pb-1">
+									Fraud: passed
+								</div>
+								<div class="text-center text-[11px] font-semibold text-rv-dim pb-1">
+									Fraud: pending
+								</div>
+								<div class="text-center text-[11px] font-semibold text-rv-dim pb-1">
+									Fraud: failed
+								</div>
+								{#each matrixRows as row}
+									<div
+										class="flex items-center text-[11px] font-semibold text-rv-dim pr-3 whitespace-nowrap"
+									>
+										{row.label}
+									</div>
+									{#each ['fraudPassed', 'fraudPending', 'fraudFailed'] as const as fraudKey}
+										<div
+											class={`rounded-md border px-3 py-2.5 ${cellStyle(row.cellMeaning[fraudKey])}`}
+										>
+											<div class="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+												{cellLabel(row.cellMeaning[fraudKey])}
+											</div>
+											<div class="text-lg font-bold">{formatCount(row.data[fraudKey])}</div>
+										</div>
+									{/each}
+								{/each}
+							</div>
+						</div>
+
+						<div class="grid gap-3 sm:grid-cols-4 mb-3">
+							<div class="space-y-1 rounded-lg border border-green-500/40 bg-green-500/5 p-4">
+								<div class="text-[11px] font-semibold uppercase tracking-wide text-green-700">
+									✓ Approved
+								</div>
+								<div class="text-2xl font-bold text-rv-text">{formatCount(finalApproved)}</div>
+							</div>
+							<div class="space-y-1 rounded-lg border border-yellow-500/40 bg-yellow-500/5 p-4">
+								<div class="text-[11px] font-semibold uppercase tracking-wide text-yellow-700">
+									↻ In-flight
+								</div>
+								<div class="text-2xl font-bold text-rv-text">{formatCount(finalInFlight)}</div>
+							</div>
+							<div class="space-y-1 rounded-lg border border-red-500/40 bg-red-500/5 p-4">
+								<div class="text-[11px] font-semibold uppercase tracking-wide text-red-700">
+									✗ Rejected
+								</div>
+								<div class="text-2xl font-bold text-rv-text">{formatCount(finalRejected)}</div>
+							</div>
+							<div class="space-y-1 rounded-lg border border-orange-500/40 bg-orange-500/5 p-4">
+								<div class="text-[11px] font-semibold uppercase tracking-wide text-orange-700">
+									⚠ Silent reject
+								</div>
+								<div class="text-2xl font-bold text-rv-text">
+									{formatCount(finalSilentReject)}
+								</div>
+							</div>
+						</div>
+					{/if}
+
+					<div class="grid gap-3 sm:grid-cols-3 mb-3">
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">Fraud Queue</div>
+							<div class="text-xl font-bold text-rv-text">
+								{formatCount(stats.reviewProjects.fraudQueue)}
+							</div>
+						</div>
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">Review Queue</div>
+							<div class="text-xl font-bold text-rv-text">
+								{formatCount(stats.reviewProjects.reviewQueue)}
+							</div>
+						</div>
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">Reviewed</div>
+							<div class="text-xl font-bold text-rv-text">
+								{formatCount(stats.reviewProjects.reviewed)}
+							</div>
+						</div>
+					</div>
+					<hr class="my-4 border-rv-border opacity-50" />
+					<div class="grid gap-3 sm:grid-cols-3 mb-3">
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+								Shipped This Week
+							</div>
+							<div class="text-xl font-bold text-rv-text">
+								{formatCount(stats.reviewProjects.shippedThisWeek)}
+							</div>
+						</div>
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+								Fraud Checked This Week
+							</div>
+							<div class="text-xl font-bold text-rv-text">
+								{formatCount(stats.reviewProjects.fraudCheckedThisWeek)}
+							</div>
+						</div>
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
+								Reviewed This Week
+							</div>
+							<div class="text-xl font-bold text-rv-text">
+								{formatCount(stats.reviewProjects.reviewedThisWeek)}
+							</div>
+						</div>
+					</div>
+					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-2">Projects (30d)</div>
+						<div bind:this={projectsReviewedEl} style="height: 200px;"></div>
+						{#if stats.historical.reviewsCompleted.length === 0 && (!stats.historical.projectsShipped || stats.historical.projectsShipped.length === 0)}
+							<p class="text-[10px] text-rv-dim text-center mt-1">No historical data yet</p>
+						{/if}
+					</div>
+				</section>
+			{/if}
+
+			{#if breakdownTab === 'leaderboard'}
 			<!-- Leaderboard -->
 			<section>
-				<div class="flex items-center justify-between mb-3">
-					<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold">
-						Reviewer Leaderboard
-					</h2>
+				<div class="flex items-center justify-end mb-3">
 					<div class="flex gap-1.5">
 						<button
 							class="{tabBtnClass} {leaderboardTab === 'allTime'
@@ -249,6 +974,7 @@
 					</div>
 				{/if}
 			</section>
+			{/if}
 		</div>
 	{/if}
 </div>

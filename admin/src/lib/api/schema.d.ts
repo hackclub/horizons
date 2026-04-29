@@ -2177,13 +2177,6 @@ export interface components {
             growthPercent: number;
         };
         StatsReviewHours: {
-            trackedHours: number;
-            unshippedHours: number;
-            shippedHours: number;
-            hoursInReview: number;
-            approvedHours: number;
-            rejectedHours: number;
-            weightedGrants: number;
             medianReviewTimeThisWeek: number | null;
             medianFraudCheckTimeThisWeek: number | null;
             lastProjectReviewTime: number | null;
@@ -2467,9 +2460,46 @@ export interface components {
             longestCurrentWait: number | null;
             reviewsLast30Days: number;
         };
+        HoursStats: {
+            trackedHours: number;
+            unshippedHours: number;
+            shippedHours: number;
+            hoursInReview: number;
+            approvedHours: number;
+            rejectedHours: number;
+            weightedGrants: number;
+        };
         ReviewStatsResponse: {
             leaderboard: components["schemas"]["LeaderboardBreakdown"];
             general: components["schemas"]["GeneralStats"];
+            hours: components["schemas"]["HoursStats"];
+            reviewStats: {
+                medianReviewTimeThisWeek: number | null;
+                medianFraudCheckTimeThisWeek: number | null;
+                lastProjectReviewTime: number | null;
+                lastProjectFraudCheckTime: number | null;
+            };
+            reviewProjects: {
+                shipped: number;
+                fraudChecked: number;
+                fraudQueue: number;
+                reviewQueue: number;
+                awaitingFraud: number;
+                fraudTeamDeliberation: number;
+                reviewed: number;
+                approved: number;
+                shippedThisWeek: number;
+                fraudCheckedThisWeek: number;
+                reviewedThisWeek: number;
+                funnelMatrix: components["schemas"]["StatsFunnelMatrix"];
+            };
+            historical: {
+                reviewsCompleted: { date: string; value: number }[];
+                projectsShipped: { date: string; value: number }[];
+                projectsFraudChecked: { date: string; value: number }[];
+                medianReviewTimeHours: { date: string; value: number }[];
+                medianFraudCheckTimeHours: { date: string; value: number }[];
+            };
         };
         ScopedUserResponse: {
             userId: number;

@@ -695,27 +695,6 @@ class StatsUserGrowth {
 }
 
 class StatsReviewHours {
-  @ApiProperty()
-  trackedHours: number;
-
-  @ApiProperty()
-  unshippedHours: number;
-
-  @ApiProperty()
-  shippedHours: number;
-
-  @ApiProperty()
-  hoursInReview: number;
-
-  @ApiProperty()
-  approvedHours: number;
-
-  @ApiProperty()
-  rejectedHours: number;
-
-  @ApiProperty()
-  weightedGrants: number;
-
   @ApiProperty({ type: Number, nullable: true })
   medianReviewTimeThisWeek: number | null;
 
