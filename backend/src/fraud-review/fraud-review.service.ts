@@ -31,7 +31,7 @@ interface SubmitProjectPayload {
   name: string;
   codeLink: string;
   demoLink?: string;
-  submitter: { slackId: string } | { email: string };
+  submitter: { hackatimeId: string } | { slackId: string } | { email: string };
   hackatimeProjects?: string[];
   organizerPlatformId?: string;
 }
@@ -157,7 +157,13 @@ export class FraudReviewService {
       const project = await this.prisma.project.findUnique({
         where: { projectId },
         include: {
-          user: { select: { slackUserId: true, email: true } },
+          user: {
+            select: {
+              hackatimeAccount: true,
+              slackUserId: true,
+              email: true,
+            },
+          },
           submissions: {
             orderBy: { createdAt: 'desc' },
             take: 1,
@@ -172,9 +178,16 @@ export class FraudReviewService {
       const latestSubmissionId = project.submissions[0]?.submissionId;
       if (!latestSubmissionId) return;
 
-      const submitter = project.user.slackUserId
-        ? { slackId: project.user.slackUserId }
-        : { email: project.user.email };
+      // Prefer hackatimeId — Joe gates submission on the user existing in the
+      // event's Hackatime roster, so passing the Hackatime user ID directly
+      // skips the slackId/email→Hackatime lookup that 400s for users whose
+      // Slack identity isn't indexed by Joe.
+      const submitter: SubmitProjectPayload['submitter'] = project.user
+        .hackatimeAccount
+        ? { hackatimeId: project.user.hackatimeAccount }
+        : project.user.slackUserId
+          ? { slackId: project.user.slackUserId }
+          : { email: project.user.email };
 
       const organizerPlatformId = `project-${projectId}-submission-${latestSubmissionId}`;
       const fraudReviewId = await this.submitProject({
@@ -283,14 +296,20 @@ export class FraudReviewService {
     const joeProjects = await this.listAllProjects();
     if (!joeProjects) return { submitted, updated: 0 };
 
-    // Step 3: re-sync any project that has been submitted to Joe AND still
-    // has a pending submission. We can't restrict this to joeFraudPassed=null
-    // because Joe may flip a previously-passed project to rejected (manual
-    // outcome) and we need to pick that up so it leaves the review queue.
+    // Step 3: re-sync any project that has been submitted to Joe AND either
+    // (a) still has a pending submission — so a Joe flip (e.g. previously-passed
+    //     → rejected by manual outcome) leaves the review queue, OR
+    // (b) still has joeFraudPassed=null — captures late Joe decisions on
+    //     projects whose submission was already finalized (e.g. reviewer
+    //     rejected before Joe weighed in). Without this, those rows stay
+    //     "fraud pending" on dashboards forever.
     const pendingProjects = await this.prisma.project.findMany({
       where: {
         joeProjectId: { not: null },
-        submissions: { some: { approvalStatus: 'pending' } },
+        OR: [
+          { submissions: { some: { approvalStatus: 'pending' } } },
+          { joeFraudPassed: null },
+        ],
       },
       select: {
         projectId: true,
