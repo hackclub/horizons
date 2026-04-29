@@ -276,6 +276,9 @@ export class FraudReviewService {
   async pollPendingProjects(): Promise<{ submitted: number; updated: number }> {
     if (!this.enabled) return { submitted: 0, updated: 0 };
 
+    const tickStartedAt = Date.now();
+    this.logger.log('poll tick start');
+
     // Step 1: submit any projects that never got sent to fraud review
     const unsubmittedProjects = await this.prisma.project.findMany({
       where: {
@@ -294,7 +297,12 @@ export class FraudReviewService {
 
     // Step 2: fetch all projects from Joe in a single API call
     const joeProjects = await this.listAllProjects();
-    if (!joeProjects) return { submitted, updated: 0 };
+    if (!joeProjects) {
+      this.logger.log(
+        `poll tick end (list fetch failed): submitted=${submitted}, updated=0, durationMs=${Date.now() - tickStartedAt}`,
+      );
+      return { submitted, updated: 0 };
+    }
 
     // Step 3: re-sync any project that has been submitted to Joe AND either
     // (a) still has a pending submission — so a Joe flip (e.g. previously-passed
@@ -389,6 +397,9 @@ export class FraudReviewService {
       updated++;
     }
 
+    this.logger.log(
+      `poll tick end: submitted=${submitted}, updated=${updated}, scanned=${pendingProjects.length}, durationMs=${Date.now() - tickStartedAt}`,
+    );
     return { submitted, updated };
   }
 }
