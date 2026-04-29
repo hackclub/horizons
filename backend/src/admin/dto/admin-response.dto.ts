@@ -711,6 +711,9 @@ class StatsReviewHours {
   approvedHours: number;
 
   @ApiProperty()
+  rejectedHours: number;
+
+  @ApiProperty()
   weightedGrants: number;
 
   @ApiProperty({ type: Number, nullable: true })
