@@ -7,6 +7,7 @@ import { SubmissionApprovalModule } from '../submission-approval/submission-appr
 import { ManifestModule } from '../manifest/manifest.module';
 import { SlackModule } from '../slack/slack.module';
 import { HackatimeModule } from '../hackatime/hackatime.module';
+import { MetricsModule } from '../metrics/metrics.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { HackatimeModule } from '../hackatime/hackatime.module';
     ManifestModule,
     SlackModule,
     HackatimeModule,
+    MetricsModule,
   ],
   controllers: [ReviewerController],
   providers: [ReviewerService, PrismaService],

@@ -2177,12 +2177,6 @@ export interface components {
             growthPercent: number;
         };
         StatsReviewHours: {
-            trackedHours: number;
-            unshippedHours: number;
-            shippedHours: number;
-            hoursInReview: number;
-            approvedHours: number;
-            weightedGrants: number;
             medianReviewTimeThisWeek: number | null;
             medianFraudCheckTimeThisWeek: number | null;
             lastProjectReviewTime: number | null;
