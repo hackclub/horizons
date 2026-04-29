@@ -814,6 +814,28 @@ class StatsSignupRoute {
   count: number;
 }
 
+class StatsSignupQualificationModeCounts {
+  @ApiProperty()
+  engaged: number;
+
+  @ApiProperty()
+  rsvped: number;
+
+  @ApiProperty()
+  qualified: number;
+}
+
+class StatsSignupQualificationModes {
+  @ApiProperty({ type: StatsSignupQualificationModeCounts })
+  approved: StatsSignupQualificationModeCounts;
+
+  @ApiProperty({ type: StatsSignupQualificationModeCounts })
+  shipped: StatsSignupQualificationModeCounts;
+
+  @ApiProperty({ type: StatsSignupQualificationModeCounts })
+  unshipped: StatsSignupQualificationModeCounts;
+}
+
 class StatsSignupQualificationEntry {
   @ApiProperty()
   eventId: number;
@@ -828,10 +850,16 @@ class StatsSignupQualificationEntry {
   signedUp: number;
 
   @ApiProperty()
+  engaged: number;
+
+  @ApiProperty()
   rsvped: number;
 
   @ApiProperty()
   qualified: number;
+
+  @ApiProperty({ type: StatsSignupQualificationModes })
+  modes: StatsSignupQualificationModes;
 }
 
 class StatsSignups {

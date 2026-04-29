@@ -906,14 +906,26 @@ export class AdminService {
     // Per-event qualification funnel: signed up → ≥15h approved (RSVPed) →
     // ≥30h approved (qualified). Approved hours sum across all of a user's
     // projects.
+    // Per-user totals for three "hours source" modes:
+    //   - unshipped: ALL hackatime hours across every project (incl. never-shipped)
+    //   - shipped:   hackatime hours on projects with ≥1 pending/approved submission
+    //   - approved:  reviewer-approved hours only (current default)
+    // Each mode then drives the engaged (≥1h) / rsvped (≥15h) / qualified (≥30h) thresholds.
     const qualificationResult = await this.prisma.$queryRaw<
       Array<{
         event_id: number;
         title: string;
         slug: string;
         signed_up: bigint;
+        engaged: bigint;
         rsvped: bigint;
         qualified: bigint;
+        unshipped_engaged: bigint;
+        unshipped_rsvped: bigint;
+        unshipped_qualified: bigint;
+        shipped_engaged: bigint;
+        shipped_rsvped: bigint;
+        shipped_qualified: bigint;
       }>
     >`
       SELECT
@@ -921,14 +933,31 @@ export class AdminService {
         e.title,
         e.slug,
         COUNT(pe.id) AS signed_up,
-        COUNT(*) FILTER (WHERE COALESCE(ut.total_hours, 0) >= 15) AS rsvped,
-        COUNT(*) FILTER (WHERE COALESCE(ut.total_hours, 0) >= 30) AS qualified
+        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 1) AS engaged,
+        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 15) AS rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 30) AS qualified,
+        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 1) AS unshipped_engaged,
+        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 15) AS unshipped_rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 30) AS unshipped_qualified,
+        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 1) AS shipped_engaged,
+        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 15) AS shipped_rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 30) AS shipped_qualified
       FROM pinned_events pe
       INNER JOIN events e ON e.event_id = pe.event_id
       LEFT JOIN (
-        SELECT user_id, SUM(approved_hours) AS total_hours
-        FROM projects
-        GROUP BY user_id
+        SELECT
+          p.user_id,
+          SUM(COALESCE(p.approved_hours, 0)) AS approved_total,
+          SUM(COALESCE(p.now_hackatime_hours, 0)) AS unshipped_total,
+          SUM(
+            CASE WHEN EXISTS (
+              SELECT 1 FROM submissions s
+              WHERE s.project_id = p.project_id
+                AND s.approval_status IN ('pending', 'approved')
+            ) THEN COALESCE(p.now_hackatime_hours, 0) ELSE 0 END
+          ) AS shipped_total
+        FROM projects p
+        GROUP BY p.user_id
       ) ut ON ut.user_id = pe.user_id
       GROUP BY e.event_id, e.title, e.slug
       ORDER BY signed_up DESC
@@ -995,8 +1024,26 @@ export class AdminService {
         title: r.title,
         slug: r.slug,
         signedUp: Number(r.signed_up),
+        engaged: Number(r.engaged),
         rsvped: Number(r.rsvped),
         qualified: Number(r.qualified),
+        modes: {
+          approved: {
+            engaged: Number(r.engaged),
+            rsvped: Number(r.rsvped),
+            qualified: Number(r.qualified),
+          },
+          shipped: {
+            engaged: Number(r.shipped_engaged),
+            rsvped: Number(r.shipped_rsvped),
+            qualified: Number(r.shipped_qualified),
+          },
+          unshipped: {
+            engaged: Number(r.unshipped_engaged),
+            rsvped: Number(r.unshipped_rsvped),
+            qualified: Number(r.unshipped_qualified),
+          },
+        },
       })),
       routes,
       signupsMissingOrigin,

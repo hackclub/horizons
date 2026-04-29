@@ -2223,8 +2223,20 @@ export interface components {
             title: string;
             slug: string;
             signedUp: number;
+            engaged: number;
             rsvped: number;
             qualified: number;
+            modes: components["schemas"]["StatsSignupQualificationModes"];
+        };
+        StatsSignupQualificationModeCounts: {
+            engaged: number;
+            rsvped: number;
+            qualified: number;
+        };
+        StatsSignupQualificationModes: {
+            approved: components["schemas"]["StatsSignupQualificationModeCounts"];
+            shipped: components["schemas"]["StatsSignupQualificationModeCounts"];
+            unshipped: components["schemas"]["StatsSignupQualificationModeCounts"];
         };
         StatsSignupRoute: {
             originCountry: string;

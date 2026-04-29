@@ -153,11 +153,18 @@
 	let signupsEl = $state<HTMLDivElement | null>(null);
 	let signupMapEl = $state<HTMLDivElement | null>(null);
 	let signupQualificationEl = $state<HTMLDivElement | null>(null);
+	let signupQualificationMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
 	let utmEl = $state<HTMLDivElement | null>(null);
 
 	onMount(() => {
 		loadStats();
 		window.addEventListener('resize', handleResize);
+	});
+
+	$effect(() => {
+		// Re-render qualification chart when mode toggle changes (after stats load).
+		signupQualificationMode;
+		if (stats && signupQualificationEl) renderSignupQualificationChart();
 	});
 
 	onDestroy(() => {
@@ -817,15 +824,17 @@
 
 		const data = stats.signups.qualification;
 		const dark = isDark();
+		const mode = signupQualificationMode;
 
-		// Three-segment funnel per event: Qualified (≥30h) ⊂ RSVPed (≥15h) ⊂ Signed up.
-		const qualifiedColor = dark ? '#16a34a' : '#15803d';
-		const rsvpedOnlyColor = dark ? '#60a5fa' : '#3b82f6';
+		// Two-segment bar (Engaged ≥1h ⊂ Signed up) + Pending RSVPed (≥15h) line overlay.
+		const engagedColor = dark ? '#16a34a' : '#15803d';
 		const signedUpOnlyColor = dark ? '#475569' : '#e2e8f0';
+		const rsvpedLineColor = dark ? '#f59e0b' : '#d97706';
 
-		const qualifiedData = data.map((d) => d.qualified);
-		const rsvpedOnlyData = data.map((d) => Math.max(0, d.rsvped - d.qualified));
-		const signedUpOnlyData = data.map((d) => Math.max(0, d.signedUp - d.rsvped));
+		const counts = (d: (typeof data)[number]) => d.modes?.[mode] ?? { engaged: d.engaged, rsvped: d.rsvped, qualified: d.qualified };
+		const engagedData = data.map((d) => counts(d).engaged);
+		const signedUpOnlyData = data.map((d) => Math.max(0, d.signedUp - counts(d).engaged));
+		const rsvpedLineData = data.map((d) => counts(d).rsvped);
 
 		const segmentLabel = (value: number, total: number) => {
 			if (!value || !total) return '';
@@ -841,7 +850,7 @@
 				textStyle: { color: dimColor(), fontSize: 10 },
 				itemWidth: 14,
 				itemHeight: 8,
-				data: ['Qualified (≥30h)', 'RSVPed (≥15h)', 'Signed up'],
+				data: ['Engaged (≥1h)', 'Signed up', 'Pending RSVPed (≥15h)'],
 			},
 			xAxis: {
 				type: 'value',
@@ -863,38 +872,23 @@
 				formatter: (params: any) => {
 					const idx = params[0].dataIndex;
 					const d = data[idx];
-					const rsvpPct = d.signedUp ? ((d.rsvped / d.signedUp) * 100).toFixed(1) : '0.0';
-					const qualPct = d.signedUp ? ((d.qualified / d.signedUp) * 100).toFixed(1) : '0.0';
+					const c = counts(d);
+					const engagedPct = d.signedUp ? ((c.engaged / d.signedUp) * 100).toFixed(1) : '0.0';
+					const rsvpPct = d.signedUp ? ((c.rsvped / d.signedUp) * 100).toFixed(1) : '0.0';
 					return `<b>${d.title}</b><br/>`
 						+ `Signed up: ${d.signedUp} (100%)<br/>`
-						+ `RSVPed (≥15h): ${d.rsvped} (${rsvpPct}%)<br/>`
-						+ `Qualified (≥30h): ${d.qualified} (${qualPct}%)`;
+						+ `Engaged (≥1h): ${c.engaged} (${engagedPct}%)<br/>`
+						+ `Pending RSVPed (≥15h): ${c.rsvped} (${rsvpPct}%)`;
 				},
 			},
 			series: [
 				{
-					name: 'Qualified (≥30h)',
+					name: 'Engaged (≥1h)',
 					type: 'bar',
 					stack: 'qualification',
-					data: qualifiedData,
+					data: engagedData,
 					barWidth: 22,
-					itemStyle: { color: qualifiedColor },
-					label: {
-						show: true,
-						position: 'inside',
-						color: '#fff',
-						fontSize: 10,
-						fontWeight: 600,
-						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].signedUp),
-					},
-				},
-				{
-					name: 'RSVPed (≥15h)',
-					type: 'bar',
-					stack: 'qualification',
-					data: rsvpedOnlyData,
-					barWidth: 22,
-					itemStyle: { color: rsvpedOnlyColor },
+					itemStyle: { color: engagedColor },
 					label: {
 						show: true,
 						position: 'inside',
@@ -920,6 +914,25 @@
 						color: dimColor(),
 						fontSize: 11,
 						formatter: (p: any) => String(data[p.dataIndex].signedUp),
+					},
+				},
+				{
+					name: 'Pending RSVPed (≥15h)',
+					type: 'line',
+					data: rsvpedLineData,
+					smooth: false,
+					symbol: 'circle',
+					symbolSize: 8,
+					lineStyle: { color: rsvpedLineColor, width: 2 },
+					itemStyle: { color: rsvpedLineColor },
+					z: 5,
+					label: {
+						show: true,
+						position: 'top',
+						color: rsvpedLineColor,
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => String(p.value),
 					},
 				},
 			],
@@ -1387,7 +1400,17 @@
 				</div>
 				{#if stats.signups.qualification.length > 0}
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Qualification Funnel by Event</p>
+						<div class="mb-2 flex items-center justify-between gap-2">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Qualification Funnel by Event</p>
+							<select
+								bind:value={signupQualificationMode}
+								class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+							>
+								<option value="unshipped">Unshipped (incl. pending/approved)</option>
+								<option value="shipped">Shipped but pending (incl. approved)</option>
+								<option value="approved">Approved hours</option>
+							</select>
+						</div>
 						<div
 							bind:this={signupQualificationEl}
 							style="height: {Math.max(180, stats.signups.qualification.length * 38 + 48)}px;"
