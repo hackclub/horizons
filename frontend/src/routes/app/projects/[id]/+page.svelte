@@ -18,6 +18,7 @@
 
 	let entered = $state(false);
 	let navigating = $state(false);
+	let feedbackOpen = $state(false);
 
 	onMount(() => {
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
@@ -96,9 +97,14 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
+			if (feedbackOpen) {
+				feedbackOpen = false;
+				return;
+			}
 			navigateTo('/app/projects?noanimate');
 			return;
 		}
+		if (feedbackOpen) return;
 		if (!isPending) nav.handleKeydown(e);
 	}
 </script>
@@ -209,6 +215,13 @@
 							<div class="flex-1 bg-[rgba(0,0,0,0.1)] rounded-xl p-4 flex flex-col gap-1 min-w-0">
 								<p class="font-bricolage text-[15px] font-bold text-black m-0">Reviewer Feedback</p>
 								<p class="font-bricolage text-[14px] text-black m-0 line-clamp-4">{reviewerFeedback}</p>
+								<button
+									type="button"
+									class="font-bricolage text-[13px] font-semibold text-black underline self-start cursor-pointer mt-0.5"
+									onclick={() => (feedbackOpen = true)}
+								>
+									Read more
+								</button>
 							</div>
 						{/if}
 
@@ -278,6 +291,36 @@
 				</button>
 			</div>
 		</div>
+		</div>
+	{/if}
+
+	<!-- Reviewer feedback modal -->
+	{#if feedbackOpen && latestSubmission?.hoursJustification}
+		<div
+			class="fixed inset-0 z-50 flex items-center justify-center p-6"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Reviewer feedback"
+		>
+			<button
+				type="button"
+				class="absolute inset-0 bg-black/50 cursor-default"
+				aria-label="Close reviewer feedback"
+				onclick={() => (feedbackOpen = false)}
+			></button>
+			<div class="relative max-w-2xl w-full max-h-[80vh] bg-[#f3e8d8] border-4 border-black rounded-[20px] p-6 shadow-[4px_4px_0px_0px_black] flex flex-col gap-3 overflow-hidden">
+				<div class="flex items-center justify-between gap-4">
+					<p class="font-cook text-[28px] font-semibold text-black m-0">REVIEWER FEEDBACK</p>
+					<button
+						type="button"
+						class="font-bricolage text-[14px] font-semibold text-black underline cursor-pointer"
+						onclick={() => (feedbackOpen = false)}
+					>
+						Close
+					</button>
+				</div>
+				<p class="font-bricolage text-[16px] text-black m-0 whitespace-pre-wrap break-words flex-1 min-h-0 overflow-y-auto">{latestSubmission.hoursJustification}</p>
+			</div>
 		</div>
 	{/if}
 

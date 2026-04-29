@@ -6,7 +6,9 @@ import {
   MaxLength,
   IsArray,
   ArrayMinSize,
+  IsEnum,
 } from 'class-validator';
+import { ProjectType } from '../../../generated/prisma/client';
 
 export class UpdateProjectDto {
   @ApiPropertyOptional({ description: 'Project title', maxLength: 30 })
@@ -14,6 +16,11 @@ export class UpdateProjectDto {
   @IsOptional()
   @MaxLength(30)
   projectTitle?: string;
+
+  @ApiPropertyOptional({ description: 'Project type', enum: ProjectType })
+  @IsEnum(ProjectType)
+  @IsOptional()
+  projectType?: ProjectType;
 
   @ApiPropertyOptional({ description: 'Project description', maxLength: 500 })
   @IsString()

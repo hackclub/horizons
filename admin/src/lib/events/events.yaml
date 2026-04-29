@@ -56,9 +56,9 @@ equinox:
     tertiary: "#8b4513"
     cardBg: "#f4efe4"
   stripes:
-    - "#c9a227"
-    - "#2d6a6a"
-    - "#8b4513"
+    - "#ED7D0F"
+    - "#DC3079"
+    - "#595FD8"
   menu:
     - title: JOIN NOW
       subtitle: START WORKING ON YOUR PROJECTS!

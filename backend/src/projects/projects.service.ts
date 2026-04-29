@@ -14,6 +14,8 @@ import { randomBytes } from 'crypto';
 import { PosthogService } from '../posthog/posthog.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
+import { ManifestService } from '../manifest/manifest.service';
+import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 
 @Injectable()
 export class ProjectsService {
@@ -23,19 +25,92 @@ export class ProjectsService {
     private posthog: PosthogService,
     private airtableService: AirtableService,
     private fraudReviewService: FraudReviewService,
+    private manifestService: ManifestService,
   ) {}
 
-  private excludeAdminFields<
-    T extends { hoursJustification?: any; isFraud?: any },
-  >(obj: T): Omit<T, 'hoursJustification' | 'isFraud'> {
-    const { hoursJustification, isFraud, ...rest } = obj;
+  private excludeAdminFields<T extends Record<string, any>>(
+    obj: T,
+  ): Omit<
+    T,
+    | 'hoursJustification'
+    | 'adminComment'
+    | 'joeProjectId'
+    | 'joeFraudPassed'
+    | 'joeFraudReviewedAt'
+    | 'joeTrustScore'
+    | 'joeJustification'
+    | 'joeOutcomeStatus'
+    | 'joeOutcomeReason'
+    | 'joeOutcomeRecordedAt'
+  > {
+    const {
+      hoursJustification,
+      adminComment,
+      joeProjectId,
+      joeFraudPassed,
+      joeFraudReviewedAt,
+      joeTrustScore,
+      joeJustification,
+      joeOutcomeStatus,
+      joeOutcomeReason,
+      joeOutcomeRecordedAt,
+      ...rest
+    } = obj;
     return rest;
   }
 
-  private excludeAdminFieldsFromArray<
-    T extends { hoursJustification?: any; isFraud?: any },
-  >(arr: T[]): Omit<T, 'hoursJustification' | 'isFraud'>[] {
-    return arr.map((item) => this.excludeAdminFields(item));
+  /**
+   * User-facing view of a Submission. Strips admin-only fields and maps
+   * silent-reject rows to 'pending' so fraud actors get no feedback that their
+   * submission was rejected.
+   */
+  scopeSubmissionForUser<
+    T extends {
+      approvalStatus: 'pending' | 'approved' | 'rejected';
+      silentReject: boolean;
+    },
+  >(
+    submission: T,
+  ): Omit<
+    T,
+    | 'reviewPassed'
+    | 'silentReject'
+    | 'pendingSendEmail'
+    | 'finalizedAt'
+    | 'reviewedBy'
+    | 'airtableRecId'
+    | 'reviewerAnalysis'
+  > {
+    const {
+      reviewPassed: _rp,
+      silentReject: _sr,
+      pendingSendEmail: _pe,
+      finalizedAt: _fa,
+      reviewedBy: _rb,
+      airtableRecId: _ar,
+      reviewerAnalysis: _ra,
+      ...rest
+    } = submission as any;
+    return {
+      ...rest,
+      approvalStatus: submission.silentReject ? 'pending' : submission.approvalStatus,
+    };
+  }
+
+  /**
+   * User-facing view of a Project that may have a `submissions` array included.
+   * Strips admin fields on the project AND recursively scopes every nested
+   * submission. Use this on any endpoint that returns a Project with submissions.
+   */
+  private scopeProjectForUser<T extends Record<string, any>>(project: T) {
+    const stripped = this.excludeAdminFields(project);
+    const submissions = (project as any).submissions;
+    if (Array.isArray(submissions)) {
+      (stripped as any).submissions = submissions.map((s) =>
+        this.scopeSubmissionForUser(s),
+      );
+    }
+    return stripped;
   }
 
   async createProject(createProjectDto: CreateProjectDto, userId: number) {
@@ -67,6 +142,7 @@ export class ProjectsService {
           projectType: createProjectDto.projectType,
           description: createProjectDto.projectDescription,
           readmeUrl: createProjectDto.readmeUrl,
+          repoUrl: createProjectDto.repoUrl,
         },
         include: {
           user: {
@@ -88,6 +164,12 @@ export class ProjectsService {
           projectType: project.projectType,
         },
       });
+
+      if (project.repoUrl) {
+        this.manifestService
+          .createDraft(project.repoUrl)
+          .catch(() => {});
+      }
 
       if (existingProjectsCount === 0) {
         await this.prisma.user.update({
@@ -140,7 +222,7 @@ export class ProjectsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return this.excludeAdminFieldsFromArray(projects);
+    return projects.map((p) => this.scopeProjectForUser(p));
   }
 
   async getProject(projectId: number, userId: number) {
@@ -166,7 +248,7 @@ export class ProjectsService {
       throw new ForbiddenException('Access denied');
     }
 
-    return this.excludeAdminFields(project);
+    return this.scopeProjectForUser(project);
   }
 
   async createSubmission(
@@ -221,7 +303,7 @@ export class ProjectsService {
       );
     }
 
-    if (this.calculateAge(user.birthday) >= 19) {
+    if (this.calculateAge(user.birthday) >= 19 && !user.ageOverride) {
       throw new ForbiddenException('You must be under 19 to submit projects.');
     }
 
@@ -262,34 +344,108 @@ export class ProjectsService {
       user.hackatimeAccount,
       hackatimeBaseUrl,
       hackatimeApiKey,
+      user.hackatimeStartDate,
     );
 
-    // Check if this is a resubmission
-    const existingSubmissions = await this.prisma.submission.findMany({
+    // Inspect the most recent prior submission to gate eligibility and decide
+    // whether this resubmission needs fresh fraud review.
+    //
+    // Resubmit rules:
+    //   - none                            → allow (first submission)
+    //   - approved                        → allow, clear joe* + re-submit to fraud
+    //   - rejected + silentReject=true    → fraud-indicted, user sees it as pending → block
+    //   - rejected (normal), no new hours → reviewer-rejected, allow, reuse joe*
+    //   - rejected (normal), new hours    → allow, clear joe* + re-submit to fraud
+    //   - pending                         → block (still in flight)
+    const priorSubmission = await this.prisma.submission.findFirst({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
-      take: 1,
+      select: {
+        submissionId: true,
+        approvalStatus: true,
+        reviewPassed: true,
+        silentReject: true,
+        hackatimeHours: true,
+      },
     });
 
-    const isResubmission = existingSubmissions.length > 0;
+    const isResubmission = !!priorSubmission;
+    if (priorSubmission) {
+      const blocked =
+        priorSubmission.approvalStatus === 'pending' ||
+        priorSubmission.silentReject;
+      if (blocked) {
+        throw new BadRequestException('You have a pending submission.');
+      }
+    }
 
-    const submissionData = {
-      projectId,
-      playableUrl: project.playableUrl,
-      screenshotUrl: project.screenshotUrl,
-      description: project.description,
-      repoUrl: project.repoUrl,
-      hackatimeHours: recalculatedHours,
-    };
+    // Reuse the prior fraud outcome only when the prior submission was
+    // reviewer-rejected AND no new hackatime hours have been logged since.
+    // Adding hours forces a fresh fraud review — the FigJam rule.
+    const reuseFraud =
+      priorSubmission?.approvalStatus === 'rejected' &&
+      !priorSubmission.silentReject &&
+      recalculatedHours <= (priorSubmission.hackatimeHours ?? 0);
+
+    // Fraud already determined this project is fraudulent (e.g. fraud returned
+    // AFTER a reviewer-normal-rejection on the prior submission). Silent-reject
+    // this resubmission at creation so the user stays cloaked — same outcome
+    // as if fraud had landed before the reviewer on the prior round.
+    const preDeterminedFraud = project.joeFraudPassed === false;
 
     const submission = await this.prisma.submission.create({
-      data: submissionData,
+      data: {
+        projectId,
+        playableUrl: project.playableUrl,
+        screenshotUrl: project.screenshotUrl,
+        description: project.description,
+        repoUrl: project.repoUrl,
+        hackatimeHours: recalculatedHours,
+        ...(preDeterminedFraud && {
+          approvalStatus: 'rejected' as const,
+          silentReject: true,
+          finalizedAt: new Date(),
+        }),
+      },
     });
 
-    // Always recalculate and update hours
+    if (preDeterminedFraud) {
+      await this.prisma.submissionAuditLog.create({
+        data: {
+          submissionId: submission.submissionId,
+          adminId: userId,
+          action: AUDIT_ACTIONS.finalize,
+          newStatus: 'rejected',
+          changes: {
+            reviewPassed: null,
+            joeFraudPassed: false,
+            silent: true,
+            preDetermined: true,
+          },
+        },
+      });
+    }
+
+    const projectUpdateData: any = { nowHackatimeHours: recalculatedHours };
+    // Reset fraud state only when starting fresh — prior approved, or
+    // reviewer-rejected with new hours. Reviewer-rejected-no-new-hours reuses
+    // the prior outcome; pre-determined fraud must preserve its failing state.
+    if (isResubmission && !reuseFraud && !preDeterminedFraud) {
+      Object.assign(projectUpdateData, {
+        joeProjectId: null,
+        joeFraudPassed: null,
+        joeFraudReviewedAt: null,
+        joeTrustScore: null,
+        joeJustification: null,
+        joeOutcomeStatus: null,
+        joeOutcomeReason: null,
+        joeOutcomeRecordedAt: null,
+      });
+    }
+
     await this.prisma.project.update({
       where: { projectId },
-      data: { nowHackatimeHours: recalculatedHours },
+      data: projectUpdateData,
     });
 
     this.posthog.capture({
@@ -302,6 +458,8 @@ export class ProjectsService {
         projectType: project.projectType,
         submissionId: submission.submissionId,
         isResubmission,
+        reuseFraud,
+        preDeterminedFraud,
       },
     });
 
@@ -313,10 +471,30 @@ export class ProjectsService {
         );
     }
 
-    // Submit to fraud review in the background — does not block the response
-    this.fraudReviewService.submitAndPersist(projectId).catch(() => {});
+    // Submit to fraud review only when starting fresh. Skip for reuseFraud
+    // (outcome reused) and for preDeterminedFraud (outcome already terminal —
+    // submission was silent-rejected at creation, finalize log recorded above).
+    if (preDeterminedFraud) {
+      // no-op: already finalized as silent-reject
+    } else if (!reuseFraud) {
+      this.fraudReviewService.submitAndPersist(projectId).catch(() => {});
+    } else if (priorSubmission) {
+      await this.prisma.submissionAuditLog.create({
+        data: {
+          submissionId: submission.submissionId,
+          adminId: userId,
+          action: AUDIT_ACTIONS.fraudReused,
+          changes: {
+            priorSubmissionId: priorSubmission.submissionId,
+            joeFraudPassed: project.joeFraudPassed,
+            joeTrustScore: project.joeTrustScore,
+            joeOutcomeStatus: project.joeOutcomeStatus,
+          },
+        },
+      });
+    }
 
-    return submission;
+    return this.scopeSubmissionForUser(submission);
   }
 
   async getProjectSubmissions(projectId: number, userId: number) {
@@ -337,7 +515,7 @@ export class ProjectsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return submissions;
+    return submissions.map((s) => this.scopeSubmissionForUser(s));
   }
 
   async updateProject(
@@ -360,6 +538,9 @@ export class ProjectsService {
     const updateData: any = {};
     if (updateProjectDto.projectTitle !== undefined) {
       updateData.projectTitle = updateProjectDto.projectTitle;
+    }
+    if (updateProjectDto.projectType !== undefined) {
+      updateData.projectType = updateProjectDto.projectType;
     }
     if (updateProjectDto.description !== undefined) {
       updateData.description = updateProjectDto.description;
@@ -391,6 +572,16 @@ export class ProjectsService {
       where: { projectId },
       data: updateData,
     });
+
+    if (
+      updateProjectDto.repoUrl !== undefined &&
+      updatedProject.repoUrl &&
+      updatedProject.repoUrl !== project.repoUrl
+    ) {
+      this.manifestService
+        .createDraft(updatedProject.repoUrl)
+        .catch(() => {});
+    }
 
     return {
       message: 'Project updated successfully.',
@@ -448,6 +639,7 @@ export class ProjectsService {
       project.user.hackatimeAccount,
       hackatimeBaseUrl,
       hackatimeApiKey,
+      project.user.hackatimeStartDate,
     );
 
     const allLinkedProjects = await this.prisma.project.findMany({
@@ -505,7 +697,7 @@ export class ProjectsService {
         nowHackatimeProjects: true,
         userId: true,
         user: {
-          select: { hackatimeAccount: true },
+          select: { hackatimeAccount: true, hackatimeStartDate: true },
         },
         submissions: {
           orderBy: { createdAt: 'desc' },
@@ -548,6 +740,7 @@ export class ProjectsService {
       projectNames,
       hackatimeBaseUrl,
       hackatimeApiKey,
+      project.user.hackatimeStartDate ?? undefined,
     );
 
     const hackatimeProjectHours: Record<string, number> = {};
@@ -688,11 +881,12 @@ export class ProjectsService {
     hackatimeAccount?: string,
     baseUrl?: string,
     apiKey?: string,
+    userStartDate?: Date | null,
   ) {
     if (hackatimeAccount && baseUrl) {
-      const cutoffDate = new Date(
-        process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z',
-      );
+      const cutoffDate =
+        userStartDate ??
+        new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z');
       const filteredDurations =
         await this.fetchHackatimeProjectDurationsAfterDate(
           hackatimeAccount,

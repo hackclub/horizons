@@ -23,8 +23,8 @@ Come play some party games!
 
 ## Orion Jam!
 ```yaml
-Start: 2026-04-18T00:00:00+00:00
-End: 2026-04-20T00:00:00+00:00
+Start: 2026-04-25T00:00:00+00:00
+End: 2026-04-27T00:00:00+00:00
 JoinInfo: "[Sign up on itch.io!](https://itch.io/jam/horizons-orion)"
 Tagline: "Create a game you're proud of!"
 ```
@@ -33,8 +33,8 @@ Take part in Horizons' first game jam! With a constant lock in call and workshop
 
 ## Godot Workshop!!
 ```yaml
-Start: 2026-04-18T18:00:00+00:00
-End: 2026-04-18T19:00:00+00:00
+Start: 2026-04-25T18:00:00+00:00
+End: 2026-04-25T19:00:00+00:00
 JoinInfo: "[Join the huddle in #horizons!](https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476)"
 Tagline: "Learn the basics of the godot game engine!"
 ```
@@ -42,8 +42,8 @@ Learn how to make a game using godot!
 
 ## Sound Design Workshop!
 ```yaml
-Start: 2026-04-18T22:00:00+00:00
-End: 2026-04-18T23:00:00+00:00
+Start: 2026-04-26T15:00:00+00:00
+End: 2026-04-26T16:00:00+00:00
 JoinInfo: "[Join the huddle in #horizons!](https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476)"
 Tagline: "Learn sound design using LMMS"
 ```

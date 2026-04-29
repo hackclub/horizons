@@ -407,6 +407,57 @@ export class HackatimeService {
     return allProjects;
   }
 
+  /**
+   * Live per-Hackatime-project hour breakdown for a Project's
+   * `nowHackatimeProjects`. Used by reviewers so the UI can show real values
+   * instead of a fake even split. Returns 0 hours per project when the user
+   * has no Hackatime account/token (no stored breakdown to fall back on).
+   */
+  async getProjectHoursBreakdown(
+    projectId: number,
+  ): Promise<Array<{ name: string; hours: number }>> {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: {
+        nowHackatimeProjects: true,
+        user: {
+          select: {
+            hackatimeAccount: true,
+            hackatimeAccessToken: true,
+            hackatimeStartDate: true,
+          },
+        },
+      },
+    });
+
+    if (!project || !project.nowHackatimeProjects?.length) return [];
+
+    const names = project.nowHackatimeProjects;
+    const account = project.user?.hackatimeAccount;
+    const token = project.user?.hackatimeAccessToken;
+
+    if (!account || !token) {
+      return names.map((name) => ({ name, hours: 0 }));
+    }
+
+    const cutoffDate =
+      project.user.hackatimeStartDate ??
+      new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z');
+
+    const durationsMap = await this.fetchHackatimeProjectDurationsAfterDate(
+      account,
+      names,
+      token,
+      cutoffDate,
+    );
+
+    return names.map((name) => ({
+      name,
+      // seconds → hours, rounded to 1dp to match the UI display.
+      hours: Math.round(((durationsMap.get(name) ?? 0) / 3600) * 10) / 10,
+    }));
+  }
+
   async getTotalNowHackatimeHours(userId: number): Promise<number> {
     const result = await this.prisma.project.aggregate({
       where: { userId },
@@ -423,6 +474,15 @@ export class HackatimeService {
     return result._sum.approvedHours ?? 0;
   }
 
+  async getActiveCodersToday(): Promise<number> {
+    const latest = await this.prisma.historicalMetric.findFirst({
+      where: { metric: 'dau' },
+      orderBy: { date: 'desc' },
+      select: { value: true },
+    });
+    return (latest?.value as number) ?? 0;
+  }
+
   async recalculateNowHackatimeHours(
     userId: number,
   ): Promise<{ updatedProjects: number; totalNowHackatimeHours: number }> {
@@ -431,6 +491,7 @@ export class HackatimeService {
       select: {
         hackatimeAccount: true,
         hackatimeAccessToken: true,
+        hackatimeStartDate: true,
         projects: {
           select: {
             projectId: true,
@@ -474,6 +535,7 @@ export class HackatimeService {
           projectsMap,
           user.hackatimeAccount,
           user.hackatimeAccessToken,
+          user.hackatimeStartDate,
         );
         await this.prisma.project.update({
           where: { projectId: project.projectId },
@@ -603,11 +665,12 @@ export class HackatimeService {
     projectsMap: Map<string, number>,
     hackatimeAccount?: string,
     accessToken?: string,
+    userStartDate?: Date | null,
   ) {
     if (hackatimeAccount && accessToken) {
-      const cutoffDate = new Date(
-        process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
-      );
+      const cutoffDate =
+        userStartDate ??
+        new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z');
       const filteredDurations =
         await this.fetchHackatimeProjectDurationsAfterDate(
           hackatimeAccount,

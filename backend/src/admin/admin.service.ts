@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
-import { GeocodingService } from './geocoding.service';
+import { ManifestService } from '../manifest/manifest.service';
 import * as Papa from 'papaparse';
 
 const projectAdminInclude = {
@@ -24,6 +24,7 @@ const projectAdminInclude = {
       country: true,
       zipCode: true,
       hackatimeAccount: true,
+      hackatimeStartDate: true,
       referralCode: true,
       referredByUserId: true,
       isFraud: true,
@@ -42,7 +43,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private slackService: SlackService,
-    private geocodingService: GeocodingService,
+    private manifestService: ManifestService,
   ) {}
 
   async getAllSubmissions() {
@@ -119,6 +120,178 @@ export class AdminService {
     });
 
     return projects;
+  }
+
+  async getProject(projectId: number) {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      include: projectAdminInclude,
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return project;
+  }
+
+  async updateProject(
+    projectId: number,
+    dto: {
+      projectTitle?: string;
+      projectType?: string;
+      description?: string | null;
+      playableUrl?: string | null;
+      repoUrl?: string | null;
+      readmeUrl?: string | null;
+      journalUrl?: string | null;
+      screenshotUrl?: string | null;
+      nowHackatimeProjects?: string[];
+      adminComment?: string | null;
+      hoursJustification?: string | null;
+      approvedHours?: number | null;
+      isLocked?: boolean;
+    },
+  ) {
+    const existing = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: {
+        projectId: true,
+        nowHackatimeProjects: true,
+        repoUrl: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const data: Record<string, any> = {};
+    const keys = [
+      'projectTitle',
+      'projectType',
+      'description',
+      'playableUrl',
+      'repoUrl',
+      'readmeUrl',
+      'journalUrl',
+      'screenshotUrl',
+      'adminComment',
+      'hoursJustification',
+      'approvedHours',
+      'isLocked',
+    ] as const;
+    for (const key of keys) {
+      if (dto[key] !== undefined) {
+        const value = dto[key] as any;
+        data[key] = typeof value === 'string' && value.trim() === '' ? null : value;
+      }
+    }
+
+    let hackatimeProjectsChanged = false;
+    if (dto.nowHackatimeProjects !== undefined) {
+      const next = Array.from(
+        new Set(dto.nowHackatimeProjects.map((n) => n.trim()).filter(Boolean)),
+      );
+      const prev = existing.nowHackatimeProjects ?? [];
+      const sameLength = prev.length === next.length;
+      const sameContent = sameLength && prev.every((n) => next.includes(n));
+      if (!sameContent) {
+        data.nowHackatimeProjects = next;
+        hackatimeProjectsChanged = true;
+      }
+    }
+
+    await this.prisma.project.update({
+      where: { projectId },
+      data,
+    });
+
+    if (hackatimeProjectsChanged) {
+      try {
+        await this.recalculateProjectHours(projectId, false);
+      } catch {
+        // best-effort; caller sees updated fields even if recalc fails
+      }
+    }
+
+    if (
+      data.repoUrl !== undefined &&
+      data.repoUrl &&
+      data.repoUrl !== existing.repoUrl
+    ) {
+      this.manifestService.createDraft(data.repoUrl).catch(() => {});
+    }
+
+    return this.getProject(projectId);
+  }
+
+  async listProjectOwnerHackatimeProjects(projectId: number) {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: {
+        projectId: true,
+        nowHackatimeProjects: true,
+        user: {
+          select: {
+            hackatimeAccount: true,
+            hackatimeStartDate: true,
+          },
+        },
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (!project.user.hackatimeAccount) {
+      return {
+        projects: [],
+        linked: project.nowHackatimeProjects ?? [],
+        hackatimeAccount: null,
+        hackatimeStartDate: null,
+      };
+    }
+
+    const baseUrl =
+      process.env.HACKATIME_ADMIN_API_URL ||
+      'https://hackatime.hackclub.com/api/admin/v1';
+    const apiKey = process.env.HACKATIME_API_KEY;
+
+    const { projectsMap } = await this.fetchHackatimeProjectsData(
+      project.user.hackatimeAccount,
+      baseUrl,
+      apiKey,
+    );
+
+    const cutoff =
+      project.user.hackatimeStartDate ??
+      new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z');
+
+    const names = Array.from(projectsMap.keys());
+    const filtered = await this.fetchHackatimeProjectDurationsAfterDate(
+      project.user.hackatimeAccount,
+      names,
+      baseUrl,
+      apiKey,
+      cutoff,
+    );
+
+    const projects = names
+      .map((name) => ({
+        name,
+        totalHours:
+          Math.round(((filtered.get(name) ?? 0) / 3600) * 10) / 10,
+      }))
+      .sort((a, b) => b.totalHours - a.totalHours);
+
+    return {
+      projects,
+      linked: project.nowHackatimeProjects ?? [],
+      hackatimeAccount: project.user.hackatimeAccount,
+      hackatimeStartDate: project.user.hackatimeStartDate,
+    };
   }
 
   async recalculateProjectHours(projectId: number, strict = true) {
@@ -271,9 +444,11 @@ export class AdminService {
       this.computeHistorical(thirtyDaysAgo),
     ]);
 
-    // Compute DAU summary from historical data
+    // The latest historical DAU snapshot is yesterday (cron runs at midnight
+    // UTC and snapshots the prior day). Today is mid-stream and not in the
+    // snapshot table, so this is genuinely yesterday's count.
     const dauData = historical.dau;
-    const dauToday = dauData.length > 0 ? dauData[dauData.length - 1].value : 0;
+    const dauYesterday = dauData.length > 0 ? dauData[dauData.length - 1].value : 0;
     const last7Dau = dauData.slice(-7);
     const last30Dau = dauData;
     const avg7 = last7Dau.length > 0 ? last7Dau.reduce((s, d) => s + d.value, 0) / last7Dau.length : 0;
@@ -287,7 +462,7 @@ export class AdminService {
     const dauPerEvent = await this.computeDauPerEvent();
 
     const dau = {
-      today: dauToday,
+      yesterday: dauYesterday,
       avg7: Math.round(avg7 * 10) / 10,
       avg30: Math.round(avg30 * 10) / 10,
       growthPercent7: dauGrowthPercent,
@@ -298,27 +473,46 @@ export class AdminService {
   }
 
   private async computeDauPerEvent() {
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    // Read yesterday's per-event DAU from the snapshot table. The snapshot job
+    // derives both top-level DAU and the per-event breakdown from the same
+    // Hackatime activity data, so per-event sums reconcile with the overall
+    // DAU. Showing today's value would be a partial mid-stream count and
+    // wouldn't match the Hackatime-based top metric.
+    const yesterdayStart = new Date();
+    yesterdayStart.setUTCHours(0, 0, 0, 0);
+    yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1);
 
-    const result = await this.prisma.$queryRaw<
-      Array<{ event_id: number; title: string; slug: string; count: bigint }>
-    >`
-      SELECT e.event_id, e.title, e.slug, COUNT(DISTINCT p.user_id) as count
-      FROM projects p
-      INNER JOIN pinned_events pe ON pe.user_id = p.user_id
-      INNER JOIN events e ON e.event_id = pe.event_id
-      WHERE p.updated_at >= ${todayStart}
-      GROUP BY e.event_id, e.title, e.slug
-      ORDER BY count DESC
-    `;
+    const rows = await this.prisma.historicalMetric.findMany({
+      where: {
+        date: yesterdayStart,
+        metric: { startsWith: 'dau_event.' },
+      },
+    });
 
-    return result.map((r) => ({
-      eventId: r.event_id,
-      title: r.title,
-      slug: r.slug,
-      count: Number(r.count),
-    }));
+    if (rows.length === 0) return [];
+
+    const slugToCount = new Map<string, number>();
+    for (const row of rows) {
+      const slug = row.metric.slice('dau_event.'.length);
+      const count = typeof row.value === 'number' ? row.value : Number(row.value) || 0;
+      if (count > 0) slugToCount.set(slug, count);
+    }
+
+    if (slugToCount.size === 0) return [];
+
+    const events = await this.prisma.event.findMany({
+      where: { slug: { in: [...slugToCount.keys()] } },
+      select: { eventId: true, title: true, slug: true },
+    });
+
+    return events
+      .map((e) => ({
+        eventId: e.eventId,
+        title: e.title,
+        slug: e.slug,
+        count: slugToCount.get(e.slug) ?? 0,
+      }))
+      .sort((a, b) => b.count - a.count);
   }
 
   private async computeFunnel() {
@@ -535,7 +729,19 @@ export class AdminService {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
 
-    const [shipped, fraudChecked, fraudQueue, reviewQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek] = await Promise.all([
+    const [
+      shipped,
+      fraudChecked,
+      fraudQueue,
+      reviewQueue,
+      awaitingFraud,
+      fraudTeamDeliberation,
+      reviewed,
+      approved,
+      shippedThisWeek,
+      fraudCheckedThisWeek,
+      reviewedThisWeek,
+    ] = await Promise.all([
       // Projects with >= 1 submission
       this.prisma.project.count({ where: { submissions: { some: {} } } }),
       // Projects that passed fraud check (includes reviewed)
@@ -552,15 +758,18 @@ export class AdminService {
           submissions: { some: {} },
         },
       }),
-      // Review queue: fraud-checked projects with NO approved/rejected submissions (waiting for review)
-      this.prisma.project.count({
-        where: {
-          joeFraudPassed: true,
-          submissions: { some: { approvalStatus: 'pending' } },
-          NOT: {
-            submissions: { some: { approvalStatus: { in: ['approved', 'rejected'] } } },
-          },
-        },
+      // Review queue: pending submissions the reviewer hasn't decided on yet.
+      // Fraud state is independent; the reviewer can act regardless.
+      this.prisma.submission.count({
+        where: { approvalStatus: 'pending', reviewPassed: null },
+      }),
+      // Awaiting fraud: reviewer decided, state machine is waiting on fraud.
+      this.prisma.submission.count({
+        where: { approvalStatus: 'pending', reviewPassed: { not: null } },
+      }),
+      // Silent rejects (fraud failed, no user notification fired).
+      this.prisma.submission.count({
+        where: { approvalStatus: 'rejected', silentReject: true },
       }),
       this.prisma.project.count({
         where: {
@@ -589,7 +798,96 @@ export class AdminService {
       }),
     ]);
 
-    return { shipped, fraudChecked, fraudQueue, reviewQueue, reviewed, approved, shippedThisWeek, fraudCheckedThisWeek, reviewedThisWeek };
+    const funnelMatrix = await this.computeFunnelMatrix();
+
+    return {
+      shipped,
+      fraudChecked,
+      fraudQueue,
+      reviewQueue,
+      awaitingFraud,
+      fraudTeamDeliberation,
+      reviewed,
+      approved,
+      shippedThisWeek,
+      fraudCheckedThisWeek,
+      reviewedThisWeek,
+      funnelMatrix,
+    };
+  }
+
+  /**
+   * For every project with ≥1 submission, compute where it currently sits in the
+   * two-gate flow — reviewer gate × fraud gate — using the project's most recent
+   * submission. Returns a 3×3 count matrix the admin dashboard renders as a
+   * state grid.
+   *
+   * Under the fraud-wins rule (fraud=false → silent reject regardless of reviewer),
+   * fraud-failed column cells are all silent-rejects. The reviewer bucket is
+   * determined by what the reviewer had recorded at the time of the transition,
+   * which may be null (fraud fired first) / true (reviewer approved but fraud
+   * then failed) / false (reviewer rejected first, then fraud later failed).
+   */
+  private async computeFunnelMatrix() {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        review_bucket: 'approved' | 'rejected' | 'pending';
+        fraud_bucket: 'passed' | 'failed' | 'pending';
+        count: bigint;
+      }>
+    >`
+      WITH latest_submission AS (
+        SELECT DISTINCT ON (project_id)
+          project_id,
+          review_passed,
+          approval_status,
+          silent_reject
+        FROM submissions
+        ORDER BY project_id, created_at DESC
+      )
+      SELECT
+        CASE
+          WHEN ls.review_passed = true  THEN 'approved'
+          WHEN ls.review_passed = false THEN 'rejected'
+          ELSE 'pending'
+        END AS review_bucket,
+        CASE
+          WHEN p.joe_fraud_passed = true  THEN 'passed'
+          WHEN p.joe_fraud_passed = false THEN 'failed'
+          ELSE 'pending'
+        END AS fraud_bucket,
+        COUNT(*)::bigint AS count
+      FROM latest_submission ls
+      JOIN projects p ON p.project_id = ls.project_id
+      GROUP BY review_bucket, fraud_bucket;
+    `;
+
+    const cell = (
+      review: 'approved' | 'rejected' | 'pending',
+      fraud: 'passed' | 'failed' | 'pending',
+    ) =>
+      Number(
+        rows.find((r) => r.review_bucket === review && r.fraud_bucket === fraud)
+          ?.count ?? 0,
+      );
+
+    return {
+      reviewApproved: {
+        fraudPassed: cell('approved', 'passed'),
+        fraudFailed: cell('approved', 'failed'),
+        fraudPending: cell('approved', 'pending'),
+      },
+      reviewRejected: {
+        fraudPassed: cell('rejected', 'passed'),
+        fraudFailed: cell('rejected', 'failed'),
+        fraudPending: cell('rejected', 'pending'),
+      },
+      reviewPending: {
+        fraudPassed: cell('pending', 'passed'),
+        fraudFailed: cell('pending', 'failed'),
+        fraudPending: cell('pending', 'pending'),
+      },
+    };
   }
 
   private async computeSignups() {
@@ -605,11 +903,45 @@ export class AdminService {
       ORDER BY count DESC
     `;
 
+    // Per-event qualification funnel: signed up → ≥15h approved (RSVPed) →
+    // ≥30h approved (qualified). Approved hours sum across all of a user's
+    // projects.
+    const qualificationResult = await this.prisma.$queryRaw<
+      Array<{
+        event_id: number;
+        title: string;
+        slug: string;
+        signed_up: bigint;
+        rsvped: bigint;
+        qualified: bigint;
+      }>
+    >`
+      SELECT
+        e.event_id,
+        e.title,
+        e.slug,
+        COUNT(pe.id) AS signed_up,
+        COUNT(*) FILTER (WHERE COALESCE(ut.total_hours, 0) >= 15) AS rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.total_hours, 0) >= 30) AS qualified
+      FROM pinned_events pe
+      INNER JOIN events e ON e.event_id = pe.event_id
+      LEFT JOIN (
+        SELECT user_id, SUM(approved_hours) AS total_hours
+        FROM projects
+        GROUP BY user_id
+      ) ut ON ut.user_id = pe.user_id
+      GROUP BY e.event_id, e.title, e.slug
+      ORDER BY signed_up DESC
+    `;
+
     // Origin country → destination event country routes for map
+    // Only require an origin country — events without a country still
+    // contribute their attendees to the origin choropleth. Empty event
+    // country is normalized to '' and skipped on the host-highlight side.
     const routesResult = await this.prisma.$queryRaw<
       Array<{
         origin_country: string;
-        event_country: string;
+        event_country: string | null;
         event_title: string;
         count: bigint;
       }>
@@ -618,32 +950,37 @@ export class AdminService {
       FROM pinned_events pe
       INNER JOIN users u ON u.user_id = pe.user_id
       INNER JOIN events e ON e.event_id = pe.event_id
-      WHERE u.country IS NOT NULL AND u.country != '' AND e.country IS NOT NULL AND e.country != ''
+      WHERE u.country IS NOT NULL AND u.country != ''
       GROUP BY u.country, e.country, e.title
       ORDER BY count DESC
     `;
 
-    // Geocode all unique countries
-    const allCountries = [
-      ...routesResult.map((r) => r.origin_country),
-      ...routesResult.map((r) => r.event_country),
-    ];
-    const coords = await this.geocodingService.geocodeMany(allCountries);
+    const routes = routesResult.map((r) => ({
+      originCountry: r.origin_country,
+      eventCountry: r.event_country ?? '',
+      eventTitle: r.event_title,
+      count: Number(r.count),
+    }));
 
-    const routes = routesResult.map((r) => {
-      const originCoords = coords.get(r.origin_country.toLowerCase().trim());
-      const eventCoords = coords.get(r.event_country.toLowerCase().trim());
-      return {
-        originCountry: r.origin_country,
-        originLat: originCoords?.lat ?? null,
-        originLng: originCoords?.lng ?? null,
-        eventCountry: r.event_country,
-        eventLat: eventCoords?.lat ?? null,
-        eventLng: eventCoords?.lng ?? null,
-        eventTitle: r.event_title,
-        count: Number(r.count),
-      };
-    });
+    // Counts to surface as map warnings: pinned users with no country, and
+    // events that have pinned users but no country set themselves.
+    const [signupsMissingOriginRow, eventsMissingCountry] = await Promise.all([
+      this.prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*) AS count
+        FROM pinned_events pe
+        INNER JOIN users u ON u.user_id = pe.user_id
+        WHERE u.country IS NULL OR u.country = ''
+      `,
+      this.prisma.event.findMany({
+        where: {
+          OR: [{ country: null }, { country: '' }],
+          pinnedBy: { some: {} },
+        },
+        select: { title: true },
+        orderBy: { title: 'asc' },
+      }),
+    ]);
+    const signupsMissingOrigin = Number(signupsMissingOriginRow[0]?.count ?? 0);
 
     return {
       total,
@@ -653,22 +990,56 @@ export class AdminService {
         slug: r.slug,
         count: Number(r.count),
       })),
+      qualification: qualificationResult.map((r) => ({
+        eventId: r.event_id,
+        title: r.title,
+        slug: r.slug,
+        signedUp: Number(r.signed_up),
+        rsvped: Number(r.rsvped),
+        qualified: Number(r.qualified),
+      })),
       routes,
+      signupsMissingOrigin,
+      eventsMissingCountry: eventsMissingCountry.map((e) => e.title),
     };
   }
 
   private async computeUtm() {
-    const groups = await this.prisma.user.groupBy({
-      by: ['utmSource'],
-      _count: { _all: true },
-      where: { utmSource: { not: null } },
-      orderBy: { _count: { utmSource: 'desc' } },
-    });
+    const [groups, onboardedGroups, shipped10hGroups] = await Promise.all([
+      this.prisma.user.groupBy({
+        by: ['utmSource'],
+        _count: { _all: true },
+        where: { utmSource: { not: null } },
+        orderBy: { _count: { utmSource: 'desc' } },
+      }),
+      this.prisma.user.groupBy({
+        by: ['utmSource'],
+        _count: { _all: true },
+        where: { utmSource: { not: null }, onboardComplete: true },
+      }),
+      this.prisma.user.groupBy({
+        by: ['utmSource'],
+        _count: { _all: true },
+        where: {
+          utmSource: { not: null },
+          projects: { some: { nowHackatimeHours: { gte: 10 } } },
+        },
+      }),
+    ]);
+
+    const onboardedBySource = new Map(
+      onboardedGroups.map((g) => [g.utmSource!, g._count._all]),
+    );
+    const shipped10hBySource = new Map(
+      shipped10hGroups.map((g) => [g.utmSource!, g._count._all]),
+    );
 
     return {
       sources: groups.map((g) => ({
         source: g.utmSource!,
         count: g._count._all,
+        onboardedCount: onboardedBySource.get(g.utmSource!) ?? 0,
+        shipped10HoursCount: shipped10hBySource.get(g.utmSource!) ?? 0,
       })),
     };
   }
@@ -809,8 +1180,9 @@ export class AdminService {
     const eventId = event.eventId;
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    const yesterdayStart = new Date();
+    yesterdayStart.setUTCHours(0, 0, 0, 0);
+    yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1);
 
     // Pinned users who have/haven't met the hour goal
     const pinnedUsers = await this.prisma.pinnedEvent.findMany({
@@ -838,15 +1210,18 @@ export class AdminService {
       }
     }
 
-    // DAU for this event (users with project activity today who are pinned to this event)
-    const dauResult = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(DISTINCT p.user_id) as count
-      FROM projects p
-      INNER JOIN pinned_events pe ON pe.user_id = p.user_id
-      WHERE pe.event_id = ${eventId}
-        AND p.updated_at >= ${todayStart}
-    `;
-    const dauToday = Number(dauResult[0]?.count ?? 0);
+    // Yesterday's DAU for this event — read from the snapshot table so the
+    // value is consistent with the dashboard top-level DAU and the per-event
+    // breakdown (both Hackatime-activity-derived). Today's value would be a
+    // partial mid-stream count and wouldn't reconcile.
+    const dauRow = await this.prisma.historicalMetric.findUnique({
+      where: { date_metric: { date: yesterdayStart, metric: `dau_event.${slug}` } },
+    });
+    const dauYesterday = dauRow
+      ? typeof dauRow.value === 'number'
+        ? dauRow.value
+        : Number(dauRow.value) || 0
+      : 0;
 
     // Pinned over the last 30 days (daily counts from pinned_events.created_at)
     const pinnedOverTime = await this.prisma.$queryRaw<
@@ -901,7 +1276,7 @@ export class AdminService {
       pinnedCount: event._count.pinnedBy,
       metHourGoal: metGoal,
       notMetHourGoal: notMetGoal,
-      dauToday,
+      dauYesterday,
       pinnedTimeline,
       dauTimeline,
     };
@@ -1038,28 +1413,6 @@ export class AdminService {
     return leaderboard;
   }
 
-  async toggleFraudFlag(projectId: number, isFraud: boolean) {
-    const project = await this.prisma.project.findUnique({
-      where: { projectId },
-    });
-
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
-
-    const updatedProject = await this.prisma.project.update({
-      where: { projectId },
-      data: { isFraud },
-      select: {
-        projectId: true,
-        projectTitle: true,
-        isFraud: true,
-      },
-    });
-
-    return updatedProject;
-  }
-
   async toggleUserFraudFlag(userId: number, isFraud: boolean) {
     const user = await this.prisma.user.findUnique({
       where: { userId },
@@ -1147,6 +1500,68 @@ export class AdminService {
     return updatedUser;
   }
 
+  async updateUser(
+    userId: number,
+    dto: { hackatimeStartDate?: string | null },
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: { userId: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const data: { hackatimeStartDate?: Date | null } = {};
+    if (dto.hackatimeStartDate === null) {
+      data.hackatimeStartDate = null;
+    } else if (dto.hackatimeStartDate !== undefined) {
+      const parsed = new Date(dto.hackatimeStartDate);
+      if (isNaN(parsed.getTime())) {
+        throw new BadRequestException('Invalid hackatimeStartDate');
+      }
+      data.hackatimeStartDate = parsed;
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { userId },
+      data,
+      select: { userId: true, hackatimeStartDate: true },
+    });
+
+    const projects = await this.prisma.project.findMany({
+      where: { userId },
+      include: projectAdminInclude,
+    });
+
+    const baseUrl =
+      process.env.HACKATIME_ADMIN_API_URL ||
+      'https://hackatime.hackclub.com/api/admin/v1';
+    const apiKey = process.env.HACKATIME_API_KEY;
+    const cache = new Map<string, Map<string, number>>();
+    let recalculatedProjects = 0;
+
+    for (const project of projects) {
+      try {
+        const result = await this.recalculateProjectInternal(project, {
+          strict: false,
+          cache,
+          baseUrl,
+          apiKey,
+        });
+        if (result?.project) recalculatedProjects++;
+      } catch {
+        // swallow per-project failures; recalc is best-effort here
+      }
+    }
+
+    return {
+      userId: updatedUser.userId,
+      hackatimeStartDate: updatedUser.hackatimeStartDate,
+      recalculatedProjects,
+    };
+  }
+
   async lookupSlackByEmail(email: string) {
     const result = await this.slackService.lookupSlackUserByEmail(email);
     if (!result) {
@@ -1173,6 +1588,7 @@ export class AdminService {
         lastName: string | null;
         email: string;
         hackatimeAccount: string | null;
+        hackatimeStartDate?: Date | null;
       };
     },
     options: {
@@ -1225,6 +1641,7 @@ export class AdminService {
       project.user.hackatimeAccount,
       baseUrl,
       apiKey,
+      project.user.hackatimeStartDate,
     );
 
     const updatedProject = await this.prisma.project.update({
@@ -1354,11 +1771,12 @@ export class AdminService {
     hackatimeAccount?: string,
     baseUrl?: string,
     apiKey?: string,
+    userStartDate?: Date | null,
   ) {
     if (hackatimeAccount && baseUrl) {
-      const cutoffDate = new Date(
-        process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z',
-      );
+      const cutoffDate =
+        userStartDate ??
+        new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z');
       const filteredDurations =
         await this.fetchHackatimeProjectDurationsAfterDate(
           hackatimeAccount,
@@ -1777,9 +2195,11 @@ export class AdminService {
 
   private async fetchHackatimeProjectNames(
     slackId: string,
+    startDateOverride?: Date | null,
   ): Promise<Set<string>> {
-    const startDate = new Date(
-      process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
+    const startDate = (
+      startDateOverride ??
+      new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z')
     )
       .toISOString()
       .split('T')[0];
@@ -1839,6 +2259,7 @@ export class AdminService {
       const firstName = row['First Name']?.trim() || 'Imported';
       const lastName = row['Last Name']?.trim() || 'User';
       const slackId = row['Slack ID']?.trim();
+      const startDateRaw = row['Hackatime Start Date']?.trim();
 
       if (!email) {
         results.errors.push({
@@ -1847,6 +2268,20 @@ export class AdminService {
           message: 'Missing email',
         });
         continue;
+      }
+
+      let hackatimeStartDate: Date | null = null;
+      if (startDateRaw) {
+        const parsedDate = new Date(startDateRaw);
+        if (isNaN(parsedDate.getTime())) {
+          results.errors.push({
+            row: rowNum,
+            email,
+            message: `Invalid Hackatime Start Date: "${startDateRaw}"`,
+          });
+          continue;
+        }
+        hackatimeStartDate = parsedDate;
       }
 
       try {
@@ -1873,6 +2308,7 @@ export class AdminService {
               firstName,
               lastName,
               slackUserId: slackId || null,
+              hackatimeStartDate,
             },
             include: {
               projects: {
@@ -1886,6 +2322,12 @@ export class AdminService {
           });
           userCreated = true;
           results.usersCreated++;
+        } else if (hackatimeStartDate) {
+          await this.prisma.user.update({
+            where: { userId: user.userId },
+            data: { hackatimeStartDate },
+          });
+          user.hackatimeStartDate = hackatimeStartDate;
         }
 
         // 2. Parse and verify hackatime project names
@@ -1897,8 +2339,10 @@ export class AdminService {
             .filter(Boolean);
 
           if (slackId) {
-            const validNames =
-              await this.fetchHackatimeProjectNames(slackId);
+            const validNames = await this.fetchHackatimeProjectNames(
+              slackId,
+              user.hackatimeStartDate,
+            );
             if (validNames.size > 0) {
               hackatimeProjects = rawNames.filter((n) => validNames.has(n));
             } else {
@@ -1993,19 +2437,6 @@ export class AdminService {
     return results;
   }
 
-  private async fetchCachetUsername(slackId: string): Promise<string | null> {
-    try {
-      const res = await fetch(
-        `https://cachet.dunkirk.sh/users/${slackId}`,
-      );
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data?.username ?? data?.name ?? null;
-    } catch {
-      return null;
-    }
-  }
-
   async exportCsv(): Promise<string> {
     const users = await this.prisma.user.findMany({
       select: {
@@ -2054,27 +2485,17 @@ export class AdminService {
       hackatimeLinks.map((r) => [r.userId, r.usedAt]),
     );
 
-    // Batch fetch Cachet usernames for users with Slack IDs
-    const slackUsers = users.filter((u) => u.slackUserId);
-    const cachetResults = await Promise.allSettled(
-      slackUsers.map(async (u) => ({
-        userId: u.userId,
-        username: await this.fetchCachetUsername(u.slackUserId!),
-      })),
-    );
-    const cachetMap = new Map<number, string>();
-    for (const result of cachetResults) {
-      if (result.status === 'fulfilled' && result.value.username) {
-        cachetMap.set(result.value.userId, result.value.username);
-      }
-    }
+    const slackIds = users
+      .map((u) => u.slackUserId)
+      .filter((id): id is string => !!id);
+    const displayNames = await this.slackService.getUsernames(slackIds);
 
     const rows = users.map((user) => ({
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       slackId: user.slackUserId ?? '',
-      username: cachetMap.get(user.userId) ?? '',
+      username: (user.slackUserId && displayNames.get(user.slackUserId)) || '',
       signedUpAt: user.createdAt.toISOString(),
       hackatimeLinkedAt: hackatimeLinkMap.get(user.userId)?.toISOString() ?? '',
       firstProjectAt:

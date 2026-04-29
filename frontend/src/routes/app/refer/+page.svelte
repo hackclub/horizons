@@ -5,6 +5,7 @@
 	import type { components } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
 	import { userStore } from '$lib/store/userCache';
+	import { createListNav } from '$lib/nav/wasd.svelte';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
 	import stickerSheetImg from '$lib/assets/refer/sticker-sheet.png';
 	import switchLiteImg from '$lib/assets/refer/switch-lite.png';
@@ -21,6 +22,16 @@
 	let copied = $state(false);
 
 	let shareUrl = $derived(referralCode ? `${window.location.origin}/?ref=${referralCode}` : '');
+
+	const nav = createListNav({
+		count: () => referrals.length,
+		wheel: 80,
+		onChange: (i) => {
+			const cards = document.querySelectorAll('.referral-card');
+			(cards[i] as HTMLElement | undefined)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		},
+		onEscape: () => goBack(),
+	});
 
 	onMount(async () => {
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
@@ -48,13 +59,6 @@
 		goto(href);
 	}
 
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
-			e.preventDefault();
-			goBack();
-		}
-	}
-
 	function copyLink() {
 		navigator.clipboard.writeText(shareUrl);
 		copied = true;
@@ -62,7 +66,7 @@
 	}
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window onkeydown={nav.handleKeydown} onwheel={nav.handleWheel} />
 
 <div class="page-wrap">
 	<div class="page-content">
@@ -124,15 +128,21 @@
 						</div>
 					{:else}
 						{#each referrals as referral, i}
-							<div class="referral-card" class:first={i === 0}>
+							<button
+								type="button"
+								class="referral-card"
+								class:selected={i === nav.selectedIndex}
+								onpointerdown={() => nav.select(i)}
+								onfocus={() => { nav.selectedIndex = i; }}
+							>
 								<div class="flex items-center justify-between w-full">
-									<p class="font-cook text-[20px] text-black m-0">{referral.username.toUpperCase()}</p>
+									<p class="font-cook text-[20px] text-black m-0">{(referral.displayName ?? 'UNKNOWN').toUpperCase()}</p>
 									<span class="font-bricolage text-sm font-semibold px-3 py-1 rounded-full border-2 border-black {referral.onboardComplete ? 'bg-[#91D374]' : 'bg-[#f3e8d8]'}">
 										{referral.onboardComplete ? 'Onboarded' : 'Pending'}
 									</span>
 								</div>
-								<p class="font-bricolage text-[20px] text-black m-0">{referral.email}</p>
-							</div>
+								<p class="font-bricolage text-[20px] text-black m-0">{referral.slackUserId ?? '—'}</p>
+							</button>
 						{/each}
 					{/if}
 				</div>
@@ -319,8 +329,15 @@
 		flex-direction: column;
 		gap: 16px;
 		flex-shrink: 0;
+		width: 100%;
+		text-align: left;
+		font: inherit;
+		color: inherit;
+		cursor: pointer;
+		outline: none;
+		transition: background-color var(--selected-duration) ease;
 	}
-	.referral-card.first {
+	.referral-card.selected {
 		background-color: #ffa936;
 	}
 

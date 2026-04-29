@@ -278,6 +278,7 @@ export class AirtableService {
     userId: number,
     event:
       | 'signUp'
+      | 'authedWithHCA'
       | 'firstProjectCreated'
       | 'firstSubmit'
       | 'onboardingCompleted',
@@ -294,6 +295,7 @@ export class AirtableService {
 
     const fieldMap: Record<string, string> = {
       signUp: 'Loops - horizonsSignUpAt',
+      authedWithHCA: 'Loops - horizonsAuthedWithHCA',
       firstProjectCreated: 'Loops - horizonsFirstProjectCreatedAt',
       firstSubmit: 'Loops - horizonsFirstSubmitAt',
       onboardingCompleted: 'Loops - horizonsOnboardingCompletedAt',
@@ -324,7 +326,15 @@ export class AirtableService {
 
         const fieldsToUpdate: Record<string, any> = {};
         if (!existingRecord.fields[fieldName]) {
-          fieldsToUpdate[fieldName] = now;
+          if (
+            event === 'authedWithHCA' &&
+            existingRecord.fields['Loops - horizonsSignUpAt']
+          ) {
+            fieldsToUpdate[fieldName] =
+              existingRecord.fields['Loops - horizonsSignUpAt'];
+          } else {
+            fieldsToUpdate[fieldName] = now;
+          }
         }
         if (!existingRecord.fields['Horizons User ID']) {
           fieldsToUpdate['Horizons User ID'] = userId;

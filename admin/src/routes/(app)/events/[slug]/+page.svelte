@@ -27,7 +27,7 @@
 		pinnedCount: number;
 		metHourGoal: number;
 		notMetHourGoal: number;
-		dauToday: number;
+		dauYesterday: number;
 		pinnedTimeline: { date: string; value: number }[];
 		dauTimeline: { date: string; value: number }[];
 	}
@@ -274,8 +274,8 @@
 					<p class="text-2xl font-bold text-ds-text">{stats.notMetHourGoal}</p>
 				</div>
 				<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">DAU (Today)</p>
-					<p class="text-2xl font-bold text-ds-text">{stats.dauToday}</p>
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">DAU (Yesterday)</p>
+					<p class="text-2xl font-bold text-ds-text">{stats.dauYesterday}</p>
 				</div>
 			</div>
 

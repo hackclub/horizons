@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Put,
+  Patch,
   Body,
   Param,
   Query,
@@ -36,7 +37,6 @@ import {
   AdminUserResponse,
   AdminMetricsResponse,
   ReviewerLeaderboardEntry,
-  AdminFraudFlagResponse,
   AdminUserFlagResponse,
   AdminUserSusFlagResponse,
   AdminUserSlackResponse,
@@ -45,10 +45,12 @@ import {
   GlobalSettingsResponse,
   ElevatedUserResponse,
   UpdateUserRoleResponse,
+  UpdateUserResponse,
   AdminStatsResponse,
   BackfillResponse,
   EventStatsResponse,
   ImportCsvResponse,
+  ProjectOwnerHackatimeProjectsResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -57,6 +59,8 @@ import {
   ToggleSubmissionsFrozenDto,
   UpdateUserRoleDto,
 } from './dto/admin-request.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateAdminProjectDto } from './dto/update-admin-project.dto';
 import { ApiQuery } from '@nestjs/swagger';
 
 @Controller('api/admin')
@@ -107,6 +111,35 @@ export class AdminController {
   @ApiOkResponse({ type: [AdminProjectResponse] })
   async getAllProjects() {
     return this.adminService.getAllProjects();
+  }
+
+  @Get('projects/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminProjectResponse })
+  async getProject(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getProject(id);
+  }
+
+  @Patch('projects/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiOkResponse({ type: AdminProjectResponse })
+  async updateProject(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateAdminProjectDto,
+  ) {
+    return this.adminService.updateProject(id, body);
+  }
+
+  @Get('projects/:id/hackatime-projects')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: ProjectOwnerHackatimeProjectsResponse })
+  async listProjectOwnerHackatimeProjects(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.adminService.listProjectOwnerHackatimeProjects(id);
   }
 
   @Post('projects/:id/recalculate')
@@ -191,17 +224,6 @@ export class AdminController {
   @ApiOkResponse({ type: [ReviewerLeaderboardEntry] })
   async getReviewerLeaderboard() {
     return this.adminService.getReviewerLeaderboard();
-  }
-
-  @Put('projects/:id/fraud-flag')
-  @UseGuards(RolesGuard)
-  @Roles(Role.Admin)
-  @ApiOkResponse({ type: AdminFraudFlagResponse })
-  async toggleFraudFlag(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() body: ToggleFraudFlagDto,
-  ) {
-    return this.adminService.toggleFraudFlag(id, body.isFraud);
   }
 
   @Put('users/:id/fraud-flag')
@@ -317,6 +339,17 @@ export class AdminController {
     @Req() req: Request,
   ) {
     return this.adminService.updateUserRole(id, body.role, req.user.userId);
+  }
+
+  @Patch('users/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiOkResponse({ type: UpdateUserResponse })
+  async updateUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateUserDto,
+  ) {
+    return this.adminService.updateUser(id, body);
   }
 
   @Post('import/csv')

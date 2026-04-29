@@ -8,6 +8,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
+import { SlackService } from '../slack/slack.service';
+import { SlackChannelsService } from '../slack-channels/slack-channels.service';
 
 import { createHmac } from 'crypto';
 import * as jose from 'jose';
@@ -108,6 +110,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private airtableService: AirtableService,
+    private slackService: SlackService,
+    private slackChannelsService: SlackChannelsService,
   ) {}
 
   getAuthUrl(
@@ -138,6 +142,7 @@ export class AuthService {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope:
+        process.env.HACKCLUB_OAUTH_SCOPES ||
         'openid email name profile birthdate address verification_status slack_id basic_info',
       state,
     });
@@ -152,9 +157,17 @@ export class AuthService {
         );
     }
 
+    const oauthUrl = `${this.HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`;
+    const joinParams = new URLSearchParams({ return_to: oauthUrl });
+    if (email) joinParams.set('email', email);
+
+    // return {
+    //   url: `${this.HACKCLUB_AUTH_URL}/oauth/welcome?${joinParams.toString()}`,
+    // };
+
     return {
-      url: `${this.HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`,
-    };
+      url: oauthUrl
+    }
   }
 
   async handleCallback(
@@ -404,6 +417,12 @@ export class AuthService {
           console.error('Error syncing signUp event to Airtable:', err),
         );
 
+      this.airtableService
+        .syncUserEvent(email, existingUser.userId, 'authedWithHCA')
+        .catch((err) =>
+          console.error('Error syncing authedWithHCA event to Airtable:', err),
+        );
+
       return { user: existingUser, isNewUser: true };
     }
 
@@ -494,6 +513,7 @@ export class AuthService {
             onboardComplete: true,
             onboardedAt: true,
             hackatimeAccount: true,
+            hackatimeStartDate: true,
             referralCode: true,
             referredByUserId: true,
             rafflePos: true,
@@ -534,10 +554,46 @@ export class AuthService {
     } = user;
     if (userWithoutAddress.projects) {
       userWithoutAddress.projects = userWithoutAddress.projects.map(
-        ({ isFraud: _, hoursJustification: __, ...project }: any) => project,
+        ({
+          hoursJustification: _hoursJustification,
+          adminComment: _adminComment,
+          joeProjectId: _joeProjectId,
+          joeFraudPassed: _joeFraudPassed,
+          joeFraudReviewedAt: _joeFraudReviewedAt,
+          joeTrustScore: _joeTrustScore,
+          joeJustification: _joeJustification,
+          joeOutcomeStatus: _joeOutcomeStatus,
+          joeOutcomeReason: _joeOutcomeReason,
+          joeOutcomeRecordedAt: _joeOutcomeRecordedAt,
+          submissions,
+          ...project
+        }: any) => ({
+          ...project,
+          submissions: (submissions || []).map((s: any) => {
+            const {
+              reviewPassed: _rp,
+              silentReject: _sr,
+              pendingSendEmail: _pe,
+              finalizedAt: _fa,
+              reviewedBy: _rb,
+              airtableRecId: _ar,
+              reviewerAnalysis: _ra,
+              ...safe
+            } = s;
+            return {
+              ...safe,
+              approvalStatus: s.silentReject ? 'pending' : s.approvalStatus,
+            };
+          }),
+        }),
       );
     }
-    return { ...userWithoutAddress, hasAddress };
+
+    const slackDisplayName = user.slackUserId
+      ? await this.slackService.getUsername(user.slackUserId)
+      : null;
+
+    return { ...userWithoutAddress, hasAddress, slackDisplayName };
   }
 
   async logout(sessionId: string) {
@@ -587,18 +643,24 @@ export class AuthService {
     const users = await this.prisma.user.findMany({
       where: { referredByUserId: userId },
       select: {
-        firstName: true,
-        email: true,
+        slackUserId: true,
         onboardComplete: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
     });
 
+    const slackIds = users
+      .map((u) => u.slackUserId)
+      .filter((id): id is string => !!id);
+    const displayNames = await this.slackService.getUsernames(slackIds);
+
     return {
       referrals: users.map((u) => ({
-        username: u.firstName ?? 'Unknown',
-        email: u.email,
+        slackUserId: u.slackUserId,
+        displayName: u.slackUserId
+          ? (displayNames.get(u.slackUserId) ?? null)
+          : null,
         onboardComplete: u.onboardComplete,
         createdAt: u.createdAt.toISOString(),
       })),
@@ -618,6 +680,12 @@ export class AuthService {
           'Error syncing onboardingCompleted event to Airtable:',
           err,
         ),
+      );
+
+    this.slackChannelsService
+      .inviteSingleUser(userId)
+      .catch((err) =>
+        console.error('[SlackChannels] inviteSingleUser failed:', err),
       );
 
     return {

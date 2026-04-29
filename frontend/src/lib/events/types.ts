@@ -1,16 +1,22 @@
 export interface EventConfig {
 	name: string;
+	location?: [number, number];
+	locationText?: string;
+	dates?: string;
+	landingBlurb?: string;
 	tagline: string;
 	headline: string;
 	logo: string;
 	logoMaxWidth?: string;
 	buttonText: string;
 	buttonTextMobile: string;
+	buttonColor?: string;
 	footerHint: string;
 	background?: {
 		image?: string | null;
 		pattern?: boolean;
 		opacity?: number;
+		'mix-blend-mode'?: string;
 	};
 	colors: {
 		background: string;

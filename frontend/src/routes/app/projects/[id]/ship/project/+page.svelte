@@ -5,6 +5,8 @@
 	import { api, type components } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, FormButtons, FormError, HackatimeSelect } from '$lib/components/form';
+	import { invalidateProjectCaches } from '$lib/store/projectDetailCache';
+	import { invalidateCache } from '$lib/store/projectCache';
 	import BackButton from '$lib/components/BackButton.svelte';
 
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
@@ -16,9 +18,11 @@
 		{ label: 'Web Playable', value: 'web_playable' },
 		{ label: 'Cross-Platform Playable', value: 'cross_platform_playable' },
 		{ label: 'Hardware', value: 'hardware' },
+		{ label: 'Mobile App', value: 'mobile_app' },
 	];
 
 	const projectId = $derived(page.params.id);
+	const bypassDemoCheck = $derived(page.url.searchParams.get('bypass') === 'demo');
 
 	let loading = $state(true);
 	let title = $state('');
@@ -261,11 +265,11 @@
 	}
 
 	let hasUrlErrors = $derived(
-		demoUrlStatus === 'error' || codeUrlStatus === 'error' || readmeUrlStatus === 'error'
+		(!bypassDemoCheck && demoUrlStatus === 'error') || codeUrlStatus === 'error' || readmeUrlStatus === 'error'
 	);
 
 	let urlsChecking = $derived(
-		demoUrlStatus === 'checking' || codeUrlStatus === 'checking' || readmeUrlStatus === 'checking'
+		(!bypassDemoCheck && demoUrlStatus === 'checking') || codeUrlStatus === 'checking' || readmeUrlStatus === 'checking'
 	);
 
 	let allFilled = $derived(
@@ -409,7 +413,7 @@
 		}
 		if (!mediaUrl) {
 			missing.add('media');
-			missingLabels.push('Screenshot/Video');
+			missingLabels.push('Screenshot');
 		}
 		if (isHardware && !journalUrl.trim()) {
 			missing.add('journal-url');
@@ -441,11 +445,12 @@
 		submitting = true;
 		errorMsg = null;
 
-		const [projectRes, _hackatimeRes] = await Promise.all([
+		const [projectRes, hackatimeRes] = await Promise.all([
 			api.PUT('/api/projects/auth/{id}', {
 				params: { path: { id: Number(projectId) } },
 				body: {
 					projectTitle: title.trim(),
+					projectType,
 					description: description.trim(),
 					playableUrl: demoUrl.trim(),
 					repoUrl: codeUrl.trim(),
@@ -460,10 +465,16 @@
 			}),
 		]);
 
-		if (projectRes.data) {
+		if (projectRes.data && hackatimeRes.data) {
+			invalidateProjectCaches(projectId!);
+			invalidateCache();
 			goto(`/app/projects/${projectId}/ship/personal`);
+		} else if (!projectRes.data) {
+			const err = projectRes.error as any;
+			errorMsg = err?.message ?? err?.error ?? 'Failed to save project. Please try again.';
 		} else {
-			errorMsg = 'Failed to save project. Please try again.';
+			const err = hackatimeRes.error as any;
+			errorMsg = err?.message ?? err?.error ?? 'Failed to update Hackatime projects. Please try again.';
 		}
 
 		submitting = false;

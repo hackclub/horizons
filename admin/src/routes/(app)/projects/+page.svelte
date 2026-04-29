@@ -1,38 +1,63 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { invalidateAll } from '$app/navigation';
+    import { base } from '$app/paths';
     import { api, type components } from '$lib/api';
-    import { Button, Checkbox } from '$lib/components';
+    import { Play, Snowflake, LoaderCircle } from 'lucide-svelte';
+    import { Button, TextField, Card, Checkbox, Select, FilterTag } from '$lib/components';
 
     type AdminProject = components['schemas']['AdminProjectResponse'];
-    type ProjectTimeline = components['schemas']['ProjectTimelineResponse'];
     type AdminLightUser = components['schemas']['AdminLightUserResponse'];
+    type GlobalSettingsResponse = components['schemas']['GlobalSettingsResponse'];
+    type PriorityUserResponse = components['schemas']['PriorityUserResponse'];
 
-    // Projects state
+    type SortField =
+        | 'createdAt'
+        | 'projectTitle'
+        | 'userName'
+        | 'approvalStatus'
+        | 'nowHackatimeHours'
+        | 'approvedHours';
+    type SortDirection = 'asc' | 'desc';
+
+    const projectTypes = [
+        'windows_playable',
+        'mac_playable',
+        'linux_playable',
+        'web_playable',
+        'cross_platform_playable',
+        'hardware',
+        'mobile_app',
+    ] as const;
+    const statusOptions = ['pending', 'approved', 'rejected'] as const;
+
+    // --- State ---
     let projects = $state<AdminProject[]>([]);
     let projectsLoading = $state(false);
+
+    let searchQuery = $state('');
+    let selectedStatuses = $state<Set<string>>(new Set(['pending']));
+    let selectedProjectTypes = $state<Set<string>>(new Set());
+    let sortField = $state<SortField>('createdAt');
+    let sortDirection = $state<SortDirection>('asc');
     let showFraudProjects = $state(true);
     let showSusProjects = $state(true);
+    let submissionCountFilter = $state<string>('all');
 
-    // Per-project action state
-    let projectBusy = $state<Record<number, boolean>>({});
-    let projectErrors = $state<Record<number, string>>({});
-    let projectSuccess = $state<Record<number, string>>({});
+    let globalSettings = $state<GlobalSettingsResponse | null>(null);
+    let globalSettingsLoading = $state(false);
 
-    // Timeline state
-    let timelineByProject = $state<Record<number, ProjectTimeline>>({});
-    let timelineLoading = $state<Record<number, boolean>>({});
-    let timelineOpen = $state<Record<number, boolean>>({});
+    let priorityUsers = $state<PriorityUserResponse[]>([]);
+    let priorityUsersLoading = $state(false);
+    let priorityUsersLoaded = $state(false);
+    let priorityFilterEnabled = $state(false);
 
-    // Helpers
+    // --- Helpers ---
     function formatDate(value: string) {
         return new Date(value).toLocaleString();
     }
 
     function formatHours(value: number | null) {
-        if (value === null || value === undefined) {
-            return '—';
-        }
+        if (value === null || value === undefined) return '—';
         return value.toFixed(1);
     }
 
@@ -43,54 +68,24 @@
         return name || 'Unknown';
     }
 
-    function normalizeUrl(url: string | null): string | null {
-        if (!url) return null;
-        const trimmed = url.trim();
-        if (!trimmed) return null;
-        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-            return trimmed;
-        }
-        return `https://${trimmed}`;
+    function formatProjectType(type: string): string {
+        return type
+            .split('_')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
     }
 
-    // Timeline helpers
-    function timelineEventLabel(type: string): string {
-        switch (type) {
-            case 'project_created': return 'Project Created';
-            case 'submission': return 'Submitted';
-            case 'resubmission': return 'Resubmitted';
-            case 'project_updated': return 'Project Updated';
-            case 'admin_review': return 'Admin Reviewed Project';
-            case 'admin_update': return 'Admin Updated Project Review';
-            default: return type;
-        }
+    function latestSubmission(project: AdminProject) {
+        if (!project.submissions || project.submissions.length === 0) return null;
+        return project.submissions[0];
     }
 
-    function timelineEventColor(type: string): string {
-        switch (type) {
-            case 'project_created': return 'border-blue-500 bg-blue-500/10';
-            case 'submission': return 'border-green-500 bg-green-500/10';
-            case 'resubmission': return 'border-yellow-500 bg-yellow-500/10';
-            case 'project_updated': return 'border-cyan-500 bg-cyan-500/10';
-            case 'admin_review': return 'border-ds-accent bg-ds-accent/10';
-            case 'admin_update': return 'border-orange-500 bg-orange-500/10';
-            default: return 'border-gray-500 bg-gray-500/10';
-        }
+    function projectStatus(project: AdminProject): string {
+        const latest = latestSubmission(project);
+        return latest?.approvalStatus ?? 'none';
     }
 
-    function timelineDotColor(type: string): string {
-        switch (type) {
-            case 'project_created': return 'bg-blue-500';
-            case 'submission': return 'bg-green-500';
-            case 'resubmission': return 'bg-yellow-500';
-            case 'project_updated': return 'bg-cyan-500';
-            case 'admin_review': return 'bg-ds-accent';
-            case 'admin_update': return 'bg-orange-500';
-            default: return 'bg-gray-500';
-        }
-    }
-
-    // API functions
+    // --- API ---
     async function loadProjects() {
         projectsLoading = true;
         try {
@@ -99,11 +94,7 @@
                 console.error('Failed to load projects:', error);
                 return;
             }
-            if (data) {
-                projects = data;
-                projectErrors = {};
-                projectSuccess = {};
-            }
+            if (data) projects = data;
         } catch (err) {
             console.error('Failed to load projects:', err);
         } finally {
@@ -111,385 +102,402 @@
         }
     }
 
-    async function loadTimeline(projectId: number) {
-        if (timelineByProject[projectId]) {
-            timelineOpen = { ...timelineOpen, [projectId]: !timelineOpen[projectId] };
-            return;
-        }
-        timelineLoading = { ...timelineLoading, [projectId]: true };
+    async function loadGlobalSettings() {
+        globalSettingsLoading = true;
         try {
-            const { data, error } = await api.GET('/api/admin/projects/{id}/timeline', {
-                params: { path: { id: projectId } }
-            });
-            if (error) {
-                console.error('Failed to load timeline:', error);
-                return;
-            }
-            if (data) {
-                timelineByProject = { ...timelineByProject, [projectId]: data };
-                timelineOpen = { ...timelineOpen, [projectId]: true };
-            }
-        } catch (e) {
-            console.error('Failed to load timeline', e);
+            const { data, error } = await api.GET('/api/admin/settings');
+            if (!error && data) globalSettings = data;
+        } catch (err) {
+            console.error('Failed to load global settings:', err);
         } finally {
-            timelineLoading = { ...timelineLoading, [projectId]: false };
+            globalSettingsLoading = false;
         }
     }
 
-    async function recalculateProject(projectId: number) {
-        projectBusy = { ...projectBusy, [projectId]: true };
-        projectErrors = { ...projectErrors, [projectId]: '' };
-        projectSuccess = { ...projectSuccess, [projectId]: '' };
-
+    async function toggleGlobalSubmissionsFrozen() {
+        if (!globalSettings) return;
+        globalSettingsLoading = true;
         try {
-            const { error } = await api.POST('/api/admin/projects/{id}/recalculate', {
-                params: { path: { id: projectId } }
+            const { data, error } = await api.PUT('/api/admin/settings/submissions-frozen', {
+                body: { submissionsFrozen: !globalSettings.submissionsFrozen },
             });
-
-            if (error) {
-                const message = (error as any)?.message ?? 'Failed to recalculate hours';
-                projectErrors = { ...projectErrors, [projectId]: message };
-                return;
-            }
-
-            projectSuccess = { ...projectSuccess, [projectId]: 'Hours recalculated' };
-            // Clear cached timeline so it reloads with fresh data
-            const { [projectId]: _, ...restTimeline } = timelineByProject;
-            timelineByProject = restTimeline;
-            await loadProjects();
-            invalidateAll();
+            if (!error && data) globalSettings = data;
         } catch (err) {
-            projectErrors = {
-                ...projectErrors,
-                [projectId]: err instanceof Error ? err.message : 'Failed to recalculate hours'
-            };
+            console.error('Failed to toggle submissions frozen:', err);
         } finally {
-            projectBusy = { ...projectBusy, [projectId]: false };
+            globalSettingsLoading = false;
         }
     }
 
-    async function deleteProject(projectId: number) {
-        const confirmDelete = typeof window !== 'undefined'
-            ? window.confirm('Delete this project? This cannot be undone.')
-            : true;
-        if (!confirmDelete) return;
-
-        projectBusy = { ...projectBusy, [projectId]: true };
-        projectErrors = { ...projectErrors, [projectId]: '' };
-        projectSuccess = { ...projectSuccess, [projectId]: '' };
-
+    async function loadPriorityUsers() {
+        if (priorityUsersLoaded && priorityUsers.length > 0) return;
+        priorityUsersLoading = true;
         try {
-            const { error } = await api.DELETE('/api/admin/projects/{id}', {
-                params: { path: { id: projectId } }
-            });
-
-            if (error) {
-                const message = (error as any)?.message ?? 'Failed to delete project';
-                projectErrors = { ...projectErrors, [projectId]: message };
-                return;
+            const { data, error } = await api.GET('/api/admin/priority-users');
+            if (!error && data) {
+                priorityUsers = data;
+                priorityUsersLoaded = true;
             }
-
-            projectSuccess = { ...projectSuccess, [projectId]: 'Project removed' };
-            await loadProjects();
-            invalidateAll();
         } catch (err) {
-            projectErrors = {
-                ...projectErrors,
-                [projectId]: err instanceof Error ? err.message : 'Failed to delete project'
-            };
+            console.error('Failed to load priority users:', err);
         } finally {
-            projectBusy = { ...projectBusy, [projectId]: false };
+            priorityUsersLoading = false;
         }
     }
 
-    async function toggleFraudFlag(projectId: number, currentValue: boolean) {
-        try {
-            const { error } = await api.PUT('/api/admin/projects/{id}/fraud-flag', {
-                params: { path: { id: projectId } },
-                body: { isFraud: !currentValue }
-            });
-
-            if (error) {
-                console.error('Failed to toggle fraud flag:', error);
-                return;
-            }
-
-            await loadProjects();
-        } catch (err) {
-            console.error('Failed to toggle fraud flag:', err);
+    async function togglePriorityFilter() {
+        priorityFilterEnabled = !priorityFilterEnabled;
+        if (priorityFilterEnabled && !priorityUsersLoaded) {
+            await loadPriorityUsers();
         }
     }
 
-    async function toggleSusFlag(userId: number, currentValue: boolean) {
-        try {
-            const { error } = await api.PUT('/api/admin/users/{id}/sus-flag', {
-                params: { path: { id: userId } },
-                body: { isSus: !currentValue }
-            });
-
-            if (error) {
-                console.error('Failed to toggle sus flag:', error);
-                return;
-            }
-
-            await loadProjects();
-        } catch (err) {
-            console.error('Failed to toggle sus flag:', err);
-        }
+    // --- Filter / sort ---
+    function matchesSearch(project: AdminProject, query: string): boolean {
+        if (!query.trim()) return true;
+        const q = query.toLowerCase();
+        const name = fullName(project.user).toLowerCase();
+        return (
+            project.projectTitle.toLowerCase().includes(q) ||
+            name.includes(q) ||
+            project.user.email.toLowerCase().includes(q) ||
+            (project.description?.toLowerCase().includes(q) ?? false)
+        );
     }
 
-    async function unlockProject(projectId: number) {
-        projectBusy = { ...projectBusy, [projectId]: true };
-        projectErrors = { ...projectErrors, [projectId]: '' };
-        projectSuccess = { ...projectSuccess, [projectId]: '' };
+    function matchesStatus(project: AdminProject): boolean {
+        if (selectedStatuses.size === 0) return true;
+        return selectedStatuses.has(projectStatus(project));
+    }
 
-        try {
-            const { error } = await api.PUT('/api/admin/projects/{id}/unlock', {
-                params: { path: { id: projectId } }
-            });
+    function matchesProjectType(project: AdminProject): boolean {
+        if (selectedProjectTypes.size === 0) return true;
+        return selectedProjectTypes.has(project.projectType);
+    }
 
-            if (error) {
-                const message = (error as any)?.message ?? 'Failed to unlock project';
-                projectErrors = { ...projectErrors, [projectId]: message };
-                return;
-            }
+    function matchesPriority(project: AdminProject): boolean {
+        if (!priorityFilterEnabled || !priorityUsersLoaded) return true;
+        const ids = new Set(priorityUsers.map((u) => u.userId));
+        return ids.has(project.user.userId);
+    }
 
-            projectSuccess = { ...projectSuccess, [projectId]: 'Project unlocked' };
-            await loadProjects();
-        } catch (err) {
-            projectErrors = {
-                ...projectErrors,
-                [projectId]: err instanceof Error ? err.message : 'Failed to unlock project'
-            };
-        } finally {
-            projectBusy = { ...projectBusy, [projectId]: false };
+    function matchesFraud(project: AdminProject): boolean {
+        // Fraud is now driven by Joe only; a project is "fraud" when joeFraudPassed === false.
+        return showFraudProjects || project.joeFraudPassed !== false;
+    }
+
+    function matchesSus(project: AdminProject): boolean {
+        return showSusProjects || !project.user.isSus;
+    }
+
+    function matchesSubmissionCount(project: AdminProject): boolean {
+        const count = project.submissions?.length ?? 0;
+        if (submissionCountFilter === 'single') return count === 1;
+        if (submissionCountFilter === 'multiple') return count > 1;
+        return true;
+    }
+
+    function compareProjects(a: AdminProject, b: AdminProject): number {
+        let c = 0;
+        switch (sortField) {
+            case 'createdAt':
+                c = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                break;
+            case 'projectTitle':
+                c = a.projectTitle.localeCompare(b.projectTitle);
+                break;
+            case 'userName':
+                c = fullName(a.user).localeCompare(fullName(b.user));
+                break;
+            case 'approvalStatus':
+                c = projectStatus(a).localeCompare(projectStatus(b));
+                break;
+            case 'nowHackatimeHours':
+                c = (a.nowHackatimeHours ?? 0) - (b.nowHackatimeHours ?? 0);
+                break;
+            case 'approvedHours':
+                c = (a.approvedHours ?? 0) - (b.approvedHours ?? 0);
+                break;
+        }
+        return sortDirection === 'asc' ? c : -c;
+    }
+
+    let filteredProjects = $derived.by(() =>
+        projects
+            .filter(
+                (p) =>
+                    matchesSearch(p, searchQuery) &&
+                    matchesStatus(p) &&
+                    matchesProjectType(p) &&
+                    matchesPriority(p) &&
+                    matchesFraud(p) &&
+                    matchesSus(p) &&
+                    matchesSubmissionCount(p),
+            )
+            .sort(compareProjects),
+    );
+
+    function toggleStatus(status: string) {
+        const next = new Set(selectedStatuses);
+        if (next.has(status)) next.delete(status);
+        else next.add(status);
+        selectedStatuses = next;
+    }
+
+    function toggleProjectType(type: string) {
+        const next = new Set(selectedProjectTypes);
+        if (next.has(type)) next.delete(type);
+        else next.add(type);
+        selectedProjectTypes = next;
+    }
+
+    function statusBadgeClass(status: string): string {
+        switch (status) {
+            case 'approved':
+                return 'bg-green-500/20 border-green-400 text-green-700';
+            case 'rejected':
+                return 'bg-red-500/20 border-red-400 text-red-600';
+            case 'pending':
+                return 'bg-yellow-500/20 border-yellow-400 text-yellow-600';
+            default:
+                return 'bg-ds-surface-inactive border-ds-border text-ds-text-secondary';
         }
     }
 
     onMount(() => {
-        loadProjects();
+        Promise.all([loadProjects(), loadGlobalSettings()]);
     });
 </script>
 
-<div class="p-6"><div class="mx-auto max-w-6xl space-y-6">
-<section class="space-y-4">
-    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h2 class="text-2xl font-semibold">Projects</h2>
-        <div class="flex flex-wrap items-center gap-4">
-            <div class="flex items-center gap-3">
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <Checkbox bind:checked={showFraudProjects} />
-                    <span class="text-sm text-ds-text-secondary">Show fraud projects</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <Checkbox bind:checked={showSusProjects} />
-                    <span class="text-sm text-ds-text-secondary">Show sus projects</span>
-                </label>
+<svelte:head>
+    <title>Projects - Admin Panel</title>
+</svelte:head>
+
+<div class="p-6">
+    <div class="mx-auto max-w-6xl space-y-6">
+        <section class="space-y-4 font-dm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <h2 class="text-2xl font-semibold">Projects</h2>
+                <div class="flex items-center gap-3">
+                    {#if globalSettings}
+                        <Button
+                            variant="ghost"
+                            class={globalSettings.submissionsFrozen
+                                ? 'bg-blue-600/20 border-blue-500 text-blue-700 hover:bg-blue-600/30 flex items-center gap-2'
+                                : 'flex items-center gap-2'}
+                            onclick={toggleGlobalSubmissionsFrozen}
+                            disabled={globalSettingsLoading}
+                        >
+                            {#if globalSettingsLoading}
+                                <LoaderCircle size={16} class="animate-spin" />
+                            {:else if globalSettings.submissionsFrozen}
+                                <Snowflake size={16} />
+                            {:else}
+                                <Play size={16} />
+                            {/if}
+                            {globalSettings.submissionsFrozen ? 'Submissions Frozen' : 'Freeze All Submissions'}
+                        </Button>
+                    {/if}
+                    <Button variant="default" onclick={() => loadProjects()}>Refresh</Button>
+                </div>
             </div>
-            <Button variant="ghost" onclick={async () => { await loadProjects(); }}>
-                Refresh
-            </Button>
-        </div>
-    </div>
 
-    {#if projectsLoading}
-        <div class="py-12 text-center text-ds-text-secondary">Loading projects...</div>
-    {:else}
-        {@const filteredProjects = projects.filter((project) => {
-            if (!showFraudProjects && project.isFraud) return false;
-            if (!showSusProjects && project.user.isSus) return false;
-            return true;
-        })}
-        {#if filteredProjects.length === 0}
-            <div class="py-12 text-center text-ds-text-secondary">No projects available.</div>
-        {:else}
-            <div class="grid gap-6">
-                {#each filteredProjects as project (project.projectId)}
-                    <div
-                        class={`rounded-lg border bg-ds-surface backdrop-blur p-6 space-y-4 ${
-                            project.user.isSus
-                                ? 'border-yellow-500'
-                                : project.isFraud
-                                  ? 'border-red-500'
-                                  : 'border-ds-border'
-                        }`}
-                    >
-                        {#if project.isFraud}
-                            <div class="bg-red-600/20 border-2 border-red-500 rounded-lg p-3 mb-4">
-                                <p class="text-red-600 font-bold text-center uppercase tracking-wide">
-                                    ⚠️ FRAUD FLAGGED
-                                </p>
-                            </div>
-                        {/if}
-                        {#if project.user.isSus}
-                            <div class="bg-yellow-600/20 border-2 border-yellow-500 rounded-lg p-3 mb-4">
-                                <p class="text-yellow-600 font-bold text-center uppercase tracking-wide">
-                                    ⚠️ SUS FLAGGED
-                                </p>
-                            </div>
-                        {/if}
-                        <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                            <div>
-                                <h3 class="text-xl font-semibold">{project.projectTitle}</h3>
-                                <p class="text-sm text-ds-text-secondary">
-                                    Owner: {fullName(project.user)} ({project.user.email})
-                                </p>
-                            </div>
-                            <div class="flex flex-wrap gap-2 text-sm text-ds-text-secondary">
-                                <span class="rounded-full border border-ds-border px-3 py-1">Type: {project.projectType}</span>
-                                <span class="rounded-full border border-ds-border px-3 py-1">Hackatime: {formatHours(project.nowHackatimeHours)}</span>
-                                <span class="rounded-full border border-ds-border px-3 py-1">{project.isLocked ? 'Locked' : 'Unlocked'}</span>
-                            </div>
-                        </div>
-
-                        {#if project.description}
-                            <p class="text-sm text-ds-text-secondary leading-relaxed">{project.description}</p>
-                        {/if}
-
-                        <div class="grid gap-4 md:grid-cols-3">
-                            <div class="space-y-2">
-                                <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Hackatime projects</h4>
-                                {#if project.nowHackatimeProjects?.length}
-                                    <ul class="text-sm text-ds-text-secondary list-disc list-inside space-y-1">
-                                        {#each project.nowHackatimeProjects as name}
-                                            <li>{name}</li>
-                                        {/each}
-                                    </ul>
-                                {:else}
-                                    <p class="text-sm text-ds-text-placeholder">No projects linked.</p>
-                                {/if}
-                            </div>
-                            <div class="space-y-2">
-                                <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Latest submission</h4>
-                                {#if project.submissions.length > 0}
-                                    <p class="text-sm text-ds-text-secondary">
-                                        {project.submissions[0].approvalStatus} • {formatDate(project.submissions[0].createdAt)}
-                                    </p>
-                                    <p class="text-sm text-ds-text-secondary">
-                                        Approved hours: {formatHours(project.submissions[0].approvedHours)}
-                                    </p>
-                                {:else}
-                                    <p class="text-sm text-ds-text-placeholder">No submissions yet.</p>
-                                {/if}
-                            </div>
-                            <div class="space-y-2">
-                                <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Links</h4>
-                                {#if project.playableUrl}
-                                    {@const normalizedPlayableUrl = normalizeUrl(project.playableUrl)}
-                                    {#if normalizedPlayableUrl}
-                                        <a
-                                            class="text-ds-link hover:underline text-sm break-words"
-                                            href={normalizedPlayableUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                        >Playable</a>
-                                    {/if}
-                                {/if}
-                                {#if project.repoUrl}
-                                    <a
-                                        class="text-ds-link hover:underline text-sm break-words"
-                                        href={project.repoUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >Repository</a>
-                                {/if}
-                                {#if project.screenshotUrl}
-                                    <a
-                                        class="text-ds-link hover:underline text-sm break-words"
-                                        href={project.screenshotUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >Screenshot</a>
-                                {/if}
-                            </div>
-                        </div>
-
-                        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                            <div class="flex flex-wrap gap-3">
-                                <Button variant="approve" onclick={() => recalculateProject(project.projectId)} disabled={projectBusy[project.projectId]}>
-                                    {projectBusy[project.projectId] ? 'Processing...' : 'Recalculate hours'}
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    class={project.user.isSus
-                                        ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
-                                        : ''}
-                                    onclick={() => toggleSusFlag(project.user.userId, project.user.isSus)}
-                                >
-                                    {project.user.isSus ? '⚠️ Sus Flagged' : 'Flag as Sus'}
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    class={project.isFraud
-                                        ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30'
-                                        : ''}
-                                    onclick={() => toggleFraudFlag(project.projectId, project.isFraud)}
-                                >
-                                    {project.isFraud ? '🚫 Fraud Flagged' : 'Flag as Fraud'}
-                                </Button>
-                                <Button variant="ghost" onclick={() => loadTimeline(project.projectId)} disabled={timelineLoading[project.projectId]}>
-                                    {#if timelineLoading[project.projectId]}
-                                        Loading...
-                                    {:else}
-                                        <span>{timelineOpen[project.projectId] ? '▼' : '▶'}</span> Timeline
-                                    {/if}
-                                </Button>
-                                {#if project.isLocked}
-                                    <Button variant="ghost" onclick={() => unlockProject(project.projectId)} disabled={projectBusy[project.projectId]}>
-                                        Unlock project
-                                    </Button>
-                                {/if}
-                                <Button variant="reject" onclick={() => deleteProject(project.projectId)} disabled={projectBusy[project.projectId]}>
-                                    Delete project
-                                </Button>
-                            </div>
-                            <div class="text-sm">
-                                {#if projectErrors[project.projectId]}
-                                    <span class="text-red-600">{projectErrors[project.projectId]}</span>
-                                {:else if projectSuccess[project.projectId]}
-                                    <span class="text-green-700">{projectSuccess[project.projectId]}</span>
-                                {/if}
-                            </div>
-                        </div>
-
-                        {#if timelineOpen[project.projectId] && timelineByProject[project.projectId]}
-                            {@const timeline = timelineByProject[project.projectId].timeline}
-                            <div class="mt-4 border-t border-ds-border pt-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Project Timeline</h4>
-                                {#if timeline.length === 0}
-                                    <p class="text-sm text-ds-text-placeholder">No timeline events.</p>
-                                {:else}
-                                    <div class="relative pl-6 space-y-4">
-                                        <div class="absolute left-[4px] top-2 bottom-2 w-0.5 bg-ds-surface-inactive"></div>
-                                        {#each timeline as event}
-                                            <div class="relative">
-                                                <div class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full {timelineDotColor(event.type)} ring-2 ring-gray-900"></div>
-                                                <div class="ml-5">
-                                                    <div class="rounded-lg border p-3 {timelineEventColor(event.type)}">
-                                                        <div class="flex items-center justify-between gap-2 flex-wrap">
-                                                            <span class="font-medium text-sm">{timelineEventLabel(event.type)}</span>
-                                                            <span class="text-xs text-ds-text-secondary">{formatDate(event.timestamp)}</span>
-                                                        </div>
-                                                        {#if event.actor}
-                                                            <p class="text-xs text-ds-text-secondary mt-1">
-                                                                by {event.actor.firstName ?? ''} {event.actor.lastName ?? ''} ({event.actor.email})
-                                                            </p>
-                                                        {/if}
-                                                        {#if event.details && Object.keys(event.details).length > 0}
-                                                            <pre class="text-xs text-ds-text-secondary mt-2 whitespace-pre-wrap break-words">{JSON.stringify(event.details, null, 2)}</pre>
-                                                        {/if}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        {/each}
-                                    </div>
-                                {/if}
-                            </div>
-                        {/if}
+            {#if globalSettings?.submissionsFrozen}
+                <div class="rounded-xl border border-blue-500 bg-blue-600/10 p-4 flex items-center gap-3">
+                    <Snowflake size={24} class="text-blue-700" />
+                    <div>
+                        <p class="font-semibold text-blue-700">Submissions are currently frozen</p>
+                        <p class="text-sm text-blue-600">Users cannot submit or resubmit projects until unfrozen.</p>
                     </div>
-                {/each}
-            </div>
-        {/if}
-    {/if}
-</section>
-</div></div>
+                </div>
+            {/if}
+
+            <Card class="p-6 space-y-6 backdrop-blur">
+                <div>
+                    <label for="search-projects" class="block text-sm font-medium text-ds-text-secondary mb-2">Search</label>
+                    <TextField
+                        id="search-projects"
+                        type="text"
+                        placeholder="Search by project title, user name, email, or description..."
+                        bind:value={searchQuery}
+                    />
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                        <div class="block text-sm font-medium text-ds-text-secondary mb-2">Priority Filter</div>
+                        <div class="flex flex-wrap gap-2">
+                            <FilterTag
+                                active={priorityFilterEnabled}
+                                class={priorityFilterEnabled ? 'bg-yellow-600! border-yellow-400! text-black!' : ''}
+                                onclick={togglePriorityFilter}
+                            >
+                                {priorityUsersLoading ? 'Loading...' : 'Priority (50+ hrs)'}
+                                {#if priorityFilterEnabled}<span class="ml-1">✓</span>{/if}
+                            </FilterTag>
+                            {#if priorityFilterEnabled && priorityUsersLoaded}
+                                <span class="px-2 py-1.5 text-xs text-ds-text-secondary self-center">
+                                    ({priorityUsers.length} users)
+                                </span>
+                            {/if}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="block text-sm font-medium text-ds-text-secondary mb-2">Submission Count</div>
+                        <div class="flex flex-wrap gap-2">
+                            <FilterTag active={submissionCountFilter === 'all'} onclick={() => (submissionCountFilter = 'all')}>All</FilterTag>
+                            <FilterTag active={submissionCountFilter === 'single'} onclick={() => (submissionCountFilter = 'single')}>Single</FilterTag>
+                            <FilterTag active={submissionCountFilter === 'multiple'} onclick={() => (submissionCountFilter = 'multiple')}>Multiple</FilterTag>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="block text-sm font-medium text-ds-text-secondary mb-2">Status (latest submission)</div>
+                        <div class="flex flex-wrap gap-2">
+                            {#each statusOptions as status}
+                                <FilterTag
+                                    active={selectedStatuses.has(status)}
+                                    class={selectedStatuses.has(status)
+                                        ? status === 'pending'
+                                            ? 'bg-yellow-600! border-yellow-400! text-black!'
+                                            : status === 'approved'
+                                              ? 'bg-green-600! border-green-400! text-black!'
+                                              : 'bg-red-600! border-red-400! text-black!'
+                                        : ''}
+                                    onclick={() => toggleStatus(status)}
+                                >
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                    {#if selectedStatuses.has(status)}<span class="ml-1">✓</span>{/if}
+                                </FilterTag>
+                            {/each}
+                            {#if selectedStatuses.size > 0}
+                                <FilterTag onclick={() => (selectedStatuses = new Set())}>Clear</FilterTag>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                        <div class="block text-sm font-medium text-ds-text-secondary mb-2">Project Type</div>
+                        <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                            {#each projectTypes as type}
+                                <FilterTag
+                                    active={selectedProjectTypes.has(type)}
+                                    onclick={() => toggleProjectType(type)}
+                                >
+                                    {formatProjectType(type)}
+                                    {#if selectedProjectTypes.has(type)}<span class="ml-1">✓</span>{/if}
+                                </FilterTag>
+                            {/each}
+                            {#if selectedProjectTypes.size > 0}
+                                <FilterTag onclick={() => (selectedProjectTypes = new Set())}>Clear</FilterTag>
+                            {/if}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="block text-sm font-medium text-ds-text-secondary mb-2">Fraud / Sus</div>
+                        <div class="flex flex-col gap-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <Checkbox bind:checked={showFraudProjects} />
+                                <span class="text-sm text-ds-text-secondary">Show fraud</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <Checkbox bind:checked={showSusProjects} />
+                                <span class="text-sm text-ds-text-secondary">Show sus</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="block text-sm font-medium text-ds-text-secondary mb-2">Sort By</div>
+                        <div class="flex gap-2">
+                            <Select class="flex-1" bind:value={sortField}>
+                                <option value="createdAt">Date Created</option>
+                                <option value="projectTitle">Project Title</option>
+                                <option value="userName">User Name</option>
+                                <option value="approvalStatus">Status</option>
+                                <option value="nowHackatimeHours">Hackatime Hours</option>
+                                <option value="approvedHours">Approved Hours</option>
+                            </Select>
+                            <Button
+                                variant="default"
+                                onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
+                                title={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
+                            >
+                                {sortDirection === 'asc' ? '↑' : '↓'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-sm text-ds-text-secondary">
+                    Showing {filteredProjects.length} of {projects.length} projects
+                </div>
+            </Card>
+
+            {#if projectsLoading}
+                <div class="py-12 text-center text-ds-text-secondary">Loading projects...</div>
+            {:else if filteredProjects.length === 0}
+                <div class="py-12 text-center text-ds-text-secondary">No projects match your filters.</div>
+            {:else}
+                <div class="space-y-3">
+                    {#each filteredProjects as project (project.projectId)}
+                        {@const status = projectStatus(project)}
+                        {@const latest = latestSubmission(project)}
+                        <a
+                            href="{base}/projects/{project.projectId}"
+                            class="block rounded-lg border border-ds-border bg-ds-surface2 p-4 shadow-[var(--color-ds-shadow)] hover:border-ds-text-secondary hover:bg-ds-surface-deselected transition-colors space-y-3 cursor-pointer outline-none focus-visible:border-ds-text-secondary"
+                        >
+                            <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                                <div class="min-w-0">
+                                    <h3 class="text-xl font-semibold">{project.projectTitle}</h3>
+                                    <p class="text-sm text-ds-text-secondary">
+                                        {fullName(project.user)} ({project.user.email})
+                                    </p>
+                                    {#if project.user.hackatimeStartDate}
+                                        <p class="mt-1 text-xs text-yellow-700">
+                                            ⚠ Custom Hackatime start: {new Date(project.user.hackatimeStartDate).toISOString().split('T')[0]}
+                                        </p>
+                                    {/if}
+                                </div>
+                                <div class="flex flex-wrap gap-2 text-sm text-ds-text-secondary">
+                                    {#if project.joeFraudPassed === false}
+                                        <span class="rounded-full border border-red-500 bg-red-600/20 text-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide">Fraud</span>
+                                    {/if}
+                                    {#if project.user.isSus}
+                                        <span class="rounded-full border border-yellow-500 bg-yellow-600/20 text-yellow-600 px-3 py-1 text-xs font-bold uppercase tracking-wide">Sus</span>
+                                    {/if}
+                                    <span class={`rounded-full border px-3 py-1 ${statusBadgeClass(status)}`}>
+                                        {status.toUpperCase()}
+                                    </span>
+                                    <span class="rounded-full border border-ds-border px-3 py-1">{formatProjectType(project.projectType)}</span>
+                                    <span class="rounded-full border border-ds-border px-3 py-1">Hackatime: {formatHours(project.nowHackatimeHours)}</span>
+                                    {#if project.isLocked}
+                                        <span class="rounded-full border border-ds-border px-3 py-1">Locked</span>
+                                    {/if}
+                                </div>
+                            </div>
+
+                            {#if project.description}
+                                <p class="text-sm text-ds-text-secondary leading-relaxed line-clamp-2">{project.description}</p>
+                            {/if}
+
+                            <div class="flex flex-wrap items-center gap-4 text-xs text-ds-text-secondary pt-2 border-t border-ds-border">
+                                <span>{project.submissions?.length ?? 0} submission{(project.submissions?.length ?? 0) === 1 ? '' : 's'}</span>
+                                {#if latest}
+                                    <span>Latest: {formatDate(latest.createdAt)}</span>
+                                    {#if latest.approvedHours != null}
+                                        <span>Approved hours: {formatHours(latest.approvedHours)}</span>
+                                    {/if}
+                                {/if}
+                            </div>
+                        </a>
+                    {/each}
+                </div>
+            {/if}
+        </section>
+    </div>
+</div>

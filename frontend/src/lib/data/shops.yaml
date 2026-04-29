@@ -14,6 +14,17 @@ the-shop:
     text: LIVE - ITEMS FOR SALE
     color: "#6BF570"
 
+grantbox:
+  displayName: "Grantbox"
+  tagline: "Grants to your favorite services"
+  logo: https://cdn.hackclub.com/019db16e-aed2-7f49-8470-edee290115d7/image.png
+  cardImage: https://cdn.hackclub.com/019db16e-9862-7fb9-81f8-1ff53ab324f9/image.png
+  accentColor: "#FBB142"
+  textColor: "FFFFFF"
+  tag: 
+    text: JUST DROPPED
+    color: "#6BF570"
+
 pajamas:
   displayName: "pajamas"
   tagline: "Yes you can buy the pants here"

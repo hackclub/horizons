@@ -59,7 +59,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="absolute inset-0 flex flex-col items-center justify-center overflow-hidden" style="cursor: {isDialogStep ? 'pointer' : 'default'};" onclick={isDialogStep ? () => step++ : undefined}>
+<div class="absolute inset-0 flex flex-col items-center overflow-y-auto overflow-x-hidden" style="cursor: {isDialogStep ? 'pointer' : 'default'};" onclick={isDialogStep ? () => step++ : undefined}>
 
 	<!-- Dialog step: Jelly excited -->
 	{#if isDialogStep}
@@ -79,11 +79,12 @@
 
 	<!-- Card steps -->
 	{#if !isDialogStep}
-		<div class="absolute inset-0 flex items-center justify-center">
-			<div class="absolute top-[calc(50%-331px-30px)] left-[calc(50%-363px-90px)] z-0">
-				<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
-			</div>
-			<div class="relative z-1 w-181.75 min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-hidden">
+		<div class="w-full flex items-center justify-center py-8 my-auto">
+			<div class="relative">
+				<div class="absolute -top-7.5 -left-22.5 z-0">
+					<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
+				</div>
+				<div class="relative z-1 w-181.75 min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-hidden">
 				{#if isStep1}
 					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
@@ -121,7 +122,7 @@
 						</div>
 					</div>
 					<button
-						class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
+						class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
 						class:card-continue-ready={hackatimeLinked}
 						onclick={() => step++}
 						disabled={!hackatimeLinked}
@@ -151,7 +152,7 @@
 										<span class="font-bricolage text-base font-semibold text-black/60">Build and deploy your own personal website!</span>
 									</div>
 								</a>
-								<a href="https://guides.horizons.hackclub.com/guides/godot-platformer/" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-easing) hover:scale-(--juice-scale)">
+								<a href="https://guides.horizons.hackclub.com/guides/godot-guide/" target="_blank" rel="noopener" class="flex gap-2.75 items-center p-4 border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] bg-[#f3e8d8] no-underline text-inherit transition-transform duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale)">
 									<div class="flex flex-col gap-1">
 										<div class="flex items-center gap-1">
 											<span class="font-bricolage text-2xl font-semibold text-black">Create your first platformer game</span>
@@ -178,7 +179,7 @@
 							<p class="font-bricolage text-lg font-medium text-black leading-normal text-center">Once you've figured out what type of project you want to make, hit continue!</p>
 						</div>
 					</div>
-					<button class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer mt-1 transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={() => step++}>
+					<button class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer mt-1 hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={() => step++}>
 						Continue
 					</button>
 				{/if}
@@ -190,6 +191,7 @@
 								<h1 class="font-cook text-2xl text-black leading-normal">STEP 3</h1>
 								<p class="font-bricolage text-2xl font-medium text-black leading-normal">Create your project!</p>
 								<p class="font-bricolage text-base font-medium text-black leading-normal">You don't need to have a completed project. You can just put an idea for a new project.</p>
+								<p class="font-bricolage text-base font-medium text-black/60 leading-normal">Don't worry, this doesn't have to be final, you can change all of this later!</p>
 							</div>
 							<div class="flex flex-col gap-4 w-full">
 								<FormField label="Title" id="title" placeholder="Horizons" maxlength={30} bind:value={projectTitle} />
@@ -204,7 +206,7 @@
 					<div class="flex flex-col gap-2 w-full">
 						<FormError message={projectError} />
 						<button
-							class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
+							class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
 							class:card-submit-ready={projectFormReady}
 							onclick={handleProjectSubmit}
 							disabled={projectSubmitting}
@@ -214,11 +216,17 @@
 					</div>
 				{/if}
 			</div>
+			</div>
 		</div>
 	{/if}
 </div>
 
 <style>
+	.juice-btn {
+		transition: scale var(--juice-duration) var(--juice-easing),
+		            background-color 0.2s ease-in-out;
+	}
+
 	.card-continue-ready {
 		background-color: #fdd9a8;
 		animation: white-blink 1.5s ease-in-out infinite;

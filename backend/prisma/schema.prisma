@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -9,122 +9,153 @@ datasource db {
 }
 
 model User {
-  userId          Int           @id @default(autoincrement()) @map("user_id")
+  userId Int @id @default(autoincrement()) @map("user_id")
 
-  hcaId           String        @unique @map("hca_id")
-  firstName       String        @map("first_name")
-  lastName        String        @map("last_name")
-  email           String        @unique
-  birthday        DateTime?     @db.Date
-  slackUserId     String?       @unique @map("slack_user_id")
-  verificationStatus String?    @map("verification_status")
+  hcaId              String    @unique @map("hca_id")
+  firstName          String    @map("first_name")
+  lastName           String    @map("last_name")
+  email              String    @unique
+  birthday           DateTime? @db.Date
+  slackUserId        String?   @unique @map("slack_user_id")
+  verificationStatus String?   @map("verification_status")
 
-  role            String        @default("user")
+  role String @default("user")
 
-  onboardComplete Boolean       @default(false) @map("onboard_complete")
-  onboardedAt     DateTime?     @map("onboarded_at")
+  onboardComplete Boolean   @default(false) @map("onboard_complete")
+  onboardedAt     DateTime? @map("onboarded_at")
 
-  addressLine1    String?       @map("address_line_1")
-  addressLine2    String?       @map("address_line_2")
-  city            String?
-  state           String?
-  country         String?
-  zipCode         String?       @map("zip_code")
+  addressLine1 String? @map("address_line_1")
+  addressLine2 String? @map("address_line_2")
+  city         String?
+  state        String?
+  country      String?
+  zipCode      String? @map("zip_code")
 
-  airtableRecId   String?       @map("airtable_rec_id")
+  airtableRecId String? @map("airtable_rec_id")
 
-  hackatimeAccount      String?      @map("hackatime_account")
-  hackatimeAccessToken  String?      @map("hackatime_access_token")
+  hackatimeAccount     String?   @map("hackatime_account")
+  hackatimeAccessToken String?   @map("hackatime_access_token")
+  hackatimeStartDate   DateTime? @map("hackatime_start_date")
 
-  referralCode    String?       @unique @map("referral_code")
-  referredByUserId Int?         @map("referred_by_user_id")
-  referredBy      User?         @relation("Referrals", fields: [referredByUserId], references: [userId])
-  referrals       User[]        @relation("Referrals")
-  rafflePos       String?       @map("raffle_pos")
-  utmSource       String?       @map("utm_source")
+  referralCode     String? @unique @map("referral_code")
+  referredByUserId Int?    @map("referred_by_user_id")
+  referredBy       User?   @relation("Referrals", fields: [referredByUserId], references: [userId])
+  referrals        User[]  @relation("Referrals")
+  rafflePos        String? @map("raffle_pos")
+  utmSource        String? @map("utm_source")
 
-  isFraud         Boolean       @default(false) @map("is_fraud")
-  isSus           Boolean       @default(false) @map("is_sus")
-  adminComment    String?       @map("admin_comment") @db.VarChar(1000)
+  isFraud      Boolean @default(false) @map("is_fraud")
+  isSus        Boolean @default(false) @map("is_sus")
+  ageOverride  Boolean @default(false) @map("age_override")
+  adminComment String? @map("admin_comment") @db.VarChar(1000)
 
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  projects        Project[]
-  sessions        UserSession[]
-  hackatimeLinkOtps HackatimeLinkOtp[]
-  transactions    Transaction[]
-  pinnedItem      PinnedItem?
-  pinnedEvent     PinnedEvent?
+  projects           Project[]
+  sessions           UserSession[]
+  hackatimeLinkOtps  HackatimeLinkOtp[]
+  transactions       Transaction[]
+  pinnedItem         PinnedItem?
+  pinnedEvent        PinnedEvent?
+  claimedSubmissions Submission[]       @relation("SubmissionClaimedBy")
 
   @@map("users")
 }
 
 model Project {
-  projectId          Int          @id @default(autoincrement()) @map("project_id")
-  userId             Int          @map("user_id")
-  projectType        ProjectType  @map("project_type")
-  createdAt          DateTime     @default(now()) @map("created_at")
-  updatedAt          DateTime     @updatedAt @map("updated_at")
-  approvedHours      Float?       @map("approved_hours")
-  description        String?      @db.VarChar(500)
-  hoursJustification String?      @map("hours_justification") @db.Text
-  nowHackatimeHours  Float?       @map("now_hackatime_hours")
-  nowHackatimeProjects String[]   @map("now_hackatime_projects")
-  playableUrl        String?      @map("playable_url")
-  projectTitle       String       @map("project_title") @db.VarChar(30)
-  repoUrl            String?      @map("repo_url")
-  readmeUrl          String?      @map("readme_url")
-  journalUrl         String?      @map("journal_url")
-  screenshotUrl      String?      @map("screenshot_url")
-  isLocked           Boolean      @default(false) @map("is_locked")
-  isFraud             Boolean      @default(false) @map("is_fraud")
-  adminComment       String?      @map("admin_comment") @db.VarChar(1000)
+  projectId            Int          @id @default(autoincrement()) @map("project_id")
+  userId               Int          @map("user_id")
+  projectType          ProjectType  @map("project_type")
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+  approvedHours        Float?       @map("approved_hours")
+  description          String?      @db.VarChar(500)
+  hoursJustification   String?      @map("hours_justification") @db.Text
+  nowHackatimeHours    Float?       @map("now_hackatime_hours")
+  nowHackatimeProjects String[]     @map("now_hackatime_projects")
+  playableUrl          String?      @map("playable_url")
+  projectTitle         String       @map("project_title") @db.VarChar(30)
+  repoUrl              String?      @map("repo_url")
+  readmeUrl            String?      @map("readme_url")
+  journalUrl           String?      @map("journal_url")
+  screenshotUrl        String?      @map("screenshot_url")
+  isLocked             Boolean      @default(false) @map("is_locked")
+  adminComment         String?      @map("admin_comment") @db.VarChar(1000)
   // Fraud review integration: stores the external review platform's project UUID
-  joeProjectId       String?      @map("joe_project_id")
+  joeProjectId         String?      @map("joe_project_id")
   // null = not yet reviewed; true = passed; false = auto-rejected
-  joeFraudPassed     Boolean?     @map("joe_fraud_passed")
-  joeFraudReviewedAt DateTime?    @map("joe_fraud_reviewed_at")
-  user               User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  submissions        Submission[]
+  joeFraudPassed       Boolean?     @map("joe_fraud_passed")
+  joeFraudReviewedAt   DateTime?    @map("joe_fraud_reviewed_at")
+  joeTrustScore        Float?       @map("joe_trust_score")
+  joeJustification     String?      @map("joe_justification") @db.Text
+  joeOutcomeStatus     String?      @map("joe_outcome_status")
+  joeOutcomeReason     String?      @map("joe_outcome_reason") @db.Text
+  joeOutcomeRecordedAt DateTime?    @map("joe_outcome_recorded_at")
+  user                 User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  submissions          Submission[]
+
   @@index([userId])
   @@map("projects")
 }
 
 model Submission {
-  submissionId     Int            @id @default(autoincrement()) @map("submission_id")
-  projectId        Int            @map("project_id")
-  playableUrl      String?        @map("playable_url")
-  screenshotUrl    String?        @map("screenshot_url")
-  description      String?        @db.VarChar(500)
-  repoUrl          String?        @map("repo_url")
-  approvedHours    Float?         @map("approved_hours")
-  hackatimeHours   Float?         @map("hackatime_hours")
-  hoursJustification String?      @map("hours_justification") @db.Text
-  approvalStatus   ApprovalStatus @default(pending) @map("approval_status")
-  reviewedBy       String?        @map("reviewed_by")
-  reviewedAt       DateTime?      @map("reviewed_at")
-  airtableRecId    String?        @map("airtable_rec_id")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  project          Project        @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
-  auditLogs        SubmissionAuditLog[]
-  checklist        ReviewerChecklist?
+  submissionId       Int                  @id @default(autoincrement()) @map("submission_id")
+  projectId          Int                  @map("project_id")
+  playableUrl        String?              @map("playable_url")
+  screenshotUrl      String?              @map("screenshot_url")
+  description        String?              @db.VarChar(500)
+  repoUrl            String?              @map("repo_url")
+  approvedHours      Float?               @map("approved_hours")
+  hackatimeHours     Float?               @map("hackatime_hours")
+  hoursJustification String?              @map("hours_justification") @db.Text
+  // Reconciled final outcome of both gates (reviewer + fraud).
+  // Stays `pending` until the state machine finalizes via SubmissionApprovalService.
+  approvalStatus     ApprovalStatus       @default(pending) @map("approval_status")
+  // Reviewer's independent decision. null = undecided, true = approve, false = reject.
+  reviewPassed       Boolean?             @map("review_passed")
+  // Raw reviewer analysis text — wrapped with boilerplate at finalization to build project.hoursJustification.
+  reviewerAnalysis   String?              @map("reviewer_analysis") @db.Text
+  // Reviewer's intent to send an email on finalization (honored when fraud-delayed finalization fires).
+  pendingSendEmail   Boolean              @default(false) @map("pending_send_email")
+  // True when fraud failed (`joeFraudPassed=false`), meaning the submission was silently
+  // rejected without notifying the user. User-facing responses map such rows back to 'pending'
+  // so fraud actors receive no feedback.
+  silentReject       Boolean              @default(false) @map("silent_reject")
+  reviewedBy         String?              @map("reviewed_by")
+  reviewedAt         DateTime?            @map("reviewed_at")
+  // When approvalStatus transitioned from pending to approved/rejected.
+  finalizedAt        DateTime?            @map("finalized_at")
+  airtableRecId      String?              @map("airtable_rec_id")
+  // Reviewer claim/lock — tracks who currently has this submission open in
+  // the review UI. claimHeartbeatAt is bumped while the page is open; once it
+  // goes stale (no heartbeat for ~90s) the claim is treated as released so
+  // the next reviewer can pick it up without manual intervention.
+  claimedById        Int?                 @map("claimed_by_id")
+  claimedAt          DateTime?            @map("claimed_at")
+  claimHeartbeatAt   DateTime?            @map("claim_heartbeat_at")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  project            Project              @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+  claimedBy          User?                @relation("SubmissionClaimedBy", fields: [claimedById], references: [userId], onDelete: SetNull)
+  auditLogs          SubmissionAuditLog[]
+  checklist          ReviewerChecklist?
 
   @@index([projectId])
+  @@index([claimedById])
   @@map("submissions")
 }
 
 model SubmissionAuditLog {
-  id              Int            @id @default(autoincrement())
-  submissionId    Int            @map("submission_id")
-  adminId         Int            @map("admin_id")
-  action          String         // "review" or "update"
-  newStatus       String?        @map("new_status") // "approved", "rejected", or null for non-status updates
-  approvedHours   Float?         @map("approved_hours")
-  changes         Json?          // snapshot of fields changed
-  createdAt       DateTime       @default(now()) @map("created_at")
-  submission      Submission     @relation(fields: [submissionId], references: [submissionId], onDelete: Cascade)
+  id            Int        @id @default(autoincrement())
+  submissionId  Int        @map("submission_id")
+  adminId       Int        @map("admin_id")
+  action        String // "review" or "update"
+  newStatus     String?    @map("new_status") // "approved", "rejected", or null for non-status updates
+  approvedHours Float?     @map("approved_hours")
+  changes       Json? // snapshot of fields changed
+  createdAt     DateTime   @default(now()) @map("created_at")
+  submission    Submission @relation(fields: [submissionId], references: [submissionId], onDelete: Cascade)
 
   @@index([submissionId])
   @@index([adminId])
@@ -166,7 +197,6 @@ model EmailJob {
   @@map("email_jobs")
 }
 
-
 model StickerToken {
   id         String    @id @default(uuid())
   email      String
@@ -198,7 +228,6 @@ model HackatimeLinkOtp {
   @@map("hackatime_link_otps")
 }
 
-
 enum ProjectType {
   windows_playable
   mac_playable
@@ -206,6 +235,7 @@ enum ProjectType {
   web_playable
   cross_platform_playable
   hardware
+  mobile_app
 }
 
 enum ApprovalStatus {
@@ -214,13 +244,12 @@ enum ApprovalStatus {
   rejected
 }
 
-
 model UsersAirtable {
-  email      String    @unique @map("email")
-  firstName  String?   @map("first_name")
-  lastName   String?   @map("last_name")
-  code       Int?
-  birthday   DateTime? @db.Date
+  email     String    @unique @map("email")
+  firstName String?   @map("first_name")
+  lastName  String?   @map("last_name")
+  code      Int?
+  birthday  DateTime? @db.Date
 
   @@map("users_airtable")
 }
@@ -345,8 +374,8 @@ model Event {
   imageUrl    String?       @map("image_url")
   location    String?       @db.VarChar(300)
   country     String?       @db.VarChar(100)
-  startDate   DateTime      @db.Date @map("start_date")
-  endDate     DateTime      @db.Date @map("end_date")
+  startDate   DateTime      @map("start_date") @db.Date
+  endDate     DateTime      @map("end_date") @db.Date
   hourCost    Float         @map("hour_cost")
   isActive    Boolean       @default(true) @map("is_active")
   createdAt   DateTime      @default(now()) @map("created_at")
@@ -369,18 +398,18 @@ model PinnedEvent {
 }
 
 model GlobalSettings {
-  id                    String   @id @default("global")
-  submissionsFrozen     Boolean  @default(false) @map("submissions_frozen")
-  submissionsFrozenAt   DateTime? @map("submissions_frozen_at")
-  submissionsFrozenBy   String?  @map("submissions_frozen_by")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  id                  String    @id @default("global")
+  submissionsFrozen   Boolean   @default(false) @map("submissions_frozen")
+  submissionsFrozenAt DateTime? @map("submissions_frozen_at")
+  submissionsFrozenBy String?   @map("submissions_frozen_by")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   @@map("global_settings")
 }
 
 model HistoricalMetric {
   id        Int      @id @default(autoincrement())
-  date      DateTime @db.Date
+  date      DateTime @db.Timestamptz(6)
   metric    String   @db.VarChar(100)
   value     Json
   createdAt DateTime @default(now()) @map("created_at")

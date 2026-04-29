@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
+import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
+import {
+  AUDIT_ACTIONS,
+  SYSTEM_ACTOR_ID,
+} from '../submission-approval/audit-actions';
 
 const FRAUD_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -39,7 +44,10 @@ export class FraudReviewService {
   private readonly eventId: string;
   private readonly enabled: boolean;
 
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    private submissionApprovalService: SubmissionApprovalService,
+  ) {
     this.baseUrl = (process.env.JOE_API_BASE_URL || '').replace(/\/$/, '');
     this.apiKey = process.env.JOE_API_KEY || '';
     this.eventId = process.env.JOE_EVENT_ID || '';
@@ -150,16 +158,25 @@ export class FraudReviewService {
         where: { projectId },
         include: {
           user: { select: { slackUserId: true, email: true } },
+          submissions: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { submissionId: true },
+          },
         },
       });
 
       if (!project) return;
       if (project.joeProjectId) return;
 
+      const latestSubmissionId = project.submissions[0]?.submissionId;
+      if (!latestSubmissionId) return;
+
       const submitter = project.user.slackUserId
         ? { slackId: project.user.slackUserId }
         : { email: project.user.email };
 
+      const organizerPlatformId = `project-${projectId}-submission-${latestSubmissionId}`;
       const fraudReviewId = await this.submitProject({
         name: project.projectTitle,
         codeLink: project.repoUrl || '',
@@ -169,8 +186,9 @@ export class FraudReviewService {
           project.nowHackatimeProjects.length > 0
             ? project.nowHackatimeProjects
             : undefined,
-        // Stable dedup key so resubmissions don't create duplicate review entries
-        organizerPlatformId: `project-${projectId}`,
+        // Per-submission dedup key so each resubmission triggers a fresh
+        // Joe review instead of returning the cached previous decision.
+        organizerPlatformId,
       });
 
       if (fraudReviewId) {
@@ -178,19 +196,57 @@ export class FraudReviewService {
           where: { projectId },
           data: { joeProjectId: fraudReviewId },
         });
+        await this.prisma.submissionAuditLog.create({
+          data: {
+            submissionId: latestSubmissionId,
+            adminId: SYSTEM_ACTOR_ID,
+            action: AUDIT_ACTIONS.fraudEnqueued,
+            changes: {
+              joeProjectId: fraudReviewId,
+              organizerPlatformId,
+            },
+          },
+        });
       }
     } catch (error) {
       this.logger.error(
         `submitAndPersist failed for project ${projectId}`,
         error,
       );
+      try {
+        const latest = await this.prisma.submission.findFirst({
+          where: { projectId },
+          orderBy: { createdAt: 'desc' },
+          select: { submissionId: true },
+        });
+        if (latest) {
+          await this.prisma.submissionAuditLog.create({
+            data: {
+              submissionId: latest.submissionId,
+              adminId: SYSTEM_ACTOR_ID,
+              action: AUDIT_ACTIONS.fraudEnqueueFailed,
+              changes: {
+                error: error instanceof Error ? error.message : String(error),
+              },
+            },
+          });
+        }
+      } catch (logError) {
+        this.logger.error(
+          `failed to write fraud_enqueue_failed audit for project ${projectId}`,
+          logError,
+        );
+      }
     }
   }
 
-  /** Determine pass/fail from a Joe project's review data. */
+  /**
+   * Pass/fail is driven solely by Joe's recorded outcome. Auto-rejected
+   * projects (trustScore ≤ 4) never get an outcome and remain null here,
+   * which the queue filter also excludes.
+   */
   private didPassFraudReview(joeProject: JoeProject): boolean {
-    if (joeProject.status !== 'complete' || !joeProject.review) return false;
-    return joeProject.review.trustScore > 4;
+    return joeProject.outcome?.status === 'approved';
   }
 
   /**
@@ -227,13 +283,20 @@ export class FraudReviewService {
     const joeProjects = await this.listAllProjects();
     if (!joeProjects) return { submitted, updated: 0 };
 
-    // Step 3: find our DB projects that are still awaiting a fraud decision
+    // Step 3: re-sync any project that has been submitted to Joe AND still
+    // has a pending submission. We can't restrict this to joeFraudPassed=null
+    // because Joe may flip a previously-passed project to rejected (manual
+    // outcome) and we need to pick that up so it leaves the review queue.
     const pendingProjects = await this.prisma.project.findMany({
       where: {
         joeProjectId: { not: null },
-        joeFraudPassed: null,
+        submissions: { some: { approvalStatus: 'pending' } },
       },
-      select: { projectId: true, joeProjectId: true },
+      select: {
+        projectId: true,
+        joeProjectId: true,
+        joeFraudPassed: true,
+      },
     });
 
     let updated = 0;
@@ -245,7 +308,9 @@ export class FraudReviewService {
         joeProjects.get(project.joeProjectId) ??
         joeProjects.get(`project-${project.projectId}`);
 
-      if (!joeProject || joeProject.status !== 'complete') continue;
+      // Skip if Joe hasn't recorded an outcome yet — leave joeFraudPassed
+      // null rather than overwriting with false for still-pending projects.
+      if (!joeProject || !joeProject.outcome) continue;
 
       const passed = this.didPassFraudReview(joeProject);
 
@@ -253,10 +318,54 @@ export class FraudReviewService {
         ? new Date(joeProject.review.reviewedAt)
         : new Date();
 
+      // Detect the terminal transition before mutating so we only audit
+      // null → true/false flips, not idempotent re-syncs.
+      const isTerminalTransition = project.joeFraudPassed === null;
+
       await this.prisma.project.update({
         where: { projectId: project.projectId },
-        data: { joeFraudPassed: passed, joeFraudReviewedAt: fraudReviewedAt },
+        data: {
+          joeFraudPassed: passed,
+          joeFraudReviewedAt: fraudReviewedAt,
+          joeTrustScore: joeProject.review?.trustScore ?? null,
+          joeJustification: joeProject.review?.justification ?? null,
+          joeOutcomeStatus: joeProject.outcome?.status ?? null,
+          joeOutcomeReason: joeProject.outcome?.reason ?? null,
+          joeOutcomeRecordedAt: joeProject.outcome?.recordedAt
+            ? new Date(joeProject.outcome.recordedAt)
+            : null,
+        },
       });
+
+      if (isTerminalTransition) {
+        const pendingSubmissions = await this.prisma.submission.findMany({
+          where: { projectId: project.projectId, approvalStatus: 'pending' },
+          select: { submissionId: true },
+        });
+        for (const sub of pendingSubmissions) {
+          await this.prisma.submissionAuditLog.create({
+            data: {
+              submissionId: sub.submissionId,
+              adminId: SYSTEM_ACTOR_ID,
+              action: AUDIT_ACTIONS.fraudResolved,
+              changes: {
+                joeFraudPassed: passed,
+                joeTrustScore: joeProject.review?.trustScore ?? null,
+                joeOutcomeStatus: joeProject.outcome?.status ?? null,
+                joeOutcomeReason: joeProject.outcome?.reason ?? null,
+                joeJustification: joeProject.review?.justification ?? null,
+                joeProjectId: project.joeProjectId,
+              },
+            },
+          });
+        }
+      }
+
+      // Re-run the approval state machine for every pending submission on this
+      // project — the fraud gate may have just resolved and allowed a transition.
+      await this.submissionApprovalService.onFraudStatusChanged(
+        project.projectId,
+      );
 
       updated++;
     }

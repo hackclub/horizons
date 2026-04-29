@@ -9,15 +9,15 @@
 		backgroundImage?: string | null;
 		backgroundPattern?: boolean;
 		backgroundOpacity?: number;
+		patternBlend?: string;
 	}
 
-	let { class: className = '', children, disableAnimations = false, backgroundImage = null, backgroundPattern = true, backgroundOpacity = 0.5 }: Props = $props();
+	let { class: className = '', children, disableAnimations = false, backgroundImage = null, backgroundPattern = true, backgroundOpacity = 0.5, patternBlend = undefined }: Props = $props();
 
-	const showPattern = $derived(!backgroundImage && backgroundPattern);
-	const bgUrl = $derived(backgroundImage || bgPattern);
+	const showPattern = $derived(!!backgroundPattern);
 </script>
 
-<div class="bg-content relative size-full overflow-hidden {className}" style="background-color: var(--bg-color, #f3e8d8)">
+<div class="bg-content relative size-full overflow-hidden {className}" style="background-color: var(--bg-color, #f3e8d8); isolation: isolate;">
 	{#if backgroundImage}
 		<div class="absolute inset-0">
 			<div
@@ -25,8 +25,9 @@
 				style="background-image: url({backgroundImage}); opacity: {backgroundOpacity};"
 			></div>
 		</div>
-	{:else if showPattern}
-		<div class="absolute -inset-[50%] flex items-center justify-center -rotate-[19.54deg]">
+	{/if}
+	{#if showPattern}
+		<div class="absolute -inset-[50%] flex items-center justify-center -rotate-[19.54deg]" style={patternBlend ? `mix-blend-mode: ${patternBlend};` : ''}>
 			<div
 				class="w-[300%] h-[300%] pointer-events-none bg-repeat"
 				class:pattern-slide={!disableAnimations}

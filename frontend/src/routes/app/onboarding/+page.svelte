@@ -221,7 +221,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="absolute inset-0 flex flex-col items-center justify-center overflow-hidden" style="cursor: {step < eventSelectStep ? 'pointer' : 'default'};" onclick={step < eventSelectStep ? advance : undefined}>
+<div class="absolute inset-0 flex flex-col items-center overflow-y-auto overflow-x-hidden" style="cursor: {step < eventSelectStep ? 'pointer' : 'default'};" onclick={step < eventSelectStep ? advance : undefined}>
 	<!-- Event cards -->
 	{#if currentStep.showEvents}
 		<div
@@ -233,6 +233,9 @@
 				<button
 					class="event-card w-74.5 h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing)"
 					class:selected={selectedEvent === event.slug}
+					style={event.slug === 'nexus' && event.eventCard?.bgImage
+						? `background-image: url(${event.eventCard.bgImage}); background-size: cover; background-position: center;`
+						: undefined}
 					onclick={(e) => { e.stopPropagation(); handleEventSelect(event.slug); }}
 					disabled={!isEventSelectStep}
 				>
@@ -240,23 +243,39 @@
 						<img src={event.logo} alt={event.name} class="max-w-65 max-h-full object-contain" />
 					</div>
 					{#if event.location || (event.startDate && event.endDate)}
-						<p class="font-bricolage text-base font-semibold pb-3 whitespace-nowrap shrink-0">
-							{[event.location, event.startDate && event.endDate ? formatDateRange(event.startDate, event.endDate) : null].filter(Boolean).join(' - ')}
-						</p>
+						<div class="flex flex-col items-center pb-3 shrink-0 leading-tight" class:text-white={event.slug === 'nexus'}>
+							{#if event.location}
+								<p class="font-bricolage text-base font-semibold whitespace-nowrap">{event.location}</p>
+							{/if}
+							{#if event.startDate && event.endDate}
+								<p class="font-bricolage text-base font-semibold whitespace-nowrap">{formatDateRange(event.startDate, event.endDate)}</p>
+							{/if}
+						</div>
 					{/if}
 				</button>
 			{/each}
+			<button
+				class="event-card w-74.5 h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing)"
+				onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app?post-onboarding'); } }}
+				disabled={!isEventSelectStep}
+			>
+				<div class="flex flex-col items-center justify-center flex-1 p-3 min-h-0 gap-1">
+					<p class="font-cook text-2xl text-black leading-none">CHOOSE LATER</p>
+					<p class="font-bricolage text-sm font-semibold text-black opacity-60">I'll decide another time</p>
+				</div>
+			</button>
 			<div class="w-full h-75 shrink-0"></div>
 		</div>
 	{/if}
 
 	<!-- Card steps (Hackatime setup / Project form) -->
 	{#if isCardStep}
-		<div class="absolute inset-0 flex items-center justify-center">
-			<div class="absolute top-[calc(50%-331px-30px)] left-[calc(50%-363px-90px)] z-0">
-				<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
-			</div>
-			<div class="relative z-1 w-181.75 h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-clip">
+		<div class="w-full flex items-center justify-center py-8 my-auto">
+			<div class="relative">
+				<div class="absolute -top-7.5 -left-22.5 z-0">
+					<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
+				</div>
+				<div class="relative z-1 w-181.75 min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-clip">
 				{#if isHackatimeStep}
 					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
@@ -267,7 +286,7 @@
 						</div>
 					</div>
 					<button
-						class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
+						class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
 						class:card-continue-ready={hackatimeLinked}
 						onclick={() => step++}
 						disabled={!hackatimeLinked}
@@ -282,6 +301,7 @@
 							<div class="flex flex-col gap-2">
 								<h1 class="font-cook text-2xl text-black leading-normal">CREATE YOUR PROJECT</h1>
 								<p class="font-bricolage text-2xl font-medium text-black leading-normal">Fill out the following fields! You can put an existing project, or the idea for a new project.</p>
+								<p class="font-bricolage text-base font-medium text-black/60 leading-normal">Don't worry, this doesn't have to be final, you can change all of this later!</p>
 							</div>
 							<div class="flex flex-col gap-4 w-full">
 								<FormField label="Title" id="title" placeholder="Horizons" maxlength={30} bind:value={projectTitle} />
@@ -296,7 +316,7 @@
 					<div class="flex flex-col gap-2 w-full">
 						<FormError message={projectError} />
 						<button
-							class="card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
+							class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
 							class:card-submit-ready={projectFormReady}
 							onclick={handleProjectSubmit}
 							disabled={projectSubmitting}
@@ -305,6 +325,7 @@
 						</button>
 					</div>
 				{/if}
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -335,12 +356,10 @@
 			{/if}
 
 			{#if isEventSelectStep}
-				<div class="flex justify-between items-center">
-					<button class="font-bricolage text-base font-semibold text-black opacity-40 bg-transparent border-none cursor-pointer underline hover:opacity-70 transition-opacity duration-150 ease-in-out" onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app?post-onboarding'); } }}>
-						Skip
-					</button>
+				<div class="flex justify-between items-center gap-4">
+					<p class="font-bricolage text-base font-semibold text-black opacity-60">You can change which event you want to go to later!</p>
 					{#if selectedEvent}
-						<button class="py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); handleEventContinue(); }}>
+						<button class="juice-btn py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936] shrink-0" onclick={(e) => { e.stopPropagation(); handleEventContinue(); }}>
 							Continue
 						</button>
 					{/if}
@@ -349,10 +368,10 @@
 
 			{#if isExperienceStep}
 				<div class="flex gap-2.5 w-full">
-					<button class="flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); step++; }}>
+					<button class="juice-btn flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); step++; }}>
 						Yes!
 					</button>
-					<button class="flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer transition-[transform,background-color] duration-(--juice-duration) ease-(--juice-easing) hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); goto('/app/onboarding/tutorial'); }}>
+					<button class="juice-btn flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); goto('/app/onboarding/tutorial'); }}>
 						No, this is my first time.
 					</button>
 				</div>
@@ -363,6 +382,11 @@
 </div>
 
 <style>
+	.juice-btn {
+		transition: scale var(--juice-duration) var(--juice-easing),
+		            background-color 0.2s ease-in-out;
+	}
+
 	.event-card:not(:disabled):not(.selected):hover {
 		transform: scale(var(--juice-scale));
 	}

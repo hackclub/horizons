@@ -5,7 +5,7 @@
 	--font-bricolage: 'Bricolage Grotesque', sans-serif;
 	--font-dm: 'DM Sans', sans-serif;
 
-	/* Design system tokens (from review2 master) */
+	/* Design system tokens */
 	--color-ds-bg: #eaeaea;
 	--color-ds-bg-secondary: #f5f5f5;
 	--color-ds-surface: #ffffff;
@@ -35,7 +35,7 @@
 	--color-ds-shadow: 0px 1px 4px rgba(0, 0, 0, 0.1);
 	--color-ds-shadow-popout: 0 4px 20px rgba(0, 0, 0, 0.2);
 	--color-ds-banner: #c0c0c0;
-	/* Zone colors (review2 color zones) */
+	/* Zone colors */
 	--color-ds-zone-warm: #d8bfa1;
 	--color-ds-zone-warm-body: #eee1d2;
 	--color-ds-zone-cool: #a1a8d8;
@@ -62,7 +62,7 @@
 	--color-rv-divider: rgba(255, 255, 255, 0.06);
 }
 
-/* ── Global interaction styles (from review2) ── */
+/* ── Global interaction styles ── */
 button,
 a[href],
 summary {

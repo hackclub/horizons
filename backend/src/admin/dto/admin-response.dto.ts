@@ -37,6 +37,9 @@ export class AdminLightUserResponse {
   @ApiProperty({ type: String, nullable: true })
   hackatimeAccount: string | null;
 
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  hackatimeStartDate: Date | null;
+
   @ApiProperty({ type: String, nullable: true })
   slackUserId: string | null;
 
@@ -100,9 +103,6 @@ class AdminSubmissionProjectResponse {
 
   @ApiProperty({ type: String, nullable: true })
   adminComment: string | null;
-
-  @ApiProperty()
-  isFraud: boolean;
 
   @ApiProperty({ type: AdminSubmissionProjectUserResponse })
   user: AdminSubmissionProjectUserResponse;
@@ -170,7 +170,17 @@ export class AdminProjectResponse {
   @ApiProperty({ type: String, nullable: true })
   description: string | null;
 
-  @ApiProperty()
+  @ApiProperty({
+    enum: [
+      'windows_playable',
+      'mac_playable',
+      'linux_playable',
+      'web_playable',
+      'cross_platform_playable',
+      'hardware',
+      'mobile_app',
+    ],
+  })
   projectType: string;
 
   @ApiProperty({ type: Number, nullable: true })
@@ -186,6 +196,12 @@ export class AdminProjectResponse {
   repoUrl: string | null;
 
   @ApiProperty({ type: String, nullable: true })
+  readmeUrl: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  journalUrl: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
   screenshotUrl: string | null;
 
   @ApiProperty({ type: Number, nullable: true })
@@ -194,11 +210,17 @@ export class AdminProjectResponse {
   @ApiProperty({ type: String, nullable: true })
   hoursJustification: string | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  adminComment: string | null;
+
   @ApiProperty()
   isLocked: boolean;
 
-  @ApiProperty()
-  isFraud: boolean;
+  @ApiProperty({ type: Boolean, nullable: true })
+  joeFraudPassed: boolean | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  joeTrustScore: number | null;
 
   @ApiProperty()
   createdAt: Date;
@@ -245,9 +267,6 @@ class AdminUserProjectResponse {
 
   @ApiProperty()
   isLocked: boolean;
-
-  @ApiProperty()
-  isFraud: boolean;
 
   @ApiProperty()
   createdAt: Date;
@@ -310,17 +329,6 @@ export class ReviewerLeaderboardEntry {
 
   @ApiProperty({ type: Date, nullable: true })
   lastReviewedAt: Date | null;
-}
-
-export class AdminFraudFlagResponse {
-  @ApiProperty()
-  projectId: number;
-
-  @ApiProperty()
-  projectTitle: string;
-
-  @ApiProperty()
-  isFraud: boolean;
 }
 
 export class AdminUserFlagResponse {
@@ -436,6 +444,28 @@ export class DeleteProjectResponse {
   projectId: number;
 }
 
+class HackatimeProjectEntry {
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  totalHours: number;
+}
+
+export class ProjectOwnerHackatimeProjectsResponse {
+  @ApiProperty({ type: [HackatimeProjectEntry] })
+  projects: HackatimeProjectEntry[];
+
+  @ApiProperty({ type: [String] })
+  linked: string[];
+
+  @ApiProperty({ type: String, nullable: true })
+  hackatimeAccount: string | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  hackatimeStartDate: Date | null;
+}
+
 export class ElevatedUserResponse {
   @ApiProperty()
   userId: number;
@@ -471,6 +501,17 @@ export class UpdateUserRoleResponse {
 
   @ApiProperty()
   role: string;
+}
+
+export class UpdateUserResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  hackatimeStartDate: Date | null;
+
+  @ApiProperty()
+  recalculatedProjects: number;
 }
 
 class AuditLogAdminResponse {
@@ -685,6 +726,28 @@ class StatsReviewHours {
   lastProjectFraudCheckTime: number | null;
 }
 
+class StatsFunnelMatrixRow {
+  @ApiProperty()
+  fraudPassed: number;
+
+  @ApiProperty()
+  fraudFailed: number;
+
+  @ApiProperty()
+  fraudPending: number;
+}
+
+class StatsFunnelMatrix {
+  @ApiProperty({ type: StatsFunnelMatrixRow })
+  reviewApproved: StatsFunnelMatrixRow;
+
+  @ApiProperty({ type: StatsFunnelMatrixRow })
+  reviewRejected: StatsFunnelMatrixRow;
+
+  @ApiProperty({ type: StatsFunnelMatrixRow })
+  reviewPending: StatsFunnelMatrixRow;
+}
+
 class StatsReviewProjects {
   @ApiProperty()
   shipped: number;
@@ -697,6 +760,12 @@ class StatsReviewProjects {
 
   @ApiProperty()
   reviewQueue: number;
+
+  @ApiProperty()
+  awaitingFraud: number;
+
+  @ApiProperty()
+  fraudTeamDeliberation: number;
 
   @ApiProperty()
   reviewed: number;
@@ -712,6 +781,9 @@ class StatsReviewProjects {
 
   @ApiProperty()
   reviewedThisWeek: number;
+
+  @ApiProperty({ type: StatsFunnelMatrix })
+  funnelMatrix: StatsFunnelMatrix;
 }
 
 class StatsSignupEventEntry {
@@ -732,26 +804,34 @@ class StatsSignupRoute {
   @ApiProperty()
   originCountry: string;
 
-  @ApiProperty({ type: Number, nullable: true })
-  originLat: number | null;
-
-  @ApiProperty({ type: Number, nullable: true })
-  originLng: number | null;
-
   @ApiProperty()
   eventCountry: string;
-
-  @ApiProperty({ type: Number, nullable: true })
-  eventLat: number | null;
-
-  @ApiProperty({ type: Number, nullable: true })
-  eventLng: number | null;
 
   @ApiProperty()
   eventTitle: string;
 
   @ApiProperty()
   count: number;
+}
+
+class StatsSignupQualificationEntry {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  signedUp: number;
+
+  @ApiProperty()
+  rsvped: number;
+
+  @ApiProperty()
+  qualified: number;
 }
 
 class StatsSignups {
@@ -761,8 +841,17 @@ class StatsSignups {
   @ApiProperty({ type: [StatsSignupEventEntry] })
   perEvent: StatsSignupEventEntry[];
 
+  @ApiProperty({ type: [StatsSignupQualificationEntry] })
+  qualification: StatsSignupQualificationEntry[];
+
   @ApiProperty({ type: [StatsSignupRoute] })
   routes: StatsSignupRoute[];
+
+  @ApiProperty()
+  signupsMissingOrigin: number;
+
+  @ApiProperty({ type: [String] })
+  eventsMissingCountry: string[];
 }
 
 class StatsUtmEntry {
@@ -771,6 +860,12 @@ class StatsUtmEntry {
 
   @ApiProperty()
   count: number;
+
+  @ApiProperty()
+  onboardedCount: number;
+
+  @ApiProperty()
+  shipped10HoursCount: number;
 }
 
 class StatsUtm {
@@ -831,7 +926,7 @@ class StatsDauEventEntry {
 
 class StatsDau {
   @ApiProperty()
-  today: number;
+  yesterday: number;
 
   @ApiProperty()
   avg7: number;
@@ -989,7 +1084,7 @@ export class EventStatsResponse {
   notMetHourGoal: number;
 
   @ApiProperty()
-  dauToday: number;
+  dauYesterday: number;
 
   @ApiProperty({ type: [EventStatsPinnedTimelineEntry] })
   pinnedTimeline: EventStatsPinnedTimelineEntry[];

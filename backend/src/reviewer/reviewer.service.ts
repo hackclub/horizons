@@ -6,125 +6,86 @@ import {
   SaveNoteDto,
   SaveChecklistDto,
 } from './dto/review-submission.dto';
-import { AirtableService } from '../airtable/airtable.service';
-import { MailService } from '../mail/mail.service';
-import { SlackService } from '../slack/slack.service';
+
+// A claim is "active" while heartbeats arrive within this window. Past it,
+// the holder is assumed to have closed their tab (or crashed) and the next
+// reviewer can claim without prompting. Tuned for ~3 missed 30s heartbeats.
+const CLAIM_STALE_AFTER_MS = 90_000;
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
+import { ManifestService } from '../manifest/manifest.service';
+import { SubmissionApprovalService } from '../submission-approval/submission-approval.service';
+import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
+import { SlackService } from '../slack/slack.service';
+import { HackatimeService } from '../hackatime/hackatime.service';
 
-/** Format decimal hours as "Xh Ymin". */
-function formatHoursMin(hours: number): string {
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}min`;
-}
-
-/** Fraud review metadata to include in the justification footer. */
-interface FraudReviewInfo {
-  joeProjectId: string;
-  reviewedAt: Date;
-  hackatimeProjects: string[];
-}
-
-/**
- * Wrap the reviewer's freeform analysis with auto-generated boilerplate:
- * hours summary header + fraud review line + submitted-by / reviewed-by footer.
- */
-function buildFullJustification(
-  reviewerAnalysis: string,
-  hackatimeHours: number | null,
-  approvedHours: number,
-  submitterSlackId: string | null,
-  submissionDate: Date,
-  reviewerSlackId: string | null,
-  fraudReview?: FraudReviewInfo | null,
-): string {
-  const parts: string[] = [];
-
-  // Hours summary line
-  const tracked =
-    hackatimeHours != null ? formatHoursMin(hackatimeHours) : 'unknown';
-  const approved = formatHoursMin(approvedHours);
-  if (
-    hackatimeHours != null &&
-    Math.abs(hackatimeHours - approvedHours) < 0.05
-  ) {
-    parts.push(
-      `This user tracked ${tracked} on Hackatime. No adjustment was made.`,
-    );
-  } else {
-    parts.push(
-      `This user tracked ${tracked} on Hackatime. This was adjusted to ${approved} after review.`,
-    );
-  }
-
-  if (reviewerAnalysis.trim()) {
-    parts.push('', reviewerAnalysis.trim());
-  }
-
-  // Footer metadata
-  const submitterRef = submitterSlackId || 'unknown';
-  const submitDate = submissionDate.toISOString().split('T')[0];
-  const reviewerRef = reviewerSlackId || 'unknown';
-  const today = new Date().toISOString().split('T')[0];
-
-  parts.push('');
-  parts.push(`Project was submitted by @/${submitterRef} on ${submitDate}.`);
-
-  if (fraudReview) {
-    const fraudDate = fraudReview.reviewedAt.toISOString().split('T')[0];
-    const projectsSuffix =
-      fraudReview.hackatimeProjects.length > 0
-        ? `, who reviewed the time tracked on ${fraudReview.hackatimeProjects.join(', ')}`
-        : '';
-    parts.push(
-      `Project passed fraud review (case ${fraudReview.joeProjectId}) from the Fraud Squad on ${fraudDate}${projectsSuffix}.`,
-    );
-  }
-
-  parts.push(`Project was reviewed by @/${reviewerRef} on ${today}.`);
-
-  return parts.join('\n');
-}
-
-// Scoped user fields — no PII like email, address, birthday
+// Scoped user fields — no PII like email, address, birthday, or real name
 const SCOPED_USER_SELECT = {
   userId: true,
-  firstName: true,
-  lastName: true,
   slackUserId: true,
   birthday: true, // used to compute age only, never sent raw
+  hackatimeStartDate: true,
 } as const;
 
 @Injectable()
 export class ReviewerService {
   constructor(
     private prisma: PrismaService,
-    private airtableService: AirtableService,
-    private mailService: MailService,
-    private slackService: SlackService,
     private fraudReviewService: FraudReviewService,
+    private submissionApprovalService: SubmissionApprovalService,
+    private manifestService: ManifestService,
+    private slackService: SlackService,
+    private hackatimeService: HackatimeService,
   ) {}
+
+  /**
+   * Per-Hackatime-project hour breakdown for a project, fetched live from
+   * Hackatime so the review UI can show real per-project numbers instead of
+   * an even split.
+   */
+  async getProjectHackatimeBreakdown(projectId: number) {
+    return this.hackatimeService.getProjectHoursBreakdown(projectId);
+  }
+
+  /**
+   * Reviewer-facing Manifest lookup: shows whether this project's codeUrl has
+   * been submitted to other YSWS programs (for cross-program fraud signal).
+   * Returns null when the project has no codeUrl, manifest is disabled, or
+   * the project isn't registered.
+   */
+  async getProjectManifestLookup(projectId: number) {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: { repoUrl: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (!project.repoUrl || !this.manifestService.isEnabled()) {
+      return { codeUrl: project.repoUrl, manifest: null };
+    }
+
+    const manifest = await this.manifestService.lookup(project.repoUrl);
+    return { codeUrl: project.repoUrl, manifest };
+  }
 
   /**
    * Get the review queue: all pending submissions with scoped project/user data.
    * Returns minimal info for the queue list, not full details.
    */
-  async getReviewQueue() {
-    const fraudFilterEnabled = this.fraudReviewService.isEnabled();
-
-    // Sync fraud statuses before returning the queue so newly-passed
-    // projects appear immediately when a reviewer opens the page
-    if (fraudFilterEnabled) {
+  async getReviewQueue(viewerId?: number) {
+    // Fraud and review run independently now, but still refresh fraud state on
+    // queue open so any late fraud results can finalize pending submissions
+    // before the reviewer sees them.
+    if (this.fraudReviewService.isEnabled()) {
       await this.fraudReviewService.pollPendingProjects();
     }
-
-    const fraudFilter = fraudFilterEnabled ? { joeFraudPassed: true } : {};
 
     const submissions = await this.prisma.submission.findMany({
       where: {
         approvalStatus: 'pending',
-        project: fraudFilter,
+        reviewPassed: null,
       },
       include: {
         project: {
@@ -136,12 +97,20 @@ export class ReviewerService {
             playableUrl: true,
             nowHackatimeHours: true,
             nowHackatimeProjects: true,
+            joeFraudPassed: true,
             user: { select: SCOPED_USER_SELECT },
           },
+        },
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
         },
       },
       orderBy: { createdAt: 'asc' },
     });
+
+    const displayNameMap = await this.fetchDisplayNamesFor(
+      submissions.map((s) => s.project.user),
+    );
 
     return submissions.map((submission) => ({
       submissionId: submission.submissionId,
@@ -150,16 +119,52 @@ export class ReviewerService {
       createdAt: submission.createdAt,
       project: {
         ...submission.project,
-        user: this.scopeUserData(submission.project.user),
+        user: this.scopeUserData(submission.project.user, displayNameMap),
       },
+      claim: this.buildClaimInfo(submission, viewerId),
     }));
+  }
+
+  /**
+   * Shape claim metadata for the API: returns null when no claim is held,
+   * otherwise the holder's name plus stale/mine flags so the UI can decide
+   * whether to warn or take over silently.
+   */
+  private buildClaimInfo(
+    submission: {
+      claimedById: number | null;
+      claimedAt: Date | null;
+      claimHeartbeatAt: Date | null;
+      claimedBy: { userId: number; firstName: string; lastName: string } | null;
+    },
+    viewerId?: number,
+  ) {
+    if (
+      !submission.claimedById ||
+      !submission.claimedAt ||
+      !submission.claimHeartbeatAt ||
+      !submission.claimedBy
+    ) {
+      return null;
+    }
+    const isStale =
+      Date.now() - submission.claimHeartbeatAt.getTime() > CLAIM_STALE_AFTER_MS;
+    return {
+      userId: submission.claimedBy.userId,
+      firstName: submission.claimedBy.firstName,
+      lastName: submission.claimedBy.lastName,
+      claimedAt: submission.claimedAt,
+      heartbeatAt: submission.claimHeartbeatAt,
+      isStale,
+      isMine: viewerId !== undefined && submission.claimedById === viewerId,
+    };
   }
 
   /**
    * Get full details for a single submission, scoped for reviewer access.
    * Includes project info, user info (no PII), hours breakdown, and review history.
    */
-  async getSubmissionDetail(submissionId: number) {
+  async getSubmissionDetail(submissionId: number, viewerId?: number) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
       include: {
@@ -175,6 +180,9 @@ export class ReviewerService {
               },
             },
           },
+        },
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
         },
       },
     });
@@ -194,17 +202,46 @@ export class ReviewerService {
     });
     const reviewerMap = new Map(reviewers.map((r) => [r.userId, r]));
 
+    const displayNameMap = await this.fetchDisplayNamesFor([
+      submission.project.user,
+    ]);
+
     // Build timeline from all submissions on this project
     const timeline = this.buildTimeline(
       submission.project.submissions,
       reviewerMap,
     );
 
+    // Compact list of sibling submissions so reviewers can jump between
+    // resubmissions of the same project without leaving the detail view.
+    const submissionsList = submission.project.submissions
+      .map((s) => ({
+        submissionId: s.submissionId,
+        createdAt: s.createdAt,
+        approvalStatus: s.approvalStatus,
+        reviewPassed: s.reviewPassed,
+        reviewedAt: s.reviewedAt,
+        hackatimeHours: s.hackatimeHours,
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+
     return {
       submissionId: submission.submissionId,
       projectId: submission.projectId,
       approvalStatus: submission.approvalStatus,
+      reviewPassed: submission.reviewPassed,
+      finalizedAt: submission.finalizedAt,
+      reviewedAt: submission.reviewedAt,
+      approvedHours: submission.approvedHours,
       hackatimeHours: submission.hackatimeHours,
+      // submission.hoursJustification stores the reviewer's user-facing feedback
+      // (the DTO field `userFeedback` is persisted here — name is historical).
+      userFeedback: submission.hoursJustification,
+      // Raw reviewer analysis used to build the Airtable "ship justification".
+      reviewerAnalysis: submission.reviewerAnalysis,
       description: submission.description,
       playableUrl: submission.playableUrl,
       repoUrl: submission.repoUrl,
@@ -218,18 +255,145 @@ export class ReviewerService {
         playableUrl: submission.project.playableUrl,
         repoUrl: submission.project.repoUrl,
         readmeUrl: submission.project.readmeUrl,
+        adminComment: submission.project.adminComment,
         nowHackatimeHours: submission.project.nowHackatimeHours,
         nowHackatimeProjects: submission.project.nowHackatimeProjects,
-        user: this.scopeUserData(submission.project.user),
+        joeFraudPassed: submission.project.joeFraudPassed,
+        joeTrustScore: submission.project.joeTrustScore,
+        user: this.scopeUserData(submission.project.user, displayNameMap),
       },
       timeline,
+      submissions: submissionsList,
+      claim: this.buildClaimInfo(submission, viewerId),
     };
   }
 
   /**
+   * Acquire a review claim on a submission so multiple reviewers don't pick
+   * up the same project. Returns `claimed: true` on success. When another
+   * reviewer holds an active claim and `force` is not set, returns
+   * `claimed: false` with the holder's info so the UI can prompt to take over.
+   * Stale claims (no heartbeat past CLAIM_STALE_AFTER_MS) are silently
+   * overwritten — taking over a tab someone abandoned shouldn't need a prompt.
+   */
+  async claimSubmission(
+    submissionId: number,
+    reviewerId: number,
+    force: boolean,
+  ) {
+    const existing = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      include: {
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
+        },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+
+    const now = new Date();
+    const heldByOther =
+      existing.claimedById !== null && existing.claimedById !== reviewerId;
+    const heldByOtherActive =
+      heldByOther &&
+      existing.claimHeartbeatAt !== null &&
+      now.getTime() - existing.claimHeartbeatAt.getTime() <=
+        CLAIM_STALE_AFTER_MS;
+
+    if (heldByOtherActive && !force) {
+      return {
+        claimed: false,
+        claim: this.buildClaimInfo(existing, reviewerId),
+      };
+    }
+
+    const updated = await this.prisma.submission.update({
+      where: { submissionId },
+      data: {
+        claimedById: reviewerId,
+        // Preserve original claimedAt when extending our own claim so the UI
+        // can show "claimed 5min ago"; reset only when (re)acquiring.
+        claimedAt:
+          existing.claimedById === reviewerId && existing.claimedAt
+            ? existing.claimedAt
+            : now,
+        claimHeartbeatAt: now,
+      },
+      include: {
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
+        },
+      },
+    });
+
+    return {
+      claimed: true,
+      claim: this.buildClaimInfo(updated, reviewerId),
+    };
+  }
+
+  /**
+   * Bump claim heartbeat. No-op (returns null claim) if the caller doesn't
+   * currently hold the claim — the UI should re-acquire rather than steal.
+   */
+  async heartbeatClaim(submissionId: number, reviewerId: number) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      select: { claimedById: true },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+    if (submission.claimedById !== reviewerId) {
+      return { claimed: false, claim: null };
+    }
+    const updated = await this.prisma.submission.update({
+      where: { submissionId },
+      data: { claimHeartbeatAt: new Date() },
+      include: {
+        claimedBy: {
+          select: { userId: true, firstName: true, lastName: true },
+        },
+      },
+    });
+    return {
+      claimed: true,
+      claim: this.buildClaimInfo(updated, reviewerId),
+    };
+  }
+
+  /**
+   * Release the claim if the caller holds it. Idempotent — releasing a claim
+   * the caller doesn't own is a no-op (the next reviewer's stale check will
+   * handle it anyway).
+   */
+  async releaseClaim(submissionId: number, reviewerId: number) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      select: { claimedById: true },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+    if (submission.claimedById !== reviewerId) {
+      return { released: false };
+    }
+    await this.prisma.submission.update({
+      where: { submissionId },
+      data: { claimedById: null, claimedAt: null, claimHeartbeatAt: null },
+    });
+    return { released: true };
+  }
+
+  /**
    * Update a submission: change status, hours, feedback, etc.
-   * Supports re-review (changing a previously reviewed submission).
-   * Conditional email (only when sendEmail is explicitly true), always sends Slack on status change.
+   *
+   * Reviewer decisions (dto.approvalStatus set) are recorded as one gate in the
+   * two-gate approval flow — the state machine in SubmissionApprovalService
+   * reconciles with the fraud gate and fires side effects on transition.
+   * Field-only updates (no status) persist directly on the submission.
    */
   async reviewSubmission(
     submissionId: number,
@@ -238,51 +402,46 @@ export class ReviewerService {
   ) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
-      include: {
-        project: {
-          include: { user: true },
-        },
-      },
+      select: { submissionId: true, approvalStatus: true },
     });
 
     if (!submission) {
       throw new NotFoundException(`Submission ${submissionId} not found`);
     }
 
-    const updateData: Record<string, unknown> = {};
+    // Persist field-level edits (hours / user feedback / analysis / admin
+    // comment) directly. These run independent of the verdict so reviewers can
+    // save a draft comment or analysis without finalizing approve/reject.
+    const fieldUpdates: Record<string, unknown> = {};
     if (dto.approvedHours !== undefined) {
-      updateData.approvedHours = dto.approvedHours;
+      fieldUpdates.approvedHours = dto.approvedHours;
     }
     if (dto.userFeedback !== undefined) {
-      updateData.hoursJustification = dto.userFeedback;
+      fieldUpdates.hoursJustification = dto.userFeedback;
     }
-    if (dto.approvalStatus !== undefined) {
-      updateData.approvalStatus = dto.approvalStatus;
-      updateData.reviewedBy = reviewerId.toString();
-      updateData.reviewedAt = new Date();
+    if (dto.hoursJustification !== undefined) {
+      fieldUpdates.reviewerAnalysis = dto.hoursJustification;
     }
-
-    const updatedSubmission = await this.prisma.submission.update({
-      where: { submissionId },
-      data: updateData,
-      include: {
-        project: {
-          include: {
-            user: {
-              select: {
-                userId: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-              },
-            },
-          },
+    if (dto.adminComment !== undefined) {
+      // adminComment lives on the Project row — write through.
+      await this.prisma.project.update({
+        where: {
+          projectId: (await this.prisma.submission.findUniqueOrThrow({
+            where: { submissionId },
+            select: { projectId: true },
+          })).projectId,
         },
-      },
-    });
+        data: { adminComment: dto.adminComment },
+      });
+    }
+    if (Object.keys(fieldUpdates).length > 0) {
+      await this.prisma.submission.update({
+        where: { submissionId },
+        data: fieldUpdates,
+      });
+    }
 
-    // Audit log — distinguish status-change reviews from field-only updates
-    const isReview = dto.approvalStatus !== undefined;
+    // Audit log captures what the reviewer changed.
     const auditChanges: Record<string, unknown> = {};
     if (dto.approvalStatus !== undefined)
       auditChanges.previousStatus = submission.approvalStatus;
@@ -294,58 +453,52 @@ export class ReviewerService {
       auditChanges.hoursJustification = dto.hoursJustification;
     if (dto.adminComment !== undefined)
       auditChanges.adminComment = dto.adminComment;
-
     await this.prisma.submissionAuditLog.create({
       data: {
         submissionId,
         adminId: reviewerId,
-        action: isReview ? 'review' : 'update',
+        action: dto.approvalStatus !== undefined ? 'review' : 'update',
         newStatus: dto.approvalStatus || null,
         approvedHours: dto.approvedHours ?? null,
         changes: auditChanges as any,
       },
     });
 
-    // Assemble full justification with boilerplate when approving
-    let fullJustification: string | undefined;
-    if (dto.hoursJustification !== undefined) {
-      const reviewer = await this.prisma.user.findUnique({
-        where: { userId: reviewerId },
-        select: { slackUserId: true },
-      });
-      const fraudReview = this.buildFraudReviewInfo(submission.project);
-      fullJustification = buildFullJustification(
-        dto.hoursJustification,
-        submission.hackatimeHours,
-        dto.approvedHours ?? submission.approvedHours ?? 0,
-        submission.project.user.slackUserId,
-        submission.createdAt,
-        reviewer?.slackUserId ?? null,
-        fraudReview,
-      );
-    }
-
-    const syncDto = fullJustification
-      ? { ...dto, hoursJustification: fullJustification }
-      : dto;
-
-    const isNewApproval =
-      dto.approvalStatus === 'approved' &&
-      submission.approvalStatus !== 'approved';
-    if (isNewApproval) {
-      await this.syncAirtable(submission, syncDto);
-    } else if (
-      submission.approvalStatus === 'approved' &&
-      submission.airtableRecId
-    ) {
-      await this.updateAirtableRecord(submission, syncDto);
-    }
-
-    await this.syncProjectData(submission, syncDto);
-
-    // Notifications only fire on status changes
+    // Reviewer's decision. When pending, record into the state machine —
+    // it will finalize iff the fraud gate has already resolved.
+    // When already finalized (approved/rejected), treat as an edit and sync
+    // the Airtable record in place without re-running the state machine.
     if (dto.approvalStatus !== undefined) {
-      await this.sendNotifications(updatedSubmission, dto);
+      const passed = dto.approvalStatus === 'approved';
+      if (submission.approvalStatus === 'pending') {
+        await this.submissionApprovalService.recordReviewerDecision(
+          submissionId,
+          passed,
+          reviewerId,
+          dto,
+        );
+      } else if (submission.approvalStatus === 'approved') {
+        await this.submissionApprovalService.updateFinalizedSubmission(
+          submissionId,
+          reviewerId,
+          dto,
+        );
+      }
+      // If already rejected, no edit path — reviewer decision is a no-op.
+
+      // Verdict submitted — release the claim so the next reviewer can pick
+      // up another project without waiting for the stale timeout.
+      await this.prisma.submission.update({
+        where: { submissionId },
+        data: { claimedById: null, claimedAt: null, claimHeartbeatAt: null },
+      });
+    } else if (submission.approvalStatus === 'approved') {
+      // Field-only edit on an already-approved submission still needs Airtable sync.
+      await this.submissionApprovalService.updateFinalizedSubmission(
+        submissionId,
+        reviewerId,
+        dto,
+      );
     }
 
     return {
@@ -356,8 +509,8 @@ export class ReviewerService {
   }
 
   /**
-   * Quick-approve: auto-fills hours from hackatime, always approves.
-   * Sends Slack notification, no email.
+   * Quick-approve: auto-fills hours from hackatime and marks the reviewer gate
+   * as passed. Final approval still requires fraud to pass.
    */
   async quickApproveSubmission(
     submissionId: number,
@@ -366,60 +519,22 @@ export class ReviewerService {
   ) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
-      include: {
-        project: {
-          include: { user: true },
-        },
-      },
+      include: { project: { select: { nowHackatimeHours: true } } },
     });
-
     if (!submission) {
       throw new NotFoundException(`Submission ${submissionId} not found`);
     }
 
     const hackatimeHours = submission.project.nowHackatimeHours || 0;
     const approvedHours = dto.approvedHours ?? hackatimeHours;
-    const autoJustification = `Quick approved with ${approvedHours.toFixed(1)} hours.`;
-    const reviewerAnalysis = dto.hoursJustification || autoJustification;
+    const autoAnalysis = `Quick approved with ${approvedHours.toFixed(1)} hours.`;
+    const reviewerAnalysisText = dto.hoursJustification || autoAnalysis;
 
-    // Look up reviewer's Slack handle for the footer
-    const reviewer = await this.prisma.user.findUnique({
-      where: { userId: reviewerId },
-      select: { slackUserId: true },
-    });
-    const fraudReview = this.buildFraudReviewInfo(submission.project);
-    const hoursJustification = buildFullJustification(
-      reviewerAnalysis,
-      submission.hackatimeHours,
-      approvedHours,
-      submission.project.user.slackUserId,
-      submission.createdAt,
-      reviewer?.slackUserId ?? null,
-      fraudReview,
-    );
-
-    const updatedSubmission = await this.prisma.submission.update({
+    await this.prisma.submission.update({
       where: { submissionId },
       data: {
-        approvalStatus: 'approved',
         approvedHours,
         hoursJustification: dto.userFeedback || '',
-        reviewedBy: reviewerId.toString(),
-        reviewedAt: new Date(),
-      },
-      include: {
-        project: {
-          include: {
-            user: {
-              select: {
-                userId: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-              },
-            },
-          },
-        },
       },
     });
 
@@ -434,275 +549,31 @@ export class ReviewerService {
           previousStatus: submission.approvalStatus,
           quickApprove: true,
           approvedHours,
-          hoursJustification,
           userFeedback: dto.userFeedback || null,
         },
       },
     });
 
-    await this.syncAirtable(submission, { approvedHours, hoursJustification });
-
-    await this.prisma.project.update({
-      where: { projectId: submission.projectId },
-      data: {
+    await this.submissionApprovalService.recordReviewerDecision(
+      submissionId,
+      true,
+      reviewerId,
+      {
+        approvalStatus: 'approved',
         approvedHours,
-        hoursJustification,
-        playableUrl: submission.playableUrl,
-        repoUrl: submission.repoUrl,
-        screenshotUrl: submission.screenshotUrl,
-        description: submission.description,
+        hoursJustification: reviewerAnalysisText,
+        userFeedback: dto.userFeedback,
+        sendEmail: false,
       },
+    );
+
+    // Quick-approve finalizes the verdict — release any active claim.
+    await this.prisma.submission.update({
+      where: { submissionId },
+      data: { claimedById: null, claimedAt: null, claimHeartbeatAt: null },
     });
 
-    // Slack notification only (no email for quick approve)
-    try {
-      await this.slackService.notifySubmissionReview(
-        updatedSubmission.project.user.email,
-        {
-          projectTitle: updatedSubmission.project.projectTitle,
-          projectId: updatedSubmission.project.projectId,
-          approved: true,
-          approvedHours,
-          feedback: dto.userFeedback,
-        },
-      );
-    } catch (error) {
-      console.error('Slack notification failed during quick approve:', error);
-    }
-
     return { success: true, submissionId, status: 'approved' };
-  }
-
-  /** Extract fraud review info from a project if the fraud review passed. */
-  private buildFraudReviewInfo(project: {
-    joeProjectId: string | null;
-    joeFraudPassed: boolean | null;
-    joeFraudReviewedAt: Date | null;
-    nowHackatimeProjects: string[];
-  }): FraudReviewInfo | null {
-    if (!project.joeFraudPassed || !project.joeProjectId) return null;
-    return {
-      joeProjectId: project.joeProjectId,
-      reviewedAt: project.joeFraudReviewedAt ?? new Date(),
-      hackatimeProjects: project.nowHackatimeProjects,
-    };
-  }
-
-  /** Sync approved hours, justification, adminComment, and submission data to the project table. */
-  private async syncProjectData(
-    submission: {
-      projectId: number;
-      playableUrl: string | null;
-      repoUrl: string | null;
-      screenshotUrl: string | null;
-      description: string | null;
-    },
-    dto: ReviewSubmissionDto,
-  ) {
-    const projectUpdateData: Record<string, unknown> = {};
-    if (dto.approvedHours !== undefined)
-      projectUpdateData.approvedHours = dto.approvedHours;
-    if (dto.hoursJustification !== undefined)
-      projectUpdateData.hoursJustification = dto.hoursJustification;
-    if (dto.adminComment !== undefined)
-      projectUpdateData.adminComment = dto.adminComment;
-    if (dto.approvalStatus === 'approved') {
-      projectUpdateData.playableUrl = submission.playableUrl;
-      projectUpdateData.repoUrl = submission.repoUrl;
-      projectUpdateData.screenshotUrl = submission.screenshotUrl;
-      projectUpdateData.description = submission.description;
-    }
-
-    if (Object.keys(projectUpdateData).length > 0) {
-      await this.prisma.project.update({
-        where: { projectId: submission.projectId },
-        data: projectUpdateData,
-      });
-    }
-  }
-
-  /** Create a new Airtable record when a submission is approved. For resubmissions, hours are the delta since last approval. */
-  private async syncAirtable(
-    submission: {
-      submissionId: number;
-      projectId: number;
-      createdAt: Date;
-      playableUrl: string | null;
-      repoUrl: string | null;
-      screenshotUrl: string | null;
-      description: string | null;
-      project: {
-        playableUrl: string | null;
-        repoUrl: string | null;
-        screenshotUrl: string | null;
-        description: string | null;
-        user: any;
-      };
-    },
-    dto: { approvedHours?: number; hoursJustification?: string },
-  ) {
-    try {
-      const project = await this.prisma.project.findUnique({
-        where: { projectId: submission.projectId },
-        include: { user: true },
-      });
-      if (!project) return;
-
-      const totalApprovedHours = dto.approvedHours || 0;
-
-      // Find the most recent prior approved submission — its approvedHours is the cumulative total up to that point
-      const lastApprovedSubmission = await this.prisma.submission.findFirst({
-        where: {
-          projectId: submission.projectId,
-          approvalStatus: 'approved',
-          createdAt: { lt: submission.createdAt },
-        },
-        orderBy: { createdAt: 'desc' },
-        select: { approvedHours: true },
-      });
-      const previouslyApprovedHours =
-        lastApprovedSubmission?.approvedHours || 0;
-      const deltaHours = Math.max(
-        0,
-        totalApprovedHours - previouslyApprovedHours,
-      );
-
-      const approvedProjectData = {
-        user: {
-          firstName: project.user.firstName,
-          lastName: project.user.lastName,
-          email: project.user.email,
-          birthday: project.user.birthday,
-          addressLine1: project.user.addressLine1,
-          addressLine2: project.user.addressLine2,
-          city: project.user.city,
-          state: project.user.state,
-          country: project.user.country,
-          zipCode: project.user.zipCode,
-        },
-        project: {
-          playableUrl:
-            submission.playableUrl || submission.project.playableUrl || '',
-          repoUrl: submission.repoUrl || submission.project.repoUrl || '',
-          screenshotUrl:
-            submission.screenshotUrl || submission.project.screenshotUrl || '',
-          approvedHours: deltaHours,
-          hoursJustification:
-            project.hoursJustification || dto.hoursJustification || '',
-          description:
-            submission.description ||
-            submission.project.description ||
-            undefined,
-        },
-      };
-
-      const airtableResult =
-        await this.airtableService.createApprovedProject(approvedProjectData);
-      if (airtableResult.recordId) {
-        await this.prisma.submission.update({
-          where: { submissionId: submission.submissionId },
-          data: { airtableRecId: airtableResult.recordId },
-        });
-      }
-    } catch (error) {
-      // Airtable sync failure shouldn't block the review
-      console.error('Airtable sync failed:', error);
-    }
-  }
-
-  /** Update an existing Airtable record when editing an already-approved submission. */
-  private async updateAirtableRecord(
-    submission: {
-      submissionId: number;
-      projectId: number;
-      createdAt: Date;
-      airtableRecId: string | null;
-      playableUrl: string | null;
-      repoUrl: string | null;
-      screenshotUrl: string | null;
-      description: string | null;
-    },
-    dto: { approvedHours?: number; hoursJustification?: string },
-  ) {
-    if (!submission.airtableRecId) return;
-    try {
-      let approvedHours = dto.approvedHours;
-
-      if (approvedHours !== undefined) {
-        // Find the most recent prior approved submission — its approvedHours is the cumulative total up to that point
-        const lastApprovedSubmission = await this.prisma.submission.findFirst({
-          where: {
-            projectId: submission.projectId,
-            approvalStatus: 'approved',
-            createdAt: { lt: submission.createdAt },
-          },
-          orderBy: { createdAt: 'desc' },
-          select: { approvedHours: true },
-        });
-        const previouslyApprovedHours =
-          lastApprovedSubmission?.approvedHours || 0;
-        approvedHours = Math.max(0, approvedHours - previouslyApprovedHours);
-      }
-
-      await this.airtableService.updateApprovedProject(
-        submission.airtableRecId,
-        {
-          playableUrl: submission.playableUrl || undefined,
-          repoUrl: submission.repoUrl || undefined,
-          screenshotUrl: submission.screenshotUrl || undefined,
-          description: submission.description || undefined,
-          approvedHours,
-          hoursJustification: dto.hoursJustification,
-        },
-      );
-    } catch (error) {
-      console.error('Airtable update failed:', error);
-    }
-  }
-
-  /** Send email (if explicitly requested) and Slack notification on status change. */
-  private async sendNotifications(
-    updatedSubmission: {
-      project: {
-        projectTitle: string;
-        projectId: number;
-        user: { email: string };
-      };
-      hoursJustification: string | null;
-    },
-    dto: ReviewSubmissionDto,
-  ) {
-    if (dto.sendEmail === true) {
-      try {
-        await this.mailService.sendSubmissionReviewEmail(
-          updatedSubmission.project.user.email,
-          {
-            projectTitle: updatedSubmission.project.projectTitle,
-            projectId: updatedSubmission.project.projectId,
-            approved: dto.approvalStatus === 'approved',
-            approvedHours: dto.approvedHours,
-            feedback: updatedSubmission.hoursJustification,
-          },
-        );
-      } catch (error) {
-        console.error('Email notification failed:', error);
-      }
-    }
-
-    try {
-      await this.slackService.notifySubmissionReview(
-        updatedSubmission.project.user.email,
-        {
-          projectTitle: updatedSubmission.project.projectTitle,
-          projectId: updatedSubmission.project.projectId,
-          approved: dto.approvalStatus === 'approved',
-          approvedHours: dto.approvedHours,
-          feedback: updatedSubmission.hoursJustification,
-        },
-      );
-    } catch (error) {
-      console.error('Slack notification failed:', error);
-    }
   }
 
   /**
@@ -847,18 +718,130 @@ export class ReviewerService {
     };
   }
 
+  /**
+   * List submissions a reviewer has voted on, newest first. Includes those
+   * still pending fraud reconciliation (reviewPassed set, approvalStatus
+   * stuck on pending) so opening such a project from the gallery can resolve
+   * to a real submission instead of silently redirecting.
+   * Frontend splits this into "mine" vs "all" using currentReviewerId.
+   */
+  async getPastReviews(currentReviewerId: number) {
+    const submissions = await this.prisma.submission.findMany({
+      where: {
+        reviewedBy: { not: null },
+      },
+      orderBy: { reviewedAt: 'desc' },
+      select: {
+        submissionId: true,
+        projectId: true,
+        approvalStatus: true,
+        reviewPassed: true,
+        approvedHours: true,
+        hackatimeHours: true,
+        reviewedBy: true,
+        reviewedAt: true,
+        project: {
+          select: {
+            projectId: true,
+            projectTitle: true,
+            projectType: true,
+            user: { select: SCOPED_USER_SELECT },
+          },
+        },
+      },
+    });
+
+    const reviewerIds = [
+      ...new Set(
+        submissions
+          .map((s) => s.reviewedBy)
+          .filter((id): id is string => id !== null)
+          .map((id) => parseInt(id))
+          .filter((id) => !isNaN(id)),
+      ),
+    ];
+    const reviewers = await this.prisma.user.findMany({
+      where: { userId: { in: reviewerIds } },
+      select: { userId: true, firstName: true, lastName: true },
+    });
+    const reviewerMap = new Map(
+      reviewers.map((r) => [r.userId.toString(), r]),
+    );
+
+    const displayNameMap = await this.fetchDisplayNamesFor(
+      submissions.map((s) => s.project.user),
+    );
+
+    const reviews = submissions.map((s) => {
+      const reviewer = s.reviewedBy ? reviewerMap.get(s.reviewedBy) : null;
+      return {
+        submissionId: s.submissionId,
+        projectId: s.projectId,
+        projectTitle: s.project.projectTitle,
+        projectType: s.project.projectType,
+        reviewerId: s.reviewedBy,
+        reviewerName: reviewer
+          ? `${reviewer.firstName} ${reviewer.lastName}`
+          : s.reviewedBy
+            ? `User ${s.reviewedBy}`
+            : 'Unknown',
+        // Overall reconciled outcome (reviewer + fraud gates).
+        approvalStatus: s.approvalStatus,
+        // Reviewer's own decision — can diverge from approvalStatus when fraud
+        // silently rejects a reviewer-approved submission.
+        reviewPassed: s.reviewPassed,
+        approvedHours: s.approvedHours,
+        hackatimeHours: s.hackatimeHours,
+        reviewedAt: s.reviewedAt,
+        user: this.scopeUserData(s.project.user, displayNameMap),
+      };
+    });
+
+    return { currentReviewerId, reviews };
+  }
+
   /** Save the adminComment field on a project or user. */
   async saveNote(
     targetType: 'project' | 'user',
     targetId: number,
     dto: SaveNoteDto,
+    reviewerId: number,
   ) {
     if (targetType === 'project') {
+      const prior = await this.prisma.project.findUnique({
+        where: { projectId: targetId },
+        select: { adminComment: true },
+      });
       await this.prisma.project.update({
         where: { projectId: targetId },
         data: { adminComment: dto.content },
       });
+      // Anchor the audit entry to the latest submission on this project.
+      // Projects with no submissions yet won't be audited — notes before a
+      // first submission have nothing to show up on in the timeline.
+      const latest = await this.prisma.submission.findFirst({
+        where: { projectId: targetId },
+        orderBy: { createdAt: 'desc' },
+        select: { submissionId: true },
+      });
+      if (latest) {
+        await this.prisma.submissionAuditLog.create({
+          data: {
+            submissionId: latest.submissionId,
+            adminId: reviewerId,
+            action: AUDIT_ACTIONS.noteUpdate,
+            changes: {
+              targetType: 'project',
+              targetId,
+              previous: prior?.adminComment ?? '',
+              next: dto.content,
+            },
+          },
+        });
+      }
     } else {
+      // TODO: user-level note audit has no natural submission anchor.
+      // Revisit if we add a user-scoped audit log.
       await this.prisma.user.update({
         where: { userId: targetId },
         data: { adminComment: dto.content },
@@ -902,16 +885,23 @@ export class ReviewerService {
   }
 
   /**
-   * Strip PII from user data — only expose what reviewers need.
-   * Age is computed from birthday, birthday itself is not returned.
+   * Strip PII from user data — only expose what reviewers need. Real name is
+   * intentionally omitted; reviewers see the Slack username (the user's
+   * public Slack handle) instead. Age is computed from birthday; birthday
+   * itself is not returned.
+   *
+   * `displayNameMap` should be pre-fetched via `fetchDisplayNamesFor()` so we
+   * don't issue a Slack round-trip per user inside a hot loop.
    */
-  private scopeUserData(user: {
-    userId: number;
-    firstName: string;
-    lastName: string;
-    slackUserId: string | null;
-    birthday: Date | null;
-  }) {
+  private scopeUserData(
+    user: {
+      userId: number;
+      slackUserId: string | null;
+      birthday: Date | null;
+      hackatimeStartDate: Date | null;
+    },
+    displayNameMap: Map<string, string>,
+  ) {
     let age: number | null = null;
     if (user.birthday) {
       const today = new Date();
@@ -928,11 +918,31 @@ export class ReviewerService {
 
     return {
       userId: user.userId,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      displayName: user.slackUserId
+        ? (displayNameMap.get(user.slackUserId) ?? null)
+        : null,
       slackUserId: user.slackUserId,
       age,
+      hackatimeStartDate: user.hackatimeStartDate,
     };
+  }
+
+  /**
+   * Batch-fetch Slack usernames for any user with a slackUserId.
+   * Returns an empty map if no users have a slackUserId.
+   */
+  private async fetchDisplayNamesFor(
+    users: Array<{ slackUserId: string | null }>,
+  ): Promise<Map<string, string>> {
+    const ids = [
+      ...new Set(
+        users
+          .map((u) => u.slackUserId)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    if (ids.length === 0) return new Map();
+    return this.slackService.getUsernames(ids);
   }
 
   /**

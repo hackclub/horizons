@@ -5,8 +5,8 @@
 	import { Button } from '$lib/components';
 	import { theme } from '$lib/themeStore';
 	import * as echarts from 'echarts';
-	let leafletMap: any = null;
-	let L: any = null;
+
+	let worldMapRegistered = false;
 
 	type Stats = components['schemas']['AdminStatsResponse'];
 	type DataPoint = { date: string; value: number };
@@ -15,6 +15,128 @@
 	let stats = $state<Stats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let selectedEventFilter = $state<string>('all');
+	let unmatchedOriginCountries = $state<string[]>([]);
+	let unmatchedEventCountries = $state<string[]>([]);
+
+	const validCountryNames = new Set<string>();
+
+	// Derived state-matrix data for the Review Stats — Projects section.
+	type FunnelMatrix = components['schemas']['StatsFunnelMatrix'];
+	type FraudRow = components['schemas']['StatsFunnelMatrixRow'];
+	const funnelMatrix = $derived<FunnelMatrix | null>(
+		stats ? (stats.reviewProjects.funnelMatrix ?? null) : null,
+	);
+	const finalApproved = $derived(funnelMatrix ? funnelMatrix.reviewApproved.fraudPassed : 0);
+	// Fraud-wins rule: any fraud-failed cell is a silent reject regardless of
+	// what the reviewer recorded.
+	const finalSilentReject = $derived(
+		funnelMatrix
+			? funnelMatrix.reviewApproved.fraudFailed +
+					funnelMatrix.reviewPending.fraudFailed +
+					funnelMatrix.reviewRejected.fraudFailed
+			: 0,
+	);
+	const finalInFlight = $derived(
+		funnelMatrix
+			? funnelMatrix.reviewApproved.fraudPending +
+					funnelMatrix.reviewPending.fraudPassed +
+					funnelMatrix.reviewPending.fraudPending
+			: 0,
+	);
+	const finalRejected = $derived(
+		funnelMatrix
+			? funnelMatrix.reviewRejected.fraudPassed +
+					funnelMatrix.reviewRejected.fraudPending
+			: 0,
+	);
+
+	type MatrixCellMeaning =
+		| 'approved'
+		| 'silent-reject'
+		| 'awaiting-fraud'
+		| 'awaiting-review'
+		| 'awaiting-both'
+		| 'rejected';
+
+	const matrixRows = $derived<
+		{
+			key: keyof FunnelMatrix;
+			label: string;
+			data: FraudRow;
+			cellMeaning: Record<keyof FraudRow, MatrixCellMeaning>;
+		}[]
+	>(
+		funnelMatrix
+			? [
+					{
+						key: 'reviewApproved',
+						label: 'Reviewer: approved',
+						data: funnelMatrix.reviewApproved,
+						cellMeaning: {
+							fraudPassed: 'approved',
+							fraudPending: 'awaiting-fraud',
+							fraudFailed: 'silent-reject',
+						},
+					},
+					{
+						key: 'reviewPending',
+						label: 'Reviewer: pending',
+						data: funnelMatrix.reviewPending,
+						cellMeaning: {
+							fraudPassed: 'awaiting-review',
+							fraudPending: 'awaiting-both',
+							// Fraud failed before reviewer acted — the state machine
+							// removes it from the queue and silent-rejects it.
+							fraudFailed: 'silent-reject',
+						},
+					},
+					{
+						key: 'reviewRejected',
+						label: 'Reviewer: rejected',
+						data: funnelMatrix.reviewRejected,
+						cellMeaning: {
+							fraudPassed: 'rejected',
+							fraudPending: 'rejected',
+							// Fraud-wins rule: a fraud failure silent-rejects regardless of
+							// what the reviewer recorded.
+							fraudFailed: 'silent-reject',
+						},
+					},
+				]
+			: [],
+	);
+
+	function cellStyle(meaning: MatrixCellMeaning) {
+		switch (meaning) {
+			case 'approved':
+				return 'bg-green-500/15 border-green-500 text-green-700';
+			case 'silent-reject':
+				return 'bg-orange-500/15 border-orange-500 text-orange-700';
+			case 'awaiting-fraud':
+			case 'awaiting-review':
+			case 'awaiting-both':
+				return 'bg-yellow-500/15 border-yellow-500 text-yellow-800';
+			case 'rejected':
+				return 'bg-red-500/15 border-red-500 text-red-700';
+		}
+	}
+	function cellLabel(meaning: MatrixCellMeaning) {
+		switch (meaning) {
+			case 'approved':
+				return 'Final approved';
+			case 'silent-reject':
+				return 'Silent reject';
+			case 'awaiting-fraud':
+				return 'Awaiting fraud';
+			case 'awaiting-review':
+				return 'Awaiting reviewer';
+			case 'awaiting-both':
+				return 'Awaiting both';
+			case 'rejected':
+				return 'Rejected';
+		}
+	}
 
 	// Chart instances for cleanup
 	let charts: EChart[] = [];
@@ -30,6 +152,7 @@
 	let projectsReviewedEl = $state<HTMLDivElement | null>(null);
 	let signupsEl = $state<HTMLDivElement | null>(null);
 	let signupMapEl = $state<HTMLDivElement | null>(null);
+	let signupQualificationEl = $state<HTMLDivElement | null>(null);
 	let utmEl = $state<HTMLDivElement | null>(null);
 
 	onMount(() => {
@@ -40,7 +163,6 @@
 	onDestroy(() => {
 		charts.forEach((c) => c.dispose());
 		charts = [];
-		if (leafletMap) { leafletMap.remove(); leafletMap = null; }
 		if (typeof window !== 'undefined') window.removeEventListener('resize', handleResize);
 	});
 
@@ -111,6 +233,7 @@
 		renderProjectFunnel();
 		renderProjectsMultiLine();
 		renderLineChart(signupsEl, stats.historical.newSignups, '#22c55e', 'rgba(34,197,94,0.15)');
+		renderSignupQualificationChart();
 		renderSignupMap();
 		renderUtmChart();
 	}
@@ -258,114 +381,102 @@
 		svg.appendChild(ySubLabel);
 	}
 
+	// Render a Sankey flow showing how projects move through the two independent
+	// gates. Left column = Shipped. Middle = Fraud gate (passed / pending / failed).
+	// Right = Review gate (approved / pending / rejected). Link widths reflect
+	// project counts, using the project's most recent submission for review state.
 	function renderProjectFunnel() {
-		if (!projectFunnelEl || !stats) return;
-		projectFunnelEl.innerHTML = '';
+		const chart = initChart(projectFunnelEl);
+		if (!chart || !stats) return;
 
-		const rp = stats.reviewProjects;
-		const total = rp.shipped || 1;
+		const m = stats.reviewProjects.funnelMatrix;
+		if (!m) return;
+		const dark = isDark();
+		const axis = textColor();
 
-		const stages = [
-			{ value: rp.shipped, name: 'Shipped' },
-			{ value: rp.fraudChecked, name: 'Fraud\nChecked' },
-			{ value: rp.reviewed, name: 'Reviewed' },
-			{ value: rp.approved, name: 'Approved' },
+		// Colors per gate state
+		const greenBg = dark ? '#22c55e' : '#16a34a';
+		const yellowBg = dark ? '#eab308' : '#ca8a04';
+		const redBg = dark ? '#ef4444' : '#dc2626';
+		const blueBg = dark ? '#60a5fa' : '#3b82f6';
+
+		const shippedTotal =
+			m.reviewApproved.fraudPassed + m.reviewApproved.fraudFailed + m.reviewApproved.fraudPending +
+			m.reviewPending.fraudPassed + m.reviewPending.fraudFailed + m.reviewPending.fraudPending +
+			m.reviewRejected.fraudPassed + m.reviewRejected.fraudFailed + m.reviewRejected.fraudPending;
+
+		const fraudPassedTotal = m.reviewApproved.fraudPassed + m.reviewPending.fraudPassed + m.reviewRejected.fraudPassed;
+		const fraudPendingTotal = m.reviewApproved.fraudPending + m.reviewPending.fraudPending + m.reviewRejected.fraudPending;
+		const fraudFailedTotal = m.reviewApproved.fraudFailed + m.reviewPending.fraudFailed + m.reviewRejected.fraudFailed;
+
+		// Fraud-wins rule: anything that fails fraud terminates at Silent reject,
+		// no matter what the reviewer recorded. So fraud-failed flow bypasses the
+		// reviewer column entirely. The reviewer column only counts fraud-passed
+		// and fraud-pending projects.
+		const reviewerApprovedTotal = m.reviewApproved.fraudPassed + m.reviewApproved.fraudPending;
+		const reviewerPendingTotal = m.reviewPending.fraudPassed + m.reviewPending.fraudPending;
+		const reviewerRejectedTotal = m.reviewRejected.fraudPassed + m.reviewRejected.fraudPending;
+
+		const orangeBg = dark ? '#fb923c' : '#ea580c';
+
+		const nodes = [
+			{ name: `Shipped\n${shippedTotal}`, itemStyle: { color: blueBg } },
+			{ name: `Fraud: passed\n${fraudPassedTotal}`, itemStyle: { color: greenBg } },
+			{ name: `Fraud: pending\n${fraudPendingTotal}`, itemStyle: { color: yellowBg } },
+			{ name: `Fraud: failed\n${fraudFailedTotal}`, itemStyle: { color: redBg } },
+			{ name: `Reviewer: approved\n${reviewerApprovedTotal}`, itemStyle: { color: greenBg } },
+			{ name: `Reviewer: pending\n${reviewerPendingTotal}`, itemStyle: { color: yellowBg } },
+			{ name: `Reviewer: rejected\n${reviewerRejectedTotal}`, itemStyle: { color: redBg } },
+			{ name: `Silent reject\n${fraudFailedTotal}`, itemStyle: { color: orangeBg } },
 		];
 
-		const w = projectFunnelEl.clientWidth;
-		const h = projectFunnelEl.clientHeight || 220;
-		const dark = isDark();
-		const fill = dark ? '#818cf8' : '#6366f1';
-		const labelColor = dark ? '#e2e8f0' : '#334155';
-		const dimLabel = dark ? '#94a3b8' : '#64748b';
+		const links = [
+			// Shipped → Fraud gate
+			{ source: nodes[0].name, target: nodes[1].name, value: fraudPassedTotal || 0.0001 },
+			{ source: nodes[0].name, target: nodes[2].name, value: fraudPendingTotal || 0.0001 },
+			{ source: nodes[0].name, target: nodes[3].name, value: fraudFailedTotal || 0.0001 },
+			// Fraud passed → Reviewer
+			{ source: nodes[1].name, target: nodes[4].name, value: m.reviewApproved.fraudPassed || 0.0001 },
+			{ source: nodes[1].name, target: nodes[5].name, value: m.reviewPending.fraudPassed || 0.0001 },
+			{ source: nodes[1].name, target: nodes[6].name, value: m.reviewRejected.fraudPassed || 0.0001 },
+			// Fraud pending → Reviewer
+			{ source: nodes[2].name, target: nodes[4].name, value: m.reviewApproved.fraudPending || 0.0001 },
+			{ source: nodes[2].name, target: nodes[5].name, value: m.reviewPending.fraudPending || 0.0001 },
+			{ source: nodes[2].name, target: nodes[6].name, value: m.reviewRejected.fraudPending || 0.0001 },
+			// Fraud failed → Silent reject (terminal — reviewer outcome is moot)
+			{ source: nodes[3].name, target: nodes[7].name, value: fraudFailedTotal || 0.0001 },
+		];
 
-		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		svg.setAttribute('width', String(w));
-		svg.setAttribute('height', String(h));
-		svg.style.display = 'block';
-		projectFunnelEl.appendChild(svg);
-
-		const n = stages.length;
-		const headerH = 32;
-		const footerH = 38;
-		const bodyTop = headerH;
-		const bodyBottom = h - footerH;
-		const bodyH = bodyBottom - bodyTop;
-		const midY = bodyTop + bodyH / 2;
-		const maxHalfH = bodyH / 2;
-		const colW = w / n;
-		const minHalfH = 2;
-
-		const halfHeights = stages.map((s) => {
-			const ratio = total > 0 ? s.value / total : 0;
-			return Math.max(minHalfH, ratio * maxHalfH);
+		chart.setOption({
+			backgroundColor: 'transparent',
+			tooltip: {
+				trigger: 'item',
+				triggerOn: 'mousemove',
+				formatter: (p: any) => {
+					if (p.dataType === 'edge') {
+						return `${p.data.source.split('\n')[0]} → ${p.data.target.split('\n')[0]}<br/><b>${Math.round(p.data.value).toLocaleString()}</b> projects`;
+					}
+					return `<b>${p.name.split('\n')[0]}</b><br/>${p.name.split('\n')[1]} projects`;
+				},
+			},
+			series: [
+				{
+					type: 'sankey',
+					left: 8,
+					right: 160,
+					top: 8,
+					bottom: 8,
+					nodeWidth: 18,
+					nodeGap: 12,
+					draggable: false,
+					data: nodes,
+					links,
+					lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.5 },
+					label: { color: axis, fontSize: 11, fontWeight: 600 },
+					emphasis: { focus: 'adjacency' },
+				},
+			],
 		});
-
-		const topPoints: string[] = [];
-		const bottomPoints: string[] = [];
-		for (let i = 0; i < n; i++) {
-			const cx = colW * i + colW / 2;
-			topPoints.push(`${cx},${midY - halfHeights[i]}`);
-			bottomPoints.push(`${cx},${midY + halfHeights[i]}`);
-		}
-		const polyPoints = [...topPoints, ...bottomPoints.reverse()].join(' ');
-		const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-		polygon.setAttribute('points', polyPoints);
-		polygon.setAttribute('fill', fill);
-		polygon.setAttribute('opacity', '0.85');
-		svg.appendChild(polygon);
-
-		for (let i = 0; i < n; i++) {
-			const cx = colW * i + colW / 2;
-			const leftX = colW * i;
-			const pct = total > 0 ? ((stages[i].value / total) * 100).toFixed(1) : '0.0';
-
-			if (i > 0) {
-				const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-				line.setAttribute('x1', String(leftX));
-				line.setAttribute('y1', String(bodyTop));
-				line.setAttribute('x2', String(leftX));
-				line.setAttribute('y2', String(bodyBottom));
-				line.setAttribute('stroke', dark ? '#475569' : '#cbd5e1');
-				line.setAttribute('stroke-width', '1');
-				line.setAttribute('stroke-dasharray', '3,3');
-				line.setAttribute('opacity', '0.5');
-				svg.appendChild(line);
-			}
-
-			const headerLines = stages[i].name.split('\n');
-			for (let li = 0; li < headerLines.length; li++) {
-				const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-				text.setAttribute('x', String(cx));
-				text.setAttribute('y', String(4 + li * 13));
-				text.setAttribute('text-anchor', 'middle');
-				text.setAttribute('dominant-baseline', 'hanging');
-				text.setAttribute('fill', labelColor);
-				text.setAttribute('font-size', '11');
-				text.setAttribute('font-weight', '600');
-				text.textContent = headerLines[li];
-				svg.appendChild(text);
-			}
-
-			const pctText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-			pctText.setAttribute('x', String(cx));
-			pctText.setAttribute('y', String(bodyBottom + 12));
-			pctText.setAttribute('text-anchor', 'middle');
-			pctText.setAttribute('fill', dimLabel);
-			pctText.setAttribute('font-size', '10');
-			pctText.textContent = `${pct}%`;
-			svg.appendChild(pctText);
-
-			const countText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-			countText.setAttribute('x', String(cx));
-			countText.setAttribute('y', String(bodyBottom + 26));
-			countText.setAttribute('text-anchor', 'middle');
-			countText.setAttribute('fill', labelColor);
-			countText.setAttribute('font-size', '11');
-			countText.setAttribute('font-weight', '700');
-			countText.textContent = stages[i].value.toLocaleString();
-			svg.appendChild(countText);
-		}
 	}
 
 	function renderLineChart(
@@ -516,148 +627,303 @@
 		});
 	}
 
+	// ISO 3166-1 alpha-2 → Natural Earth country name (matches world-atlas
+	// `properties.name`). Covers the codes most likely to appear in user data;
+	// unknown codes pass through unchanged so the GeoJSON's own name still
+	// works for full names like "United States".
+	const COUNTRY_NAME_BY_CODE: Record<string, string> = {
+		AE: 'United Arab Emirates', AF: 'Afghanistan', AL: 'Albania', AM: 'Armenia',
+		AO: 'Angola', AR: 'Argentina', AT: 'Austria', AU: 'Australia',
+		AZ: 'Azerbaijan', BA: 'Bosnia and Herz.', BD: 'Bangladesh', BE: 'Belgium',
+		BG: 'Bulgaria', BH: 'Bahrain', BJ: 'Benin', BO: 'Bolivia',
+		BR: 'Brazil', BW: 'Botswana', BY: 'Belarus', CA: 'Canada',
+		CD: 'Dem. Rep. Congo', CF: 'Central African Rep.', CG: 'Congo', CH: 'Switzerland',
+		CI: "Côte d'Ivoire", CL: 'Chile', CM: 'Cameroon', CN: 'China',
+		CO: 'Colombia', CR: 'Costa Rica', CU: 'Cuba', CY: 'Cyprus',
+		CZ: 'Czechia', DE: 'Germany', DK: 'Denmark', DO: 'Dominican Rep.',
+		DZ: 'Algeria', EC: 'Ecuador', EE: 'Estonia', EG: 'Egypt',
+		ER: 'Eritrea', ES: 'Spain', ET: 'Ethiopia', FI: 'Finland',
+		FR: 'France', GA: 'Gabon', GB: 'United Kingdom', GE: 'Georgia',
+		GH: 'Ghana', GN: 'Guinea', GR: 'Greece', GT: 'Guatemala',
+		HK: 'Hong Kong', HN: 'Honduras', HR: 'Croatia', HT: 'Haiti',
+		HU: 'Hungary', ID: 'Indonesia', IE: 'Ireland', IL: 'Israel',
+		IN: 'India', IQ: 'Iraq', IR: 'Iran', IS: 'Iceland',
+		IT: 'Italy', JM: 'Jamaica', JO: 'Jordan', JP: 'Japan',
+		KE: 'Kenya', KG: 'Kyrgyzstan', KH: 'Cambodia', KP: 'North Korea',
+		KR: 'South Korea', KW: 'Kuwait', KZ: 'Kazakhstan', LA: 'Laos',
+		LB: 'Lebanon', LK: 'Sri Lanka', LT: 'Lithuania', LU: 'Luxembourg',
+		LV: 'Latvia', LY: 'Libya', MA: 'Morocco', MD: 'Moldova',
+		ME: 'Montenegro', MG: 'Madagascar', MK: 'North Macedonia', ML: 'Mali',
+		MM: 'Myanmar', MN: 'Mongolia', MR: 'Mauritania', MT: 'Malta',
+		MU: 'Mauritius', MW: 'Malawi', MX: 'Mexico', MY: 'Malaysia',
+		MZ: 'Mozambique', NA: 'Namibia', NE: 'Niger', NG: 'Nigeria',
+		NI: 'Nicaragua', NL: 'Netherlands', NO: 'Norway', NP: 'Nepal',
+		NZ: 'New Zealand', OM: 'Oman', PA: 'Panama', PE: 'Peru',
+		PG: 'Papua New Guinea', PH: 'Philippines', PK: 'Pakistan', PL: 'Poland',
+		PR: 'Puerto Rico', PT: 'Portugal', PY: 'Paraguay', QA: 'Qatar',
+		RO: 'Romania', RS: 'Serbia', RU: 'Russia', RW: 'Rwanda',
+		SA: 'Saudi Arabia', SD: 'Sudan', SE: 'Sweden', SG: 'Singapore',
+		SI: 'Slovenia', SK: 'Slovakia', SL: 'Sierra Leone', SN: 'Senegal',
+		SO: 'Somalia', SR: 'Suriname', SS: 'S. Sudan', SV: 'El Salvador',
+		SY: 'Syria', SZ: 'eSwatini', TD: 'Chad', TG: 'Togo',
+		TH: 'Thailand', TJ: 'Tajikistan', TM: 'Turkmenistan', TN: 'Tunisia',
+		TR: 'Turkey', TT: 'Trinidad and Tobago', TW: 'Taiwan', TZ: 'Tanzania',
+		UA: 'Ukraine', UG: 'Uganda', US: 'United States of America', UY: 'Uruguay',
+		UZ: 'Uzbekistan', VE: 'Venezuela', VN: 'Vietnam', YE: 'Yemen',
+		ZA: 'South Africa', ZM: 'Zambia', ZW: 'Zimbabwe',
+	};
+
+	function normalizeCountry(value: string): string {
+		const trimmed = value.trim();
+		const upper = trimmed.toUpperCase();
+		return COUNTRY_NAME_BY_CODE[upper] ?? trimmed;
+	}
+
+	async function ensureWorldMap() {
+		if (worldMapRegistered) return;
+		const [topojson, worldData, antimeridianCutMod] = await Promise.all([
+			import('topojson-client'),
+			import('world-atlas/countries-110m.json'),
+			// @ts-expect-error — package ships no type declarations.
+			import('geojson-antimeridian-cut'),
+		]);
+		const data = (worldData as any).default ?? worldData;
+		const geo = topojson.feature(data, data.objects.countries) as any;
+		const antimeridianCut =
+			(antimeridianCutMod as any).default ?? (antimeridianCutMod as any);
+		for (const feature of geo.features) {
+			try {
+				feature.geometry = antimeridianCut(feature.geometry);
+			} catch {
+				/* leave as-is if the cut fails */
+			}
+			if (feature.properties?.name) validCountryNames.add(feature.properties.name);
+		}
+		echarts.registerMap('world', geo);
+		worldMapRegistered = true;
+	}
+
 	async function renderSignupMap() {
 		if (!signupMapEl || !stats) return;
+		await ensureWorldMap();
 
-		if (!L) L = (await import('leaflet')).default;
+		const chart = initChart(signupMapEl);
+		if (!chart) return;
 
-		const routes = stats.signups.routes;
 		const dark = isDark();
-		const tileUrl = dark
-			? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-			: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+		const routes = selectedEventFilter === 'all'
+			? stats.signups.routes
+			: stats.signups.routes.filter((r) => r.eventTitle === selectedEventFilter);
 
-		// Destroy previous map
-		if (leafletMap) {
-			leafletMap.remove();
-			leafletMap = null;
-		}
-		signupMapEl.innerHTML = '';
-
-		leafletMap = L.map(signupMapEl, {
-			center: [20, 0],
-			zoom: 2,
-			minZoom: 2,
-			maxZoom: 6,
-			zoomControl: true,
-			attributionControl: false,
-		});
-
-		L.tileLayer(tileUrl, {
-			attribution: '&copy; OpenStreetMap &copy; CARTO',
-			detectRetina: true,
-		}).addTo(leafletMap);
-
-		// Collect origins and destinations from API-provided coordinates
-		const originsMap = new Map<string, { lat: number; lng: number; total: number }>();
-		const destsMap = new Map<string, { lat: number; lng: number; total: number; title: string }>();
-
+		const originCounts = new Map<string, number>();
+		const eventCountries = new Map<string, { titles: Set<string>; total: number }>();
+		const unmatchedOrigin = new Set<string>();
+		const unmatchedEvent = new Set<string>();
 		for (const route of routes) {
-			if (route.originLat == null || route.originLng == null) continue;
-			if (route.eventLat == null || route.eventLng == null) continue;
+			const origin = normalizeCountry(route.originCountry);
+			if (!validCountryNames.has(origin)) unmatchedOrigin.add(route.originCountry);
+			originCounts.set(origin, (originCounts.get(origin) ?? 0) + route.count);
 
-			const oKey = route.originCountry.toLowerCase();
-			if (!originsMap.has(oKey)) originsMap.set(oKey, { lat: route.originLat, lng: route.originLng, total: 0 });
-			originsMap.get(oKey)!.total += route.count;
-
-			const dKey = route.eventCountry.toLowerCase();
-			if (!destsMap.has(dKey)) destsMap.set(dKey, { lat: route.eventLat, lng: route.eventLng, total: 0, title: route.eventTitle });
-			destsMap.get(dKey)!.total += route.count;
-		}
-
-		const maxCount = Math.max(...[...originsMap.values(), ...destsMap.values()].map((v) => v.total), 1);
-
-		// Draw route arcs
-		for (const route of routes) {
-			if (route.originLat == null || route.originLng == null) continue;
-			if (route.eventLat == null || route.eventLng == null) continue;
-
-			const fromLat = route.originLat, fromLng = route.originLng;
-			const toLat = route.eventLat, toLng = route.eventLng;
-			const sameCountry = route.originCountry.toLowerCase().trim() === route.eventCountry.toLowerCase().trim()
-				|| (fromLat === toLat && fromLng === toLng);
-
-			// Same country — skip the line, info shown in destination popup
-			if (sameCountry) continue;
-
-			const weight = Math.max(1.5, Math.min(4, (route.count / maxCount) * 5));
-			const color = dark ? 'rgba(96,165,250,0.6)' : 'rgba(37,99,235,0.5)';
-			const tooltip = `${route.originCountry} → ${route.eventTitle}<br/>${route.count} user${route.count !== 1 ? 's' : ''}`;
-
-			// Quadratic bezier curve
-			const midLat = (fromLat + toLat) / 2 + Math.abs(fromLng - toLng) * 0.12;
-			const midLng = (fromLng + toLng) / 2;
-			const points: [number, number][] = [];
-			for (let t = 0; t <= 1; t += 0.04) {
-				const lat = (1 - t) * (1 - t) * fromLat + 2 * (1 - t) * t * midLat + t * t * toLat;
-				const lng = (1 - t) * (1 - t) * fromLng + 2 * (1 - t) * t * midLng + t * t * toLng;
-				points.push([lat, lng]);
+			if (route.eventCountry) {
+				const eventName = normalizeCountry(route.eventCountry);
+				if (!validCountryNames.has(eventName)) unmatchedEvent.add(route.eventCountry);
+				const ev = eventCountries.get(eventName) ?? { titles: new Set<string>(), total: 0 };
+				ev.titles.add(route.eventTitle);
+				ev.total += route.count;
+				eventCountries.set(eventName, ev);
 			}
-
-			L.polyline(points, { color, weight, opacity: 0.7 })
-				.bindTooltip(tooltip, { sticky: true })
-				.addTo(leafletMap);
 		}
+		unmatchedOriginCountries = [...unmatchedOrigin].sort();
+		unmatchedEventCountries = [...unmatchedEvent].sort();
 
-		// Origin markers (blue)
-		for (const [name, { lat, lng, total }] of originsMap) {
-			const r = Math.max(5, Math.min(14, (total / maxCount) * 16));
-			L.circleMarker([lat, lng], {
-				radius: r,
-				fillColor: dark ? '#60a5fa' : '#3b82f6',
-				fillOpacity: 0.85,
-				color: '#fff',
-				weight: 1,
-			})
-				.bindTooltip(`${name} — ${total} user${total !== 1 ? 's' : ''}`)
-				.addTo(leafletMap);
-		}
+		const choroplethData = [...originCounts].map(([name, value]) => ({ name, value }));
+		const maxCount = choroplethData.reduce((m, d) => Math.max(m, d.value), 1);
 
-		// Build per-event breakdown by origin country
-		const eventBreakdown = new Map<string, { origin: string; count: number }[]>();
-		for (const route of routes) {
-			const dKey = route.eventCountry.toLowerCase().trim();
-			if (!eventBreakdown.has(dKey)) eventBreakdown.set(dKey, []);
-			eventBreakdown.get(dKey)!.push({ origin: route.originCountry, count: route.count });
-		}
+		// Highlight event-host countries with a regions override (orange).
+		const eventRegionStyle = dark
+			? { areaColor: '#ea580c', borderColor: '#fb923c' }
+			: { areaColor: '#fb923c', borderColor: '#ea580c' };
+		const regions = [...eventCountries].map(([name]) => ({
+			name,
+			itemStyle: eventRegionStyle,
+			emphasis: { itemStyle: eventRegionStyle },
+		}));
 
-		// Destination markers (orange, larger) with breakdown tooltip
-		for (const [dKey, { lat, lng, total, title }] of destsMap) {
-			const r = Math.max(8, Math.min(18, (total / maxCount) * 20));
-			const breakdown = (eventBreakdown.get(dKey) || [])
-				.sort((a, b) => b.count - a.count)
-				.map((r) => `From ${r.origin}: ${r.count}`)
-				.join('<br/>');
-			const tooltipHtml = `<b>${title}</b> — ${total} attendee${total !== 1 ? 's' : ''}<br/><hr style="margin:4px 0;border-color:${dark ? '#475569' : '#e2e8f0'}">${breakdown}`;
+		chart.setOption({
+			backgroundColor: bgColor(),
+			tooltip: {
+				trigger: 'item',
+				formatter: (p: any) => {
+					const ev = eventCountries.get(p.name);
+					const origin = originCounts.get(p.name) ?? 0;
+					const lines = [`<b>${p.name}</b>`];
+					if (origin > 0) {
+						lines.push(`Signups originating: ${origin}`);
+					}
+					if (ev) {
+						lines.push(
+							`Hosts ${ev.titles.size} event${ev.titles.size === 1 ? '' : 's'} (${ev.total} attendee${ev.total === 1 ? '' : 's'})`,
+						);
+					}
+					return origin > 0 || ev ? lines.join('<br/>') : `<b>${p.name}</b><br/>No signups`;
+				},
+			},
+			visualMap: {
+				left: 12,
+				bottom: 12,
+				min: 0,
+				max: maxCount,
+				calculable: false,
+				orient: 'horizontal',
+				// Neutral gray → green so the choropleth doesn't fight with the
+				// blue accents used elsewhere on the dashboard.
+				inRange: {
+					color: dark
+						? ['#1e293b', '#16a34a', '#86efac']
+						: ['#f1f5f9', '#22c55e', '#15803d'],
+				},
+				textStyle: { color: dimColor(), fontSize: 10 },
+				text: ['Many', 'Few'],
+				itemWidth: 10,
+				itemHeight: 80,
+			},
+			series: [
+				{
+					type: 'map',
+					map: 'world',
+					roam: true,
+					data: choroplethData,
+					regions,
+					itemStyle: {
+						areaColor: dark ? '#0f172a' : '#f8fafc',
+						borderColor: dark ? '#334155' : '#cbd5e1',
+						borderWidth: 0.5,
+					},
+					emphasis: {
+						label: { show: false },
+						itemStyle: { areaColor: dark ? '#475569' : '#cbd5e1' },
+					},
+					select: { disabled: true },
+					label: { show: false },
+				},
+			],
+		});
+	}
 
-			L.circleMarker([lat, lng], {
-				radius: r,
-				fillColor: dark ? '#fb923c' : '#ea580c',
-				fillOpacity: 0.9,
-				color: '#fff',
-				weight: 2,
-			})
-				.bindTooltip(`${title} (${total})`, {
-					permanent: true,
-					direction: 'top',
-					className: 'map-event-label',
-				})
-				.bindPopup(tooltipHtml)
-				.addTo(leafletMap);
-		}
+	function renderSignupQualificationChart() {
+		if (!stats || !stats.signups.qualification?.length) return;
+		const chart = initChart(signupQualificationEl);
+		if (!chart) return;
 
-		// Legend control
-		const legend = new L.Control({ position: 'bottomleft' });
-		legend.onAdd = () => {
-			const div = L.DomUtil.create('div', 'leaflet-legend');
-			div.style.cssText = `background:${dark ? 'rgba(15,23,42,0.85)' : 'rgba(255,255,255,0.9)'};padding:8px 12px;border-radius:6px;font-size:11px;line-height:1.8;color:${dark ? '#cbd5e1' : '#475569'};`;
-			div.innerHTML = `
-				<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dark ? '#60a5fa' : '#3b82f6'};margin-right:6px;vertical-align:middle;"></span>Origin<br>
-				<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dark ? '#fb923c' : '#ea580c'};margin-right:6px;vertical-align:middle;"></span>Event
-			`;
-			return div;
+		const data = stats.signups.qualification;
+		const dark = isDark();
+
+		// Three-segment funnel per event: Qualified (≥30h) ⊂ RSVPed (≥15h) ⊂ Signed up.
+		const qualifiedColor = dark ? '#16a34a' : '#15803d';
+		const rsvpedOnlyColor = dark ? '#60a5fa' : '#3b82f6';
+		const signedUpOnlyColor = dark ? '#475569' : '#e2e8f0';
+
+		const qualifiedData = data.map((d) => d.qualified);
+		const rsvpedOnlyData = data.map((d) => Math.max(0, d.rsvped - d.qualified));
+		const signedUpOnlyData = data.map((d) => Math.max(0, d.signedUp - d.rsvped));
+
+		const segmentLabel = (value: number, total: number) => {
+			if (!value || !total) return '';
+			const pct = (value / total) * 100;
+			return pct >= 8 ? `${value} (${pct.toFixed(0)}%)` : '';
 		};
-		legend.addTo(leafletMap);
+
+		chart.setOption({
+			backgroundColor: bgColor(),
+			grid: { left: 140, right: 60, top: 32, bottom: 8 },
+			legend: {
+				top: 0,
+				textStyle: { color: dimColor(), fontSize: 10 },
+				itemWidth: 14,
+				itemHeight: 8,
+				data: ['Qualified (≥30h)', 'RSVPed (≥15h)', 'Signed up'],
+			},
+			xAxis: {
+				type: 'value',
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				splitLine: { lineStyle: { color: gridColor(), type: 'dashed' } },
+				axisLine: { show: false },
+			},
+			yAxis: {
+				type: 'category',
+				data: data.map((d) => d.title),
+				axisLabel: { color: textColor(), fontSize: 11 },
+				axisLine: { lineStyle: { color: gridColor() } },
+				axisTick: { show: false },
+				inverse: true,
+			},
+			tooltip: {
+				trigger: 'axis',
+				axisPointer: { type: 'shadow' },
+				formatter: (params: any) => {
+					const idx = params[0].dataIndex;
+					const d = data[idx];
+					const rsvpPct = d.signedUp ? ((d.rsvped / d.signedUp) * 100).toFixed(1) : '0.0';
+					const qualPct = d.signedUp ? ((d.qualified / d.signedUp) * 100).toFixed(1) : '0.0';
+					return `<b>${d.title}</b><br/>`
+						+ `Signed up: ${d.signedUp} (100%)<br/>`
+						+ `RSVPed (≥15h): ${d.rsvped} (${rsvpPct}%)<br/>`
+						+ `Qualified (≥30h): ${d.qualified} (${qualPct}%)`;
+				},
+			},
+			series: [
+				{
+					name: 'Qualified (≥30h)',
+					type: 'bar',
+					stack: 'qualification',
+					data: qualifiedData,
+					barWidth: 22,
+					itemStyle: { color: qualifiedColor },
+					label: {
+						show: true,
+						position: 'inside',
+						color: '#fff',
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].signedUp),
+					},
+				},
+				{
+					name: 'RSVPed (≥15h)',
+					type: 'bar',
+					stack: 'qualification',
+					data: rsvpedOnlyData,
+					barWidth: 22,
+					itemStyle: { color: rsvpedOnlyColor },
+					label: {
+						show: true,
+						position: 'inside',
+						color: '#fff',
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].signedUp),
+					},
+				},
+				{
+					name: 'Signed up',
+					type: 'bar',
+					stack: 'qualification',
+					data: signedUpOnlyData,
+					barWidth: 22,
+					itemStyle: {
+						color: signedUpOnlyColor,
+						borderRadius: [0, 3, 3, 0],
+					},
+					label: {
+						show: true,
+						position: 'right',
+						color: dimColor(),
+						fontSize: 11,
+						formatter: (p: any) => String(data[p.dataIndex].signedUp),
+					},
+				},
+			],
+		});
 	}
 
 	function renderUtmChart() {
@@ -666,10 +932,34 @@
 		if (!chart) return;
 
 		const data = stats.utm.sources;
+		const dark = isDark();
+
+		const shippedColor = dark ? '#6d28d9' : '#6d28d9';
+		const onboardedColor = dark ? '#a78bfa' : '#a78bfa';
+		const remainderColor = dark ? '#475569' : '#e2e8f0';
+
+		const shippedData = data.map((d) => d.shipped10HoursCount);
+		const onboardedOnlyData = data.map((d) =>
+			Math.max(0, d.onboardedCount - d.shipped10HoursCount),
+		);
+		const notOnboardedData = data.map((d) => Math.max(0, d.count - d.onboardedCount));
+
+		const segmentLabel = (value: number, total: number) => {
+			if (!value || !total) return '';
+			const pct = (value / total) * 100;
+			return pct >= 8 ? `${value} (${pct.toFixed(0)}%)` : '';
+		};
 
 		chart.setOption({
 			backgroundColor: bgColor(),
-			grid: { left: 120, right: 40, top: 4, bottom: 4 },
+			grid: { left: 120, right: 60, top: 32, bottom: 8 },
+			legend: {
+				top: 0,
+				textStyle: { color: dimColor(), fontSize: 10 },
+				itemWidth: 14,
+				itemHeight: 8,
+				data: ['Shipped 10+ hrs', 'Onboarded', 'Not onboarded'],
+			},
 			xAxis: {
 				type: 'value',
 				axisLabel: { color: dimColor(), fontSize: 10 },
@@ -684,22 +974,72 @@
 				axisTick: { show: false },
 				inverse: true,
 			},
-			tooltip: { trigger: 'axis' },
-			series: [{
-				type: 'bar',
-				data: data.map((d) => d.count),
-				barWidth: 20,
-				itemStyle: {
-					color: isDark() ? '#a78bfa' : '#7c3aed',
-					borderRadius: [0, 3, 3, 0],
+			tooltip: {
+				trigger: 'axis',
+				axisPointer: { type: 'shadow' },
+				formatter: (params: any) => {
+					const idx = params[0].dataIndex;
+					const d = data[idx];
+					const onboardedPct = d.count ? ((d.onboardedCount / d.count) * 100).toFixed(1) : '0.0';
+					const shippedPct = d.count ? ((d.shipped10HoursCount / d.count) * 100).toFixed(1) : '0.0';
+					return `<b>${d.source}</b><br/>`
+						+ `Total: ${d.count}<br/>`
+						+ `Onboarded: ${d.onboardedCount} (${onboardedPct}%)<br/>`
+						+ `Shipped 10+ hrs: ${d.shipped10HoursCount} (${shippedPct}%)`;
 				},
-				label: {
-					show: true,
-					position: 'right',
-					color: dimColor(),
-					fontSize: 11,
+			},
+			series: [
+				{
+					name: 'Shipped 10+ hrs',
+					type: 'bar',
+					stack: 'utm',
+					data: shippedData,
+					barWidth: 22,
+					itemStyle: { color: shippedColor },
+					label: {
+						show: true,
+						position: 'inside',
+						color: '#fff',
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].count),
+					},
 				},
-			}],
+				{
+					name: 'Onboarded',
+					type: 'bar',
+					stack: 'utm',
+					data: onboardedOnlyData,
+					barWidth: 22,
+					itemStyle: { color: onboardedColor },
+					label: {
+						show: true,
+						position: 'inside',
+						color: '#fff',
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].count),
+					},
+				},
+				{
+					name: 'Not onboarded',
+					type: 'bar',
+					stack: 'utm',
+					data: notOnboardedData,
+					barWidth: 22,
+					itemStyle: {
+						color: remainderColor,
+						borderRadius: [0, 3, 3, 0],
+					},
+					label: {
+						show: true,
+						position: 'right',
+						color: dimColor(),
+						fontSize: 11,
+						formatter: (p: any) => String(data[p.dataIndex].count),
+					},
+				},
+			],
 		});
 	}
 
@@ -708,27 +1048,17 @@
 		$theme;
 		if (stats) tick().then(() => renderAll());
 	});
+
+	// Re-render the map when the event filter changes (cheap — only the map).
+	$effect(() => {
+		selectedEventFilter;
+		if (stats) tick().then(() => renderSignupMap());
+	});
+
+	const eventFilterOptions = $derived(
+		stats ? stats.signups.perEvent.map((e) => e.title) : [],
+	);
 </script>
-
-<svelte:head>
-	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-</svelte:head>
-
-<style>
-	:global(.map-event-label) {
-		background: none !important;
-		border: none !important;
-		box-shadow: none !important;
-		font-weight: 600;
-		font-size: 11px;
-		color: #c2410c;
-		text-shadow: 0 0 3px #fff, 0 0 3px #fff;
-	}
-	:global(.dark .map-event-label) {
-		color: #fdba74;
-		text-shadow: 0 0 3px #0f172a, 0 0 3px #0f172a;
-	}
-</style>
 
 <!-- Program Header -->
 <div class="relative h-[160px] w-full overflow-hidden bg-ds-banner">
@@ -802,8 +1132,8 @@
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Daily Active Users</h2>
 				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">DAUs today</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.dau.today)}</p>
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">DAUs yesterday</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.dau.yesterday)}</p>
 					</div>
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Avg. DAU in the past 7 days</p>
@@ -840,7 +1170,7 @@
 							<thead>
 								<tr class="border-b border-ds-border text-ds-text-secondary text-[11px] uppercase tracking-wide">
 									<th class="text-left px-4 py-2.5">Event</th>
-									<th class="text-right px-4 py-2.5 w-24">DAUs today</th>
+									<th class="text-right px-4 py-2.5 w-24">DAUs yesterday</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -930,9 +1260,55 @@
 			<!-- 5. Review Stats (Projects) -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Review Stats — Projects</h2>
+
+				<!-- Sankey: shipped → fraud gate → reviewer gate -->
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
-					<div bind:this={projectFunnelEl} style="height: 220px;"></div>
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Project flow through the two gates</p>
+					<div bind:this={projectFunnelEl} style="height: 320px;"></div>
 				</div>
+
+				<!-- 3×3 state matrix: reviewer × fraud, with derived final outcome per cell -->
+				{#if funnelMatrix}
+					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Where every project sits right now (latest submission)</p>
+						<div class="grid grid-cols-[max-content_repeat(3,minmax(0,1fr))] gap-2">
+							<div></div>
+							<div class="text-center text-[11px] font-semibold text-ds-text-secondary pb-1">Fraud: passed</div>
+							<div class="text-center text-[11px] font-semibold text-ds-text-secondary pb-1">Fraud: pending</div>
+							<div class="text-center text-[11px] font-semibold text-ds-text-secondary pb-1">Fraud: failed</div>
+							{#each matrixRows as row}
+								<div class="flex items-center text-[11px] font-semibold text-ds-text-secondary pr-3 whitespace-nowrap">{row.label}</div>
+								{#each ['fraudPassed', 'fraudPending', 'fraudFailed'] as const as fraudKey}
+									<div class={`rounded-md border px-3 py-2.5 ${cellStyle(row.cellMeaning[fraudKey])}`}>
+										<div class="text-[10px] font-semibold uppercase tracking-wide opacity-80">{cellLabel(row.cellMeaning[fraudKey])}</div>
+										<div class="text-lg font-bold">{formatCount(row.data[fraudKey])}</div>
+									</div>
+								{/each}
+							{/each}
+						</div>
+					</div>
+
+					<!-- Final-state totals derived from the matrix -->
+					<div class="grid gap-3 sm:grid-cols-4 mb-3">
+						<div class="space-y-1 rounded-lg border border-green-500/40 bg-green-500/5 p-4 shadow-[var(--color-ds-shadow)]">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-green-700">✓ Approved</p>
+							<p class="text-2xl font-bold text-ds-text">{formatCount(finalApproved)}</p>
+						</div>
+						<div class="space-y-1 rounded-lg border border-yellow-500/40 bg-yellow-500/5 p-4 shadow-[var(--color-ds-shadow)]">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-yellow-700">↻ In-flight</p>
+							<p class="text-2xl font-bold text-ds-text">{formatCount(finalInFlight)}</p>
+						</div>
+						<div class="space-y-1 rounded-lg border border-red-500/40 bg-red-500/5 p-4 shadow-[var(--color-ds-shadow)]">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-red-700">✗ Rejected</p>
+							<p class="text-2xl font-bold text-ds-text">{formatCount(finalRejected)}</p>
+						</div>
+						<div class="space-y-1 rounded-lg border border-orange-500/40 bg-orange-500/5 p-4 shadow-[var(--color-ds-shadow)]">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-orange-700">⚠ Silent reject</p>
+							<p class="text-2xl font-bold text-ds-text">{formatCount(finalSilentReject)}</p>
+						</div>
+					</div>
+				{/if}
+
 				<div class="grid gap-3 sm:grid-cols-3 mb-3">
 					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fraud Queue</p>
@@ -1009,9 +1385,50 @@
 						</div>
 					{/if}
 				</div>
+				{#if stats.signups.qualification.length > 0}
+					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Qualification Funnel by Event</p>
+						<div
+							bind:this={signupQualificationEl}
+							style="height: {Math.max(180, stats.signups.qualification.length * 38 + 48)}px;"
+						></div>
+					</div>
+				{/if}
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
-					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Signup Origins → Event Destinations</p>
+					<div class="mb-2 flex items-center justify-between gap-2">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Signup Origins → Event Destinations</p>
+						{#if eventFilterOptions.length > 0}
+							<select
+								bind:value={selectedEventFilter}
+								class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+							>
+								<option value="all">All events</option>
+								{#each eventFilterOptions as title}
+									<option value={title}>{title}</option>
+								{/each}
+							</select>
+						{/if}
+					</div>
 					<div bind:this={signupMapEl} style="width: 100%; height: 400px;"></div>
+					{#if stats.signups.signupsMissingOrigin > 0 || stats.signups.eventsMissingCountry.length > 0 || unmatchedOriginCountries.length > 0 || unmatchedEventCountries.length > 0}
+						<div class="mt-3 rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-800 dark:text-yellow-200">
+							<p class="font-semibold uppercase tracking-wide mb-1">Map data warnings</p>
+							<ul class="list-disc pl-4 space-y-0.5">
+								{#if stats.signups.signupsMissingOrigin > 0}
+									<li>{stats.signups.signupsMissingOrigin} signup{stats.signups.signupsMissingOrigin === 1 ? '' : 's'} not shown — origin country missing on the user.</li>
+								{/if}
+								{#if stats.signups.eventsMissingCountry.length > 0}
+									<li>Events with no host country set: {stats.signups.eventsMissingCountry.join(', ')}.</li>
+								{/if}
+								{#if unmatchedOriginCountries.length > 0}
+									<li>Origin country values that don't match a world country: {unmatchedOriginCountries.join(', ')}.</li>
+								{/if}
+								{#if unmatchedEventCountries.length > 0}
+									<li>Event country values that don't match a world country: {unmatchedEventCountries.join(', ')}.</li>
+								{/if}
+							</ul>
+						</div>
+					{/if}
 				</div>
 			</section>
 
@@ -1020,7 +1437,7 @@
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Referral Sources (UTM)</h2>
 				{#if stats.utm.sources.length > 0}
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<div bind:this={utmEl} style="height: {Math.max(120, stats.utm.sources.length * 32 + 8)}px;"></div>
+						<div bind:this={utmEl} style="height: {Math.max(180, stats.utm.sources.length * 38 + 48)}px;"></div>
 					</div>
 				{:else}
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-6 text-center text-ds-text-secondary text-sm">
