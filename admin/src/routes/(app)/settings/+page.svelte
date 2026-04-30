@@ -202,11 +202,11 @@
                             <p class="font-semibold text-ds-link">
                                 Submissions are currently frozen
                             </p>
-                            <p class="text-sm text-blue-400">
+                            <p class="text-sm text-blue-700 dark:text-blue-300">
                                 Users cannot submit or resubmit projects until unfrozen.
                             </p>
                             {#if globalSettings.submissionsFrozenAt}
-                                <p class="text-xs text-blue-500 mt-1">
+                                <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
                                     Frozen at: {formatDate(globalSettings.submissionsFrozenAt)}
                                     {#if globalSettings.submissionsFrozenBy}
                                         by {globalSettings.submissionsFrozenBy}
@@ -230,9 +230,9 @@
                 {recalcAllBusy ? 'Recalculating...' : 'Recalculate all projects'}
             </Button>
             {#if recalcError}
-                <span class="text-xs text-red-600">{recalcError}</span>
+                <span class="text-xs text-ds-red">{recalcError}</span>
             {:else if recalcMessage}
-                <span class="text-xs text-green-700">{recalcMessage}</span>
+                <span class="text-xs text-ds-green">{recalcMessage}</span>
             {/if}
         </div>
         <p class="text-sm text-ds-text-secondary">
@@ -264,9 +264,9 @@
                 {backfillBusy ? 'Running...' : 'Run Backfill'}
             </Button>
             {#if backfillError}
-                <span class="text-xs text-red-600">{backfillError}</span>
+                <span class="text-xs text-ds-red">{backfillError}</span>
             {:else if backfillMessage}
-                <span class="text-xs text-green-700">{backfillMessage}</span>
+                <span class="text-xs text-ds-green">{backfillMessage}</span>
             {/if}
         </div>
     </Card>
@@ -293,13 +293,13 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">#</th>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">Reviewer</th>
-                            <th class="px-4 py-3 text-center text-sm font-semibold text-green-700">Approved</th>
-                            <th class="px-4 py-3 text-center text-sm font-semibold text-red-600">Rejected</th>
-                            <th class="px-4 py-3 text-center text-sm font-semibold text-purple-400">Total</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-green-700 dark:text-green-300">Approved</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-red-700 dark:text-red-300">Rejected</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-purple-700 dark:text-purple-300">Total</th>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">Last Review</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-700">
+                    <tbody class="divide-y divide-ds-border-divider">
                         {#each reviewerLeaderboard as reviewer, index}
                             <tr
                                 class="hover:bg-ds-surface2/30 {index === 0
@@ -329,13 +329,13 @@
                                         {reviewer.email || `ID: ${reviewer.reviewerId}`}
                                     </p>
                                 </td>
-                                <td class="px-4 py-3 text-center text-sm font-semibold text-green-700">
+                                <td class="px-4 py-3 text-center text-sm font-semibold text-green-700 dark:text-green-300">
                                     {reviewer.approved}
                                 </td>
-                                <td class="px-4 py-3 text-center text-sm font-semibold text-red-600">
+                                <td class="px-4 py-3 text-center text-sm font-semibold text-red-700 dark:text-red-300">
                                     {reviewer.rejected}
                                 </td>
-                                <td class="px-4 py-3 text-center text-sm font-bold text-purple-400">
+                                <td class="px-4 py-3 text-center text-sm font-bold text-purple-700 dark:text-purple-300">
                                     {reviewer.total}
                                 </td>
                                 <td class="px-4 py-3 text-sm text-ds-text-secondary">
@@ -384,12 +384,12 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">User</th>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">Email</th>
-                            <th class="px-4 py-3 text-center text-sm font-semibold text-green-700">Approved Hours</th>
-                            <th class="px-4 py-3 text-center text-sm font-semibold text-yellow-600">Potential Hours</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-green-700 dark:text-green-300">Approved Hours</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-yellow-700 dark:text-yellow-300">Potential Hours</th>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">Reason</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-700">
+                    <tbody class="divide-y divide-ds-border-divider">
                         {#each priorityUsers as user}
                             <tr class="hover:bg-ds-surface2/30">
                                 <td class="px-4 py-3">
@@ -401,10 +401,10 @@
                                 <td class="px-4 py-3 text-sm text-ds-text-secondary">
                                     {user.email}
                                 </td>
-                                <td class="px-4 py-3 text-center text-sm font-semibold text-green-700">
+                                <td class="px-4 py-3 text-center text-sm font-semibold text-green-700 dark:text-green-300">
                                     {user.totalApprovedHours.toFixed(1)}
                                 </td>
-                                <td class="px-4 py-3 text-center text-sm font-semibold text-yellow-600">
+                                <td class="px-4 py-3 text-center text-sm font-semibold text-yellow-700 dark:text-yellow-300">
                                     {user.potentialHoursIfApproved.toFixed(1)}
                                 </td>
                                 <td class="px-4 py-3 text-sm text-ds-text-secondary">

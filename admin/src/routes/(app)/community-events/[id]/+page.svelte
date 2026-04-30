@@ -140,7 +140,7 @@
 			<p class="text-sm text-ds-text-secondary">Loading event...</p>
 		{:else if error}
 			<div class="flex flex-col items-start gap-2 py-8">
-				<p class="text-red-500">{error}</p>
+				<p class="text-ds-red">{error}</p>
 				<Button onclick={loadEvent}>Retry</Button>
 			</div>
 		{:else if event}
@@ -149,7 +149,7 @@
 					<div class="flex items-center gap-2">
 						<h1 class="text-2xl font-semibold text-ds-text">{event.name}</h1>
 						{#if !event.isActive}
-							<span class="rounded bg-red-600/20 px-1.5 py-0.5 text-xs text-red-500">Inactive</span>
+							<span class="rounded bg-red-600/20 px-1.5 py-0.5 text-xs text-red-700 dark:text-red-300">Inactive</span>
 						{/if}
 					</div>
 					<p class="text-xs text-ds-text-secondary">
@@ -252,7 +252,7 @@
 						</Button>
 						<Button onclick={() => { editing = false; populateEditForm(); }}>Cancel</Button>
 						{#if editError}
-							<span class="text-sm text-red-600">{editError}</span>
+							<span class="text-sm text-ds-red">{editError}</span>
 						{/if}
 					</div>
 				</div>

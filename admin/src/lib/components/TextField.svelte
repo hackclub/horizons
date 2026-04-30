@@ -17,8 +17,8 @@
 		bind:value
 		onfocus={() => (focused = true)}
 		onblur={() => (focused = false)}
-		class="w-full rounded-lg border border-ds-border py-2 px-3 font-dm text-sm text-black outline-none placeholder:text-ds-text-placeholder focus:border-ds-border-strong {focused || value
-			? 'bg-white'
+		class="w-full rounded-lg border border-ds-border py-2 px-3 font-dm text-sm text-ds-text outline-none placeholder:text-ds-text-placeholder focus:border-ds-border-strong {focused || value
+			? 'bg-ds-surface'
 			: 'bg-ds-surface-deselected'} {className}"
 		{...rest}
 	></textarea>
@@ -27,8 +27,8 @@
 		bind:value
 		onfocus={() => (focused = true)}
 		onblur={() => (focused = false)}
-		class="w-full rounded-lg border border-ds-border py-2 px-3 font-dm text-sm text-black outline-none placeholder:text-ds-text-placeholder focus:border-ds-border-strong {focused || value
-			? 'bg-white'
+		class="w-full rounded-lg border border-ds-border py-2 px-3 font-dm text-sm text-ds-text outline-none placeholder:text-ds-text-placeholder focus:border-ds-border-strong {focused || value
+			? 'bg-ds-surface'
 			: 'bg-ds-surface-deselected'} {className}"
 		{...rest}
 	/>

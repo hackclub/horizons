@@ -20,10 +20,10 @@
     const roleOptions = ['user', 'admin', 'reviewer', 'event_viewer'] as const;
 
     const roleBadgeClass: Record<string, string> = {
-        superadmin: 'bg-purple-600/20 border-purple-500 text-purple-400',
-        admin: 'bg-blue-600/20 border-blue-500 text-blue-400',
-        reviewer: 'bg-green-600/20 border-green-500 text-green-400',
-        event_viewer: 'bg-amber-600/20 border-amber-500 text-amber-400',
+        superadmin: 'bg-purple-600/20 border-purple-500 text-purple-700 dark:text-purple-300',
+        admin: 'bg-blue-600/20 border-blue-500 text-blue-700 dark:text-blue-300',
+        reviewer: 'bg-green-600/20 border-green-500 text-green-700 dark:text-green-300',
+        event_viewer: 'bg-amber-600/20 border-amber-500 text-amber-700 dark:text-amber-300',
         user: 'bg-ds-surface2 border-ds-border text-ds-text-secondary'
     };
 
@@ -168,14 +168,14 @@
                                     Make Reviewer
                                 </Button>
                                 <Button
-                                    class="bg-amber-600/20 border-amber-500 text-amber-400 hover:bg-amber-600/30"
+                                    class="bg-amber-600/20 border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-amber-600/30"
                                     onclick={() => updateRole(result.userId, 'event_viewer')}
                                     disabled={pendingChange?.userId === result.userId}
                                 >
                                     Make Event Viewer
                                 </Button>
                                 <Button
-                                    class="bg-blue-600/20 border-blue-500 text-blue-400 hover:bg-blue-600/30"
+                                    class="bg-blue-600/20 border-blue-500 text-blue-700 dark:text-blue-300 hover:bg-blue-600/30"
                                     onclick={() => updateRole(result.userId, 'admin')}
                                     disabled={pendingChange?.userId === result.userId}
                                 >
@@ -202,7 +202,7 @@
             {#if loading}
                 <p class="text-ds-text-secondary text-sm">Loading elevated users...</p>
             {:else if error}
-                <p class="text-red-400 text-sm">{error}</p>
+                <p class="text-ds-red text-sm">{error}</p>
             {:else if elevatedUsers.length === 0}
                 <p class="text-ds-text-placeholder text-sm">No elevated users found.</p>
             {:else}
@@ -225,7 +225,7 @@
                                             <th class="px-4 py-3 text-center text-sm font-semibold text-ds-text-secondary">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-gray-700">
+                                    <tbody class="divide-y divide-ds-border-divider">
                                         {#each group.users as user (user.userId)}
                                             <tr class="hover:bg-ds-surface2/30">
                                                 <td class="px-4 py-3">

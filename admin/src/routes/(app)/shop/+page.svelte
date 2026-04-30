@@ -686,10 +686,10 @@
                     </Button>
                 {/if}
                 {#if shopFormError}
-                    <span class="text-red-600 text-sm">{shopFormError}</span>
+                    <span class="text-ds-red text-sm">{shopFormError}</span>
                 {/if}
                 {#if shopFormSuccess}
-                    <span class="text-green-700 text-sm">{shopFormSuccess}</span>
+                    <span class="text-ds-green text-sm">{shopFormSuccess}</span>
                 {/if}
             </div>
 
@@ -706,13 +706,13 @@
                                 {/if}
                                 {#if !shop.isActive}
                                     <span
-                                        class="px-2 py-0.5 text-xs bg-red-900/50 text-red-600 rounded"
+                                        class="px-2 py-0.5 text-xs bg-red-500/20 border border-red-500/40 text-red-700 dark:text-red-300 rounded"
                                         >Inactive</span
                                     >
                                 {/if}
                                 {#if !shop.isPublic}
                                     <span
-                                        class="px-2 py-0.5 text-xs bg-yellow-900/50 text-yellow-600 rounded"
+                                        class="px-2 py-0.5 text-xs bg-yellow-500/20 border border-yellow-500/40 text-yellow-700 dark:text-yellow-300 rounded"
                                         >Hidden</span
                                     >
                                 {/if}
@@ -873,10 +873,10 @@
                         </Button>
                     {/if}
                     {#if shopItemError}
-                        <span class="text-red-600 text-sm">{shopItemError}</span>
+                        <span class="text-ds-red text-sm">{shopItemError}</span>
                     {/if}
                     {#if shopItemSuccess}
-                        <span class="text-green-700 text-sm">{shopItemSuccess}</span>
+                        <span class="text-ds-green text-sm">{shopItemSuccess}</span>
                     {/if}
                 </div>
             </Card>
@@ -911,14 +911,14 @@
                                             {item.name}
                                             {#if !item.isActive}
                                                 <span
-                                                    class="px-2 py-0.5 text-xs rounded bg-red-500/20 border border-red-400 text-red-600"
+                                                    class="px-2 py-0.5 text-xs rounded bg-red-500/20 border border-red-400 text-red-700 dark:text-red-300"
                                                     >Inactive</span
                                                 >
                                             {/if}
                                             {#if item.regions?.length}
                                                 {#each item.regions as region}
                                                     <span
-                                                        class="px-2 py-0.5 text-xs rounded bg-purple-500/20 border border-purple-400 text-purple-300"
+                                                        class="px-2 py-0.5 text-xs rounded bg-purple-500/20 border border-purple-400 text-purple-700 dark:text-purple-300"
                                                         >{region}</span
                                                     >
                                                 {/each}
@@ -1046,12 +1046,12 @@
                                                 </div>
                                             </div>
                                             {#if variantError}
-                                                <p class="text-red-600 text-xs">
+                                                <p class="text-ds-red text-xs">
                                                     {variantError}
                                                 </p>
                                             {/if}
                                             {#if variantSuccess}
-                                                <p class="text-green-700 text-xs">
+                                                <p class="text-ds-green text-xs">
                                                     {variantSuccess}
                                                 </p>
                                             {/if}
@@ -1073,7 +1073,7 @@
                                                         >
                                                         {#if !variant.isActive}
                                                             <span
-                                                                class="px-2 py-0.5 text-xs rounded bg-red-500/20 border border-red-400 text-red-600"
+                                                                class="px-2 py-0.5 text-xs rounded bg-red-500/20 border border-red-400 text-red-700 dark:text-red-300"
                                                                 >Inactive</span
                                                             >
                                                         {/if}
@@ -1224,7 +1224,7 @@
                                         {#if transaction.isFulfilled}
                                             <div class="flex flex-col gap-1">
                                                 <span
-                                                    class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 w-fit"
+                                                    class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 dark:text-green-300 w-fit"
                                                     >Fulfilled</span
                                                 >
                                                 {#if transaction.fulfilledAt}
@@ -1237,7 +1237,7 @@
                                             </div>
                                         {:else}
                                             <span
-                                                class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-600"
+                                                class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-700 dark:text-yellow-300"
                                                 >Pending</span
                                             >
                                         {/if}
@@ -1371,12 +1371,12 @@
                                         <div class="text-right">
                                             <p class="text-ds-text-secondary">Status</p>
                                             <p class="text-sm">
-                                                <span class="text-green-700"
+                                                <span class="text-ds-green"
                                                     >{userGroup.fulfilledCount} fulfilled</span
                                                 >
                                                 {#if userGroup.pendingCount > 0}
                                                     <span class="text-ds-text-placeholder"> / </span>
-                                                    <span class="text-yellow-600"
+                                                    <span class="text-yellow-700 dark:text-yellow-300"
                                                         >{userGroup.pendingCount} pending</span
                                                     >
                                                 {/if}
@@ -1434,7 +1434,7 @@
                                                 {#if transaction.isFulfilled}
                                                     <div class="flex flex-col gap-1">
                                                         <span
-                                                            class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 w-fit"
+                                                            class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 dark:text-green-300 w-fit"
                                                             >Fulfilled</span
                                                         >
                                                         {#if transaction.fulfilledAt}
@@ -1447,7 +1447,7 @@
                                                     </div>
                                                 {:else}
                                                     <span
-                                                        class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-600"
+                                                        class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-700 dark:text-yellow-300"
                                                         >Pending</span
                                                     >
                                                 {/if}
@@ -1523,7 +1523,7 @@
                                             <p class="text-ds-text-secondary">
                                                 Money Cost (only leo should use this - guesstimate)
                                             </p>
-                                            <p class="text-lg font-bold text-green-700">
+                                            <p class="text-lg font-bold text-ds-green">
                                                 ${(userGroup.totalCost * 10).toFixed(2)}
                                             </p>
                                         </div>

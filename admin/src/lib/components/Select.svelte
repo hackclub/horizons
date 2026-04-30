@@ -13,7 +13,7 @@
 
 <select
 	bind:value
-	class="rounded-lg border border-ds-border bg-ds-surface-deselected px-3 py-2 font-dm text-sm text-black outline-none focus:border-ds-border-strong {className}"
+	class="rounded-lg border border-ds-border bg-ds-surface-deselected px-3 py-2 font-dm text-sm text-ds-text outline-none focus:border-ds-border-strong {className}"
 	{...rest}
 >
 	{@render children()}

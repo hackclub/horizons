@@ -19,7 +19,7 @@
 <div class="flex self-stretch shrink-0 shadow-[var(--color-ds-shadow)] rounded-lg {className}">
 	{#each buttons as button, i}
 		<button
-			class="bg-white border border-ds-border px-2 flex items-center justify-center cursor-pointer hover:bg-ds-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed
+			class="bg-ds-surface border border-ds-border text-ds-text px-2 flex items-center justify-center cursor-pointer hover:bg-ds-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed
 				{i === 0 ? 'rounded-l-lg' : '-ml-px'}
 				{i === buttons.length - 1 ? 'rounded-r-lg' : ''}"
 			onclick={button.onclick}
