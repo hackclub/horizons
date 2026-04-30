@@ -56,7 +56,12 @@
 
 	let userName = $derived($userStore.userName);
 	let referralCode = $derived($userStore.referralCode);
-	let isAdmin = $derived($userStore.role === 'admin' || $userStore.role === 'superadmin');
+	let isAdmin = $derived(
+		$userStore.role === 'admin' ||
+			$userStore.role === 'superadmin' ||
+			$userStore.role === 'reviewer' ||
+			$userStore.role === 'event_viewer',
+	);
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 	let pinnedEventConfig = $state<EventConfig>(eventsMap['nexus']);
 	let pinnedEventSlug = $state<string>('nexus');

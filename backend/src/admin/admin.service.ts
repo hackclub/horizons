@@ -1556,7 +1556,7 @@ export class AdminService {
   async getElevatedUsers() {
     return this.prisma.user.findMany({
       where: {
-        role: { in: ['admin', 'reviewer', 'superadmin'] },
+        role: { in: ['admin', 'reviewer', 'event_viewer', 'superadmin'] },
       },
       select: {
         userId: true,
