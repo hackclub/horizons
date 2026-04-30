@@ -15,128 +15,12 @@
 	let stats = $state<Stats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let userRole = $state<string | null>(null);
 	let selectedEventFilter = $state<string>('all');
 	let unmatchedOriginCountries = $state<string[]>([]);
 	let unmatchedEventCountries = $state<string[]>([]);
 
 	const validCountryNames = new Set<string>();
-
-	// Derived state-matrix data for the Review Stats — Projects section.
-	type FunnelMatrix = components['schemas']['StatsFunnelMatrix'];
-	type FraudRow = components['schemas']['StatsFunnelMatrixRow'];
-	const funnelMatrix = $derived<FunnelMatrix | null>(
-		stats ? (stats.reviewProjects.funnelMatrix ?? null) : null,
-	);
-	const finalApproved = $derived(funnelMatrix ? funnelMatrix.reviewApproved.fraudPassed : 0);
-	// Fraud-wins rule: any fraud-failed cell is a silent reject regardless of
-	// what the reviewer recorded.
-	const finalSilentReject = $derived(
-		funnelMatrix
-			? funnelMatrix.reviewApproved.fraudFailed +
-					funnelMatrix.reviewPending.fraudFailed +
-					funnelMatrix.reviewRejected.fraudFailed
-			: 0,
-	);
-	const finalInFlight = $derived(
-		funnelMatrix
-			? funnelMatrix.reviewApproved.fraudPending +
-					funnelMatrix.reviewPending.fraudPassed +
-					funnelMatrix.reviewPending.fraudPending
-			: 0,
-	);
-	const finalRejected = $derived(
-		funnelMatrix
-			? funnelMatrix.reviewRejected.fraudPassed +
-					funnelMatrix.reviewRejected.fraudPending
-			: 0,
-	);
-
-	type MatrixCellMeaning =
-		| 'approved'
-		| 'silent-reject'
-		| 'awaiting-fraud'
-		| 'awaiting-review'
-		| 'awaiting-both'
-		| 'rejected';
-
-	const matrixRows = $derived<
-		{
-			key: keyof FunnelMatrix;
-			label: string;
-			data: FraudRow;
-			cellMeaning: Record<keyof FraudRow, MatrixCellMeaning>;
-		}[]
-	>(
-		funnelMatrix
-			? [
-					{
-						key: 'reviewApproved',
-						label: 'Reviewer: approved',
-						data: funnelMatrix.reviewApproved,
-						cellMeaning: {
-							fraudPassed: 'approved',
-							fraudPending: 'awaiting-fraud',
-							fraudFailed: 'silent-reject',
-						},
-					},
-					{
-						key: 'reviewPending',
-						label: 'Reviewer: pending',
-						data: funnelMatrix.reviewPending,
-						cellMeaning: {
-							fraudPassed: 'awaiting-review',
-							fraudPending: 'awaiting-both',
-							// Fraud failed before reviewer acted — the state machine
-							// removes it from the queue and silent-rejects it.
-							fraudFailed: 'silent-reject',
-						},
-					},
-					{
-						key: 'reviewRejected',
-						label: 'Reviewer: rejected',
-						data: funnelMatrix.reviewRejected,
-						cellMeaning: {
-							fraudPassed: 'rejected',
-							fraudPending: 'rejected',
-							// Fraud-wins rule: a fraud failure silent-rejects regardless of
-							// what the reviewer recorded.
-							fraudFailed: 'silent-reject',
-						},
-					},
-				]
-			: [],
-	);
-
-	function cellStyle(meaning: MatrixCellMeaning) {
-		switch (meaning) {
-			case 'approved':
-				return 'bg-green-500/15 border-green-500 text-green-700';
-			case 'silent-reject':
-				return 'bg-orange-500/15 border-orange-500 text-orange-700';
-			case 'awaiting-fraud':
-			case 'awaiting-review':
-			case 'awaiting-both':
-				return 'bg-yellow-500/15 border-yellow-500 text-yellow-800';
-			case 'rejected':
-				return 'bg-red-500/15 border-red-500 text-red-700';
-		}
-	}
-	function cellLabel(meaning: MatrixCellMeaning) {
-		switch (meaning) {
-			case 'approved':
-				return 'Final approved';
-			case 'silent-reject':
-				return 'Silent reject';
-			case 'awaiting-fraud':
-				return 'Awaiting fraud';
-			case 'awaiting-review':
-				return 'Awaiting reviewer';
-			case 'awaiting-both':
-				return 'Awaiting both';
-			case 'rejected':
-				return 'Rejected';
-		}
-	}
 
 	// Chart instances for cleanup
 	let charts: EChart[] = [];
@@ -146,18 +30,31 @@
 	let userGrowthEl = $state<HTMLDivElement | null>(null);
 	let dauEl = $state<HTMLDivElement | null>(null);
 	let dailyHoursEl = $state<HTMLDivElement | null>(null);
-	let medianReviewEl = $state<HTMLDivElement | null>(null);
-	let medianFraudCheckEl = $state<HTMLDivElement | null>(null);
-	let projectFunnelEl = $state<HTMLDivElement | null>(null);
-	let projectsReviewedEl = $state<HTMLDivElement | null>(null);
 	let signupsEl = $state<HTMLDivElement | null>(null);
 	let signupMapEl = $state<HTMLDivElement | null>(null);
 	let signupQualificationEl = $state<HTMLDivElement | null>(null);
+	let signupQualificationMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
 	let utmEl = $state<HTMLDivElement | null>(null);
 
-	onMount(() => {
+	let homeTab = $state<'users' | 'dau' | 'signups'>('users');
+
+	onMount(async () => {
+		const { data: me } = await api.GET('/api/user/auth/me');
+		userRole = me?.role ?? null;
 		loadStats();
 		window.addEventListener('resize', handleResize);
+	});
+
+	$effect(() => {
+		// Re-render qualification chart when mode toggle changes (after stats load).
+		signupQualificationMode;
+		if (stats && signupQualificationEl) renderSignupQualificationChart();
+	});
+
+	$effect(() => {
+		// Re-render charts when the tab changes so newly-mounted DOM nodes get bound.
+		homeTab;
+		if (stats) tick().then(() => renderAll());
 	});
 
 	onDestroy(() => {
@@ -228,10 +125,6 @@
 		renderLineChart(userGrowthEl, stats.historical.newSignups, '#3b82f6', 'rgba(59,130,246,0.15)');
 		renderLineChart(dauEl, stats.historical.dau, '#3b82f6', 'rgba(59,130,246,0.15)');
 		renderLineChart(dailyHoursEl, stats.historical.dailyHoursLogged, '#22c55e', 'rgba(34,197,94,0.15)', 'h');
-		renderLineChart(medianReviewEl, stats.historical.medianReviewTimeHours, '#f97316', 'rgba(249,115,22,0.15)', 'h');
-		renderLineChart(medianFraudCheckEl, stats.historical.medianFraudCheckTimeHours, '#ef4444', 'rgba(239,68,68,0.15)', 'h');
-		renderProjectFunnel();
-		renderProjectsMultiLine();
 		renderLineChart(signupsEl, stats.historical.newSignups, '#22c55e', 'rgba(34,197,94,0.15)');
 		renderSignupQualificationChart();
 		renderSignupMap();
@@ -381,104 +274,6 @@
 		svg.appendChild(ySubLabel);
 	}
 
-	// Render a Sankey flow showing how projects move through the two independent
-	// gates. Left column = Shipped. Middle = Fraud gate (passed / pending / failed).
-	// Right = Review gate (approved / pending / rejected). Link widths reflect
-	// project counts, using the project's most recent submission for review state.
-	function renderProjectFunnel() {
-		const chart = initChart(projectFunnelEl);
-		if (!chart || !stats) return;
-
-		const m = stats.reviewProjects.funnelMatrix;
-		if (!m) return;
-		const dark = isDark();
-		const axis = textColor();
-
-		// Colors per gate state
-		const greenBg = dark ? '#22c55e' : '#16a34a';
-		const yellowBg = dark ? '#eab308' : '#ca8a04';
-		const redBg = dark ? '#ef4444' : '#dc2626';
-		const blueBg = dark ? '#60a5fa' : '#3b82f6';
-
-		const shippedTotal =
-			m.reviewApproved.fraudPassed + m.reviewApproved.fraudFailed + m.reviewApproved.fraudPending +
-			m.reviewPending.fraudPassed + m.reviewPending.fraudFailed + m.reviewPending.fraudPending +
-			m.reviewRejected.fraudPassed + m.reviewRejected.fraudFailed + m.reviewRejected.fraudPending;
-
-		const fraudPassedTotal = m.reviewApproved.fraudPassed + m.reviewPending.fraudPassed + m.reviewRejected.fraudPassed;
-		const fraudPendingTotal = m.reviewApproved.fraudPending + m.reviewPending.fraudPending + m.reviewRejected.fraudPending;
-		const fraudFailedTotal = m.reviewApproved.fraudFailed + m.reviewPending.fraudFailed + m.reviewRejected.fraudFailed;
-
-		// Fraud-wins rule: anything that fails fraud terminates at Silent reject,
-		// no matter what the reviewer recorded. So fraud-failed flow bypasses the
-		// reviewer column entirely. The reviewer column only counts fraud-passed
-		// and fraud-pending projects.
-		const reviewerApprovedTotal = m.reviewApproved.fraudPassed + m.reviewApproved.fraudPending;
-		const reviewerPendingTotal = m.reviewPending.fraudPassed + m.reviewPending.fraudPending;
-		const reviewerRejectedTotal = m.reviewRejected.fraudPassed + m.reviewRejected.fraudPending;
-
-		const orangeBg = dark ? '#fb923c' : '#ea580c';
-
-		const nodes = [
-			{ name: `Shipped\n${shippedTotal}`, itemStyle: { color: blueBg } },
-			{ name: `Fraud: passed\n${fraudPassedTotal}`, itemStyle: { color: greenBg } },
-			{ name: `Fraud: pending\n${fraudPendingTotal}`, itemStyle: { color: yellowBg } },
-			{ name: `Fraud: failed\n${fraudFailedTotal}`, itemStyle: { color: redBg } },
-			{ name: `Reviewer: approved\n${reviewerApprovedTotal}`, itemStyle: { color: greenBg } },
-			{ name: `Reviewer: pending\n${reviewerPendingTotal}`, itemStyle: { color: yellowBg } },
-			{ name: `Reviewer: rejected\n${reviewerRejectedTotal}`, itemStyle: { color: redBg } },
-			{ name: `Silent reject\n${fraudFailedTotal}`, itemStyle: { color: orangeBg } },
-		];
-
-		const links = [
-			// Shipped → Fraud gate
-			{ source: nodes[0].name, target: nodes[1].name, value: fraudPassedTotal || 0.0001 },
-			{ source: nodes[0].name, target: nodes[2].name, value: fraudPendingTotal || 0.0001 },
-			{ source: nodes[0].name, target: nodes[3].name, value: fraudFailedTotal || 0.0001 },
-			// Fraud passed → Reviewer
-			{ source: nodes[1].name, target: nodes[4].name, value: m.reviewApproved.fraudPassed || 0.0001 },
-			{ source: nodes[1].name, target: nodes[5].name, value: m.reviewPending.fraudPassed || 0.0001 },
-			{ source: nodes[1].name, target: nodes[6].name, value: m.reviewRejected.fraudPassed || 0.0001 },
-			// Fraud pending → Reviewer
-			{ source: nodes[2].name, target: nodes[4].name, value: m.reviewApproved.fraudPending || 0.0001 },
-			{ source: nodes[2].name, target: nodes[5].name, value: m.reviewPending.fraudPending || 0.0001 },
-			{ source: nodes[2].name, target: nodes[6].name, value: m.reviewRejected.fraudPending || 0.0001 },
-			// Fraud failed → Silent reject (terminal — reviewer outcome is moot)
-			{ source: nodes[3].name, target: nodes[7].name, value: fraudFailedTotal || 0.0001 },
-		];
-
-		chart.setOption({
-			backgroundColor: 'transparent',
-			tooltip: {
-				trigger: 'item',
-				triggerOn: 'mousemove',
-				formatter: (p: any) => {
-					if (p.dataType === 'edge') {
-						return `${p.data.source.split('\n')[0]} → ${p.data.target.split('\n')[0]}<br/><b>${Math.round(p.data.value).toLocaleString()}</b> projects`;
-					}
-					return `<b>${p.name.split('\n')[0]}</b><br/>${p.name.split('\n')[1]} projects`;
-				},
-			},
-			series: [
-				{
-					type: 'sankey',
-					left: 8,
-					right: 160,
-					top: 8,
-					bottom: 8,
-					nodeWidth: 18,
-					nodeGap: 12,
-					draggable: false,
-					data: nodes,
-					links,
-					lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.5 },
-					label: { color: axis, fontSize: 11, fontWeight: 600 },
-					emphasis: { focus: 'adjacency' },
-				},
-			],
-		});
-	}
-
 	function renderLineChart(
 		el: HTMLDivElement | null,
 		data: DataPoint[],
@@ -531,99 +326,6 @@
 				itemStyle: { color },
 				areaStyle: { color: areaColor },
 			}],
-		});
-	}
-
-	function renderProjectsMultiLine() {
-		const chart = initChart(projectsReviewedEl);
-		if (!chart || !stats) return;
-
-		const reviewed = stats.historical.reviewsCompleted;
-		const shipped = stats.historical.projectsShipped;
-		const fraudChecked = stats.historical.projectsFraudChecked;
-		const hasData = (reviewed && reviewed.length > 0) || (shipped && shipped.length > 0) || (fraudChecked && fraudChecked.length > 0);
-
-		// Collect all unique dates
-		const allDates = new Set<string>();
-		[reviewed, shipped, fraudChecked].forEach((arr) => (arr || []).forEach((d) => allDates.add(d.date.slice(5))));
-		const dates = [...allDates].sort();
-
-		const emptyLabels = Array.from({ length: 30 }, (_, i) => {
-			const d = new Date();
-			d.setDate(d.getDate() - 29 + i);
-			return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-		});
-
-		const toMap = (arr: DataPoint[]) => {
-			const m = new Map<string, number>();
-			(arr || []).forEach((d) => m.set(d.date.slice(5), d.value));
-			return m;
-		};
-
-		const reviewedMap = toMap(reviewed);
-		const shippedMap = toMap(shipped);
-		const fraudCheckedMap = toMap(fraudChecked);
-		const xLabels = hasData ? dates : emptyLabels;
-
-		chart.setOption({
-			backgroundColor: bgColor(),
-			grid: { left: 45, right: 12, top: 30, bottom: 24 },
-			legend: {
-				top: 0,
-				textStyle: { color: dimColor(), fontSize: 10 },
-				itemWidth: 14,
-				itemHeight: 8,
-			},
-			xAxis: {
-				type: 'category',
-				data: xLabels,
-				axisLabel: { color: dimColor(), fontSize: 10 },
-				axisLine: { lineStyle: { color: gridColor() } },
-				axisTick: { show: false },
-			},
-			yAxis: {
-				type: 'value',
-				axisLabel: { color: dimColor(), fontSize: 10 },
-				splitLine: { lineStyle: { color: gridColor(), type: 'dashed' } },
-				axisLine: { show: false },
-				min: 0,
-				max: hasData ? undefined : 100,
-			},
-			tooltip: hasData ? {
-				trigger: 'axis',
-			} : { show: false },
-			series: [
-				{
-					name: 'Shipped',
-					type: 'line',
-					data: hasData ? xLabels.map((d) => shippedMap.get(d) ?? null) : [],
-					smooth: true,
-					symbol: 'circle',
-					symbolSize: 4,
-					lineStyle: { color: '#3b82f6', width: 2 },
-					itemStyle: { color: '#3b82f6' },
-				},
-				{
-					name: 'Fraud Checked',
-					type: 'line',
-					data: hasData ? xLabels.map((d) => fraudCheckedMap.get(d) ?? null) : [],
-					smooth: true,
-					symbol: 'circle',
-					symbolSize: 4,
-					lineStyle: { color: '#f97316', width: 2 },
-					itemStyle: { color: '#f97316' },
-				},
-				{
-					name: 'Reviewed',
-					type: 'line',
-					data: hasData ? xLabels.map((d) => reviewedMap.get(d) ?? null) : [],
-					smooth: true,
-					symbol: 'circle',
-					symbolSize: 4,
-					lineStyle: { color: '#22c55e', width: 2 },
-					itemStyle: { color: '#22c55e' },
-				},
-			],
 		});
 	}
 
@@ -817,15 +519,20 @@
 
 		const data = stats.signups.qualification;
 		const dark = isDark();
+		const mode = signupQualificationMode;
 
-		// Three-segment funnel per event: Qualified (≥30h) ⊂ RSVPed (≥15h) ⊂ Signed up.
-		const qualifiedColor = dark ? '#16a34a' : '#15803d';
-		const rsvpedOnlyColor = dark ? '#60a5fa' : '#3b82f6';
+		// Four-segment funnel per event:
+		// Qualified (≥30h) ⊂ Pending RSVPed (≥15h) ⊂ Engaged (≥1h) ⊂ Signed up.
+		const qualifiedColor = dark ? '#15803d' : '#166534';
+		const rsvpedColor = dark ? '#3b82f6' : '#2563eb';
+		const engagedColor = dark ? '#22c55e' : '#16a34a';
 		const signedUpOnlyColor = dark ? '#475569' : '#e2e8f0';
 
-		const qualifiedData = data.map((d) => d.qualified);
-		const rsvpedOnlyData = data.map((d) => Math.max(0, d.rsvped - d.qualified));
-		const signedUpOnlyData = data.map((d) => Math.max(0, d.signedUp - d.rsvped));
+		const counts = (d: (typeof data)[number]) => d.modes?.[mode] ?? { engaged: d.engaged, rsvped: d.rsvped, qualified: d.qualified };
+		const qualifiedData = data.map((d) => counts(d).qualified);
+		const rsvpedOnlyData = data.map((d) => Math.max(0, counts(d).rsvped - counts(d).qualified));
+		const engagedOnlyData = data.map((d) => Math.max(0, counts(d).engaged - counts(d).rsvped));
+		const signedUpOnlyData = data.map((d) => Math.max(0, d.signedUp - counts(d).engaged));
 
 		const segmentLabel = (value: number, total: number) => {
 			if (!value || !total) return '';
@@ -841,7 +548,7 @@
 				textStyle: { color: dimColor(), fontSize: 10 },
 				itemWidth: 14,
 				itemHeight: 8,
-				data: ['Qualified (≥30h)', 'RSVPed (≥15h)', 'Signed up'],
+				data: ['Qualified (≥30h)', 'Pending RSVPed (≥15h)', 'Engaged (≥1h)', 'Signed up'],
 			},
 			xAxis: {
 				type: 'value',
@@ -863,12 +570,13 @@
 				formatter: (params: any) => {
 					const idx = params[0].dataIndex;
 					const d = data[idx];
-					const rsvpPct = d.signedUp ? ((d.rsvped / d.signedUp) * 100).toFixed(1) : '0.0';
-					const qualPct = d.signedUp ? ((d.qualified / d.signedUp) * 100).toFixed(1) : '0.0';
+					const c = counts(d);
+					const pct = (n: number) => (d.signedUp ? ((n / d.signedUp) * 100).toFixed(1) : '0.0');
 					return `<b>${d.title}</b><br/>`
 						+ `Signed up: ${d.signedUp} (100%)<br/>`
-						+ `RSVPed (≥15h): ${d.rsvped} (${rsvpPct}%)<br/>`
-						+ `Qualified (≥30h): ${d.qualified} (${qualPct}%)`;
+						+ `Engaged (≥1h): ${c.engaged} (${pct(c.engaged)}%)<br/>`
+						+ `Pending RSVPed (≥15h): ${c.rsvped} (${pct(c.rsvped)}%)<br/>`
+						+ `Qualified (≥30h): ${c.qualified} (${pct(c.qualified)}%)`;
 				},
 			},
 			series: [
@@ -889,12 +597,28 @@
 					},
 				},
 				{
-					name: 'RSVPed (≥15h)',
+					name: 'Pending RSVPed (≥15h)',
 					type: 'bar',
 					stack: 'qualification',
 					data: rsvpedOnlyData,
 					barWidth: 22,
-					itemStyle: { color: rsvpedOnlyColor },
+					itemStyle: { color: rsvpedColor },
+					label: {
+						show: true,
+						position: 'inside',
+						color: '#fff',
+						fontSize: 10,
+						fontWeight: 600,
+						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].signedUp),
+					},
+				},
+				{
+					name: 'Engaged (≥1h)',
+					type: 'bar',
+					stack: 'qualification',
+					data: engagedOnlyData,
+					barWidth: 22,
+					itemStyle: { color: engagedColor },
 					label: {
 						show: true,
 						position: 'inside',
@@ -1077,6 +801,16 @@
 
 <div class="p-6">
 	<div class="mx-auto max-w-6xl space-y-8">
+		{#if userRole === 'admin' || userRole === 'superadmin' || userRole === 'reviewer'}
+			<div class="flex justify-end">
+				<a
+					href="{base}/review/stats"
+					class="inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-surface px-4 py-2 text-sm font-medium text-ds-text no-underline shadow-[var(--color-ds-shadow)] transition-colors hover:border-ds-accent hover:text-ds-accent"
+				>
+					Review Stats
+				</a>
+			</div>
+		{/if}
 		{#if loading}
 			<div class="flex items-center justify-center h-64 text-ds-text-secondary">
 				<p>Loading stats...</p>
@@ -1087,6 +821,28 @@
 				<Button onclick={loadStats}>Retry</Button>
 			</div>
 		{:else if stats}
+			<div class="flex gap-1.5 border-b border-ds-border">
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {homeTab === 'users'
+						? 'border-ds-accent text-ds-accent'
+						: 'border-transparent text-ds-text-secondary hover:text-ds-text'}"
+					onclick={() => (homeTab = 'users')}>Users</button
+				>
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {homeTab === 'dau'
+						? 'border-ds-accent text-ds-accent'
+						: 'border-transparent text-ds-text-secondary hover:text-ds-text'}"
+					onclick={() => (homeTab = 'dau')}>DAU</button
+				>
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {homeTab === 'signups'
+						? 'border-ds-accent text-ds-accent'
+						: 'border-transparent text-ds-text-secondary hover:text-ds-text'}"
+					onclick={() => (homeTab = 'signups')}>Signups</button
+				>
+			</div>
+
+			{#if homeTab === 'users'}
 			<!-- 1. User Funnel -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">User Funnel</h2>
@@ -1127,6 +883,9 @@
 				</div>
 			</section>
 
+			{/if}
+
+			{#if homeTab === 'dau'}
 			<!-- 3. Daily Active Users -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Daily Active Users</h2>
@@ -1186,167 +945,9 @@
 				{/if}
 			</section>
 
-			<!-- 4. Review Stats (Hours) -->
-			<section>
-				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Review Stats — Hours</h2>
-				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Tracked Hours</p>
-						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.trackedHours)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Unshipped Hours</p>
-						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.unshippedHours)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Shipped Hours</p>
-						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.shippedHours)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Hours in Review</p>
-						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.hoursInReview)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Approved Hours</p>
-						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.approvedHours)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Weighted Grants</p>
-						<p class="text-2xl font-bold text-ds-text">{formatHours(stats.reviewStats.weightedGrants)}</p>
-					</div>
-				</div>
-			</section>
+			{/if}
 
-			<!-- 4b. Median Review Time -->
-			<section>
-				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Median Review Time</h2>
-				<div class="grid gap-3 sm:grid-cols-2 mb-3">
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Median Fraud Check Time This Week</p>
-						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.medianFraudCheckTimeThisWeek != null ? formatHours(stats.reviewStats.medianFraudCheckTimeThisWeek) + 'h' : '—'}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Last Project Fraud Check Time</p>
-						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.lastProjectFraudCheckTime != null ? formatHours(stats.reviewStats.lastProjectFraudCheckTime) + 'h' : '—'}</p>
-					</div>
-				</div>
-				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
-					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Median Fraud Check Time — Weekly Avg</p>
-					<div bind:this={medianFraudCheckEl} style="height: 180px;"></div>
-					{#if stats.historical.medianFraudCheckTimeHours.length === 0}
-						<p class="text-[10px] text-ds-text-secondary text-center mt-1">No historical data yet</p>
-					{/if}
-				</div>
-				<hr class="my-4 border-ds-border opacity-50" />
-				<div class="grid gap-3 sm:grid-cols-2 mb-3">
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Median Review Time This Week</p>
-						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.medianReviewTimeThisWeek != null ? formatHours(stats.reviewStats.medianReviewTimeThisWeek) + 'h' : '—'}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Last Project Review Time</p>
-						<p class="text-2xl font-bold text-ds-text">{stats.reviewStats.lastProjectReviewTime != null ? formatHours(stats.reviewStats.lastProjectReviewTime) + 'h' : '—'}</p>
-					</div>
-				</div>
-				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Median Review Time — Weekly Avg</p>
-					<div bind:this={medianReviewEl} style="height: 180px;"></div>
-					{#if stats.historical.medianReviewTimeHours.length === 0}
-						<p class="text-[10px] text-ds-text-secondary text-center mt-1">No historical data yet</p>
-					{/if}
-				</div>
-			</section>
-
-			<!-- 5. Review Stats (Projects) -->
-			<section>
-				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Review Stats — Projects</h2>
-
-				<!-- Sankey: shipped → fraud gate → reviewer gate -->
-				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
-					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Project flow through the two gates</p>
-					<div bind:this={projectFunnelEl} style="height: 320px;"></div>
-				</div>
-
-				<!-- 3×3 state matrix: reviewer × fraud, with derived final outcome per cell -->
-				{#if funnelMatrix}
-					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Where every project sits right now (latest submission)</p>
-						<div class="grid grid-cols-[max-content_repeat(3,minmax(0,1fr))] gap-2">
-							<div></div>
-							<div class="text-center text-[11px] font-semibold text-ds-text-secondary pb-1">Fraud: passed</div>
-							<div class="text-center text-[11px] font-semibold text-ds-text-secondary pb-1">Fraud: pending</div>
-							<div class="text-center text-[11px] font-semibold text-ds-text-secondary pb-1">Fraud: failed</div>
-							{#each matrixRows as row}
-								<div class="flex items-center text-[11px] font-semibold text-ds-text-secondary pr-3 whitespace-nowrap">{row.label}</div>
-								{#each ['fraudPassed', 'fraudPending', 'fraudFailed'] as const as fraudKey}
-									<div class={`rounded-md border px-3 py-2.5 ${cellStyle(row.cellMeaning[fraudKey])}`}>
-										<div class="text-[10px] font-semibold uppercase tracking-wide opacity-80">{cellLabel(row.cellMeaning[fraudKey])}</div>
-										<div class="text-lg font-bold">{formatCount(row.data[fraudKey])}</div>
-									</div>
-								{/each}
-							{/each}
-						</div>
-					</div>
-
-					<!-- Final-state totals derived from the matrix -->
-					<div class="grid gap-3 sm:grid-cols-4 mb-3">
-						<div class="space-y-1 rounded-lg border border-green-500/40 bg-green-500/5 p-4 shadow-[var(--color-ds-shadow)]">
-							<p class="text-[11px] font-semibold uppercase tracking-wide text-green-700">✓ Approved</p>
-							<p class="text-2xl font-bold text-ds-text">{formatCount(finalApproved)}</p>
-						</div>
-						<div class="space-y-1 rounded-lg border border-yellow-500/40 bg-yellow-500/5 p-4 shadow-[var(--color-ds-shadow)]">
-							<p class="text-[11px] font-semibold uppercase tracking-wide text-yellow-700">↻ In-flight</p>
-							<p class="text-2xl font-bold text-ds-text">{formatCount(finalInFlight)}</p>
-						</div>
-						<div class="space-y-1 rounded-lg border border-red-500/40 bg-red-500/5 p-4 shadow-[var(--color-ds-shadow)]">
-							<p class="text-[11px] font-semibold uppercase tracking-wide text-red-700">✗ Rejected</p>
-							<p class="text-2xl font-bold text-ds-text">{formatCount(finalRejected)}</p>
-						</div>
-						<div class="space-y-1 rounded-lg border border-orange-500/40 bg-orange-500/5 p-4 shadow-[var(--color-ds-shadow)]">
-							<p class="text-[11px] font-semibold uppercase tracking-wide text-orange-700">⚠ Silent reject</p>
-							<p class="text-2xl font-bold text-ds-text">{formatCount(finalSilentReject)}</p>
-						</div>
-					</div>
-				{/if}
-
-				<div class="grid gap-3 sm:grid-cols-3 mb-3">
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fraud Queue</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.fraudQueue)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Review Queue</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewQueue)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Reviewed</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewed)}</p>
-					</div>
-				</div>
-				<hr class="my-4 border-ds-border opacity-50" />
-				<div class="grid gap-3 sm:grid-cols-3 mb-3">
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Shipped This Week</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.shippedThisWeek)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fraud Checked This Week</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.fraudCheckedThisWeek)}</p>
-					</div>
-					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Reviewed This Week</p>
-						<p class="text-2xl font-bold text-ds-text">{formatCount(stats.reviewProjects.reviewedThisWeek)}</p>
-					</div>
-				</div>
-				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Projects (30d)</p>
-					<div bind:this={projectsReviewedEl} style="height: 200px;"></div>
-					{#if stats.historical.reviewsCompleted.length === 0 && (!stats.historical.projectsShipped || stats.historical.projectsShipped.length === 0)}
-						<p class="text-[10px] text-ds-text-secondary text-center mt-1">No historical data yet</p>
-					{/if}
-				</div>
-			</section>
-
+			{#if homeTab === 'signups'}
 			<!-- 6. Signups -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Signups</h2>
@@ -1387,7 +988,17 @@
 				</div>
 				{#if stats.signups.qualification.length > 0}
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
-						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Qualification Funnel by Event</p>
+						<div class="mb-2 flex items-center justify-between gap-2">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Qualification Funnel by Event</p>
+							<select
+								bind:value={signupQualificationMode}
+								class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+							>
+								<option value="unshipped">Unshipped (incl. pending/approved)</option>
+								<option value="shipped">Shipped but pending (incl. approved)</option>
+								<option value="approved">Approved hours</option>
+							</select>
+						</div>
 						<div
 							bind:this={signupQualificationEl}
 							style="height: {Math.max(180, stats.signups.qualification.length * 38 + 48)}px;"
@@ -1445,6 +1056,8 @@
 					</div>
 				{/if}
 			</section>
+
+			{/if}
 
 			<!-- Action bar -->
 			<div class="flex items-center gap-2 pt-2">

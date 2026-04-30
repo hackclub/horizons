@@ -1,7 +1,14 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
+    import { base } from '$app/paths';
     import { api } from '$lib/api';
     import { Button, TextField, Checkbox } from '$lib/components';
+
+    onMount(async () => {
+        const { data: me } = await api.GET('/api/user/auth/me');
+        if (me?.role === 'event_viewer') goto(`${base}/events`);
+    });
 
     let eventForm = $state<{
         slug: string;

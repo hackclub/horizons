@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
 import { ManifestService } from '../manifest/manifest.service';
+import { MetricsService } from '../metrics/metrics.service';
 import * as Papa from 'papaparse';
 
 const projectAdminInclude = {
@@ -44,6 +45,7 @@ export class AdminService {
     private prisma: PrismaService,
     private slackService: SlackService,
     private manifestService: ManifestService,
+    private metricsService: MetricsService,
   ) {}
 
   async getAllSubmissions() {
@@ -437,11 +439,11 @@ export class AdminService {
     ] = await Promise.all([
       this.computeFunnel(),
       this.computeUserGrowth(thirtyDaysAgo, sevenDaysAgo),
-      this.computeReviewStats(),
-      this.computeReviewProjects(),
+      this.metricsService.computeReviewTimings(),
+      this.metricsService.computeReviewProjects(),
       this.computeSignups(),
       this.computeUtm(),
-      this.computeHistorical(thirtyDaysAgo),
+      this.metricsService.computeHistorical(thirtyDaysAgo),
     ]);
 
     // The latest historical DAU snapshot is yesterday (cron runs at midnight
@@ -585,310 +587,6 @@ export class AdminService {
     return { totalUsers, newLast30Days, newLast7Days, growthPercent };
   }
 
-  private async computeReviewStats() {
-    const [trackedAgg, unshippedAgg, shippedAgg, hoursInReviewResult, approvedAgg] =
-      await Promise.all([
-        this.prisma.project.aggregate({ _sum: { nowHackatimeHours: true } }),
-        this.prisma.project.aggregate({
-          _sum: { nowHackatimeHours: true },
-          where: { submissions: { none: {} } },
-        }),
-        this.prisma.project.aggregate({
-          _sum: { nowHackatimeHours: true },
-          where: { submissions: { some: {} } },
-        }),
-        this.prisma.$queryRaw<Array<{ total_hours: number }>>`
-          SELECT COALESCE(SUM(p.now_hackatime_hours), 0) as total_hours
-          FROM projects p
-          WHERE EXISTS (
-            SELECT 1 FROM submissions s
-            WHERE s.project_id = p.project_id
-              AND s.approval_status = 'pending'
-              AND s.created_at = (
-                SELECT MAX(s2.created_at) FROM submissions s2
-                WHERE s2.project_id = p.project_id
-              )
-          )
-        `,
-        this.prisma.project.aggregate({ _sum: { approvedHours: true } }),
-      ]);
-
-    const approved = approvedAgg._sum.approvedHours ?? 0;
-
-    // Median review time this week
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 7);
-    weekStart.setHours(0, 0, 0, 0);
-
-    const weekSubmissions = await this.prisma.submission.findMany({
-      where: {
-        reviewedAt: { gte: weekStart },
-        approvalStatus: { in: ['approved', 'rejected'] },
-      },
-      select: { reviewedAt: true, createdAt: true },
-    });
-
-    const toHours = (ms: number) => Math.round((ms / (1000 * 60 * 60)) * 10) / 10;
-
-    let medianReviewTimeThisWeek: number | null = null;
-    if (weekSubmissions.length > 0) {
-      const durations = weekSubmissions
-        .map((s) => s.reviewedAt!.getTime() - s.createdAt.getTime())
-        .sort((a, b) => a - b);
-      const mid = Math.floor(durations.length / 2);
-      const medianMs =
-        durations.length % 2 === 1
-          ? durations[mid]
-          : (durations[mid - 1] + durations[mid]) / 2;
-      medianReviewTimeThisWeek = toHours(medianMs);
-    }
-
-    // Median fraud check time this week (joeFraudReviewedAt - earliest submission createdAt)
-    const fraudCheckedProjects = await this.prisma.project.findMany({
-      where: {
-        joeFraudReviewedAt: { gte: weekStart },
-        joeFraudPassed: { not: null },
-        submissions: { some: {} },
-      },
-      select: {
-        joeFraudReviewedAt: true,
-        submissions: {
-          orderBy: { createdAt: 'asc' },
-          take: 1,
-          select: { createdAt: true },
-        },
-      },
-    });
-
-    let medianFraudCheckTimeThisWeek: number | null = null;
-    const fraudDurations = fraudCheckedProjects
-      .filter((p) => p.joeFraudReviewedAt && p.submissions.length > 0)
-      .map((p) => p.joeFraudReviewedAt!.getTime() - p.submissions[0].createdAt.getTime())
-      .filter((d) => d >= 0)
-      .sort((a, b) => a - b);
-    if (fraudDurations.length > 0) {
-      const mid = Math.floor(fraudDurations.length / 2);
-      const medianMs =
-        fraudDurations.length % 2 === 1
-          ? fraudDurations[mid]
-          : (fraudDurations[mid - 1] + fraudDurations[mid]) / 2;
-      medianFraudCheckTimeThisWeek = toHours(medianMs);
-    }
-
-    // Last reviewed project's review turnaround time
-    const lastReviewed = await this.prisma.submission.findFirst({
-      where: {
-        reviewedAt: { not: null },
-        approvalStatus: { in: ['approved', 'rejected'] },
-      },
-      orderBy: { reviewedAt: 'desc' },
-      select: { reviewedAt: true, createdAt: true },
-    });
-    const lastProjectReviewTime =
-      lastReviewed && lastReviewed.reviewedAt
-        ? toHours(lastReviewed.reviewedAt.getTime() - lastReviewed.createdAt.getTime())
-        : null;
-
-    // Last fraud-checked project's turnaround time
-    const lastFraudChecked = await this.prisma.project.findFirst({
-      where: {
-        joeFraudReviewedAt: { not: null },
-        joeFraudPassed: { not: null },
-        submissions: { some: {} },
-      },
-      orderBy: { joeFraudReviewedAt: 'desc' },
-      select: {
-        joeFraudReviewedAt: true,
-        submissions: {
-          orderBy: { createdAt: 'asc' },
-          take: 1,
-          select: { createdAt: true },
-        },
-      },
-    });
-    const lastProjectFraudCheckTime =
-      lastFraudChecked && lastFraudChecked.joeFraudReviewedAt && lastFraudChecked.submissions.length > 0
-        ? toHours(lastFraudChecked.joeFraudReviewedAt.getTime() - lastFraudChecked.submissions[0].createdAt.getTime())
-        : null;
-
-    return {
-      trackedHours: trackedAgg._sum.nowHackatimeHours ?? 0,
-      unshippedHours: unshippedAgg._sum.nowHackatimeHours ?? 0,
-      shippedHours: shippedAgg._sum.nowHackatimeHours ?? 0,
-      hoursInReview: Number(hoursInReviewResult[0]?.total_hours ?? 0),
-      approvedHours: approved,
-      weightedGrants: Math.round((approved / 10) * 100) / 100,
-      medianReviewTimeThisWeek,
-      medianFraudCheckTimeThisWeek,
-      lastProjectReviewTime,
-      lastProjectFraudCheckTime,
-    };
-  }
-
-  private async computeReviewProjects() {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
-
-    const [
-      shipped,
-      fraudChecked,
-      fraudQueue,
-      reviewQueue,
-      awaitingFraud,
-      fraudTeamDeliberation,
-      reviewed,
-      approved,
-      shippedThisWeek,
-      fraudCheckedThisWeek,
-      reviewedThisWeek,
-    ] = await Promise.all([
-      // Projects with >= 1 submission
-      this.prisma.project.count({ where: { submissions: { some: {} } } }),
-      // Projects that passed fraud check (includes reviewed)
-      this.prisma.project.count({
-        where: {
-          joeFraudPassed: true,
-          submissions: { some: {} },
-        },
-      }),
-      // Fraud queue: shipped but not yet fraud checked (joeFraudPassed is null)
-      this.prisma.project.count({
-        where: {
-          joeFraudPassed: null,
-          submissions: { some: {} },
-        },
-      }),
-      // Review queue: pending submissions the reviewer hasn't decided on yet.
-      // Fraud state is independent; the reviewer can act regardless.
-      this.prisma.submission.count({
-        where: { approvalStatus: 'pending', reviewPassed: null },
-      }),
-      // Awaiting fraud: reviewer decided, state machine is waiting on fraud.
-      this.prisma.submission.count({
-        where: { approvalStatus: 'pending', reviewPassed: { not: null } },
-      }),
-      // Silent rejects (fraud failed, no user notification fired).
-      this.prisma.submission.count({
-        where: { approvalStatus: 'rejected', silentReject: true },
-      }),
-      this.prisma.project.count({
-        where: {
-          submissions: { some: { approvalStatus: { in: ['approved', 'rejected'] } } },
-        },
-      }),
-      this.prisma.project.count({
-        where: { submissions: { some: { approvalStatus: 'approved' } } },
-      }),
-      // Shipped in the past week (projects with a submission created in the past 7 days)
-      this.prisma.project.count({
-        where: { submissions: { some: { createdAt: { gte: sevenDaysAgo } } } },
-      }),
-      // Fraud checked in the past week
-      this.prisma.project.count({
-        where: {
-          joeFraudPassed: true,
-          submissions: { some: { createdAt: { gte: sevenDaysAgo } } },
-        },
-      }),
-      // Reviewed in the past week
-      this.prisma.project.count({
-        where: {
-          submissions: { some: { reviewedAt: { gte: sevenDaysAgo }, approvalStatus: { in: ['approved', 'rejected'] } } },
-        },
-      }),
-    ]);
-
-    const funnelMatrix = await this.computeFunnelMatrix();
-
-    return {
-      shipped,
-      fraudChecked,
-      fraudQueue,
-      reviewQueue,
-      awaitingFraud,
-      fraudTeamDeliberation,
-      reviewed,
-      approved,
-      shippedThisWeek,
-      fraudCheckedThisWeek,
-      reviewedThisWeek,
-      funnelMatrix,
-    };
-  }
-
-  /**
-   * For every project with ≥1 submission, compute where it currently sits in the
-   * two-gate flow — reviewer gate × fraud gate — using the project's most recent
-   * submission. Returns a 3×3 count matrix the admin dashboard renders as a
-   * state grid.
-   *
-   * Under the fraud-wins rule (fraud=false → silent reject regardless of reviewer),
-   * fraud-failed column cells are all silent-rejects. The reviewer bucket is
-   * determined by what the reviewer had recorded at the time of the transition,
-   * which may be null (fraud fired first) / true (reviewer approved but fraud
-   * then failed) / false (reviewer rejected first, then fraud later failed).
-   */
-  private async computeFunnelMatrix() {
-    const rows = await this.prisma.$queryRaw<
-      Array<{
-        review_bucket: 'approved' | 'rejected' | 'pending';
-        fraud_bucket: 'passed' | 'failed' | 'pending';
-        count: bigint;
-      }>
-    >`
-      WITH latest_submission AS (
-        SELECT DISTINCT ON (project_id)
-          project_id,
-          review_passed,
-          approval_status,
-          silent_reject
-        FROM submissions
-        ORDER BY project_id, created_at DESC
-      )
-      SELECT
-        CASE
-          WHEN ls.review_passed = true  THEN 'approved'
-          WHEN ls.review_passed = false THEN 'rejected'
-          ELSE 'pending'
-        END AS review_bucket,
-        CASE
-          WHEN p.joe_fraud_passed = true  THEN 'passed'
-          WHEN p.joe_fraud_passed = false THEN 'failed'
-          ELSE 'pending'
-        END AS fraud_bucket,
-        COUNT(*)::bigint AS count
-      FROM latest_submission ls
-      JOIN projects p ON p.project_id = ls.project_id
-      GROUP BY review_bucket, fraud_bucket;
-    `;
-
-    const cell = (
-      review: 'approved' | 'rejected' | 'pending',
-      fraud: 'passed' | 'failed' | 'pending',
-    ) =>
-      Number(
-        rows.find((r) => r.review_bucket === review && r.fraud_bucket === fraud)
-          ?.count ?? 0,
-      );
-
-    return {
-      reviewApproved: {
-        fraudPassed: cell('approved', 'passed'),
-        fraudFailed: cell('approved', 'failed'),
-        fraudPending: cell('approved', 'pending'),
-      },
-      reviewRejected: {
-        fraudPassed: cell('rejected', 'passed'),
-        fraudFailed: cell('rejected', 'failed'),
-        fraudPending: cell('rejected', 'pending'),
-      },
-      reviewPending: {
-        fraudPassed: cell('pending', 'passed'),
-        fraudFailed: cell('pending', 'failed'),
-        fraudPending: cell('pending', 'pending'),
-      },
-    };
-  }
 
   private async computeSignups() {
     const total = await this.prisma.user.count();
@@ -906,14 +604,26 @@ export class AdminService {
     // Per-event qualification funnel: signed up → ≥15h approved (RSVPed) →
     // ≥30h approved (qualified). Approved hours sum across all of a user's
     // projects.
+    // Per-user totals for three "hours source" modes:
+    //   - unshipped: ALL hackatime hours across every project (incl. never-shipped)
+    //   - shipped:   hackatime hours on projects with ≥1 pending/approved submission
+    //   - approved:  reviewer-approved hours only (current default)
+    // Each mode then drives the engaged (≥1h) / rsvped (≥15h) / qualified (≥30h) thresholds.
     const qualificationResult = await this.prisma.$queryRaw<
       Array<{
         event_id: number;
         title: string;
         slug: string;
         signed_up: bigint;
+        engaged: bigint;
         rsvped: bigint;
         qualified: bigint;
+        unshipped_engaged: bigint;
+        unshipped_rsvped: bigint;
+        unshipped_qualified: bigint;
+        shipped_engaged: bigint;
+        shipped_rsvped: bigint;
+        shipped_qualified: bigint;
       }>
     >`
       SELECT
@@ -921,14 +631,31 @@ export class AdminService {
         e.title,
         e.slug,
         COUNT(pe.id) AS signed_up,
-        COUNT(*) FILTER (WHERE COALESCE(ut.total_hours, 0) >= 15) AS rsvped,
-        COUNT(*) FILTER (WHERE COALESCE(ut.total_hours, 0) >= 30) AS qualified
+        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 1) AS engaged,
+        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 15) AS rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 30) AS qualified,
+        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 1) AS unshipped_engaged,
+        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 15) AS unshipped_rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 30) AS unshipped_qualified,
+        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 1) AS shipped_engaged,
+        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 15) AS shipped_rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 30) AS shipped_qualified
       FROM pinned_events pe
       INNER JOIN events e ON e.event_id = pe.event_id
       LEFT JOIN (
-        SELECT user_id, SUM(approved_hours) AS total_hours
-        FROM projects
-        GROUP BY user_id
+        SELECT
+          p.user_id,
+          SUM(COALESCE(p.approved_hours, 0)) AS approved_total,
+          SUM(COALESCE(p.now_hackatime_hours, 0)) AS unshipped_total,
+          SUM(
+            CASE WHEN EXISTS (
+              SELECT 1 FROM submissions s
+              WHERE s.project_id = p.project_id
+                AND s.approval_status IN ('pending', 'approved')
+            ) THEN COALESCE(p.now_hackatime_hours, 0) ELSE 0 END
+          ) AS shipped_total
+        FROM projects p
+        GROUP BY p.user_id
       ) ut ON ut.user_id = pe.user_id
       GROUP BY e.event_id, e.title, e.slug
       ORDER BY signed_up DESC
@@ -995,8 +722,26 @@ export class AdminService {
         title: r.title,
         slug: r.slug,
         signedUp: Number(r.signed_up),
+        engaged: Number(r.engaged),
         rsvped: Number(r.rsvped),
         qualified: Number(r.qualified),
+        modes: {
+          approved: {
+            engaged: Number(r.engaged),
+            rsvped: Number(r.rsvped),
+            qualified: Number(r.qualified),
+          },
+          shipped: {
+            engaged: Number(r.shipped_engaged),
+            rsvped: Number(r.shipped_rsvped),
+            qualified: Number(r.shipped_qualified),
+          },
+          unshipped: {
+            engaged: Number(r.unshipped_engaged),
+            rsvped: Number(r.unshipped_rsvped),
+            qualified: Number(r.unshipped_qualified),
+          },
+        },
       })),
       routes,
       signupsMissingOrigin,
@@ -1044,131 +789,6 @@ export class AdminService {
     };
   }
 
-  private async computeHistorical(thirtyDaysAgo: Date) {
-    const timeSeriesMetrics = [
-      'dau', 'new_signups', 'submissions_created', 'reviews_completed',
-      'median_review_time_hours', 'median_fraud_check_time_hours', 'daily_hours_logged',
-      'total_users', 'total_projects', 'review_projects',
-    ];
-
-    const rows = await this.prisma.historicalMetric.findMany({
-      where: {
-        metric: { in: timeSeriesMetrics },
-        date: { gte: thirtyDaysAgo },
-      },
-      orderBy: { date: 'asc' },
-    });
-
-    const result: Record<string, Array<{ date: string; value: number }>> = {
-      dau: [],
-      newSignups: [],           // cumulative (total_users)
-      submissionsCreated: [],   // cumulative running sum
-      reviewsCompleted: [],     // cumulative running sum
-      medianReviewTimeHours: [],
-      medianFraudCheckTimeHours: [],
-      dailyHoursLogged: [],
-      projectsShipped: [],
-      projectsFraudChecked: [],
-    };
-
-    // First pass: collect raw daily values
-    const rawDaily: Record<string, Array<{ date: string; value: number }>> = {
-      new_signups: [],
-      submissions_created: [],
-      reviews_completed: [],
-      median_review_time_hours: [],
-      median_fraud_check_time_hours: [],
-    };
-    const metricKeyMap: Record<string, string> = {
-      dau: 'dau',
-      daily_hours_logged: 'dailyHoursLogged',
-    };
-
-    for (const row of rows) {
-      const val = typeof row.value === 'number' ? row.value : Number(row.value) || 0;
-      const dateStr = row.date.toISOString().split('T')[0];
-
-      // Non-cumulative metrics: pass through directly
-      const directKey = metricKeyMap[row.metric];
-      if (directKey) {
-        result[directKey].push({ date: dateStr, value: val });
-        continue;
-      }
-
-      // Cumulative: use total_users snapshot directly for signups
-      if (row.metric === 'total_users') {
-        result.newSignups.push({ date: dateStr, value: val });
-        continue;
-      }
-
-      // Extract review_projects JSON snapshot for shipped/fraudChecked series
-      if (row.metric === 'review_projects') {
-        const obj = typeof row.value === 'object' && row.value !== null ? row.value as Record<string, any> : {};
-        const shipped = Number(obj.shipped) || 0;
-        const fraudChecked = Number(obj.passingFraudInQueue) || 0;
-        result.projectsShipped.push({ date: dateStr, value: shipped });
-        result.projectsFraudChecked.push({ date: dateStr, value: fraudChecked });
-        continue;
-      }
-
-      // Collect daily counts for aggregation
-      if (rawDaily[row.metric]) {
-        rawDaily[row.metric].push({ date: dateStr, value: val });
-      }
-    }
-
-    // Aggregate median review time into weekly averages
-    const weekBuckets = new Map<string, number[]>();
-    for (const d of rawDaily.median_review_time_hours) {
-      if (d.value === 0) continue;
-      // Get the Monday of this date's week
-      const date = new Date(d.date);
-      const day = date.getUTCDay();
-      const monday = new Date(date);
-      monday.setUTCDate(date.getUTCDate() - ((day + 6) % 7));
-      const weekKey = monday.toISOString().split('T')[0];
-      if (!weekBuckets.has(weekKey)) weekBuckets.set(weekKey, []);
-      weekBuckets.get(weekKey)!.push(d.value);
-    }
-    for (const [weekStart, values] of weekBuckets) {
-      const avg = Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 100) / 100;
-      result.medianReviewTimeHours.push({ date: weekStart, value: avg });
-    }
-    result.medianReviewTimeHours.sort((a, b) => a.date.localeCompare(b.date));
-
-    // Aggregate median fraud check time into weekly averages
-    const fraudWeekBuckets = new Map<string, number[]>();
-    for (const d of rawDaily.median_fraud_check_time_hours) {
-      if (d.value === 0) continue;
-      const date = new Date(d.date);
-      const day = date.getUTCDay();
-      const monday = new Date(date);
-      monday.setUTCDate(date.getUTCDate() - ((day + 6) % 7));
-      const weekKey = monday.toISOString().split('T')[0];
-      if (!fraudWeekBuckets.has(weekKey)) fraudWeekBuckets.set(weekKey, []);
-      fraudWeekBuckets.get(weekKey)!.push(d.value);
-    }
-    for (const [weekStart, values] of fraudWeekBuckets) {
-      const avg = Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 100) / 100;
-      result.medianFraudCheckTimeHours.push({ date: weekStart, value: avg });
-    }
-    result.medianFraudCheckTimeHours.sort((a, b) => a.date.localeCompare(b.date));
-
-    // Convert daily submissions_created and reviews_completed to cumulative running sums
-    let submissionSum = 0;
-    for (const d of rawDaily.submissions_created) {
-      submissionSum += d.value;
-      result.submissionsCreated.push({ date: d.date, value: submissionSum });
-    }
-
-    let reviewSum = 0;
-    for (const d of rawDaily.reviews_completed) {
-      reviewSum += d.value;
-      result.reviewsCompleted.push({ date: d.date, value: reviewSum });
-    }
-
-    return result;
-  }
 
   async getEventStats(slug: string) {
     const event = await this.prisma.event.findUnique({
@@ -1936,7 +1556,7 @@ export class AdminService {
   async getElevatedUsers() {
     return this.prisma.user.findMany({
       where: {
-        role: { in: ['admin', 'reviewer', 'superadmin'] },
+        role: { in: ['admin', 'reviewer', 'event_viewer', 'superadmin'] },
       },
       select: {
         userId: true,

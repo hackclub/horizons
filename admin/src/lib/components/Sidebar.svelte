@@ -34,7 +34,7 @@
 
 	let { user = null, collapsed = $bindable(false), class: className = '' }: Props = $props();
 
-	const navItems: NavItem[] = [
+	const allNavItems: NavItem[] = [
 		{ href: '/home', label: 'Home', icon: Home },
 		{ href: '/review', label: 'Review', icon: PlaySquare, tint: 'accent' },
 		{ href: '/projects', label: 'Projects', icon: FolderKanban },
@@ -43,6 +43,13 @@
 		{ href: '/giftcodes', label: 'Gift Codes', icon: Gift },
 		{ href: '/events', label: 'Events', icon: ArrowRightLeft }
 	];
+
+	// event_viewer is scoped to event management + homepage stats; hide everything else.
+	const navItems = $derived<NavItem[]>(
+		user?.role === 'event_viewer'
+			? allNavItems.filter((i) => i.href === '/home' || i.href === '/events')
+			: allNavItems,
+	);
 
 	const settingsItem: NavItem = {
 		href: '/settings',
@@ -140,21 +147,23 @@
 				{/if}
 			</button>
 
-			<!-- Settings link -->
-			<a
-				href="{base}{settingsItem.href}"
-				class="flex items-center rounded-lg border border-transparent transition-[border-color,box-shadow,background-color] duration-200
-					{collapsed ? 'justify-center p-2' : 'gap-1.5 p-2 text-xs'}
-					{isActive(settingsItem.href)
-					? 'border-ds-border! bg-ds-surface font-medium text-ds-text shadow-(--color-ds-shadow)'
-					: 'border-ds-settings-bg! text-ds-settings hover:bg-ds-surface2'}"
-				title={collapsed ? settingsItem.label : undefined}
-			>
-				<settingsItem.icon size={16} />
-				{#if !collapsed}
-					<span>{settingsItem.label}</span>
-				{/if}
-			</a>
+			<!-- Settings link (admin/superadmin only) -->
+			{#if user?.role !== 'event_viewer'}
+				<a
+					href="{base}{settingsItem.href}"
+					class="flex items-center rounded-lg border border-transparent transition-[border-color,box-shadow,background-color] duration-200
+						{collapsed ? 'justify-center p-2' : 'gap-1.5 p-2 text-xs'}
+						{isActive(settingsItem.href)
+						? 'border-ds-border! bg-ds-surface font-medium text-ds-text shadow-(--color-ds-shadow)'
+						: 'border-ds-settings-bg! text-ds-settings hover:bg-ds-surface2'}"
+					title={collapsed ? settingsItem.label : undefined}
+				>
+					<settingsItem.icon size={16} />
+					{#if !collapsed}
+						<span>{settingsItem.label}</span>
+					{/if}
+				</a>
+			{/if}
 
 			<!-- Superadmin-only links -->
 			{#if user?.role === 'superadmin'}

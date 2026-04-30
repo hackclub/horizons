@@ -2177,12 +2177,6 @@ export interface components {
             growthPercent: number;
         };
         StatsReviewHours: {
-            trackedHours: number;
-            unshippedHours: number;
-            shippedHours: number;
-            hoursInReview: number;
-            approvedHours: number;
-            weightedGrants: number;
             medianReviewTimeThisWeek: number | null;
             medianFraudCheckTimeThisWeek: number | null;
             lastProjectReviewTime: number | null;
@@ -2223,8 +2217,20 @@ export interface components {
             title: string;
             slug: string;
             signedUp: number;
+            engaged: number;
             rsvped: number;
             qualified: number;
+            modes: components["schemas"]["StatsSignupQualificationModes"];
+        };
+        StatsSignupQualificationModeCounts: {
+            engaged: number;
+            rsvped: number;
+            qualified: number;
+        };
+        StatsSignupQualificationModes: {
+            approved: components["schemas"]["StatsSignupQualificationModeCounts"];
+            shipped: components["schemas"]["StatsSignupQualificationModeCounts"];
+            unshipped: components["schemas"]["StatsSignupQualificationModeCounts"];
         };
         StatsSignupRoute: {
             originCountry: string;
@@ -2401,7 +2407,7 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "user" | "admin" | "reviewer";
+            role: "user" | "admin" | "reviewer" | "event_viewer";
         };
         UpdateUserRoleResponse: {
             userId: number;
@@ -2454,9 +2460,51 @@ export interface components {
             longestCurrentWait: number | null;
             reviewsLast30Days: number;
         };
+        HoursStats: {
+            trackedHours: number;
+            unshippedHours: number;
+            shippedHours: number;
+            hoursInReview: number;
+            approvedHours: number;
+            rejectedHours: number;
+            weightedGrants: number;
+        };
         ReviewStatsResponse: {
             leaderboard: components["schemas"]["LeaderboardBreakdown"];
             general: components["schemas"]["GeneralStats"];
+            hours: components["schemas"]["HoursStats"];
+            hoursDistribution: {
+                unshipped: { bucket: string; count: number }[];
+                shipped: { bucket: string; count: number }[];
+                approved: { bucket: string; count: number }[];
+            };
+            reviewStats: {
+                medianReviewTimeThisWeek: number | null;
+                medianFraudCheckTimeThisWeek: number | null;
+                lastProjectReviewTime: number | null;
+                lastProjectFraudCheckTime: number | null;
+            };
+            reviewProjects: {
+                shipped: number;
+                fraudChecked: number;
+                fraudQueue: number;
+                reviewQueue: number;
+                awaitingFraud: number;
+                fraudTeamDeliberation: number;
+                reviewed: number;
+                approved: number;
+                shippedThisWeek: number;
+                fraudCheckedThisWeek: number;
+                reviewedThisWeek: number;
+                funnelMatrix: components["schemas"]["StatsFunnelMatrix"];
+            };
+            historical: {
+                reviewsCompleted: { date: string; value: number }[];
+                projectsShipped: { date: string; value: number }[];
+                projectsFraudChecked: { date: string; value: number }[];
+                medianReviewTimeHours: { date: string; value: number }[];
+                medianFraudCheckTimeHours: { date: string; value: number }[];
+            };
         };
         ScopedUserResponse: {
             userId: number;

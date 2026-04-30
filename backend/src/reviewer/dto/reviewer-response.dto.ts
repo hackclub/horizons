@@ -360,12 +360,168 @@ class GeneralStats {
   reviewsLast30Days: number;
 }
 
+class HoursStats {
+  @ApiProperty()
+  trackedHours: number;
+
+  @ApiProperty()
+  unshippedHours: number;
+
+  @ApiProperty()
+  shippedHours: number;
+
+  @ApiProperty()
+  hoursInReview: number;
+
+  @ApiProperty()
+  approvedHours: number;
+
+  @ApiProperty()
+  rejectedHours: number;
+
+  @ApiProperty()
+  weightedGrants: number;
+}
+
+class HoursDistributionEntry {
+  @ApiProperty()
+  bucket: string;
+
+  @ApiProperty()
+  count: number;
+}
+
+class HoursDistribution {
+  @ApiProperty({ type: [HoursDistributionEntry] })
+  unshipped: HoursDistributionEntry[];
+
+  @ApiProperty({ type: [HoursDistributionEntry] })
+  shipped: HoursDistributionEntry[];
+
+  @ApiProperty({ type: [HoursDistributionEntry] })
+  approved: HoursDistributionEntry[];
+}
+
+class ReviewTimings {
+  @ApiProperty({ type: Number, nullable: true })
+  medianReviewTimeThisWeek: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  medianFraudCheckTimeThisWeek: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  lastProjectReviewTime: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  lastProjectFraudCheckTime: number | null;
+}
+
+class FraudRow {
+  @ApiProperty()
+  fraudPassed: number;
+
+  @ApiProperty()
+  fraudFailed: number;
+
+  @ApiProperty()
+  fraudPending: number;
+}
+
+class FunnelMatrix {
+  @ApiProperty({ type: FraudRow })
+  reviewApproved: FraudRow;
+
+  @ApiProperty({ type: FraudRow })
+  reviewRejected: FraudRow;
+
+  @ApiProperty({ type: FraudRow })
+  reviewPending: FraudRow;
+}
+
+class ReviewProjects {
+  @ApiProperty()
+  shipped: number;
+
+  @ApiProperty()
+  fraudChecked: number;
+
+  @ApiProperty()
+  fraudQueue: number;
+
+  @ApiProperty()
+  reviewQueue: number;
+
+  @ApiProperty()
+  awaitingFraud: number;
+
+  @ApiProperty()
+  fraudTeamDeliberation: number;
+
+  @ApiProperty()
+  reviewed: number;
+
+  @ApiProperty()
+  approved: number;
+
+  @ApiProperty()
+  shippedThisWeek: number;
+
+  @ApiProperty()
+  fraudCheckedThisWeek: number;
+
+  @ApiProperty()
+  reviewedThisWeek: number;
+
+  @ApiProperty({ type: FunnelMatrix })
+  funnelMatrix: FunnelMatrix;
+}
+
+class HistoricalDataPoint {
+  @ApiProperty()
+  date: string;
+
+  @ApiProperty()
+  value: number;
+}
+
+class ReviewHistorical {
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  reviewsCompleted: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  projectsShipped: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  projectsFraudChecked: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  medianReviewTimeHours: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
+  medianFraudCheckTimeHours: HistoricalDataPoint[];
+}
+
 export class ReviewStatsResponse {
   @ApiProperty({ type: LeaderboardBreakdown })
   leaderboard: LeaderboardBreakdown;
 
   @ApiProperty({ type: GeneralStats })
   general: GeneralStats;
+
+  @ApiProperty({ type: HoursStats })
+  hours: HoursStats;
+
+  @ApiProperty({ type: HoursDistribution })
+  hoursDistribution: HoursDistribution;
+
+  @ApiProperty({ type: ReviewTimings })
+  reviewStats: ReviewTimings;
+
+  @ApiProperty({ type: ReviewProjects })
+  reviewProjects: ReviewProjects;
+
+  @ApiProperty({ type: ReviewHistorical })
+  historical: ReviewHistorical;
 }
 
 export class HackatimeProjectHours {

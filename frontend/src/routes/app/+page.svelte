@@ -34,7 +34,7 @@
 	let postOnboarding = $state(page.url.searchParams.has('post-onboarding'));
 
 	// Temporarily hide the community events card; flip to false to restore it.
-	const HIDE_COMMUNITY_EVENTS = true;
+	const HIDE_COMMUNITY_EVENTS = false;
 
 	// Column index constants — when CE card is hidden, all columns to its right shift left by 1.
 	const COL_LEFT = HIDE_COMMUNITY_EVENTS ? 0 : 1;
@@ -56,7 +56,12 @@
 
 	let userName = $derived($userStore.userName);
 	let referralCode = $derived($userStore.referralCode);
-	let isAdmin = $derived($userStore.role === 'admin' || $userStore.role === 'superadmin');
+	let isAdmin = $derived(
+		$userStore.role === 'admin' ||
+			$userStore.role === 'superadmin' ||
+			$userStore.role === 'reviewer' ||
+			$userStore.role === 'event_viewer',
+	);
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 	let pinnedEventConfig = $state<EventConfig>(eventsMap['nexus']);
 	let pinnedEventSlug = $state<string>('nexus');

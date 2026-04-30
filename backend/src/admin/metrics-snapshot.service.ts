@@ -1,12 +1,16 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Injectable()
 export class MetricsSnapshotService implements OnModuleInit {
   private readonly logger = new Logger(MetricsSnapshotService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private metricsService: MetricsService,
+  ) {}
 
   async onModuleInit() {
     // On startup, snapshot yesterday if it doesn't exist yet
@@ -133,8 +137,8 @@ export class MetricsSnapshotService implements OnModuleInit {
       this.prisma.project.aggregate({ _sum: { nowHackatimeHours: true }, where: { createdAt: beforeEnd } }),
       this.prisma.project.aggregate({ _sum: { approvedHours: true }, where: { createdAt: beforeEnd } }),
       this.computeFunnel(dayEnd),
-      this.computeReviewHours(dayEnd),
-      this.computeReviewProjects(dayEnd),
+      this.metricsService.computeReviewHours(dayEnd),
+      this.metricsService.computeReviewProjects(dayEnd),
       this.computeSignupPerEvent(dayEnd),
       this.computeUtmSources(dayEnd),
     ]);
@@ -397,108 +401,6 @@ export class MetricsSnapshotService implements OnModuleInit {
       ) sub
     `;
     return Number(result[0]?.count ?? 0);
-  }
-
-  private async computeReviewHours(asOf: Date) {
-    const beforeEnd = { lte: asOf };
-
-    // All tracked hours
-    const trackedAgg = await this.prisma.project.aggregate({
-      _sum: { nowHackatimeHours: true },
-      where: { createdAt: beforeEnd },
-    });
-
-    // Unshipped: projects with NO submissions
-    const unshippedAgg = await this.prisma.project.aggregate({
-      _sum: { nowHackatimeHours: true },
-      where: {
-        createdAt: beforeEnd,
-        submissions: { none: {} },
-      },
-    });
-
-    // Shipped: projects WITH at least one submission
-    const shippedAgg = await this.prisma.project.aggregate({
-      _sum: { nowHackatimeHours: true },
-      where: {
-        createdAt: beforeEnd,
-        submissions: { some: {} },
-      },
-    });
-
-    // Hours in review: projects whose latest submission is pending
-    const hoursInReviewResult = await this.prisma.$queryRaw<
-      Array<{ total_hours: number }>
-    >`
-      SELECT COALESCE(SUM(p.now_hackatime_hours), 0) as total_hours
-      FROM projects p
-      WHERE p.created_at <= ${asOf}
-        AND EXISTS (
-          SELECT 1 FROM submissions s
-          WHERE s.project_id = p.project_id
-            AND s.approval_status = 'pending'
-            AND s.created_at = (
-              SELECT MAX(s2.created_at) FROM submissions s2
-              WHERE s2.project_id = p.project_id
-            )
-        )
-    `;
-
-    // Approved hours
-    const approvedAgg = await this.prisma.project.aggregate({
-      _sum: { approvedHours: true },
-      where: { createdAt: beforeEnd },
-    });
-
-    const tracked = trackedAgg._sum.nowHackatimeHours ?? 0;
-    const approved = approvedAgg._sum.approvedHours ?? 0;
-
-    return {
-      tracked,
-      unshipped: unshippedAgg._sum.nowHackatimeHours ?? 0,
-      shipped: shippedAgg._sum.nowHackatimeHours ?? 0,
-      inReview: Number(hoursInReviewResult[0]?.total_hours ?? 0),
-      approved,
-      weightedGrants: Math.round((approved / 10) * 100) / 100,
-    };
-  }
-
-  private async computeReviewProjects(asOf: Date) {
-    const beforeEnd = { lte: asOf };
-
-    const [shipped, passingFraudInQueue, reviewed, approved] =
-      await Promise.all([
-        // Projects with >= 1 submission
-        this.prisma.project.count({
-          where: { createdAt: beforeEnd, submissions: { some: {} } },
-        }),
-        // Projects with joeFraudPassed=true AND a pending submission
-        this.prisma.project.count({
-          where: {
-            createdAt: beforeEnd,
-            joeFraudPassed: true,
-            submissions: { some: { approvalStatus: 'pending' } },
-          },
-        }),
-        // Projects with any approved/rejected submission
-        this.prisma.project.count({
-          where: {
-            createdAt: beforeEnd,
-            submissions: {
-              some: { approvalStatus: { in: ['approved', 'rejected'] } },
-            },
-          },
-        }),
-        // Projects with at least one approved submission
-        this.prisma.project.count({
-          where: {
-            createdAt: beforeEnd,
-            submissions: { some: { approvalStatus: 'approved' } },
-          },
-        }),
-      ]);
-
-    return { shipped, passingFraudInQueue, reviewed, approved };
   }
 
   private async computeSignupPerEvent(asOf: Date) {

@@ -17,6 +17,7 @@ import { SubmissionApprovalService } from '../submission-approval/submission-app
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 import { SlackService } from '../slack/slack.service';
 import { HackatimeService } from '../hackatime/hackatime.service';
+import { MetricsService } from '../metrics/metrics.service';
 
 // Scoped user fields — no PII like email, address, birthday, or real name
 const SCOPED_USER_SELECT = {
@@ -35,6 +36,7 @@ export class ReviewerService {
     private manifestService: ManifestService,
     private slackService: SlackService,
     private hackatimeService: HackatimeService,
+    private metricsService: MetricsService,
   ) {}
 
   /**
@@ -702,6 +704,18 @@ export class ReviewerService {
       ? toHours(now.getTime() - oldestPending.createdAt.getTime())
       : null;
 
+    const thirtyDaysWindow = new Date(dayStart);
+    thirtyDaysWindow.setDate(thirtyDaysWindow.getDate() - 30);
+
+    const [hours, timings, projects, historical, hoursDistribution] =
+      await Promise.all([
+        this.metricsService.computeReviewHours(),
+        this.metricsService.computeReviewTimings(),
+        this.metricsService.computeReviewProjects(),
+        this.metricsService.computeHistorical(thirtyDaysWindow),
+        this.metricsService.computeProjectHoursDistribution(),
+      ]);
+
     return {
       leaderboard: {
         allTime: buildLeaderboard(allTime),
@@ -714,6 +728,17 @@ export class ReviewerService {
         medianReviewTimeLast30Days: medianReviewHours,
         longestCurrentWait: longestCurrentWaitHours,
         reviewsLast30Days: recentDurationsMs.length,
+      },
+      hours,
+      hoursDistribution,
+      reviewStats: timings,
+      reviewProjects: projects,
+      historical: {
+        reviewsCompleted: historical.reviewsCompleted,
+        projectsShipped: historical.projectsShipped,
+        projectsFraudChecked: historical.projectsFraudChecked,
+        medianReviewTimeHours: historical.medianReviewTimeHours,
+        medianFraudCheckTimeHours: historical.medianFraudCheckTimeHours,
       },
     };
   }

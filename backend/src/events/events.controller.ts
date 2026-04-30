@@ -61,9 +61,12 @@ export class EventsAuthController {
   }
 }
 
+// Class-level roles cover read + edit. Create / delete narrow to admin only via
+// method-level `@Roles(Role.Admin)` (NestJS uses getAllAndOverride; the
+// method-level decorator wins).
 @Controller('api/events/admin')
 @UseGuards(RolesGuard)
-@Roles(Role.Admin)
+@Roles(Role.Admin, Role.EventViewer)
 export class EventsAdminController {
   constructor(private eventsService: EventsService) {}
 
@@ -80,6 +83,7 @@ export class EventsAdminController {
   }
 
   @Post()
+  @Roles(Role.Admin)
   @ApiCreatedResponse({ type: EventResponse })
   async createEvent(@Body() dto: CreateEventDto) {
     return this.eventsService.createEvent(dto);
@@ -92,6 +96,7 @@ export class EventsAdminController {
   }
 
   @Delete(':slug')
+  @Roles(Role.Admin)
   @ApiOkResponse({ type: DeleteEventResponse })
   async deleteEvent(@Param('slug') slug: string) {
     return this.eventsService.deleteEvent(slug);
