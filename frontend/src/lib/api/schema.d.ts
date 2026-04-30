@@ -1620,6 +1620,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/community-events/admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CommunityEventsAdminController_getEvents"];
+        put?: never;
+        post: operations["CommunityEventsAdminController_createEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community-events/admin/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CommunityEventsAdminController_getEvent"];
+        put: operations["CommunityEventsAdminController_updateEvent"];
+        post?: never;
+        delete: operations["CommunityEventsAdminController_deleteEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CommunityEventsController_getActiveEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/gift-codes/{code}": {
         parameters: {
             query?: never;
@@ -1856,6 +1904,14 @@ export interface components {
             /** @description ID of the project to submit */
             projectId: number;
         };
+        ShipAlertsResponse: {
+            /** @description True if Manifest reports this project was submitted to a non-Horizons YSWS */
+            hasPriorYswsSubmission: boolean;
+            /** @description Names of the non-Horizons YSWS programs this project was submitted to (deduped) */
+            priorYswsNames: string[];
+            /** @description True if this project has an approved Horizons submission (current ship is a reship) */
+            hasApprovedSubmission: boolean;
+        };
         UpdateProjectDto: {
             /** @description Project title */
             projectTitle?: string;
@@ -1916,14 +1972,6 @@ export interface components {
         DeleteProjectResponse: {
             deleted: boolean;
             projectId: number;
-        };
-        ShipAlertsResponse: {
-            /** @description True if Manifest reports this project was submitted to a non-Horizons YSWS */
-            hasPriorYswsSubmission: boolean;
-            /** @description Names of the non-Horizons YSWS programs this project was submitted to (deduped) */
-            priorYswsNames: string[];
-            /** @description True if this project has an approved Horizons submission (current ship is a reship) */
-            hasApprovedSubmission: boolean;
         };
         AdminSubmissionProjectUserResponse: {
             userId: number;
@@ -2237,20 +2285,39 @@ export interface components {
             slug: string;
             count: number;
         };
+        StatsSignupQualificationModeCounts: {
+            engaged: number;
+            rsvped: number;
+            qualified: number;
+        };
+        StatsSignupQualificationModes: {
+            approved: components["schemas"]["StatsSignupQualificationModeCounts"];
+            shipped: components["schemas"]["StatsSignupQualificationModeCounts"];
+            unshipped: components["schemas"]["StatsSignupQualificationModeCounts"];
+        };
+        StatsSignupQualificationEntry: {
+            eventId: number;
+            title: string;
+            slug: string;
+            signedUp: number;
+            engaged: number;
+            rsvped: number;
+            qualified: number;
+            modes: components["schemas"]["StatsSignupQualificationModes"];
+        };
         StatsSignupRoute: {
             originCountry: string;
-            originLat: number | null;
-            originLng: number | null;
             eventCountry: string;
-            eventLat: number | null;
-            eventLng: number | null;
             eventTitle: string;
             count: number;
         };
         StatsSignups: {
             total: number;
             perEvent: components["schemas"]["StatsSignupEventEntry"][];
+            qualification: components["schemas"]["StatsSignupQualificationEntry"][];
             routes: components["schemas"]["StatsSignupRoute"][];
+            signupsMissingOrigin: number;
+            eventsMissingCountry: string[];
         };
         StatsUtmEntry: {
             source: string;
@@ -2283,7 +2350,7 @@ export interface components {
             count: number;
         };
         StatsDau: {
-            today: number;
+            yesterday: number;
             avg7: number;
             avg30: number;
             growthPercent7: number;
@@ -2331,7 +2398,7 @@ export interface components {
             pinnedCount: number;
             metHourGoal: number;
             notMetHourGoal: number;
-            dauToday: number;
+            dauYesterday: number;
             pinnedTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
             dauTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
         };
@@ -2413,7 +2480,7 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "user" | "admin" | "reviewer";
+            role: "user" | "admin" | "reviewer" | "event_viewer";
         };
         UpdateUserRoleResponse: {
             userId: number;
@@ -2466,9 +2533,69 @@ export interface components {
             longestCurrentWait: number | null;
             reviewsLast30Days: number;
         };
+        HoursStats: {
+            trackedHours: number;
+            unshippedHours: number;
+            shippedHours: number;
+            hoursInReview: number;
+            approvedHours: number;
+            rejectedHours: number;
+            weightedGrants: number;
+        };
+        HoursDistributionEntry: {
+            bucket: string;
+            count: number;
+        };
+        HoursDistribution: {
+            unshipped: components["schemas"]["HoursDistributionEntry"][];
+            shipped: components["schemas"]["HoursDistributionEntry"][];
+            approved: components["schemas"]["HoursDistributionEntry"][];
+        };
+        ReviewTimings: {
+            medianReviewTimeThisWeek: number | null;
+            medianFraudCheckTimeThisWeek: number | null;
+            lastProjectReviewTime: number | null;
+            lastProjectFraudCheckTime: number | null;
+        };
+        FraudRow: {
+            fraudPassed: number;
+            fraudFailed: number;
+            fraudPending: number;
+        };
+        FunnelMatrix: {
+            reviewApproved: components["schemas"]["FraudRow"];
+            reviewRejected: components["schemas"]["FraudRow"];
+            reviewPending: components["schemas"]["FraudRow"];
+        };
+        ReviewProjects: {
+            shipped: number;
+            fraudChecked: number;
+            fraudQueue: number;
+            reviewQueue: number;
+            awaitingFraud: number;
+            fraudTeamDeliberation: number;
+            reviewed: number;
+            approved: number;
+            shippedThisWeek: number;
+            fraudCheckedThisWeek: number;
+            reviewedThisWeek: number;
+            funnelMatrix: components["schemas"]["FunnelMatrix"];
+        };
+        ReviewHistorical: {
+            reviewsCompleted: components["schemas"]["HistoricalDataPoint"][];
+            projectsShipped: components["schemas"]["HistoricalDataPoint"][];
+            projectsFraudChecked: components["schemas"]["HistoricalDataPoint"][];
+            medianReviewTimeHours: components["schemas"]["HistoricalDataPoint"][];
+            medianFraudCheckTimeHours: components["schemas"]["HistoricalDataPoint"][];
+        };
         ReviewStatsResponse: {
             leaderboard: components["schemas"]["LeaderboardBreakdown"];
             general: components["schemas"]["GeneralStats"];
+            hours: components["schemas"]["HoursStats"];
+            hoursDistribution: components["schemas"]["HoursDistribution"];
+            reviewStats: components["schemas"]["ReviewTimings"];
+            reviewProjects: components["schemas"]["ReviewProjects"];
+            historical: components["schemas"]["ReviewHistorical"];
         };
         ScopedUserResponse: {
             userId: number;
@@ -2566,6 +2693,7 @@ export interface components {
             /** Format: date-time */
             reviewedAt: string | null;
             hackatimeHours: number | null;
+            approvedHours: number | null;
         };
         SubmissionDetailResponse: {
             submissionId: number;
@@ -2971,6 +3099,52 @@ export interface components {
         };
         RemovedEventResponse: {
             removed: boolean;
+        };
+        CommunityEventResponse: {
+            communityEventId: string;
+            name: string;
+            /** Format: date-time */
+            start: string;
+            /** Format: date-time */
+            end: string;
+            tagline: string | null;
+            joinInfo: string | null;
+            actionUrl: string | null;
+            actionLabel: string | null;
+            description: string | null;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateCommunityEventDto: {
+            name: string;
+            start: string;
+            end: string;
+            tagline?: string;
+            joinInfo?: string;
+            /** Format: uri */
+            actionUrl?: string;
+            actionLabel?: string;
+            description?: string;
+            isActive?: boolean;
+        };
+        UpdateCommunityEventDto: {
+            name?: string;
+            start?: string;
+            end?: string;
+            tagline?: string;
+            joinInfo?: string;
+            /** Format: uri */
+            actionUrl?: string;
+            actionLabel?: string;
+            description?: string;
+            isActive?: boolean;
+        };
+        DeleteCommunityEventResponse: {
+            deleted: boolean;
+            communityEventId: string;
         };
         GiftCodePublicResponse: {
             imageUrl: string;
@@ -5689,6 +5863,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventResponse"][];
+                };
+            };
+        };
+    };
+    CommunityEventsAdminController_getEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityEventResponse"][];
+                };
+            };
+        };
+    };
+    CommunityEventsAdminController_createEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommunityEventDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityEventResponse"];
+                };
+            };
+        };
+    };
+    CommunityEventsAdminController_getEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityEventResponse"];
+                };
+            };
+        };
+    };
+    CommunityEventsAdminController_updateEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommunityEventDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityEventResponse"];
+                };
+            };
+        };
+    };
+    CommunityEventsAdminController_deleteEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCommunityEventResponse"];
+                };
+            };
+        };
+    };
+    CommunityEventsController_getActiveEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityEventResponse"][];
                 };
             };
         };

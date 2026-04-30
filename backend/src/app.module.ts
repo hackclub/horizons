@@ -13,6 +13,7 @@ import { HealthModule } from './health/health.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { ShopModule } from './shop/shop.module';
 import { EventsModule } from './events/events.module';
+import { CommunityEventsModule } from './community-events/community-events.module';
 import { GiftCodesModule } from './gift-codes/gift-codes.module';
 import { SlackModule } from './slack/slack.module';
 import { SlackChannelsModule } from './slack-channels/slack-channels.module';
@@ -43,6 +44,7 @@ import { PrismaService } from './prisma.service';
     UploadsModule,
     ShopModule,
     EventsModule,
+    CommunityEventsModule,
     GiftCodesModule,
     SlackModule,
     SlackChannelsModule,

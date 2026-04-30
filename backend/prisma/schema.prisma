@@ -385,6 +385,24 @@ model Event {
   @@map("events")
 }
 
+model CommunityEvent {
+  communityEventId String   @id @default(uuid()) @map("community_event_id")
+  name             String   @db.VarChar(200)
+  start            DateTime @db.Timestamptz(6)
+  end              DateTime @db.Timestamptz(6)
+  tagline          String?  @db.VarChar(300)
+  joinInfo         String?  @map("join_info") @db.Text
+  actionUrl        String?  @map("action_url") @db.VarChar(2000)
+  actionLabel      String?  @map("action_label") @db.VarChar(100)
+  description      String?  @db.Text
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([start])
+  @@map("community_events")
+}
+
 model PinnedEvent {
   id        Int      @id @default(autoincrement())
   userId    Int      @unique @map("user_id")

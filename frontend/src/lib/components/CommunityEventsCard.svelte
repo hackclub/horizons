@@ -3,6 +3,7 @@
 	import enterSvg from '$lib/assets/prompts/enter.svg';
 	import clickSvg from '$lib/assets/prompts/click.svg';
 	import { parseNavKey } from '$lib/nav/wasd.svelte';
+	import { api } from '$lib/api';
 
 	interface Props {
 		element?: HTMLElement | null;
@@ -34,49 +35,14 @@
 		start: Date;
 		end: Date;
 		tagline: string;
+		joinInfo: string;
+		description: string;
+		actionUrl: string;
+		actionLabel: string;
 	}
 
 	let events = $state<CommunityEvent[]>([]);
 	let now = $state(new Date());
-
-	function parseEventsMd(md: string): CommunityEvent[] {
-		const lines = md.split('\n');
-		const out: CommunityEvent[] = [];
-		let name = '', yml = '', inYaml = false;
-		for (const line of lines) {
-			if (line.startsWith('## ')) {
-				if (name) out.push(buildEvent(name, yml));
-				name = line.replace('## ', '').trim();
-				yml = '';
-				inYaml = false;
-			} else if (line.startsWith('```yaml')) {
-				inYaml = true;
-			} else if (line === '```' && inYaml) {
-				inYaml = false;
-			} else if (inYaml) {
-				yml += line + '\n';
-			}
-		}
-		if (name) out.push(buildEvent(name, yml));
-		return out;
-	}
-
-	function buildEvent(name: string, yamlStr: string): CommunityEvent {
-		const map: Record<string, string> = {};
-		for (const line of yamlStr.split('\n')) {
-			if (!line.trim()) continue;
-			const [k, ...v] = line.split(':');
-			const value = v.join(':').trim().replace(/^['"]|['"]$/g, '');
-			if (k && value) map[k.trim()] = value;
-		}
-		return {
-			id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-			name,
-			start: new Date(map.Start),
-			end: new Date(map.End),
-			tagline: map.Tagline || '',
-		};
-	}
 
 	function formatTime(d: Date): string {
 		return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -128,9 +94,21 @@
 	}
 
 	onMount(() => {
-		fetch('/content/events.md')
-			.then((r) => r.text())
-			.then((t) => { events = parseEventsMd(t); })
+		api.GET('/api/community-events')
+			.then(({ data }) => {
+				if (!data) return;
+				events = data.map((item) => ({
+					id: item.communityEventId,
+					name: item.name,
+					start: new Date(item.start),
+					end: new Date(item.end),
+					tagline: item.tagline ?? '',
+					joinInfo: item.joinInfo ?? '',
+					description: item.description ?? '',
+					actionUrl: item.actionUrl ?? '',
+					actionLabel: item.actionLabel ?? '',
+				}));
+			})
 			.catch(() => {});
 
 		const interval = setInterval(() => { now = new Date(); }, 60000);
@@ -172,6 +150,17 @@
 							<span class="ce-time">{formatTime(event.start)}</span>
 							<span class="ce-dash">&ndash;</span>
 							<span class="ce-time">{formatTime(event.end)}</span>
+							{#if event.actionUrl}
+								<a
+									class="ce-action"
+									href={event.actionUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									onclick={(e) => e.stopPropagation()}
+								>
+									{(event.actionLabel || 'Open').toUpperCase()}
+								</a>
+							{/if}
 						</div>
 					</div>
 				</button>
@@ -330,6 +319,23 @@
 		font-family: 'Bricolage Grotesque', sans-serif;
 		font-size: 16px;
 		color: black;
+	}
+
+	.ce-action {
+		margin-left: auto;
+		background: black;
+		color: #f3e8d8;
+		border-radius: 8px;
+		padding: 2px 10px;
+		font-family: 'Bricolage Grotesque', sans-serif;
+		font-size: 14px;
+		font-weight: 600;
+		text-decoration: none;
+		transition: opacity 0.15s ease;
+	}
+
+	.ce-action:hover {
+		opacity: 0.85;
 	}
 
 	.ce-dash {
