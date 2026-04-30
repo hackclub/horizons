@@ -5,8 +5,8 @@
 	import { EXIT_DURATION } from '$lib';
 	import { onMount } from 'svelte';
 	import { createListNav } from '$lib/nav/wasd.svelte';
+	import { api } from '$lib/api';
 
-	let markdown = $state('');
 	let entered = $state(false);
 	let navigating = $state(false);
 
@@ -18,10 +18,13 @@
 		joinInfo: string;
 		tagline: string;
 		description: string;
+		actionUrl: string;
+		actionLabel: string;
 	}
 
+	let allEvents = $state<Event[]>([]);
 	let now = $state(new Date());
-	let events: Event[] = $derived.by(() => parseMarkdownToEvents(markdown).filter(e => !isOver(e)));
+	let events: Event[] = $derived(allEvents.filter((e) => !isOver(e)));
 
 	const nav = createListNav({
 		count: () => events.length,
@@ -30,66 +33,6 @@
 	});
 
 	let selectedEvent: Event | undefined = $derived(events[nav.selectedIndex]);
-
-	function parseMarkdownToEvents(markdownStr: string): Event[] {
-		const lines = markdownStr.split('\n');
-		const eventList: Event[] = [];
-		let currentName = '';
-		let currentYaml = '';
-		let currentDescription: string[] = [];
-		let inYaml = false;
-
-		for (const line of lines) {
-			if (line.startsWith('## ')) {
-				if (currentName) {
-					eventList.push(parseEvent(currentName, currentYaml, currentDescription.join('\n').trim()));
-				}
-				currentName = line.replace('## ', '').trim();
-				currentYaml = '';
-				currentDescription = [];
-				inYaml = false;
-			} else if (line.startsWith('```yaml')) {
-				inYaml = true;
-			} else if (line === '```' && inYaml) {
-				inYaml = false;
-			} else if (inYaml) {
-				currentYaml += line + '\n';
-			} else if (currentName && line.trim()) {
-				currentDescription.push(line);
-			}
-		}
-
-		if (currentName) {
-			eventList.push(parseEvent(currentName, currentYaml, currentDescription.join('\n').trim()));
-		}
-
-		return eventList;
-	}
-
-	function parseEvent(name: string, yamlStr: string, description: string): Event {
-		const yaml = parseYaml(yamlStr);
-		const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-		return {
-			id,
-			name,
-			start: new Date(yaml.Start),
-			end: new Date(yaml.End),
-			joinInfo: yaml.JoinInfo || '',
-			tagline: yaml.Tagline || '',
-			description
-		};
-	}
-
-	function parseYaml(yamlStr: string): Record<string, string> {
-		const result: Record<string, string> = {};
-		for (const line of yamlStr.split('\n')) {
-			if (!line.trim()) continue;
-			const [key, ...valueParts] = line.split(':');
-			const value = valueParts.join(':').trim().replace(/^['"]|['"]$/g, '');
-			if (key && value) result[key.trim()] = value;
-		}
-		return result;
-	}
 
 	function ordinal(n: number): string {
 		const s = ['th', 'st', 'nd', 'rd'];
@@ -177,7 +120,23 @@
 
 	onMount(() => {
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
-		fetch('/content/events.md').then(r => r.text()).then(t => { markdown = t; });
+
+		api.GET('/api/community-events')
+			.then(({ data }) => {
+				if (!data) return;
+				allEvents = data.map((item) => ({
+					id: item.communityEventId,
+					name: item.name,
+					start: new Date(item.start),
+					end: new Date(item.end),
+					joinInfo: item.joinInfo ?? '',
+					tagline: item.tagline ?? '',
+					description: item.description ?? '',
+					actionUrl: item.actionUrl ?? '',
+					actionLabel: item.actionLabel ?? ''
+				}));
+			})
+			.catch(() => {});
 
 		const interval = setInterval(() => { now = new Date(); }, 60000);
 		return () => clearInterval(interval);
@@ -236,6 +195,16 @@
 						<div class="font-bricolage text-[20px] text-black">
 							{@html parseMarkdownText(selectedEvent.joinInfo)}
 						</div>
+					{/if}
+					{#if selectedEvent.actionUrl}
+						<a
+							class="action-btn"
+							href={selectedEvent.actionUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							{(selectedEvent.actionLabel || 'Open').toUpperCase()}
+						</a>
 					{/if}
 					{#if isLive(selectedEvent)}
 						<span class="live-badge"><span class="live-dot"></span>LIVE NOW</span>
@@ -456,6 +425,30 @@
 		font-family: 'Bricolage Grotesque', sans-serif;
 		font-size: 20px;
 		color: black;
+	}
+
+	.action-btn {
+		align-self: flex-start;
+		background: black;
+		color: #f3e8d8;
+		border: 2px solid black;
+		border-radius: 10px;
+		padding: 8px 18px;
+		font-family: 'Cooper', 'Cooper Black', serif;
+		font-size: 22px;
+		text-decoration: none;
+		box-shadow: 3px 3px 0px 0px black;
+		transition: transform 0.1s ease, box-shadow 0.1s ease;
+	}
+
+	.action-btn:hover {
+		transform: translate(-1px, -1px);
+		box-shadow: 4px 4px 0px 0px black;
+	}
+
+	.action-btn:active {
+		transform: translate(1px, 1px);
+		box-shadow: 1px 1px 0px 0px black;
 	}
 
 	/* Info row */

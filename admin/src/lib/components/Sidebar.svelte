@@ -10,6 +10,7 @@
 		ShoppingBag,
 		Gift,
 		ArrowRightLeft,
+		CalendarDays,
 		Settings,
 		ShieldCheck,
 		Upload,
@@ -41,7 +42,8 @@
 		{ href: '/users', label: 'Users', icon: Users },
 		{ href: '/shop', label: 'Shop', icon: ShoppingBag },
 		{ href: '/giftcodes', label: 'Gift Codes', icon: Gift },
-		{ href: '/events', label: 'Events', icon: ArrowRightLeft }
+		{ href: '/events', label: 'Events', icon: ArrowRightLeft },
+		{ href: '/community-events', label: 'Community Events', icon: CalendarDays }
 	];
 
 	// event_viewer is scoped to event management + homepage stats; hide everything else.
