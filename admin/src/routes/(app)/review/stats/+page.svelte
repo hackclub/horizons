@@ -18,6 +18,7 @@
 
 	let leaderboardTab = $state<'allTime' | 'week' | 'day'>('allTime');
 	let breakdownTab = $state<'hours' | 'median' | 'projects' | 'leaderboard'>('projects');
+	let hoursDistMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
 
 	let currentLeaderboard = $derived<LeaderboardEntry[]>(
 		stats ? stats.leaderboard[leaderboardTab] : [],
@@ -136,6 +137,7 @@
 	let medianFraudCheckEl = $state<HTMLDivElement | null>(null);
 	let projectFunnelEl = $state<HTMLDivElement | null>(null);
 	let projectsReviewedEl = $state<HTMLDivElement | null>(null);
+	let hoursDistributionEl = $state<HTMLDivElement | null>(null);
 
 	onMount(async () => {
 		const { data: me, error: authErr } = await api.GET('/api/user/auth/me');
@@ -220,6 +222,60 @@
 		);
 		renderProjectFunnel();
 		renderProjectsMultiLine();
+		renderHoursDistribution();
+	}
+
+	function renderHoursDistribution() {
+		const chart = initChart(hoursDistributionEl);
+		if (!chart || !stats) return;
+
+		const data = stats.hoursDistribution[hoursDistMode];
+		const axisName =
+			hoursDistMode === 'approved' ? 'approved hours' : 'tracked hours';
+		const barColor =
+			hoursDistMode === 'approved'
+				? '#16a34a'
+				: hoursDistMode === 'shipped'
+					? '#f97316'
+					: '#3b82f6';
+
+		chart.setOption({
+			backgroundColor: 'transparent',
+			grid: { left: 45, right: 12, top: 16, bottom: 32 },
+			xAxis: {
+				type: 'category',
+				data: data.map((d) => d.bucket),
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				axisLine: { lineStyle: { color: gridColor() } },
+				axisTick: { show: false },
+				name: axisName,
+				nameLocation: 'middle',
+				nameGap: 26,
+				nameTextStyle: { color: dimColor(), fontSize: 10 },
+			},
+			yAxis: {
+				type: 'value',
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				splitLine: { lineStyle: { color: gridColor(), type: 'dashed' } },
+				axisLine: { show: false },
+				min: 0,
+			},
+			tooltip: {
+				trigger: 'axis',
+				formatter: (params: any) => {
+					const p = params[0];
+					return `${p.axisValue}h<br/><b>${p.value}</b> projects`;
+				},
+			},
+			series: [
+				{
+					type: 'bar',
+					data: data.map((d) => d.count),
+					itemStyle: { color: barColor },
+					barWidth: '70%',
+				},
+			],
+		});
 	}
 
 	$effect(() => {
@@ -227,6 +283,7 @@
 		// and bindings into newly-mounted DOM nodes get hooked up.
 		$theme;
 		breakdownTab;
+		hoursDistMode;
 		if (stats) tick().then(() => renderCharts());
 	});
 
@@ -699,6 +756,23 @@
 							{formatTotal(stats.hours.rejectedHours)}
 						</div>
 					</div>
+				</div>
+
+				<div class="bg-rv-surface border border-rv-border rounded-lg p-4 mt-3">
+					<div class="mb-2 flex items-center justify-between gap-2">
+						<div class="text-[11px] text-rv-dim uppercase tracking-wide">
+							Project distribution by hours
+						</div>
+						<select
+							bind:value={hoursDistMode}
+							class="rounded-md border border-rv-border bg-rv-surface2 px-2 py-1 text-xs text-rv-text"
+						>
+							<option value="unshipped">Unshipped (incl. pending/approved)</option>
+							<option value="shipped">Shipped but pending (incl. approved)</option>
+							<option value="approved">Approved hours</option>
+						</select>
+					</div>
+					<div bind:this={hoursDistributionEl} style="height: 220px;"></div>
 				</div>
 			</section>
 			{/if}

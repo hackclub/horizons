@@ -707,12 +707,14 @@ export class ReviewerService {
     const thirtyDaysWindow = new Date(dayStart);
     thirtyDaysWindow.setDate(thirtyDaysWindow.getDate() - 30);
 
-    const [hours, timings, projects, historical] = await Promise.all([
-      this.metricsService.computeReviewHours(),
-      this.metricsService.computeReviewTimings(),
-      this.metricsService.computeReviewProjects(),
-      this.metricsService.computeHistorical(thirtyDaysWindow),
-    ]);
+    const [hours, timings, projects, historical, hoursDistribution] =
+      await Promise.all([
+        this.metricsService.computeReviewHours(),
+        this.metricsService.computeReviewTimings(),
+        this.metricsService.computeReviewProjects(),
+        this.metricsService.computeHistorical(thirtyDaysWindow),
+        this.metricsService.computeProjectHoursDistribution(),
+      ]);
 
     return {
       leaderboard: {
@@ -728,6 +730,7 @@ export class ReviewerService {
         reviewsLast30Days: recentDurationsMs.length,
       },
       hours,
+      hoursDistribution,
       reviewStats: timings,
       reviewProjects: projects,
       historical: {

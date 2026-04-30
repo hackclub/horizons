@@ -105,6 +105,121 @@ export class MetricsService {
     };
   }
 
+  /**
+   * Histogram of project counts by hours bucket, computed three ways that mirror
+   * the home-page qualifying graph modes:
+   *   - `unshipped`: every project, bucketed by `nowHackatimeHours`
+   *   - `shipped`:   projects with ≥1 pending/approved submission, bucketed by `nowHackatimeHours`
+   *   - `approved`:  projects with `approvedHours > 0`, bucketed by `approvedHours`
+   * All three are returned so the client can toggle without re-fetching.
+   */
+  async computeProjectHoursDistribution(asOf?: Date) {
+    const ceiling = asOf ?? new Date(8640000000000000);
+    const order = [
+      '0',
+      '0-5',
+      '5-10',
+      '10-15',
+      '15-20',
+      '20-25',
+      '25-30',
+      '30-40',
+      '40-50',
+      '50-75',
+      '75-100',
+      '100+',
+    ];
+
+    const bucketize = (rows: Array<{ bucket: string; count: bigint }>) => {
+      const map = new Map<string, number>();
+      for (const r of rows) map.set(r.bucket, Number(r.count));
+      return order.map((bucket) => ({ bucket, count: map.get(bucket) ?? 0 }));
+    };
+
+    const [unshippedRows, shippedRows, approvedRows] = await Promise.all([
+      // Unshipped mode: every project, bucketed by tracked Hackatime hours
+      this.prisma.$queryRaw<Array<{ bucket: string; count: bigint }>>`
+        SELECT bucket, COUNT(*)::bigint AS count FROM (
+          SELECT CASE
+            WHEN now_hackatime_hours IS NULL OR now_hackatime_hours <= 0 THEN '0'
+            WHEN now_hackatime_hours < 5   THEN '0-5'
+            WHEN now_hackatime_hours < 10  THEN '5-10'
+            WHEN now_hackatime_hours < 15  THEN '10-15'
+            WHEN now_hackatime_hours < 20  THEN '15-20'
+            WHEN now_hackatime_hours < 25  THEN '20-25'
+            WHEN now_hackatime_hours < 30  THEN '25-30'
+            WHEN now_hackatime_hours < 40  THEN '30-40'
+            WHEN now_hackatime_hours < 50  THEN '40-50'
+            WHEN now_hackatime_hours < 75  THEN '50-75'
+            WHEN now_hackatime_hours < 100 THEN '75-100'
+            ELSE '100+'
+          END AS bucket
+          FROM projects
+          WHERE created_at <= ${ceiling}
+        ) p
+        GROUP BY bucket
+      `,
+      // Shipped mode: only projects with ≥1 pending or approved submission
+      this.prisma.$queryRaw<Array<{ bucket: string; count: bigint }>>`
+        SELECT bucket, COUNT(*)::bigint AS count FROM (
+          SELECT CASE
+            WHEN p.now_hackatime_hours IS NULL OR p.now_hackatime_hours <= 0 THEN '0'
+            WHEN p.now_hackatime_hours < 5   THEN '0-5'
+            WHEN p.now_hackatime_hours < 10  THEN '5-10'
+            WHEN p.now_hackatime_hours < 15  THEN '10-15'
+            WHEN p.now_hackatime_hours < 20  THEN '15-20'
+            WHEN p.now_hackatime_hours < 25  THEN '20-25'
+            WHEN p.now_hackatime_hours < 30  THEN '25-30'
+            WHEN p.now_hackatime_hours < 40  THEN '30-40'
+            WHEN p.now_hackatime_hours < 50  THEN '40-50'
+            WHEN p.now_hackatime_hours < 75  THEN '50-75'
+            WHEN p.now_hackatime_hours < 100 THEN '75-100'
+            ELSE '100+'
+          END AS bucket
+          FROM projects p
+          WHERE p.created_at <= ${ceiling}
+            AND EXISTS (
+              SELECT 1 FROM submissions s
+              WHERE s.project_id = p.project_id
+                AND s.approval_status IN ('pending', 'approved')
+                AND s.created_at <= ${ceiling}
+            )
+        ) p
+        GROUP BY bucket
+      `,
+      // Approved mode: only projects with approvedHours > 0, bucketed by that
+      this.prisma.$queryRaw<Array<{ bucket: string; count: bigint }>>`
+        SELECT bucket, COUNT(*)::bigint AS count FROM (
+          SELECT CASE
+            WHEN approved_hours <= 0 THEN '0'
+            WHEN approved_hours < 5   THEN '0-5'
+            WHEN approved_hours < 10  THEN '5-10'
+            WHEN approved_hours < 15  THEN '10-15'
+            WHEN approved_hours < 20  THEN '15-20'
+            WHEN approved_hours < 25  THEN '20-25'
+            WHEN approved_hours < 30  THEN '25-30'
+            WHEN approved_hours < 40  THEN '30-40'
+            WHEN approved_hours < 50  THEN '40-50'
+            WHEN approved_hours < 75  THEN '50-75'
+            WHEN approved_hours < 100 THEN '75-100'
+            ELSE '100+'
+          END AS bucket
+          FROM projects
+          WHERE created_at <= ${ceiling}
+            AND approved_hours IS NOT NULL
+            AND approved_hours > 0
+        ) p
+        GROUP BY bucket
+      `,
+    ]);
+
+    return {
+      unshipped: bucketize(unshippedRows),
+      shipped: bucketize(shippedRows),
+      approved: bucketize(approvedRows),
+    };
+  }
+
   /** Median / last-project review and fraud-check turnaround timings. */
   async computeReviewTimings() {
     const weekStart = new Date();
