@@ -15,6 +15,12 @@
 		priorUserFeedback?: string | null;
 		isResubmission?: boolean;
 		hasPriorYswsSubmission?: boolean;
+		/** approvedHours from the most recent OTHER approved submission for this
+		 *  project, if any. Used to surface the reship delta. */
+		priorReshipApprovedHours?: number | null;
+		/** Sum of hoursShipped from non-Horizons Manifest entries — already
+		 *  credited elsewhere, so subtracted from the delta sent to Airtable. */
+		priorYswsHoursShipped?: number;
 		onReviewComplete: () => void;
 	}
 
@@ -29,6 +35,8 @@
 		priorUserFeedback = null,
 		isResubmission = false,
 		hasPriorYswsSubmission = false,
+		priorReshipApprovedHours = null,
+		priorYswsHoursShipped = 0,
 		onReviewComplete,
 	}: Props = $props();
 
@@ -47,6 +55,23 @@
 	// Changes needed form fields
 	let changesComment = $state('');
 	let rejectSendEmail = $state(false);
+
+	// On a reship, surface the implied delta. Hours already credited =
+	// (prior Horizons approved) + (sum of hoursShipped for non-Horizons YSWS
+	// from Manifest). What we're actually granting is total cumulative minus
+	// that — same math the backend runs before sending to Airtable.
+	let alreadyCreditedHours = $derived(
+		Math.round(((priorReshipApprovedHours ?? 0) + priorYswsHoursShipped) * 10) /
+			10,
+	);
+	let hasReshipContext = $derived(
+		priorReshipApprovedHours != null || priorYswsHoursShipped > 0,
+	);
+	let reshipDelta = $derived(
+		hasReshipContext
+			? Math.round((approvedHours - alreadyCreditedHours) * 10) / 10
+			: null,
+	);
 
 	// Reset fields when submission changes. Autofill keys off the reviewer's own
 	// decision (reviewPassed), not approvalStatus — a reviewer-approved submission
@@ -217,6 +242,22 @@
 					oninput={() => { reviewerManuallyEditedHours = true; }}
 					class="w-[100px] bg-rv-surface border border-rv-border rounded-md p-2.5 text-rv-text font-[Space_Mono,monospace] text-[13px] font-semibold resize-vertical focus:outline-none focus:border-rv-accent"
 				/>
+				{#if hasReshipContext && reshipDelta != null}
+					<p class="mt-1 mb-0 text-[11px] text-rv-dim">
+						Already credited:
+						{#if priorReshipApprovedHours != null}
+							<span class="font-[Space_Mono,monospace] font-semibold text-rv-text">{priorReshipApprovedHours.toFixed(1)}h</span> Horizons{#if priorYswsHoursShipped > 0}{' '}+{' '}{/if}
+						{/if}
+						{#if priorYswsHoursShipped > 0}
+							<span class="font-[Space_Mono,monospace] font-semibold text-rv-text">{priorYswsHoursShipped.toFixed(1)}h</span> other YSWS
+						{/if}
+						→ granting
+						<span class="font-[Space_Mono,monospace] font-semibold {reshipDelta < 0 ? 'text-rv-red' : 'text-rv-green'}">
+							{reshipDelta >= 0 ? '+' : ''}{reshipDelta.toFixed(1)}h
+						</span>
+						new
+					</p>
+				{/if}
 			</div>
 
 			<!-- Structured justification builder -->

@@ -191,6 +191,9 @@ export class ProjectSubmissionSummary {
 
   @ApiProperty({ type: Number, nullable: true })
   hackatimeHours: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  approvedHours: number | null;
 }
 
 export class SubmissionDetailResponse {

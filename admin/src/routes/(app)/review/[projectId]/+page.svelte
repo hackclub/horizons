@@ -518,6 +518,25 @@
 							hasPriorYswsSubmission={(manifestLookup?.manifest?.submissions ?? []).some(
 								(s) => (s.yswsName ?? '').toLowerCase() !== 'horizons',
 							)}
+							priorYswsHoursShipped={(manifestLookup?.manifest?.submissions ?? [])
+								.filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
+								.reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0)}
+							priorReshipApprovedHours={(() => {
+								// Most recent OTHER approved submission for this project.
+								// Used to surface the implied delta on a reship: the reviewer
+								// is granting (current approvedHours - this) new hours.
+								const submissions = currentSubmission.submissions ?? [];
+								const currentCreatedAt = new Date(currentSubmission.createdAt).getTime();
+								const priorApproved = submissions
+									.filter((s) =>
+										s.submissionId !== currentSubmission!.submissionId
+										&& s.approvalStatus === 'approved'
+										&& s.approvedHours != null
+										&& new Date(s.createdAt).getTime() < currentCreatedAt,
+									)
+									.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+								return priorApproved[0]?.approvedHours ?? null;
+							})()}
 							onReviewComplete={handleReviewComplete}
 						/>
 					</div>
