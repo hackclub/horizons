@@ -48,6 +48,11 @@
 		return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 	}
 
+	function tzAbbr(d: Date): string {
+		const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(d);
+		return parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+	}
+
 	function weekdayShort(d: Date): string {
 		return d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
 	}
@@ -150,6 +155,7 @@
 							<span class="ce-time">{formatTime(event.start)}</span>
 							<span class="ce-dash">&ndash;</span>
 							<span class="ce-time">{formatTime(event.end)}</span>
+							<span class="ce-tz">{tzAbbr(event.start)}</span>
 							{#if event.actionUrl}
 								<a
 									class="ce-action"
@@ -341,6 +347,12 @@
 	.ce-dash {
 		color: rgba(0, 0, 0, 0.4);
 		font-family: 'Bricolage Grotesque', sans-serif;
+	}
+
+	.ce-tz {
+		font-family: 'Bricolage Grotesque', sans-serif;
+		font-size: 14px;
+		color: rgba(0, 0, 0, 0.5);
 	}
 
 	.enter-hint {
