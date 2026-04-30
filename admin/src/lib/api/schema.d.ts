@@ -2473,6 +2473,11 @@ export interface components {
             leaderboard: components["schemas"]["LeaderboardBreakdown"];
             general: components["schemas"]["GeneralStats"];
             hours: components["schemas"]["HoursStats"];
+            hoursDistribution: {
+                unshipped: { bucket: string; count: number }[];
+                shipped: { bucket: string; count: number }[];
+                approved: { bucket: string; count: number }[];
+            };
             reviewStats: {
                 medianReviewTimeThisWeek: number | null;
                 medianFraudCheckTimeThisWeek: number | null;
