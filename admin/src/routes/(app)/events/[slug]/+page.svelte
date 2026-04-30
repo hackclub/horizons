@@ -10,6 +10,12 @@
 
 	const slug = $derived($page.params.slug);
 
+	interface QualificationModeCounts {
+		engaged: number;
+		rsvped: number;
+		qualified: number;
+	}
+
 	interface EventStats {
 		event: {
 			eventId: number;
@@ -30,7 +36,20 @@
 		dauYesterday: number;
 		pinnedTimeline: { date: string; value: number }[];
 		dauTimeline: { date: string; value: number }[];
+		qualification: {
+			signedUp: number;
+			engaged: number;
+			rsvped: number;
+			qualified: number;
+			modes: {
+				approved: QualificationModeCounts;
+				shipped: QualificationModeCounts;
+				unshipped: QualificationModeCounts;
+			};
+		};
 	}
+
+	type QualificationMode = 'approved' | 'shipped' | 'unshipped';
 
 	interface EventConfig {
 		name: string;
@@ -62,6 +81,8 @@
 
 	let pinnedChartEl = $state<HTMLDivElement | null>(null);
 	let dauChartEl = $state<HTMLDivElement | null>(null);
+	let qualificationChartEl = $state<HTMLDivElement | null>(null);
+	let qualificationMode = $state<QualificationMode>('approved');
 
 	onMount(async () => {
 		await Promise.all([loadStats(), loadEventConfigs()]);
@@ -150,6 +171,7 @@
 	}
 
 	function isDark() { return $theme === 'dark'; }
+	function textColor() { return isDark() ? '#e2e8f0' : '#0f172a'; }
 	function dimColor() { return isDark() ? '#94a3b8' : '#64748b'; }
 	function gridColor() { return isDark() ? '#334155' : '#e2e8f0'; }
 
@@ -202,6 +224,74 @@
 		});
 	}
 
+	function renderQualificationChart() {
+		if (!stats || !qualificationChartEl) return;
+		const chart = echarts.init(qualificationChartEl);
+		charts.push(chart);
+
+		const q = stats.qualification;
+		const counts = q.modes[qualificationMode];
+		const dark = isDark();
+
+		// Mutually exclusive segments: nested funnel split into rings.
+		const qualifiedColor = dark ? '#15803d' : '#166534';
+		const rsvpedColor = dark ? '#3b82f6' : '#2563eb';
+		const engagedColor = dark ? '#22c55e' : '#16a34a';
+		const signedUpOnlyColor = dark ? '#475569' : '#cbd5e1';
+
+		const slices = [
+			{ name: 'Qualified (≥30h)', value: counts.qualified, color: qualifiedColor },
+			{ name: 'Pending RSVPed (≥15h)', value: Math.max(0, counts.rsvped - counts.qualified), color: rsvpedColor },
+			{ name: 'Engaged (≥1h)', value: Math.max(0, counts.engaged - counts.rsvped), color: engagedColor },
+			{ name: 'Signed up only', value: Math.max(0, q.signedUp - counts.engaged), color: signedUpOnlyColor },
+		].filter((s) => s.value > 0);
+
+		chart.setOption({
+			backgroundColor: 'transparent',
+			tooltip: {
+				trigger: 'item',
+				formatter: (p: any) => {
+					const pct = q.signedUp ? ((p.value / q.signedUp) * 100).toFixed(1) : '0.0';
+					return `<b>${p.name}</b><br/>${p.value} of ${q.signedUp} (${pct}%)`;
+				},
+			},
+			legend: {
+				orient: 'vertical',
+				left: 'left',
+				top: 'middle',
+				textStyle: { color: dimColor(), fontSize: 11 },
+				itemWidth: 12,
+				itemHeight: 8,
+			},
+			series: [
+				{
+					type: 'pie',
+					radius: ['45%', '75%'],
+					center: ['65%', '50%'],
+					avoidLabelOverlap: true,
+					itemStyle: {
+						borderColor: dark ? '#0f172a' : '#ffffff',
+						borderWidth: 2,
+					},
+					label: {
+						color: textColor(),
+						fontSize: 11,
+						formatter: (p: any) => {
+							const pct = q.signedUp ? ((p.value / q.signedUp) * 100).toFixed(0) : '0';
+							return `${p.value} (${pct}%)`;
+						},
+					},
+					labelLine: { lineStyle: { color: dimColor() } },
+					data: slices.map((s) => ({
+						name: s.name,
+						value: s.value,
+						itemStyle: { color: s.color },
+					})),
+				},
+			],
+		});
+	}
+
 	function renderCharts() {
 		charts.forEach((c) => c.dispose());
 		charts = [];
@@ -209,10 +299,12 @@
 
 		renderLineChart(pinnedChartEl, stats.pinnedTimeline, '#3b82f6', 'rgba(59,130,246,0.15)');
 		renderLineChart(dauChartEl, stats.dauTimeline, '#22c55e', 'rgba(34,197,94,0.15)');
+		renderQualificationChart();
 	}
 
 	$effect(() => {
 		$theme;
+		qualificationMode;
 		if (stats) tick().then(() => renderCharts());
 	});
 </script>
@@ -294,6 +386,26 @@
 				<div bind:this={dauChartEl} style="height: 200px;"></div>
 				{#if stats.dauTimeline.length === 0}
 					<p class="text-[10px] text-ds-text-secondary text-center mt-1">No historical data yet</p>
+				{/if}
+			</div>
+
+			<!-- Signups by qualification pie chart -->
+			<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+				<div class="mb-2 flex items-center justify-between gap-2">
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Signups by Qualification</p>
+					<select
+						bind:value={qualificationMode}
+						class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+					>
+						<option value="unshipped">Unshipped (incl. pending/approved)</option>
+						<option value="shipped">Shipped but pending (incl. approved)</option>
+						<option value="approved">Approved hours</option>
+					</select>
+				</div>
+				{#if stats.qualification.signedUp === 0}
+					<p class="text-[10px] text-ds-text-secondary text-center py-12">No signups yet</p>
+				{:else}
+					<div bind:this={qualificationChartEl} style="height: 240px;"></div>
 				{/if}
 			</div>
 

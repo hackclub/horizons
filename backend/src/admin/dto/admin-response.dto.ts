@@ -1080,6 +1080,23 @@ class EventStatsPinnedTimelineEntry {
   value: number;
 }
 
+class EventStatsQualification {
+  @ApiProperty()
+  signedUp: number;
+
+  @ApiProperty()
+  engaged: number;
+
+  @ApiProperty()
+  rsvped: number;
+
+  @ApiProperty()
+  qualified: number;
+
+  @ApiProperty({ type: StatsSignupQualificationModes })
+  modes: StatsSignupQualificationModes;
+}
+
 export class EventStatsResponse {
   @ApiProperty({ type: EventStatsEventDetail })
   event: EventStatsEventDetail;
@@ -1101,4 +1118,7 @@ export class EventStatsResponse {
 
   @ApiProperty({ type: [EventStatsPinnedTimelineEntry] })
   dauTimeline: EventStatsPinnedTimelineEntry[];
+
+  @ApiProperty({ type: EventStatsQualification })
+  qualification: EventStatsQualification;
 }

@@ -879,6 +879,77 @@ export class AdminService {
       value: typeof r.value === 'number' ? r.value : Number(r.value) || 0,
     }));
 
+    // Qualification funnel for this event's pinned users.
+    // Mirrors computeSignupStats so the admin home stacked bar and the
+    // per-event pie chart agree on every count.
+    const qualificationRow = await this.prisma.$queryRaw<
+      Array<{
+        signed_up: bigint;
+        engaged: bigint;
+        rsvped: bigint;
+        qualified: bigint;
+        unshipped_engaged: bigint;
+        unshipped_rsvped: bigint;
+        unshipped_qualified: bigint;
+        shipped_engaged: bigint;
+        shipped_rsvped: bigint;
+        shipped_qualified: bigint;
+      }>
+    >`
+      SELECT
+        COUNT(pe.id) AS signed_up,
+        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 1) AS engaged,
+        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 15) AS rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 30) AS qualified,
+        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 1) AS unshipped_engaged,
+        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 15) AS unshipped_rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 30) AS unshipped_qualified,
+        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 1) AS shipped_engaged,
+        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 15) AS shipped_rsvped,
+        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 30) AS shipped_qualified
+      FROM pinned_events pe
+      LEFT JOIN (
+        SELECT
+          p.user_id,
+          SUM(COALESCE(p.approved_hours, 0)) AS approved_total,
+          SUM(COALESCE(p.now_hackatime_hours, 0)) AS unshipped_total,
+          SUM(
+            CASE WHEN EXISTS (
+              SELECT 1 FROM submissions s
+              WHERE s.project_id = p.project_id
+                AND s.approval_status IN ('pending', 'approved')
+            ) THEN COALESCE(p.now_hackatime_hours, 0) ELSE 0 END
+          ) AS shipped_total
+        FROM projects p
+        GROUP BY p.user_id
+      ) ut ON ut.user_id = pe.user_id
+      WHERE pe.event_id = ${eventId}
+    `;
+    const q = qualificationRow[0];
+    const qualification = {
+      signedUp: Number(q?.signed_up ?? 0),
+      engaged: Number(q?.engaged ?? 0),
+      rsvped: Number(q?.rsvped ?? 0),
+      qualified: Number(q?.qualified ?? 0),
+      modes: {
+        approved: {
+          engaged: Number(q?.engaged ?? 0),
+          rsvped: Number(q?.rsvped ?? 0),
+          qualified: Number(q?.qualified ?? 0),
+        },
+        shipped: {
+          engaged: Number(q?.shipped_engaged ?? 0),
+          rsvped: Number(q?.shipped_rsvped ?? 0),
+          qualified: Number(q?.shipped_qualified ?? 0),
+        },
+        unshipped: {
+          engaged: Number(q?.unshipped_engaged ?? 0),
+          rsvped: Number(q?.unshipped_rsvped ?? 0),
+          qualified: Number(q?.unshipped_qualified ?? 0),
+        },
+      },
+    };
+
     return {
       event: {
         eventId: event.eventId,
@@ -899,6 +970,7 @@ export class AdminService {
       dauYesterday,
       pinnedTimeline,
       dauTimeline,
+      qualification,
     };
   }
 
