@@ -11,8 +11,17 @@ import { PrismaService } from '../prisma.service';
 export class MetricsService {
   constructor(private prisma: PrismaService) {}
 
-  /** Project-level hours: tracked / unshipped / shipped / in-review / approved / rejected, plus weighted grants. */
-  async computeReviewHours() {
+  /**
+   * Project-level hours: tracked / unshipped / shipped / in-review / approved / rejected, plus weighted grants.
+   * Pass `asOf` to scope to projects (and submissions) created on or before that instant — used by the
+   * daily snapshot job to backfill historical rows. Omit for the live "as of now" dashboard.
+   */
+  async computeReviewHours(asOf?: Date) {
+    const projectWhere = asOf ? { createdAt: { lte: asOf } } : {};
+    // Sentinel that always passes when no asOf is set — keeps the WHERE clauses
+    // identical between the live and snapshot paths so the SQL plan is shared.
+    const ceiling = asOf ?? new Date(8640000000000000);
+
     const [
       trackedAgg,
       unshippedAgg,
@@ -21,29 +30,35 @@ export class MetricsService {
       approvedHoursResult,
       rejectedHoursResult,
     ] = await Promise.all([
-      this.prisma.project.aggregate({ _sum: { nowHackatimeHours: true } }),
       this.prisma.project.aggregate({
         _sum: { nowHackatimeHours: true },
-        where: { submissions: { none: {} } },
+        where: projectWhere,
       }),
       this.prisma.project.aggregate({
         _sum: { nowHackatimeHours: true },
-        where: { submissions: { some: {} } },
+        where: { ...projectWhere, submissions: { none: {} } },
+      }),
+      this.prisma.project.aggregate({
+        _sum: { nowHackatimeHours: true },
+        where: { ...projectWhere, submissions: { some: {} } },
       }),
       // Hours in review: latest submission is pending AND reviewer hasn't decided yet
       this.prisma.$queryRaw<Array<{ total_hours: number }>>`
         SELECT COALESCE(SUM(p.now_hackatime_hours), 0) as total_hours
         FROM projects p
-        WHERE EXISTS (
-          SELECT 1 FROM submissions s
-          WHERE s.project_id = p.project_id
-            AND s.approval_status = 'pending'
-            AND s.review_passed IS NULL
-            AND s.created_at = (
-              SELECT MAX(s2.created_at) FROM submissions s2
-              WHERE s2.project_id = p.project_id
-            )
-        )
+        WHERE p.created_at <= ${ceiling}
+          AND EXISTS (
+            SELECT 1 FROM submissions s
+            WHERE s.project_id = p.project_id
+              AND s.approval_status = 'pending'
+              AND s.review_passed IS NULL
+              AND s.created_at <= ${ceiling}
+              AND s.created_at = (
+                SELECT MAX(s2.created_at) FROM submissions s2
+                WHERE s2.project_id = p.project_id
+                  AND s2.created_at <= ${ceiling}
+              )
+          )
       `,
       // Approved hours: latest approved submission per fraud-passed project
       this.prisma.$queryRaw<Array<{ total_hours: number }>>`
@@ -52,10 +67,13 @@ export class MetricsService {
         JOIN projects p ON p.project_id = s.project_id
         WHERE s.approval_status = 'approved'
           AND p.joe_fraud_passed = true
+          AND p.created_at <= ${ceiling}
+          AND s.created_at <= ${ceiling}
           AND s.created_at = (
             SELECT MAX(s2.created_at) FROM submissions s2
             WHERE s2.project_id = p.project_id
               AND s2.approval_status = 'approved'
+              AND s2.created_at <= ${ceiling}
           )
       `,
       // Rejected hours: latest submission is rejected and not a silent fraud reject
@@ -64,9 +82,11 @@ export class MetricsService {
         FROM submissions s
         WHERE s.approval_status = 'rejected'
           AND s.silent_reject = false
+          AND s.created_at <= ${ceiling}
           AND s.created_at = (
             SELECT MAX(s2.created_at) FROM submissions s2
             WHERE s2.project_id = s.project_id
+              AND s2.created_at <= ${ceiling}
           )
       `,
     ]);
@@ -188,10 +208,23 @@ export class MetricsService {
     };
   }
 
-  /** Project counts across the two-gate flow plus a 3×3 reviewer×fraud state matrix. */
-  async computeReviewProjects() {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+  /**
+   * Project counts across the two-gate flow plus a 3×3 reviewer×fraud state matrix.
+   * Pass `asOf` to scope to projects/submissions created on or before that instant.
+   * "This week" counts use a 7-day window ending at `asOf` (or now).
+   */
+  async computeReviewProjects(asOf?: Date) {
+    const reference = asOf ?? new Date();
+    const sevenDaysBefore = new Date(reference);
+    sevenDaysBefore.setUTCDate(sevenDaysBefore.getUTCDate() - 7);
+    const projectCreated = asOf ? { createdAt: { lte: asOf } } : {};
+    const subCreated = asOf ? { createdAt: { lte: asOf } } : {};
+    const subWeek = asOf
+      ? { createdAt: { gte: sevenDaysBefore, lte: asOf } }
+      : { createdAt: { gte: sevenDaysBefore } };
+    const subWeekReviewed = asOf
+      ? { reviewedAt: { gte: sevenDaysBefore, lte: asOf } }
+      : { reviewedAt: { gte: sevenDaysBefore } };
 
     const [
       shipped,
@@ -206,47 +239,75 @@ export class MetricsService {
       fraudCheckedThisWeek,
       reviewedThisWeek,
     ] = await Promise.all([
-      this.prisma.project.count({ where: { submissions: { some: {} } } }),
       this.prisma.project.count({
-        where: { joeFraudPassed: true, submissions: { some: {} } },
-      }),
-      this.prisma.project.count({
-        where: { joeFraudPassed: null, submissions: { some: {} } },
-      }),
-      this.prisma.submission.count({
-        where: { approvalStatus: 'pending', reviewPassed: null },
-      }),
-      this.prisma.submission.count({
-        where: { approvalStatus: 'pending', reviewPassed: { not: null } },
-      }),
-      this.prisma.submission.count({
-        where: { approvalStatus: 'rejected', silentReject: true },
+        where: { ...projectCreated, submissions: { some: subCreated } },
       }),
       this.prisma.project.count({
         where: {
-          submissions: { some: { approvalStatus: { in: ['approved', 'rejected'] } } },
-        },
-      }),
-      this.prisma.project.count({
-        where: { submissions: { some: { approvalStatus: 'approved' } } },
-      }),
-      this.prisma.project.count({
-        where: { submissions: { some: { createdAt: { gte: sevenDaysAgo } } } },
-      }),
-      this.prisma.project.count({
-        where: {
+          ...projectCreated,
           joeFraudPassed: true,
-          submissions: { some: { createdAt: { gte: sevenDaysAgo } } },
+          submissions: { some: subCreated },
         },
       }),
       this.prisma.project.count({
         where: {
-          submissions: { some: { reviewedAt: { gte: sevenDaysAgo }, approvalStatus: { in: ['approved', 'rejected'] } } },
+          ...projectCreated,
+          joeFraudPassed: null,
+          submissions: { some: subCreated },
+        },
+      }),
+      this.prisma.submission.count({
+        where: { ...subCreated, approvalStatus: 'pending', reviewPassed: null },
+      }),
+      this.prisma.submission.count({
+        where: {
+          ...subCreated,
+          approvalStatus: 'pending',
+          reviewPassed: { not: null },
+        },
+      }),
+      this.prisma.submission.count({
+        where: {
+          ...subCreated,
+          approvalStatus: 'rejected',
+          silentReject: true,
+        },
+      }),
+      this.prisma.project.count({
+        where: {
+          ...projectCreated,
+          submissions: {
+            some: { ...subCreated, approvalStatus: { in: ['approved', 'rejected'] } },
+          },
+        },
+      }),
+      this.prisma.project.count({
+        where: {
+          ...projectCreated,
+          submissions: { some: { ...subCreated, approvalStatus: 'approved' } },
+        },
+      }),
+      this.prisma.project.count({
+        where: { ...projectCreated, submissions: { some: subWeek } },
+      }),
+      this.prisma.project.count({
+        where: {
+          ...projectCreated,
+          joeFraudPassed: true,
+          submissions: { some: subWeek },
+        },
+      }),
+      this.prisma.project.count({
+        where: {
+          ...projectCreated,
+          submissions: {
+            some: { ...subWeekReviewed, approvalStatus: { in: ['approved', 'rejected'] } },
+          },
         },
       }),
     ]);
 
-    const funnelMatrix = await this.computeFunnelMatrix();
+    const funnelMatrix = await this.computeFunnelMatrix(asOf);
 
     return {
       shipped,
@@ -272,7 +333,8 @@ export class MetricsService {
    * Under the fraud-wins rule (fraud=false → silent reject regardless of reviewer),
    * fraud-failed column cells are all silent-rejects.
    */
-  private async computeFunnelMatrix() {
+  private async computeFunnelMatrix(asOf?: Date) {
+    const ceiling = asOf ?? new Date(8640000000000000);
     const rows = await this.prisma.$queryRaw<
       Array<{
         review_bucket: 'approved' | 'rejected' | 'pending';
@@ -287,6 +349,7 @@ export class MetricsService {
           approval_status,
           silent_reject
         FROM submissions
+        WHERE created_at <= ${ceiling}
         ORDER BY project_id, created_at DESC
       )
       SELECT
@@ -303,6 +366,7 @@ export class MetricsService {
         COUNT(*)::bigint AS count
       FROM latest_submission ls
       JOIN projects p ON p.project_id = ls.project_id
+      WHERE p.created_at <= ${ceiling}
       GROUP BY review_bucket, fraud_bucket;
     `;
 
@@ -392,7 +456,13 @@ export class MetricsService {
       if (row.metric === 'review_projects') {
         const obj = typeof row.value === 'object' && row.value !== null ? row.value as Record<string, any> : {};
         const shipped = Number(obj.shipped) || 0;
-        const fraudChecked = Number(obj.passingFraudInQueue) || 0;
+        // Prefer the unified `fraudChecked` field (projects with joeFraudPassed=true).
+        // Fall back to the legacy `passingFraudInQueue` shape for snapshot rows
+        // taken before the unification — note semantics differ slightly so the
+        // chart will show a step at the cutover until those rows are re-snapshotted.
+        const fraudChecked = obj.fraudChecked != null
+          ? Number(obj.fraudChecked) || 0
+          : Number(obj.passingFraudInQueue) || 0;
         result.projectsShipped.push({ date: dateStr, value: shipped });
         result.projectsFraudChecked.push({ date: dateStr, value: fraudChecked });
         continue;
