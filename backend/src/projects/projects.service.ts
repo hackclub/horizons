@@ -497,6 +497,60 @@ export class ProjectsService {
     return this.scopeSubmissionForUser(submission);
   }
 
+  /**
+   * Surface ship-flow alerts for the user: cross-YSWS submission detected by
+   * Manifest, and whether this project already has an approved Horizons
+   * submission (i.e. the current ship is a reship). Both signals trigger UI
+   * prompts asking the user to clarify what changed in the description.
+   *
+   * `codeUrl` is the current value the user has typed in the form; falls back
+   * to the saved repoUrl so the alert still fires on page load before any
+   * editing.
+   */
+  async getShipAlerts(projectId: number, userId: number, codeUrl?: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: { userId: true, repoUrl: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (project.userId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const lookupUrl = (codeUrl ?? '').trim() || project.repoUrl || '';
+
+    let priorYswsNames: string[] = [];
+    if (lookupUrl && this.manifestService.isEnabled()) {
+      const manifest = await this.manifestService.lookup(lookupUrl);
+      const otherSubmissions = (manifest?.submissions ?? []).filter(
+        (s) => (s.yswsName ?? '').toLowerCase() !== 'horizons',
+      );
+      // Dedupe — Manifest can return multiple submissions per YSWS (e.g. one
+      // draft + one shipped), and we only want to show each program once.
+      priorYswsNames = Array.from(
+        new Set(
+          otherSubmissions
+            .map((s) => s.yswsName?.trim())
+            .filter((n): n is string => !!n),
+        ),
+      );
+    }
+
+    const approvedCount = await this.prisma.submission.count({
+      where: { projectId, approvalStatus: 'approved' },
+    });
+
+    return {
+      hasPriorYswsSubmission: priorYswsNames.length > 0,
+      priorYswsNames,
+      hasApprovedSubmission: approvedCount > 0,
+    };
+  }
+
   async getProjectSubmissions(projectId: number, userId: number) {
     const project = await this.prisma.project.findUnique({
       where: { projectId },

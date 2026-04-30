@@ -49,6 +49,27 @@ export class ProjectUserResponse {
   lastName: string;
 }
 
+export class ShipAlertsResponse {
+  @ApiProperty({
+    description:
+      'True if Manifest reports this project was submitted to a non-Horizons YSWS',
+  })
+  hasPriorYswsSubmission: boolean;
+
+  @ApiProperty({
+    description:
+      'Names of the non-Horizons YSWS programs this project was submitted to (deduped)',
+    type: [String],
+  })
+  priorYswsNames: string[];
+
+  @ApiProperty({
+    description:
+      'True if this project has an approved Horizons submission (current ship is a reship)',
+  })
+  hasApprovedSubmission: boolean;
+}
+
 export class CreateProjectResponse {
   @ApiProperty({ description: 'Project ID' })
   projectId: number;

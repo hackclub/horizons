@@ -358,6 +358,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/auth/{id}/ship-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cross-YSWS and prior-approval signals for the ship form */
+        get: operations["ProjectsAuthController_getShipAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/auth/{id}/hackatime-projects": {
         parameters: {
             query?: never;
@@ -1899,6 +1916,14 @@ export interface components {
         DeleteProjectResponse: {
             deleted: boolean;
             projectId: number;
+        };
+        ShipAlertsResponse: {
+            /** @description True if Manifest reports this project was submitted to a non-Horizons YSWS */
+            hasPriorYswsSubmission: boolean;
+            /** @description Names of the non-Horizons YSWS programs this project was submitted to (deduped) */
+            priorYswsNames: string[];
+            /** @description True if this project has an approved Horizons submission (current ship is a reship) */
+            hasApprovedSubmission: boolean;
         };
         AdminSubmissionProjectUserResponse: {
             userId: number;
@@ -3570,6 +3595,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ProjectsAuthController_getShipAlerts: {
+        parameters: {
+            query?: {
+                /** @description Current code URL from the form; overrides the saved repoUrl for the manifest lookup */
+                codeUrl?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipAlertsResponse"];
+                };
             };
         };
     };
