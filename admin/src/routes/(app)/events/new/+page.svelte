@@ -188,10 +188,10 @@
                 Cancel
             </Button>
             {#if formError}
-                <span class="text-red-600 text-sm">{formError}</span>
+                <span class="text-ds-red text-sm">{formError}</span>
             {/if}
             {#if formSuccess}
-                <span class="text-green-700 text-sm">{formSuccess}</span>
+                <span class="text-ds-green text-sm">{formSuccess}</span>
             {/if}
         </div>
     </div>

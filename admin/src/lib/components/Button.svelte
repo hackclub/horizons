@@ -13,11 +13,11 @@
 
 	const variants = {
 		default:
-			'bg-white border border-ds-border px-2 py-2 text-black shadow-[var(--color-ds-shadow)] hover:bg-[#f5f5f5]',
+			'bg-ds-surface border border-ds-border px-2 py-2 text-ds-text shadow-[var(--color-ds-shadow)] hover:bg-ds-bg-secondary',
 		approve:
-			'border-none px-4 py-2 font-bold bg-ds-green text-white hover:bg-[#43a047]',
+			'border-none px-4 py-2 font-bold bg-ds-green text-white hover:opacity-90',
 		reject:
-			'border-none px-4 py-2 font-bold bg-ds-red text-white hover:bg-[#e53935]',
+			'border-none px-4 py-2 font-bold bg-ds-red text-white hover:opacity-90',
 		ghost:
 			'bg-transparent border border-ds-border px-3.5 py-1.5 text-ds-text-placeholder hover:border-ds-border-strong'
 	};

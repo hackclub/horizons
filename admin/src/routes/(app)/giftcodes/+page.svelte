@@ -227,10 +227,10 @@
                 Clear Form
             </Button>
             {#if giftCodeError}
-                <span class="text-red-600 text-sm">{giftCodeError}</span>
+                <span class="text-ds-red text-sm">{giftCodeError}</span>
             {/if}
             {#if giftCodeSuccess}
-                <span class="text-green-700 text-sm">{giftCodeSuccess}</span>
+                <span class="text-ds-green text-sm">{giftCodeSuccess}</span>
             {/if}
         </div>
 
@@ -241,15 +241,15 @@
                     {#each giftCodeResults as result}
                         <div class="flex items-center gap-2 text-sm">
                             {#if result.success}
-                                <span class="text-green-700">&#x2713;</span>
+                                <span class="text-ds-green">&#x2713;</span>
                             {:else}
-                                <span class="text-red-600">&#x2717;</span>
+                                <span class="text-ds-red">&#x2717;</span>
                             {/if}
                             <span class="text-ds-text-secondary">{result.email}</span>
                             {#if result.success}
                                 <span class="text-ds-text-placeholder font-mono text-xs">{result.code}</span>
                             {:else}
-                                <span class="text-red-600 text-xs">{result.error}</span>
+                                <span class="text-ds-red text-xs">{result.error}</span>
                             {/if}
                         </div>
                     {/each}
@@ -286,7 +286,7 @@
                         >
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-700">
+                <tbody class="divide-y divide-ds-border-divider">
                     {#each giftCodes as giftCode (giftCode.giftCodeId)}
                         <tr class="hover:bg-ds-surface2/30">
                             <td class="px-4 py-3 text-sm text-ds-text-secondary"
@@ -324,17 +324,17 @@
                             <td class="px-4 py-3">
                                 {#if giftCode.isClaimed}
                                     <span
-                                        class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700"
+                                        class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 dark:text-green-300"
                                         >Claimed</span
                                     >
                                 {:else if giftCode.emailSentAt}
                                     <span
-                                        class="px-2 py-1 text-xs rounded bg-blue-500/20 border border-blue-400 text-blue-700"
+                                        class="px-2 py-1 text-xs rounded bg-blue-500/20 border border-blue-400 text-blue-700 dark:text-blue-300"
                                         >Sent</span
                                     >
                                 {:else}
                                     <span
-                                        class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-600"
+                                        class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-700 dark:text-yellow-300"
                                         >Pending</span
                                     >
                                 {/if}

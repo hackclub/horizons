@@ -254,11 +254,11 @@
     function statusBadgeClass(status: string): string {
         switch (status) {
             case 'approved':
-                return 'bg-green-500/20 border-green-400 text-green-700';
+                return 'bg-green-500/20 border-green-400 text-green-700 dark:text-green-300';
             case 'rejected':
-                return 'bg-red-500/20 border-red-400 text-red-600';
+                return 'bg-red-500/20 border-red-400 text-red-700 dark:text-red-300';
             case 'pending':
-                return 'bg-yellow-500/20 border-yellow-400 text-yellow-600';
+                return 'bg-yellow-500/20 border-yellow-400 text-yellow-700 dark:text-yellow-300';
             default:
                 return 'bg-ds-surface-inactive border-ds-border text-ds-text-secondary';
         }
@@ -283,7 +283,7 @@
                         <Button
                             variant="ghost"
                             class={globalSettings.submissionsFrozen
-                                ? 'bg-blue-600/20 border-blue-500 text-blue-700 hover:bg-blue-600/30 flex items-center gap-2'
+                                ? 'bg-blue-600/20 border-blue-500 text-blue-700 dark:text-blue-300 hover:bg-blue-600/30 flex items-center gap-2'
                                 : 'flex items-center gap-2'}
                             onclick={toggleGlobalSubmissionsFrozen}
                             disabled={globalSettingsLoading}
@@ -304,10 +304,10 @@
 
             {#if globalSettings?.submissionsFrozen}
                 <div class="rounded-xl border border-blue-500 bg-blue-600/10 p-4 flex items-center gap-3">
-                    <Snowflake size={24} class="text-blue-700" />
+                    <Snowflake size={24} class="text-blue-700 dark:text-blue-300" />
                     <div>
-                        <p class="font-semibold text-blue-700">Submissions are currently frozen</p>
-                        <p class="text-sm text-blue-600">Users cannot submit or resubmit projects until unfrozen.</p>
+                        <p class="font-semibold text-blue-700 dark:text-blue-300">Submissions are currently frozen</p>
+                        <p class="text-sm text-blue-700 dark:text-blue-300">Users cannot submit or resubmit projects until unfrozen.</p>
                     </div>
                 </div>
             {/if}
@@ -458,17 +458,17 @@
                                         {fullName(project.user)} ({project.user.email})
                                     </p>
                                     {#if project.user.hackatimeStartDate}
-                                        <p class="mt-1 text-xs text-yellow-700">
+                                        <p class="mt-1 text-xs text-yellow-700 dark:text-yellow-300">
                                             ⚠ Custom Hackatime start: {new Date(project.user.hackatimeStartDate).toISOString().split('T')[0]}
                                         </p>
                                     {/if}
                                 </div>
                                 <div class="flex flex-wrap gap-2 text-sm text-ds-text-secondary">
                                     {#if project.joeFraudPassed === false}
-                                        <span class="rounded-full border border-red-500 bg-red-600/20 text-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide">Fraud</span>
+                                        <span class="rounded-full border border-red-500 bg-red-600/20 text-red-700 dark:text-red-300 px-3 py-1 text-xs font-bold uppercase tracking-wide">Fraud</span>
                                     {/if}
                                     {#if project.user.isSus}
-                                        <span class="rounded-full border border-yellow-500 bg-yellow-600/20 text-yellow-600 px-3 py-1 text-xs font-bold uppercase tracking-wide">Sus</span>
+                                        <span class="rounded-full border border-yellow-500 bg-yellow-600/20 text-yellow-700 dark:text-yellow-300 px-3 py-1 text-xs font-bold uppercase tracking-wide">Sus</span>
                                     {/if}
                                     <span class={`rounded-full border px-3 py-1 ${statusBadgeClass(status)}`}>
                                         {status.toUpperCase()}

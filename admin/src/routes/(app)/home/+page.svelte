@@ -817,7 +817,7 @@
 			</div>
 		{:else if error}
 			<div class="flex flex-col items-center justify-center h-64 gap-2">
-				<p class="text-red-500">{error}</p>
+				<p class="text-ds-red">{error}</p>
 				<Button onclick={loadStats}>Retry</Button>
 			</div>
 		{:else if stats}

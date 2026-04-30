@@ -318,7 +318,7 @@
 			<p class="text-sm text-ds-text-secondary">Loading event...</p>
 		{:else if error}
 			<div class="flex flex-col items-center gap-2 py-12">
-				<p class="text-red-500">{error}</p>
+				<p class="text-ds-red">{error}</p>
 				<Button onclick={loadStats}>Retry</Button>
 			</div>
 		{:else if stats}
@@ -330,9 +330,9 @@
 					{/if}
 					<div class="flex items-center gap-2">
 						<h1 class="text-2xl font-semibold text-ds-text">{stats.event.title}</h1>
-						<span class="rounded-lg bg-neutral-700 px-1.5 py-0.5 text-xs text-neutral-400">{stats.event.slug}</span>
+						<span class="rounded-lg bg-ds-surface2 px-1.5 py-0.5 text-xs text-ds-text-secondary">{stats.event.slug}</span>
 						{#if !stats.event.isActive}
-							<span class="rounded bg-red-600/20 px-1.5 py-0.5 text-xs text-red-500">Inactive</span>
+							<span class="rounded bg-red-600/20 px-1.5 py-0.5 text-xs text-red-700 dark:text-red-300">Inactive</span>
 						{/if}
 					</div>
 					{#if stats.event.location}
@@ -359,7 +359,7 @@
 				</div>
 				<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Met Hour Goal</p>
-					<p class="text-2xl font-bold text-green-600">{stats.metHourGoal}</p>
+					<p class="text-2xl font-bold text-green-700 dark:text-green-300">{stats.metHourGoal}</p>
 				</div>
 				<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Haven't Met Goal</p>

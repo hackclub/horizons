@@ -150,10 +150,10 @@
 					</Button>
 					<Button variant="ghost" onclick={cancel}>Cancel</Button>
 					{#if formError}
-						<span class="text-sm text-red-600">{formError}</span>
+						<span class="text-sm text-ds-red">{formError}</span>
 					{/if}
 					{#if formSuccess}
-						<span class="text-sm text-green-700">{formSuccess}</span>
+						<span class="text-sm text-ds-green">{formSuccess}</span>
 					{/if}
 				</div>
 			</div>

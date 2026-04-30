@@ -221,11 +221,11 @@
     function statusBadgeClass(status: string): string {
         switch (status) {
             case 'approved':
-                return 'bg-green-500/20 border-green-400 text-green-700';
+                return 'bg-green-500/20 border-green-400 text-green-700 dark:text-green-300';
             case 'rejected':
-                return 'bg-red-500/20 border-red-400 text-red-600';
+                return 'bg-red-500/20 border-red-400 text-red-700 dark:text-red-300';
             case 'pending':
-                return 'bg-yellow-500/20 border-yellow-400 text-yellow-600';
+                return 'bg-yellow-500/20 border-yellow-400 text-yellow-700 dark:text-yellow-300';
             default:
                 return 'bg-ds-surface-inactive border-ds-border text-ds-text-secondary';
         }
@@ -631,7 +631,7 @@
         {#if loading}
             <div class="py-12 text-center text-ds-text-secondary">Loading...</div>
         {:else if loadError}
-            <Card class="p-4 border border-red-500 bg-red-600/10 text-red-600">{loadError}</Card>
+            <Card class="p-4 border border-red-500 bg-red-600/10 text-red-700 dark:text-red-300">{loadError}</Card>
         {:else if project}
             <!-- ═══ Header card: flags + status + actions ═══ -->
             <Card
@@ -645,12 +645,12 @@
             >
                 {#if project.joeFraudPassed === false}
                     <div class="bg-red-600/20 border-2 border-red-500 rounded-lg p-3">
-                        <p class="text-red-600 font-bold text-center uppercase tracking-wide">⚠️ FRAUD (JOE)</p>
+                        <p class="text-red-700 dark:text-red-300 font-bold text-center uppercase tracking-wide">⚠️ FRAUD (JOE)</p>
                     </div>
                 {/if}
                 {#if project.user.isSus}
                     <div class="bg-yellow-600/20 border-2 border-yellow-500 rounded-lg p-3">
-                        <p class="text-yellow-600 font-bold text-center uppercase tracking-wide">⚠️ SUS FLAGGED</p>
+                        <p class="text-yellow-700 dark:text-yellow-300 font-bold text-center uppercase tracking-wide">⚠️ SUS FLAGGED</p>
                     </div>
                 {/if}
 
@@ -663,7 +663,7 @@
                         </p>
                         <p class="text-sm text-ds-text-secondary">{project.user.email}</p>
                         {#if project.user.hackatimeStartDate}
-                            <div class="mt-2 rounded-md border border-yellow-600 bg-yellow-100 px-3 py-2 text-xs text-yellow-900">
+                            <div class="mt-2 rounded-md border border-yellow-600 bg-yellow-500/15 px-3 py-2 text-xs text-yellow-800 dark:text-yellow-200">
                                 <p class="font-semibold">
                                     ⚠ Custom Hackatime start date: {toDateInputValue(project.user.hackatimeStartDate)}
                                 </p>
@@ -1054,14 +1054,11 @@
                             </label>
                             <label class="space-y-1">
                                 <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Project Type</span>
-                                <select
-                                    bind:value={projectType}
-                                    class="w-full rounded-lg border border-ds-border bg-white px-3 py-2 font-dm text-sm text-black"
-                                >
+                                <Select bind:value={projectType} class="w-full">
                                     {#each projectTypes as t}
                                         <option value={t}>{t}</option>
                                     {/each}
-                                </select>
+                                </Select>
                             </label>
                         </div>
 

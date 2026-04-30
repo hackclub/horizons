@@ -104,15 +104,15 @@
 	function cellStyle(meaning: MatrixCellMeaning) {
 		switch (meaning) {
 			case 'approved':
-				return 'bg-green-500/15 border-green-500 text-green-700';
+				return 'bg-green-500/15 border-green-500 text-green-700 dark:text-green-300';
 			case 'silent-reject':
-				return 'bg-orange-500/15 border-orange-500 text-orange-700';
+				return 'bg-orange-500/15 border-orange-500 text-orange-700 dark:text-orange-300';
 			case 'awaiting-fraud':
 			case 'awaiting-review':
 			case 'awaiting-both':
-				return 'bg-yellow-500/15 border-yellow-500 text-yellow-800';
+				return 'bg-yellow-500/15 border-yellow-500 text-yellow-800 dark:text-yellow-200';
 			case 'rejected':
-				return 'bg-red-500/15 border-red-500 text-red-700';
+				return 'bg-red-500/15 border-red-500 text-red-700 dark:text-red-300';
 		}
 	}
 	function cellLabel(meaning: MatrixCellMeaning) {
@@ -894,25 +894,25 @@
 
 						<div class="grid gap-3 sm:grid-cols-4 mb-3">
 							<div class="space-y-1 rounded-lg border border-green-500/40 bg-green-500/5 p-4">
-								<div class="text-[11px] font-semibold uppercase tracking-wide text-green-700">
+								<div class="text-[11px] font-semibold uppercase tracking-wide text-green-700 dark:text-green-300">
 									✓ Approved
 								</div>
 								<div class="text-2xl font-bold text-rv-text">{formatCount(finalApproved)}</div>
 							</div>
 							<div class="space-y-1 rounded-lg border border-yellow-500/40 bg-yellow-500/5 p-4">
-								<div class="text-[11px] font-semibold uppercase tracking-wide text-yellow-700">
+								<div class="text-[11px] font-semibold uppercase tracking-wide text-yellow-700 dark:text-yellow-300">
 									↻ In-flight
 								</div>
 								<div class="text-2xl font-bold text-rv-text">{formatCount(finalInFlight)}</div>
 							</div>
 							<div class="space-y-1 rounded-lg border border-red-500/40 bg-red-500/5 p-4">
-								<div class="text-[11px] font-semibold uppercase tracking-wide text-red-700">
+								<div class="text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
 									✗ Rejected
 								</div>
 								<div class="text-2xl font-bold text-rv-text">{formatCount(finalRejected)}</div>
 							</div>
 							<div class="space-y-1 rounded-lg border border-orange-500/40 bg-orange-500/5 p-4">
-								<div class="text-[11px] font-semibold uppercase tracking-wide text-orange-700">
+								<div class="text-[11px] font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">
 									⚠ Silent reject
 								</div>
 								<div class="text-2xl font-bold text-rv-text">

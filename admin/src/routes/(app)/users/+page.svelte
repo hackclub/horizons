@@ -374,8 +374,8 @@
                                         {#if slackLookupResult}
                                             <p
                                                 class="text-xs {slackLookupResult.found
-                                                    ? 'text-green-700'
-                                                    : 'text-yellow-600'}"
+                                                    ? 'text-green-700 dark:text-green-300'
+                                                    : 'text-yellow-700 dark:text-yellow-300'}"
                                             >
                                                 {slackLookupResult.found
                                                     ? `Found: ${slackLookupResult.displayName}`
@@ -384,7 +384,7 @@
                                         {/if}
                                         {#if slackError}
                                             <p
-                                                class="text-xs text-red-600"
+                                                class="text-xs text-ds-red"
                                             >
                                                 {slackError}
                                             </p>
@@ -416,7 +416,7 @@
                                     >
                                         <span
                                             class={user.slackUserId
-                                                ? 'text-green-700'
+                                                ? 'text-green-700 dark:text-green-300'
                                                 : 'text-ds-text-placeholder'}
                                         >
                                             Slack: {user.slackUserId
@@ -439,7 +439,7 @@
                                         <label class="block text-xs text-ds-text-secondary" for="startdate-{user.userId}">
                                             Hackatime Start Date (overrides global cutoff; leave blank to clear)
                                         </label>
-                                        <p class="rounded-md border border-yellow-600 bg-yellow-100 px-2 py-1.5 text-[12px] text-yellow-900 leading-snug">
+                                        <p class="rounded-md border border-yellow-600 bg-yellow-500/15 px-2 py-1.5 text-[12px] text-yellow-800 dark:text-yellow-200 leading-snug">
                                             ⚠ Setting this widens the Hackatime time window for <em>all</em> of this user's linked projects, not just CSV-imported ones.
                                             Any post-cutoff project they link manually will also get credit for pre-cutoff activity on that project.
                                             Only set this for admin-curated backfill users.
@@ -451,7 +451,7 @@
                                             bind:value={startDateEditValue}
                                         />
                                         {#if startDateError}
-                                            <p class="text-xs text-red-600">{startDateError}</p>
+                                            <p class="text-xs text-ds-red">{startDateError}</p>
                                         {/if}
                                         <div class="flex gap-2">
                                             <Button
@@ -467,7 +467,7 @@
                                         </div>
                                     </div>
                                 {:else if (user as any).hackatimeStartDate}
-                                    <div class="rounded-md border border-yellow-600 bg-yellow-100 px-2 py-1.5 text-[12px] text-yellow-900 flex items-center gap-2 flex-wrap">
+                                    <div class="rounded-md border border-yellow-600 bg-yellow-500/15 px-2 py-1.5 text-[12px] text-yellow-800 dark:text-yellow-200 flex items-center gap-2 flex-wrap">
                                         <span class="font-semibold">
                                             ⚠ Custom Hackatime start: {toDateInputValue((user as any).hackatimeStartDate)}
                                         </span>
@@ -496,7 +496,7 @@
                             <Button
                                 class={`px-3 py-2 text-sm transition-colors ${
                                     user.isFraud
-                                        ? 'bg-red-600/20 border-red-500 text-red-600 hover:bg-red-600/30'
+                                        ? 'bg-red-600/20 border-red-500 text-red-700 dark:text-red-300 hover:bg-red-600/30'
                                         : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                                 }`}
                                 onclick={() =>
@@ -512,7 +512,7 @@
                             <Button
                                 class={`px-3 py-2 text-sm transition-colors ${
                                     user.isSus
-                                        ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30'
+                                        ? 'bg-yellow-600/20 border-yellow-500 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-600/30'
                                         : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
                                 }`}
                                 onclick={() =>

@@ -72,7 +72,7 @@
 								<div class="flex items-center gap-2">
 									<span class="text-base font-semibold text-ds-text">{event.name}</span>
 									{#if !event.isActive}
-										<span class="rounded bg-red-600/20 px-1.5 py-0.5 text-xs text-red-500">Inactive</span>
+										<span class="rounded bg-red-600/20 px-1.5 py-0.5 text-xs text-red-700 dark:text-red-300">Inactive</span>
 									{/if}
 								</div>
 								<p class="text-xs text-ds-text-secondary">
