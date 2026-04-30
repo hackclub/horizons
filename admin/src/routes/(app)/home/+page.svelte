@@ -35,6 +35,8 @@
 	let signupQualificationMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
 	let utmEl = $state<HTMLDivElement | null>(null);
 
+	let homeTab = $state<'users' | 'dau' | 'signups'>('users');
+
 	onMount(() => {
 		loadStats();
 		window.addEventListener('resize', handleResize);
@@ -44,6 +46,12 @@
 		// Re-render qualification chart when mode toggle changes (after stats load).
 		signupQualificationMode;
 		if (stats && signupQualificationEl) renderSignupQualificationChart();
+	});
+
+	$effect(() => {
+		// Re-render charts when the tab changes so newly-mounted DOM nodes get bound.
+		homeTab;
+		if (stats) tick().then(() => renderAll());
 	});
 
 	onDestroy(() => {
@@ -808,6 +816,28 @@
 				<Button onclick={loadStats}>Retry</Button>
 			</div>
 		{:else if stats}
+			<div class="flex gap-1.5 border-b border-ds-border">
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {homeTab === 'users'
+						? 'border-ds-accent text-ds-accent'
+						: 'border-transparent text-ds-text-secondary hover:text-ds-text'}"
+					onclick={() => (homeTab = 'users')}>Users</button
+				>
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {homeTab === 'dau'
+						? 'border-ds-accent text-ds-accent'
+						: 'border-transparent text-ds-text-secondary hover:text-ds-text'}"
+					onclick={() => (homeTab = 'dau')}>DAU</button
+				>
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {homeTab === 'signups'
+						? 'border-ds-accent text-ds-accent'
+						: 'border-transparent text-ds-text-secondary hover:text-ds-text'}"
+					onclick={() => (homeTab = 'signups')}>Signups</button
+				>
+			</div>
+
+			{#if homeTab === 'users'}
 			<!-- 1. User Funnel -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">User Funnel</h2>
@@ -848,6 +878,9 @@
 				</div>
 			</section>
 
+			{/if}
+
+			{#if homeTab === 'dau'}
 			<!-- 3. Daily Active Users -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Daily Active Users</h2>
@@ -907,6 +940,9 @@
 				{/if}
 			</section>
 
+			{/if}
+
+			{#if homeTab === 'signups'}
 			<!-- 6. Signups -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Signups</h2>
@@ -1015,6 +1051,8 @@
 					</div>
 				{/if}
 			</section>
+
+			{/if}
 
 			<!-- Action bar -->
 			<div class="flex items-center gap-2 pt-2">
