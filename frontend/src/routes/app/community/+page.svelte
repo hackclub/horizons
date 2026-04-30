@@ -59,6 +59,11 @@
 		return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 	}
 
+	function tzAbbr(d: Date): string {
+		const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(d);
+		return parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+	}
+
 	function parseMarkdownText(text: string): string {
 		return text
 			.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" class="underline hover:opacity-70">$1</a>')
@@ -179,6 +184,7 @@
 								<span class="time-box">{formatTime(selectedEvent.start)}</span>
 								<span class="font-bricolage text-black/40">&ndash;</span>
 								<span class="time-box">{formatTime(selectedEvent.end)}</span>
+								<span class="font-bricolage text-[18px] text-black/50">{tzAbbr(selectedEvent.start)}</span>
 							</div>
 						</div>
 						{#if selectedEvent.tagline}
@@ -247,6 +253,7 @@
 										<span class="time-box">{formatTime(event.start)}</span>
 										<span class="font-bricolage text-black/40">&ndash;</span>
 										<span class="time-box">{formatTime(event.end)}</span>
+										<span class="font-bricolage text-[16px] text-black/50">{tzAbbr(event.start)}</span>
 									</div>
 								</div>
 								{#if isLive(event)}
