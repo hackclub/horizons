@@ -511,6 +511,13 @@
 							priorApprovedHours={currentSubmission.approvedHours}
 							priorReviewerAnalysis={currentSubmission.reviewerAnalysis}
 							priorUserFeedback={currentSubmission.userFeedback}
+							isResubmission={(currentSubmission.submissions ?? []).some(
+								(s) => s.submissionId !== currentSubmission!.submissionId
+									&& new Date(s.createdAt) < new Date(currentSubmission!.createdAt),
+							)}
+							hasPriorYswsSubmission={(manifestLookup?.manifest?.submissions ?? []).some(
+								(s) => (s.yswsName ?? '').toLowerCase() !== 'horizons',
+							)}
 							onReviewComplete={handleReviewComplete}
 						/>
 					</div>

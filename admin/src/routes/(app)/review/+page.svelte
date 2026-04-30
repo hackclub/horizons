@@ -334,6 +334,10 @@
 								submissionId={currentSubmission.submissionId}
 								hackatimeHours={currentSubmission.hackatimeHours}
 								{editedHours}
+								isResubmission={(currentSubmission.submissions ?? []).some(
+									(s) => s.submissionId !== currentSubmission!.submissionId
+										&& new Date(s.createdAt) < new Date(currentSubmission!.createdAt),
+								)}
 								onReviewComplete={handleReviewComplete}
 							/>
 						</div>

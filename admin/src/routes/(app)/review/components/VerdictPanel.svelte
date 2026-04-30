@@ -13,6 +13,8 @@
 		priorApprovedHours?: number | null;
 		priorReviewerAnalysis?: string | null;
 		priorUserFeedback?: string | null;
+		isResubmission?: boolean;
+		hasPriorYswsSubmission?: boolean;
 		onReviewComplete: () => void;
 	}
 
@@ -25,6 +27,8 @@
 		priorApprovedHours = null,
 		priorReviewerAnalysis = null,
 		priorUserFeedback = null,
+		isResubmission = false,
+		hasPriorYswsSubmission = false,
 		onReviewComplete,
 	}: Props = $props();
 
@@ -185,6 +189,11 @@
 			<h3 class="text-sm font-bold mb-3 flex items-center gap-1.5">
 				<span class="w-2 h-2 rounded-full bg-rv-green"></span> Approve Project
 			</h3>
+			{#if isResubmission || hasPriorYswsSubmission}
+				<div class="mb-3 rounded-md border border-rv-blue/60 bg-rv-blue/15 px-3 py-2 text-xs leading-relaxed text-rv-text">
+					<strong class="text-rv-blue">{hasPriorYswsSubmission && !isResubmission ? 'Submitted to another YSWS' : 'Resubmission'}:</strong> This is an update to an already submitted project. You'll need to describe what changed in the project compared to the previous submission.
+				</div>
+			{/if}
 			{#if joeFraudPassed === null}
 				<div class="mb-3 rounded-md border border-yellow-500 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-800">
 					Fraud review still pending — this will finalize once fraud passes.
