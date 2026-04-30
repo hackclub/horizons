@@ -2602,6 +2602,7 @@ export interface components {
             /** Format: date-time */
             reviewedAt: string | null;
             hackatimeHours: number | null;
+            approvedHours: number | null;
         };
         SubmissionDetailResponse: {
             submissionId: number;

@@ -224,6 +224,7 @@ export class ReviewerService {
         reviewPassed: s.reviewPassed,
         reviewedAt: s.reviewedAt,
         hackatimeHours: s.hackatimeHours,
+        approvedHours: s.approvedHours,
       }))
       .sort(
         (a, b) =>

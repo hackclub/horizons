@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { MailService } from '../mail/mail.service';
 import { SlackService } from '../slack/slack.service';
+import { ManifestService } from '../manifest/manifest.service';
 import { ReviewSubmissionDto } from '../reviewer/dto/review-submission.dto';
 import { AUDIT_ACTIONS } from './audit-actions';
 
@@ -112,6 +113,7 @@ export class SubmissionApprovalService {
     private airtableService: AirtableService,
     private mailService: MailService,
     private slackService: SlackService,
+    private manifestService: ManifestService,
   ) {}
 
   /**
@@ -532,9 +534,24 @@ export class SubmissionApprovalService {
       });
       const previouslyApprovedHours =
         lastApprovedSubmission?.approvedHours || 0;
+
+      // Subtract hours already shipped to other YSWS programs (from Manifest)
+      // so we don't double-credit work the user already got hours for. Sum
+      // hoursShipped across non-Horizons submissions; null/missing entries
+      // contribute 0, so this is a safe no-op if Manifest is disabled or the
+      // codeUrl isn't registered.
+      const codeUrl = submission.repoUrl || submission.project.repoUrl;
+      let priorYswsHoursShipped = 0;
+      if (codeUrl && this.manifestService.isEnabled()) {
+        const manifest = await this.manifestService.lookup(codeUrl);
+        priorYswsHoursShipped = (manifest?.submissions ?? [])
+          .filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
+          .reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0);
+      }
+
       const deltaHours = Math.max(
         0,
-        totalApprovedHours - previouslyApprovedHours,
+        totalApprovedHours - previouslyApprovedHours - priorYswsHoursShipped,
       );
 
       const approvedProjectData = {
