@@ -50,23 +50,16 @@
 		}
 	}
 
-	function isoToLocalInput(iso: string | Date): string {
-		// API returns ISO; <input type="datetime-local"> needs "YYYY-MM-DDTHH:mm" in local TZ.
-		const d = typeof iso === 'string' ? new Date(iso) : iso;
-		const pad = (n: number) => String(n).padStart(2, '0');
-		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-	}
-
-	function localToIso(local: string): string {
-		return new Date(local).toISOString();
+	function toIsoString(d: string | Date): string {
+		return typeof d === 'string' ? new Date(d).toISOString() : d.toISOString();
 	}
 
 	function populateEditForm() {
 		if (!event) return;
 		editForm = {
 			name: event.name,
-			start: isoToLocalInput(event.start),
-			end: isoToLocalInput(event.end),
+			start: toIsoString(event.start),
+			end: toIsoString(event.end),
 			tagline: event.tagline ?? '',
 			joinInfo: event.joinInfo ?? '',
 			actionUrl: event.actionUrl ?? '',
@@ -85,8 +78,8 @@
 				params: { path: { id: event.communityEventId } },
 				body: {
 					name: editForm.name,
-					start: localToIso(editForm.start),
-					end: localToIso(editForm.end),
+					start: editForm.start,
+					end: editForm.end,
 					tagline: editForm.tagline || undefined,
 					joinInfo: editForm.joinInfo || undefined,
 					actionUrl: editForm.actionUrl || undefined,
@@ -200,12 +193,13 @@
 
 					<div class="grid gap-4 md:grid-cols-2">
 						<div class="space-y-2">
-							<label class="text-sm font-medium text-ds-text-secondary" for="edit-start">Start</label>
-							<TextField id="edit-start" type="datetime-local" bind:value={editForm.start} />
+							<label class="text-sm font-medium text-ds-text-secondary" for="edit-start">Start (UTC)</label>
+							<TextField id="edit-start" placeholder="2026-05-15T16:00:00Z" bind:value={editForm.start} />
+							<p class="text-[11px] text-ds-text-secondary">ISO 8601 UTC, e.g. <code>2026-05-15T16:00:00Z</code></p>
 						</div>
 						<div class="space-y-2">
-							<label class="text-sm font-medium text-ds-text-secondary" for="edit-end">End</label>
-							<TextField id="edit-end" type="datetime-local" bind:value={editForm.end} />
+							<label class="text-sm font-medium text-ds-text-secondary" for="edit-end">End (UTC)</label>
+							<TextField id="edit-end" placeholder="2026-05-15T17:00:00Z" bind:value={editForm.end} />
 						</div>
 					</div>
 
