@@ -27,6 +27,32 @@
         user: 'bg-ds-surface2 border-ds-border text-ds-text-secondary'
     };
 
+    const roleOrder = ['superadmin', 'admin', 'reviewer', 'event_viewer', 'user'];
+    const roleLabel: Record<string, string> = {
+        superadmin: 'Superadmins',
+        admin: 'Admins',
+        reviewer: 'Reviewers',
+        event_viewer: 'Event Viewers',
+        user: 'Users'
+    };
+
+    const groupedUsers = $derived.by(() => {
+        const groups = new Map<string, ElevatedUser[]>();
+        for (const user of elevatedUsers) {
+            const list = groups.get(user.role) ?? [];
+            list.push(user);
+            groups.set(user.role, list);
+        }
+        return roleOrder
+            .filter((role) => groups.has(role))
+            .map((role) => ({ role, users: groups.get(role)! }))
+            .concat(
+                [...groups.keys()]
+                    .filter((role) => !roleOrder.includes(role))
+                    .map((role) => ({ role, users: groups.get(role)! }))
+            );
+    });
+
     async function loadElevatedUsers() {
         loading = true;
         error = null;
@@ -180,59 +206,71 @@
             {:else if elevatedUsers.length === 0}
                 <p class="text-ds-text-placeholder text-sm">No elevated users found.</p>
             {:else}
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-ds-surface2/50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">User</th>
-                                <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">Email</th>
-                                <th class="px-4 py-3 text-center text-sm font-semibold text-ds-text-secondary">Role</th>
-                                <th class="px-4 py-3 text-center text-sm font-semibold text-ds-text-secondary">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            {#each elevatedUsers as user}
-                                <tr class="hover:bg-ds-surface2/30">
-                                    <td class="px-4 py-3">
-                                        <p class="text-sm font-medium text-ds-text">
-                                            {user.firstName || ''} {user.lastName || ''}
-                                        </p>
-                                        <p class="text-xs text-ds-text-placeholder">ID: {user.userId}</p>
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-ds-text-secondary">
-                                        {user.email}
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="inline-block rounded-full border px-3 py-0.5 text-xs font-semibold capitalize {roleBadgeClass[user.role] || roleBadgeClass.user}">
-                                            {user.role}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        {#if user.role === 'superadmin'}
-                                            <span class="text-xs text-ds-text-placeholder">—</span>
-                                        {:else}
-                                            <div class="flex justify-center gap-2">
-                                                <Select
-                                                    value={user.role}
-                                                    onchange={(e) => {
-                                                        const target = e.target as HTMLSelectElement;
-                                                        if (target.value !== user.role) {
-                                                            updateRole(user.userId, target.value);
-                                                        }
-                                                    }}
-                                                    disabled={pendingChange?.userId === user.userId}
-                                                >
-                                                    {#each roleOptions as opt}
-                                                        <option value={opt} selected={user.role === opt}>{opt}</option>
-                                                    {/each}
-                                                </Select>
-                                            </div>
-                                        {/if}
-                                    </td>
-                                </tr>
-                            {/each}
-                        </tbody>
-                    </table>
+                <div class="space-y-6">
+                    {#each groupedUsers as group (group.role)}
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-3">
+                                <h3 class="text-sm font-semibold text-ds-text">
+                                    {roleLabel[group.role] || group.role}
+                                </h3>
+                                <span class="text-xs text-ds-text-placeholder">{group.users.length}</span>
+                            </div>
+                            <div class="overflow-x-auto rounded-lg border border-ds-border">
+                                <table class="w-full">
+                                    <thead class="bg-ds-surface2/50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">User</th>
+                                            <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">Email</th>
+                                            <th class="px-4 py-3 text-center text-sm font-semibold text-ds-text-secondary">Role</th>
+                                            <th class="px-4 py-3 text-center text-sm font-semibold text-ds-text-secondary">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-700">
+                                        {#each group.users as user (user.userId)}
+                                            <tr class="hover:bg-ds-surface2/30">
+                                                <td class="px-4 py-3">
+                                                    <p class="text-sm font-medium text-ds-text">
+                                                        {user.firstName || ''} {user.lastName || ''}
+                                                    </p>
+                                                    <p class="text-xs text-ds-text-placeholder">ID: {user.userId}</p>
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-ds-text-secondary">
+                                                    {user.email}
+                                                </td>
+                                                <td class="px-4 py-3 text-center">
+                                                    <span class="inline-block rounded-full border px-3 py-0.5 text-xs font-semibold capitalize {roleBadgeClass[user.role] || roleBadgeClass.user}">
+                                                        {user.role}
+                                                    </span>
+                                                </td>
+                                                <td class="px-4 py-3 text-center">
+                                                    {#if user.role === 'superadmin'}
+                                                        <span class="text-xs text-ds-text-placeholder">—</span>
+                                                    {:else}
+                                                        <div class="flex justify-center gap-2">
+                                                            <Select
+                                                                value={user.role}
+                                                                onchange={(e) => {
+                                                                    const target = e.target as HTMLSelectElement;
+                                                                    if (target.value !== user.role) {
+                                                                        updateRole(user.userId, target.value);
+                                                                    }
+                                                                }}
+                                                                disabled={pendingChange?.userId === user.userId}
+                                                            >
+                                                                {#each roleOptions as opt}
+                                                                    <option value={opt} selected={user.role === opt}>{opt}</option>
+                                                                {/each}
+                                                            </Select>
+                                                        </div>
+                                                    {/if}
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {/each}
                 </div>
             {/if}
         </Card>
