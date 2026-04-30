@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Req,
   ParseIntPipe,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import {
   ApiOperation,
   ApiOkResponse,
   ApiParam,
+  ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -28,6 +30,7 @@ import {
   ProjectMessageResponse,
   DeleteProjectResponse,
   HackatimeProjectsInfoResponse,
+  ShipAlertsResponse,
 } from './response';
 
 @ApiTags('Projects')
@@ -109,6 +112,26 @@ export class ProjectsAuthController {
     @Req() req: Request,
   ) {
     return this.projectsService.getProjectSubmissions(id, req.user.userId);
+  }
+
+  @Get(':id/ship-alerts')
+  @ApiOperation({
+    summary: 'Cross-YSWS and prior-approval signals for the ship form',
+  })
+  @ApiParam({ name: 'id', description: 'Project ID', type: Number })
+  @ApiQuery({
+    name: 'codeUrl',
+    required: false,
+    description:
+      'Current code URL from the form; overrides the saved repoUrl for the manifest lookup',
+  })
+  @ApiOkResponse({ type: ShipAlertsResponse })
+  async getShipAlerts(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('codeUrl') codeUrl: string | undefined,
+    @Req() req: Request,
+  ) {
+    return this.projectsService.getShipAlerts(id, req.user.userId, codeUrl);
   }
 
   @Put(':id')

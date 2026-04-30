@@ -43,6 +43,18 @@
 	let selectedHackatimeNames = $state<Set<string>>(new Set());
 	let hackatimeLoading = $state(true);
 
+	let hasPriorYswsSubmission = $state(false);
+	let priorYswsNames = $state<string[]>([]);
+	let hasApprovedSubmission = $state(false);
+
+	// Format ["A"], ["A", "B"], ["A", "B", "C"] into a readable English list.
+	function formatYswsList(names: string[]): string {
+		if (names.length === 0) return '';
+		if (names.length === 1) return names[0];
+		if (names.length === 2) return `${names[0]} and ${names[1]}`;
+		return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+	}
+
 	let demoUrlStatus = $state<'idle' | 'checking' | 'ok' | 'error'>('idle');
 	let demoUrlError = $state<string | null>(null);
 	let demoUrlFavicon = $state<string | null>(null);
@@ -363,9 +375,44 @@
 			selectedHackatimeNames = new Set(linkedHackatimeRes.data.hackatimeProjects ?? []);
 		}
 
+		// Initial alert fetch uses whatever codeUrl was loaded from the project.
+		// Subsequent codeUrl edits re-trigger this via the $effect below.
+		fetchShipAlerts(codeUrl);
+
 		loading = false;
 		hackatimeLoading = false;
 	}
+
+	let shipAlertsToken = 0;
+	async function fetchShipAlerts(currentCodeUrl: string) {
+		const myToken = ++shipAlertsToken;
+		const trimmed = currentCodeUrl.trim();
+		const { data } = await api.GET('/api/projects/auth/{id}/ship-alerts', {
+			params: {
+				path: { id: Number(projectId) },
+				query: trimmed ? { codeUrl: trimmed } : {}
+			}
+		});
+		// Drop stale responses if the user kept typing — token mismatch means a
+		// newer fetch has already started.
+		if (myToken !== shipAlertsToken) return;
+		if (data) {
+			hasPriorYswsSubmission = data.hasPriorYswsSubmission;
+			priorYswsNames = data.priorYswsNames ?? [];
+			hasApprovedSubmission = data.hasApprovedSubmission;
+		}
+	}
+
+	let shipAlertsTimeout: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		// Re-check alerts whenever the user changes the code URL. Debounced so
+		// we don't hammer the backend on every keystroke. Skip while the page
+		// is still loading the project so we don't double-fetch on first paint.
+		const url = codeUrl;
+		if (loading) return;
+		clearTimeout(shipAlertsTimeout);
+		shipAlertsTimeout = setTimeout(() => fetchShipAlerts(url), 600);
+	});
 
 	$effect(() => {
 		if (projectId) fetchProject(projectId);
@@ -494,6 +541,20 @@
 		</div>
 
 		<FormCard title="READY TO SUBMIT?" subtitle="Fill out this information and make sure it looks correct">
+			{#if hasApprovedSubmission}
+				<div class="border-2 border-black rounded-lg bg-[#ffd97a] shadow-[2px_2px_0px_0px_black] px-3 py-2 font-bricolage text-sm font-semibold text-black">
+					This is an update to an approved project. Please note what was added/changed in your description.
+				</div>
+			{/if}
+			{#if hasPriorYswsSubmission}
+				<div class="border-2 border-black rounded-lg bg-[#bcd1f5] shadow-[2px_2px_0px_0px_black] px-3 py-2 font-bricolage text-sm font-semibold text-black">
+					<p class="m-0">This project was already submitted to another YSWS. If this is an update to that project, please clarify what was added/changed in your description.</p>
+					{#if priorYswsNames.length > 0}
+						<p class="m-0 mt-1 italic font-normal text-xs text-black/70">Previously submitted to {formatYswsList(priorYswsNames)}.</p>
+					{/if}
+				</div>
+			{/if}
+
 			<div class="flex flex-col sm:flex-row gap-4 w-full">
 				<div class="flex-1 flex flex-col gap-2 min-w-0">
 					<div class={missingFields.has('title') ? 'error-wrapper' : ''}>
