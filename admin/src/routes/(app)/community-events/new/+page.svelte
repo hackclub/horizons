@@ -21,11 +21,6 @@
 
 	let isFormValid = $derived(!!form.name && !!form.start && !!form.end);
 
-	function localToIso(local: string): string {
-		// "2026-05-15T16:00" (browser-local) → ISO with offset
-		return new Date(local).toISOString();
-	}
-
 	async function createEvent() {
 		saving = true;
 		formError = '';
@@ -35,8 +30,8 @@
 			const { error } = await api.POST('/api/community-events/admin', {
 				body: {
 					name: form.name,
-					start: localToIso(form.start),
-					end: localToIso(form.end),
+					start: form.start,
+					end: form.end,
 					tagline: form.tagline || undefined,
 					joinInfo: form.joinInfo || undefined,
 					actionUrl: form.actionUrl || undefined,
@@ -82,13 +77,13 @@
 
 				<div class="grid gap-4 md:grid-cols-2">
 					<div class="space-y-2">
-						<label class="text-sm font-medium text-ds-text-secondary" for="ce-start">Start *</label>
-						<TextField id="ce-start" type="datetime-local" bind:value={form.start} />
-						<p class="text-[11px] text-ds-text-secondary">Your local time</p>
+						<label class="text-sm font-medium text-ds-text-secondary" for="ce-start">Start (UTC) *</label>
+						<TextField id="ce-start" placeholder="2026-05-15T16:00:00Z" bind:value={form.start} />
+						<p class="text-[11px] text-ds-text-secondary">ISO 8601 UTC, e.g. <code>2026-05-15T16:00:00Z</code></p>
 					</div>
 					<div class="space-y-2">
-						<label class="text-sm font-medium text-ds-text-secondary" for="ce-end">End *</label>
-						<TextField id="ce-end" type="datetime-local" bind:value={form.end} />
+						<label class="text-sm font-medium text-ds-text-secondary" for="ce-end">End (UTC) *</label>
+						<TextField id="ce-end" placeholder="2026-05-15T17:00:00Z" bind:value={form.end} />
 					</div>
 				</div>
 
