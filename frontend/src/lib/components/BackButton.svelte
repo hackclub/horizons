@@ -28,7 +28,7 @@
 		onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
 	>
 		<InputPrompt type="ESC" />
-		<span class="font-cook text-2xl font-semibold text-black">BACK</span>
+		<span class="font-cook text-xl md:text-2xl font-semibold text-black">BACK</span>
 	</button>
 </div>
 

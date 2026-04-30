@@ -281,7 +281,7 @@
 <div class="page-wrap">
 	<div class="page-content">
 		<!-- Header -->
-		<div class="flex items-end gap-2 w-full shrink-0 exit-up enter-up" class:exiting={navigating} class:exit-right={exitRight} style:--exit-right-delay="0ms">
+		<div class="flex flex-col md:flex-row md:items-end items-center gap-2 w-full shrink-0 exit-up enter-up" class:exiting={navigating} class:exit-right={exitRight} style:--exit-right-delay="0ms">
 			<div class="w-[347.58px] h-[75.13px] shrink-0">
 				<img src={logoSvg} alt="Horizon" class="w-full h-full block" />
 			</div>
@@ -521,7 +521,7 @@
 
 		<!-- Bottom Info Row -->
 		<div class="info-row enter-down" class:exiting={navigating && !exitRight} style:--exit-delay="0ms" style:--enter-delay="300ms">
-			<div class="card nav-hint-card" class:nav-hint-hidden={hasInteracted}>
+			<div class="card nav-hint-card md:block hidden" class:nav-hint-hidden={hasInteracted}>
 				<div class="flex items-center gap-5">
 					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">USE</p>
 					<InputPrompt type="WASD" />

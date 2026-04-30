@@ -102,11 +102,11 @@
 
 {#if !authed}
 	<div class="fixed inset-0 bg-black z-50"></div>
-{:else if isMobile}
+<!-- {:else if isMobile}
 	<div class="fixed inset-0 z-50 bg-[#271c0c] flex flex-col items-center justify-center gap-4 p-8 text-center">
 		<p class="font-cook text-[32px] font-semibold text-[#f3e8d8] leading-tight">THIS SITE ISN'T READY FOR MOBILE YET.</p>
 		<p class="font-bricolage text-[18px] font-semibold text-[#f3e8d8] tracking-wide">We recommend opening this on desktop.</p>
-	</div>
+	</div> -->
 {:else}
 	<BG {disableAnimations}>
 		{#key page.url.pathname}
