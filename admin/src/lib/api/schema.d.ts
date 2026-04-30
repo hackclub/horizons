@@ -2407,7 +2407,7 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "user" | "admin" | "reviewer";
+            role: "user" | "admin" | "reviewer" | "event_viewer";
         };
         UpdateUserRoleResponse: {
             userId: number;

@@ -17,12 +17,13 @@
     // Pending role change
     let pendingChange = $state<{ userId: number; role: string } | null>(null);
 
-    const roleOptions = ['user', 'admin', 'reviewer'] as const;
+    const roleOptions = ['user', 'admin', 'reviewer', 'event_viewer'] as const;
 
     const roleBadgeClass: Record<string, string> = {
         superadmin: 'bg-purple-600/20 border-purple-500 text-purple-400',
         admin: 'bg-blue-600/20 border-blue-500 text-blue-400',
         reviewer: 'bg-green-600/20 border-green-500 text-green-400',
+        event_viewer: 'bg-amber-600/20 border-amber-500 text-amber-400',
         user: 'bg-ds-surface2 border-ds-border text-ds-text-secondary'
     };
 
@@ -139,6 +140,13 @@
                                     disabled={pendingChange?.userId === result.userId}
                                 >
                                     Make Reviewer
+                                </Button>
+                                <Button
+                                    class="bg-amber-600/20 border-amber-500 text-amber-400 hover:bg-amber-600/30"
+                                    onclick={() => updateRole(result.userId, 'event_viewer')}
+                                    disabled={pendingChange?.userId === result.userId}
+                                >
+                                    Make Event Viewer
                                 </Button>
                                 <Button
                                     class="bg-blue-600/20 border-blue-500 text-blue-400 hover:bg-blue-600/30"

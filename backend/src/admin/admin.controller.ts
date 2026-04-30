@@ -184,7 +184,7 @@ export class AdminController {
 
   @Get('stats')
   @UseGuards(RolesGuard)
-  @Roles(Role.Admin)
+  @Roles(Role.Admin, Role.EventViewer)
   @ApiOkResponse({ type: AdminStatsResponse })
   async getStats() {
     return this.adminService.getStats();
@@ -210,7 +210,7 @@ export class AdminController {
 
   @Get('events/:slug/stats')
   @UseGuards(RolesGuard)
-  @Roles(Role.Admin)
+  @Roles(Role.Admin, Role.EventViewer)
   @ApiOkResponse({ type: EventStatsResponse })
   async getEventStats(@Param('slug') slug: string) {
     const stats = await this.adminService.getEventStats(slug);

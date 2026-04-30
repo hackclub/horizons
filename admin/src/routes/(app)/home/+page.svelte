@@ -15,6 +15,7 @@
 	let stats = $state<Stats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let userRole = $state<string | null>(null);
 	let selectedEventFilter = $state<string>('all');
 	let unmatchedOriginCountries = $state<string[]>([]);
 	let unmatchedEventCountries = $state<string[]>([]);
@@ -37,7 +38,9 @@
 
 	let homeTab = $state<'users' | 'dau' | 'signups'>('users');
 
-	onMount(() => {
+	onMount(async () => {
+		const { data: me } = await api.GET('/api/user/auth/me');
+		userRole = me?.role ?? null;
 		loadStats();
 		window.addEventListener('resize', handleResize);
 	});
@@ -798,14 +801,16 @@
 
 <div class="p-6">
 	<div class="mx-auto max-w-6xl space-y-8">
-		<div class="flex justify-end">
-			<a
-				href="{base}/review/stats"
-				class="inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-surface px-4 py-2 text-sm font-medium text-ds-text no-underline shadow-[var(--color-ds-shadow)] transition-colors hover:border-ds-accent hover:text-ds-accent"
-			>
-				Review Stats
-			</a>
-		</div>
+		{#if userRole === 'admin' || userRole === 'superadmin' || userRole === 'reviewer'}
+			<div class="flex justify-end">
+				<a
+					href="{base}/review/stats"
+					class="inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-surface px-4 py-2 text-sm font-medium text-ds-text no-underline shadow-[var(--color-ds-shadow)] transition-colors hover:border-ds-accent hover:text-ds-accent"
+				>
+					Review Stats
+				</a>
+			</div>
+		{/if}
 		{#if loading}
 			<div class="flex items-center justify-center h-64 text-ds-text-secondary">
 				<p>Loading stats...</p>
