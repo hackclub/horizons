@@ -3,7 +3,7 @@
 	import TextWave from '$lib/components/TextWave.svelte';
 	import CommunityEventsCard from '$lib/components/cards/CommunityEventsCard.svelte';
 	import ProjectsCard from '$lib/components/cards/ProjectsCard.svelte';
-	import EventsCard from '$lib/components/cards/EventsCard.svelte';
+	import GuidesCard from '$lib/components/cards/GuidesCard.svelte';
 	import EventColumnCard from '$lib/components/cards/EventColumnCard.svelte';
 	import logoSvg from '$lib/assets/Logo.svg';
 	import communitySvg from '$lib/assets/home/community.svg';
@@ -46,7 +46,7 @@
 
 	const cardDescriptions: Record<string, string> = {
 		[`${COL_LEFT}-0`]: 'Create projects, track your progress, and submit them for review!',
-		[`${COL_LEFT}-1`]: 'Check out upcoming Horizons events!',
+		[`${COL_LEFT}-1`]: 'Learn to build stuff with our guides!',
 		[`${COL_PINNED_EVENT}-0`]: 'Track your progress for your pinned event!',
 		[`${COL_MIDDLE}-0`]: 'Spend your approved hours on rewards!',
 		[`${COL_MIDDLE}-1`]: 'Check out online events we\'re running for the community!',
@@ -116,7 +116,7 @@
 
 	const hrefs: string[][] = HIDE_COMMUNITY_EVENTS
 		? [
-			['/app/projects?back', '/app/events'],
+			['/app/projects?back', 'https://guides.horizons.hackclub.com'],
 			['/app/events'],
 			['/app/shop?back', '/app/community'],
 			['/faq?from=app'],
@@ -124,7 +124,7 @@
 		]
 		: [
 			['/app/community'],
-			['/app/projects?back', '/app/events'],
+			['/app/projects?back', 'https://guides.horizons.hackclub.com'],
 			['/app/events'],
 			['/app/shop?back', '/app/community'],
 			['/faq?from=app'],
@@ -194,7 +194,12 @@
 			} else if (!HIDE_COMMUNITY_EVENTS && col === 0 && ceFocusedEventId) {
 				navigateTo(`/app/community?event=${encodeURIComponent(ceFocusedEventId)}`);
 			} else {
-				navigateTo(hrefs[col][row]);
+				const href = hrefs[col][row];
+				if (/^https?:\/\//.test(href)) {
+					window.open(href, '_blank', 'noopener,noreferrer');
+				} else {
+					navigateTo(href);
+				}
 			}
 		},
 	});
@@ -335,17 +340,15 @@
 						/>
 					</div>
 
-					<!-- Events -->
+					<!-- Guides -->
 					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
-						<EventsCard
+						<GuidesCard
 							selected={nav.isSelected(COL_LEFT, 1)}
 							usingKeyboard={nav.usingKeyboard}
-							disabled={isDisabled(COL_LEFT, 1)}
 							shaking={isShaking(COL_LEFT, 1)}
 							postOnboarding={postOnboarding}
 							description={cardDescriptions[`${COL_LEFT}-1`]}
 							onmouseenter={() => handleCardHover(COL_LEFT, 1)}
-							onclick={(e) => { e.preventDefault(); if (isDisabled(COL_LEFT, 1)) triggerShake(COL_LEFT, 1); else navigateTo('/app/events'); }}
 							onanimationend={() => { shakingKey = null; }}
 						/>
 					</div>
