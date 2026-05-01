@@ -308,6 +308,59 @@
 	}
 
 	let ceFocusedEventId = $state<string | null>(null);
+	// Tracks whether the live-huddle card "owns" keyboard focus inside col-0.
+	// When true, the events card hands its `selected` styling over to the huddle
+	// card and the wrapper below intercepts up/down/enter so the grid doesn't
+	// also receive them.
+	let huddleNavSelected = $state(false);
+
+	// Reset huddle keyboard focus when the column changes or the card disappears
+	// (e.g. a live event takes precedence and hides the huddle card).
+	$effect(() => {
+		if (!showHuddleCard) huddleNavSelected = false;
+	});
+
+	function handlePageKeydown(e: KeyboardEvent) {
+		hasInteracted = true;
+
+		// Huddle row keyboard handling — runs BEFORE nav.handleKeydown so
+		// up/down/enter while the huddle is selected don't fall through to the
+		// grid (which would otherwise clamp at row 0 of column 0 and no-op).
+		if (huddleNavSelected) {
+			if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+				e.preventDefault();
+				huddleNavSelected = false;
+				return;
+			}
+			if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+				e.preventDefault();
+				return;
+			}
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				window.open(
+					`https://hackclub.enterprise.slack.com/archives/${HORIZONS_SLACK_CHANNEL}`,
+					'_blank',
+					'noopener,noreferrer',
+				);
+				return;
+			}
+			// Left/right releases huddle and falls through to grid column nav.
+			if (
+				e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' ||
+				e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D'
+			) {
+				huddleNavSelected = false;
+			}
+		}
+
+		nav.handleKeydown(e);
+	}
+
+	// If the user navigates away from column 0 (via grid), drop huddle focus.
+	$effect(() => {
+		if (nav.col !== 0) huddleNavSelected = false;
+	});
 
 	const nav = createGridNav({
 		columns: () => {
@@ -319,12 +372,6 @@
 				triggerShake(col, row);
 			} else if (!HIDE_COMMUNITY_EVENTS && col === 0 && ceFocusedEventId) {
 				navigateTo(`/app/community?event=${encodeURIComponent(ceFocusedEventId)}`);
-			} else if (!HIDE_COMMUNITY_EVENTS && col === 0 && showHuddleCard) {
-				window.open(
-					`https://hackclub.enterprise.slack.com/archives/${HORIZONS_SLACK_CHANNEL}`,
-					'_blank',
-					'noopener,noreferrer',
-				);
 			} else {
 				const href = hrefs[col][row];
 				if (/^https?:\/\//.test(href)) {
@@ -391,7 +438,7 @@
 	});
 </script>
 
-<svelte:window onkeydown={(e) => { nav.handleKeydown(e); hasInteracted = true; }} onmousemove={(e) => { mouseX = e.clientX; mouseY = e.clientY; lastMouseMoveTime = performance.now(); hasInteracted = true; }} />
+<svelte:window onkeydown={handlePageKeydown} onmousemove={(e) => { mouseX = e.clientX; mouseY = e.clientY; lastMouseMoveTime = performance.now(); hasInteracted = true; }} />
 
 {#snippet hintRow(text: string)}
 	<img src={nav.usingKeyboard ? enterSvg : clickSvg} alt={nav.usingKeyboard ? 'Enter' : 'Click'} class="enter-hint-key" />
@@ -449,21 +496,23 @@
 								bind:element={cardRefs[0]}
 								bind:focusedEventId={ceFocusedEventId}
 								bind:hasLiveEvent={ceHasLiveEvent}
-								selected={nav.isSelected(0, 0)}
+								selected={nav.isSelected(0, 0) && !huddleNavSelected}
 								usingKeyboard={nav.usingKeyboard}
 								postOnboarding={postOnboarding}
 								description={cardDescriptions['0-0']}
-								hideEnterHint={showHuddleCard && !ceFocusedEventId}
 								debugEvents={debugCommunityEvents}
-								onmouseenter={() => handleCardHover(0, 0)}
+								onmouseenter={() => { handleCardHover(0, 0); huddleNavSelected = false; }}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
 								onEventClick={(id) => navigateTo(`/app/community?event=${encodeURIComponent(id)}`)}
+								onReleaseDown={() => { if (showHuddleCard) huddleNavSelected = true; }}
 							/>
 						</div>
 						{#if showHuddleCard}
 							<LiveHuddleCard
 								memberCount={effectiveHuddleMembers}
+								selected={nav.isSelected(0, 0) && huddleNavSelected}
 								usingKeyboard={nav.usingKeyboard}
+								onmouseenter={() => { handleCardHover(0, 0); if (!nav.usingKeyboard) huddleNavSelected = true; }}
 							/>
 						{/if}
 					</div>

@@ -4,11 +4,19 @@
 
 	interface Props {
 		memberCount: number;
+		selected?: boolean;
 		usingKeyboard?: boolean;
+		onmouseenter?: () => void;
 		onclick?: (e: MouseEvent) => void;
 	}
 
-	let { memberCount, usingKeyboard = true, onclick }: Props = $props();
+	let {
+		memberCount,
+		selected = false,
+		usingKeyboard = true,
+		onmouseenter,
+		onclick,
+	}: Props = $props();
 
 	const HREF = 'https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476';
 
@@ -20,12 +28,15 @@
 	target="_blank"
 	rel="noopener noreferrer"
 	class="card live-huddle-card"
+	class:selected
+	class:input-keyboard={usingKeyboard}
+	{onmouseenter}
 	{onclick}
 >
 	<div class="huddle-row">
 		<div class="huddle-text">
 			<p class="huddle-title font-cook m-0">
-				<span class="live-tag">LIVE</span><span class="title-rest"> Huddle ({peopleLabel}) • Join Now</span>
+				<span class="live-tag">LIVE</span> Huddle ({peopleLabel}) • Join Now
 			</p>
 			<p class="font-bricolage text-[16px] font-semibold text-black m-0">Hack Club Slack</p>
 		</div>
@@ -34,13 +45,15 @@
 		</svg>
 	</div>
 
-	<div class="huddle-cta">
-		<img
-			src={usingKeyboard ? enterSvg : clickSvg}
-			alt={usingKeyboard ? 'Enter' : 'Click'}
-			class="cta-key"
-		/>
-		<span class="font-bricolage text-[16px] font-bold text-black">TO JOIN HUDDLE</span>
+	<div class="huddle-cta-wrap">
+		<div class="huddle-cta">
+			<img
+				src={usingKeyboard ? enterSvg : clickSvg}
+				alt={usingKeyboard ? 'Enter' : 'Click'}
+				class="cta-key"
+			/>
+			<span class="font-bricolage text-[16px] font-bold text-black">TO JOIN HUDDLE</span>
+		</div>
 	</div>
 </a>
 
@@ -54,17 +67,23 @@
 	}
 
 	.live-huddle-card {
+		position: relative;
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
 		padding: 16px 20px;
 		background-color: #f3e8d8;
 		flex-shrink: 0;
+		transform-origin: center;
 		transition: transform var(--juice-duration) var(--juice-easing);
 	}
 
-	.live-huddle-card:hover {
+	/* Mouse-mode: hover scales. Keyboard-mode: only the .selected state scales,
+	   so a stationary cursor doesn't fight the keyboard focus. Mirrors the
+	   pattern in CommunityEventsCard for `.ce-event`. */
+	.live-huddle-card:not(.input-keyboard):hover,
+	.live-huddle-card.selected {
 		transform: scale(var(--juice-scale));
+		z-index: 10;
 	}
 
 	.huddle-row {
@@ -91,10 +110,6 @@
 		color: #fc5b3c;
 	}
 
-	.title-rest {
-		color: black;
-	}
-
 	.slack-icon {
 		width: 32px;
 		height: 32px;
@@ -102,11 +117,38 @@
 		color: black;
 	}
 
+	/* Wrapper animates 0fr → 1fr so the card's height interpolates to/from
+	   the CTA's natural content height — no magic numbers, no display:none
+	   layout jump. The inner clips overflow during the height tween. */
+	.huddle-cta-wrap {
+		display: grid;
+		grid-template-rows: 0fr;
+		transition: grid-template-rows 0.25s ease, margin-top 0.25s ease;
+		margin-top: 0;
+	}
+
 	.huddle-cta {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
+		min-height: 0;
+		overflow: hidden;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.2s ease;
+	}
+
+	.live-huddle-card:not(.input-keyboard):hover .huddle-cta-wrap,
+	.live-huddle-card.selected .huddle-cta-wrap {
+		grid-template-rows: 1fr;
+		margin-top: 16px;
+	}
+
+	.live-huddle-card:not(.input-keyboard):hover .huddle-cta,
+	.live-huddle-card.selected .huddle-cta {
+		opacity: 1;
+		pointer-events: auto;
 	}
 
 	.cta-key {
