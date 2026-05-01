@@ -1732,6 +1732,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/huddles/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HuddlesController_getStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/utils/check-url": {
         parameters: {
             query?: never;
@@ -2393,6 +2409,13 @@ export interface components {
             date: string;
             value: number;
         };
+        EventStatsQualification: {
+            signedUp: number;
+            engaged: number;
+            rsvped: number;
+            qualified: number;
+            modes: components["schemas"]["StatsSignupQualificationModes"];
+        };
         EventStatsResponse: {
             event: components["schemas"]["EventStatsEventDetail"];
             pinnedCount: number;
@@ -2401,6 +2424,7 @@ export interface components {
             dauYesterday: number;
             pinnedTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
             dauTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
+            qualification: components["schemas"]["EventStatsQualification"];
         };
         ReviewerLeaderboardEntry: {
             reviewerId: string;
@@ -3191,6 +3215,21 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        HuddleStatusResponse: {
+            channelId: string;
+            /** @description Whether a huddle is currently active in the channel */
+            active: boolean;
+            callId?: string | null;
+            /** @description Slack user ID of the huddle creator */
+            createdBy?: string | null;
+            /** @description Unix epoch seconds when the huddle started */
+            startedAt?: number | null;
+            /** @description Slack message ts that anchors the huddle thread */
+            threadRootTs?: string | null;
+            activeMembers: string[];
+            droppedMembers: string[];
+            memberCount: number;
         };
         UrlCheckResponse: {
             /** @description Whether the URL is reachable */
@@ -6075,6 +6114,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GiftCodeResponse"][];
+                };
+            };
+        };
+    };
+    HuddlesController_getStatus: {
+        parameters: {
+            query: {
+                channel: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HuddleStatusResponse"];
                 };
             };
         };
