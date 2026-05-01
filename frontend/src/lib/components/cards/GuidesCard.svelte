@@ -100,7 +100,7 @@
 	.guides-card {
 		width: 100%;
 		height: 100%;
-		background-color: #82c854;
+		background-color: #88DE3C;
 	}
 
 	.card-bg-icon {
@@ -116,7 +116,6 @@
 		transform-origin: center;
 		translate: 0 -50%;
 		animation: puzzle-spin 8s infinite;
-		opacity: 0.55;
 	}
 
 	@keyframes puzzle-spin {
