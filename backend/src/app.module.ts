@@ -17,6 +17,7 @@ import { CommunityEventsModule } from './community-events/community-events.modul
 import { GiftCodesModule } from './gift-codes/gift-codes.module';
 import { SlackModule } from './slack/slack.module';
 import { SlackChannelsModule } from './slack-channels/slack-channels.module';
+import { HuddlesModule } from './huddles/huddles.module';
 import { HackatimeModule } from './hackatime/hackatime.module';
 import { UtilsModule } from './utils/utils.module';
 import { GitHubModule } from './github/github.module';
@@ -48,6 +49,7 @@ import { PrismaService } from './prisma.service';
     GiftCodesModule,
     SlackModule,
     SlackChannelsModule,
+    HuddlesModule,
     HackatimeModule,
     UtilsModule,
     GitHubModule,
