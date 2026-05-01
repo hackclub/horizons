@@ -4,9 +4,9 @@
 	import CommunityEventsCard from '$lib/components/cards/CommunityEventsCard.svelte';
 	import ProjectsCard from '$lib/components/cards/ProjectsCard.svelte';
 	import GuidesCard from '$lib/components/cards/GuidesCard.svelte';
+	import SlackCard from '$lib/components/cards/SlackCard.svelte';
 	import EventColumnCard from '$lib/components/cards/EventColumnCard.svelte';
 	import logoSvg from '$lib/assets/Logo.svg';
-	import communitySvg from '$lib/assets/home/community.svg';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
 	import clickSvg from '$lib/assets/prompts/click.svg';
 
@@ -48,8 +48,8 @@
 		[`${COL_LEFT}-0`]: 'Create projects, track your progress, and submit them for review!',
 		[`${COL_LEFT}-1`]: 'Learn to build stuff with our guides!',
 		[`${COL_PINNED_EVENT}-0`]: 'Track your progress for your pinned event!',
-		[`${COL_MIDDLE}-0`]: 'Spend your approved hours on rewards!',
-		[`${COL_MIDDLE}-1`]: 'Check out online events we\'re running for the community!',
+		[`${COL_MIDDLE}-0`]: 'Chat with other Horizons hackers in #horizons!',
+		[`${COL_MIDDLE}-1`]: 'Spend your approved hours on rewards!',
 		[`${COL_FAQ}-0`]: 'Got questions? Find answers here.',
 	};
 	if (!HIDE_COMMUNITY_EVENTS) {
@@ -118,7 +118,7 @@
 		? [
 			['/app/projects?back', 'https://guides.horizons.hackclub.com'],
 			['/app/events'],
-			['/app/shop?back', '/app/community'],
+			['https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476', '/app/shop?back'],
 			['/faq?from=app'],
 			['/admin'],
 		]
@@ -126,7 +126,7 @@
 			['/app/community'],
 			['/app/projects?back', 'https://guides.horizons.hackclub.com'],
 			['/app/events'],
-			['/app/shop?back', '/app/community'],
+			['https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476', '/app/shop?back'],
 			['/faq?from=app'],
 			['/admin'],
 		];
@@ -377,13 +377,24 @@
 					{/if}
 				</div>
 
-				<!-- Middle Column: Shop + Community stacked -->
+				<!-- Middle Column: Slack on top, Shop below -->
 				<div bind:this={cardRefs[COL_MIDDLE]} class="middle-col shrink-0">
-					<!-- Shop -->
+					<!-- Slack -->
 					<div class="enter-up flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="60ms" style:--enter-delay="150ms" style:--exit-right-delay="150ms">
-						<a href="/app/shop" class="card nav-card shop-card"
-							class:selected={nav.isSelected(COL_MIDDLE, 0)}
+						<SlackCard
+							selected={nav.isSelected(COL_MIDDLE, 0)}
+							usingKeyboard={nav.usingKeyboard}
+							postOnboarding={postOnboarding}
+							description={cardDescriptions[`${COL_MIDDLE}-0`]}
 							onmouseenter={() => handleCardHover(COL_MIDDLE, 0)}
+						/>
+					</div>
+
+					<!-- Shop -->
+					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms" style:--exit-right-delay="150ms">
+						<a href="/app/shop" class="card nav-card shop-card"
+							class:selected={nav.isSelected(COL_MIDDLE, 1)}
+							onmouseenter={() => handleCardHover(COL_MIDDLE, 1)}
 							onclick={(e) => { e.preventDefault(); navigateTo('/app/shop?back'); }}>
 							<!-- Shop bag icon -->
 							<div class="card-bg-icon" style="right: -10px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
@@ -397,35 +408,11 @@
 									BUY STUFF FOR YOURSELF!
 								</p>
 							</div>
-							{#if nav.isSelected(COL_MIDDLE, 0) && !postOnboarding}
+							{#if nav.isSelected(COL_MIDDLE, 1) && !postOnboarding}
 								{@render hintPill('TO VISIT SHOP')}
 							{/if}
-							{#if postOnboarding && nav.isSelected(COL_MIDDLE, 0)}
-								{@render popoverWithHint(cardDescriptions[`${COL_MIDDLE}-0`], 'TO VISIT SHOP')}
-							{/if}
-						</a>
-					</div>
-
-					<!-- Community -->
-					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms" style:--exit-right-delay="150ms">
-						<a href="/app/community" class="card nav-card community-card"
-							class:selected={nav.isSelected(COL_MIDDLE, 1)}
-							onmouseenter={() => handleCardHover(COL_MIDDLE, 1)}
-							onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}>
-							<div class="card-bg-icon" style="right: -20px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
-								<img src={communitySvg} alt="" class="w-full h-full" />
-							</div>
-							<div class="card-text z-10">
-								<p class="font-cook text-[40px] font-semibold text-black m-0">COMMUNITY</p>
-								<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-									SEE WHAT'S HAPPENING!
-								</p>
-							</div>
-							{#if nav.isSelected(COL_MIDDLE, 1) && !postOnboarding}
-								{@render hintPill('TO VIEW COMMUNITY')}
-							{/if}
 							{#if postOnboarding && nav.isSelected(COL_MIDDLE, 1)}
-								{@render popoverWithHint(cardDescriptions[`${COL_MIDDLE}-1`], 'TO VIEW COMMUNITY')}
+								{@render popoverWithHint(cardDescriptions[`${COL_MIDDLE}-1`], 'TO VISIT SHOP')}
 							{/if}
 						</a>
 					</div>
@@ -673,12 +660,6 @@
 		width: 372px;
 		height: 100%;
 		background-color: #5cb85c;
-	}
-
-	.community-card {
-		width: 100%;
-		height: 100%;
-		background-color: #CA6DF8;
 	}
 
 	.slack-card {
