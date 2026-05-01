@@ -143,9 +143,11 @@
 					{approvedDisplay}/{round1(targetHours)} hours approved
 				</p>
 			{/if}
-			{#if progressHint && selected}
-				<div class="progress-hint">
-					{@render progressHint()}
+			{#if progressHint}
+				<div class="progress-hint-wrap" class:visible={selected}>
+					<div class="progress-hint">
+						{@render progressHint()}
+					</div>
 				</div>
 			{/if}
 		</div>
@@ -233,11 +235,33 @@
 		align-items: flex-start;
 	}
 
+	/* Wrapper animates 0fr → 1fr so the hint's height tweens to/from natural
+	   content height. margin-top tweens alongside so the spacing collapses
+	   with the row. Inner fades to overlap the size animation. */
+	.progress-hint-wrap {
+		display: grid;
+		grid-template-rows: 0fr;
+		margin-top: 0;
+		transition: grid-template-rows 0.25s ease, margin-top 0.25s ease;
+	}
+
+	.progress-hint-wrap.visible {
+		grid-template-rows: 1fr;
+		margin-top: 6px;
+	}
+
 	.progress-hint {
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		margin-top: 6px;
+		min-height: 0;
+		overflow: hidden;
+		opacity: 0;
+		transition: opacity 0.2s ease;
+	}
+
+	.progress-hint-wrap.visible .progress-hint {
+		opacity: 1;
 	}
 
 	.progress-bar {
