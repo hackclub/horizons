@@ -82,15 +82,71 @@
 	let huddleMembers = $state(0);
 	let ceHasLiveEvent = $state(false);
 
-	// Live community events take precedence over huddles, and the huddle card stays
-	// hidden during the post-onboarding tour to avoid drowning out the highlight popovers.
-	const showHuddleCard = $derived(huddleActive && !ceHasLiveEvent && !postOnboarding);
-
 	// --- DEBUG: ?debug enables overlay to preview each event + each progress state ---
 	type DebugProgressState = 'qualified' | 'ship' | 'pending-met' | 'approved-majority' | 'default';
+	type DebugHuddleState = '' | 'off' | '1' | '4' | '12';
+	type DebugCommunityState = '' | 'none' | 'live' | 'upcoming' | 'mixed';
 	const debugMode = $derived(page.url.searchParams.has('debug'));
 	let debugEventSlug = $state<string>('');
 	let debugProgressState = $state<DebugProgressState | ''>('');
+	let debugHuddleState = $state<DebugHuddleState>('');
+	let debugCommunityState = $state<DebugCommunityState>('');
+
+	// Effective huddle values — debug overrides take precedence over live API values.
+	const effectiveHuddleActive = $derived(
+		debugHuddleState === '' ? huddleActive : debugHuddleState !== 'off',
+	);
+	const effectiveHuddleMembers = $derived(
+		debugHuddleState === '' || debugHuddleState === 'off'
+			? huddleMembers
+			: parseInt(debugHuddleState, 10),
+	);
+
+	// Live community events take precedence over huddles, and the huddle card stays
+	// hidden during the post-onboarding tour to avoid drowning out the highlight popovers.
+	const showHuddleCard = $derived(effectiveHuddleActive && !ceHasLiveEvent && !postOnboarding);
+
+	// Sample community events for debugging the card variants. Returns null when no
+	// override is selected — the card falls back to live data.
+	const debugCommunityEvents = $derived.by(() => {
+		if (debugCommunityState === '') return null;
+		const t = Date.now();
+		const m = (mins: number) => mins * 60_000;
+		const make = (
+			id: string,
+			name: string,
+			tagline: string,
+			startMs: number,
+			endMs: number,
+			actionLabel = 'Join',
+		) => ({
+			id,
+			name,
+			tagline,
+			start: new Date(startMs),
+			end: new Date(endMs),
+			joinInfo: '',
+			description: '',
+			actionUrl: 'https://example.com',
+			actionLabel,
+		});
+		switch (debugCommunityState) {
+			case 'none':
+				return [];
+			case 'live':
+				return [make('debug-live', 'Lock-In Lock In Call', "Hell yeah we're cooking", t - m(15), t + m(45))];
+			case 'upcoming':
+				return [
+					make('debug-up-1', 'Kickoff Hangout', 'Meet the cohort', t + m(60 * 6), t + m(60 * 7)),
+					make('debug-up-2', 'Demo Friday', 'Show what you built', t + m(60 * 24), t + m(60 * 26)),
+				];
+			case 'mixed':
+				return [
+					make('debug-live', 'Lock-In Lock In Call', "Hell yeah we're cooking", t - m(15), t + m(45)),
+					make('debug-up-1', 'Demo Friday', 'Show what you built', t + m(60 * 24), t + m(60 * 26)),
+				];
+		}
+	});
 
 	const eventColumnSlug = $derived(debugEventSlug || pinnedEventSlug);
 	const eventColumnConfig = $derived(eventsMap[eventColumnSlug] ?? pinnedEventConfig);
@@ -398,6 +454,7 @@
 								postOnboarding={postOnboarding}
 								description={cardDescriptions['0-0']}
 								hideEnterHint={showHuddleCard && !ceFocusedEventId}
+								debugEvents={debugCommunityEvents}
 								onmouseenter={() => handleCardHover(0, 0)}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
 								onEventClick={(id) => navigateTo(`/app/community?event=${encodeURIComponent(id)}`)}
@@ -405,7 +462,7 @@
 						</div>
 						{#if showHuddleCard}
 							<LiveHuddleCard
-								memberCount={huddleMembers}
+								memberCount={effectiveHuddleMembers}
 								usingKeyboard={nav.usingKeyboard}
 							/>
 						{/if}
@@ -622,11 +679,35 @@
 			</div>
 		</div>
 
+		<div class="debug-section">
+			<div class="debug-label">Huddle</div>
+			<div class="debug-buttons">
+				<button class:active={debugHuddleState === ''} onclick={() => (debugHuddleState = '')}>actual</button>
+				<button class:active={debugHuddleState === 'off'} onclick={() => (debugHuddleState = 'off')}>off</button>
+				<button class:active={debugHuddleState === '1'} onclick={() => (debugHuddleState = '1')}>1 person</button>
+				<button class:active={debugHuddleState === '4'} onclick={() => (debugHuddleState = '4')}>4 people</button>
+				<button class:active={debugHuddleState === '12'} onclick={() => (debugHuddleState = '12')}>12 people</button>
+			</div>
+		</div>
+
+		<div class="debug-section">
+			<div class="debug-label">Community events</div>
+			<div class="debug-buttons">
+				<button class:active={debugCommunityState === ''} onclick={() => (debugCommunityState = '')}>actual</button>
+				<button class:active={debugCommunityState === 'none'} onclick={() => (debugCommunityState = 'none')}>none</button>
+				<button class:active={debugCommunityState === 'live'} onclick={() => (debugCommunityState = 'live')}>live</button>
+				<button class:active={debugCommunityState === 'upcoming'} onclick={() => (debugCommunityState = 'upcoming')}>upcoming</button>
+				<button class:active={debugCommunityState === 'mixed'} onclick={() => (debugCommunityState = 'mixed')}>mixed</button>
+			</div>
+		</div>
+
 		<div class="debug-section debug-readout">
 			<div>target: {eventColumnTarget}h</div>
 			<div>completed: {eventColumnValues.completed.toFixed(1)}h</div>
 			<div>approved: {eventColumnValues.approved.toFixed(1)}h</div>
 			<div>pending: {eventColumnValues.pending.toFixed(1)}h</div>
+			<div>huddle: {effectiveHuddleActive ? `${effectiveHuddleMembers} member${effectiveHuddleMembers === 1 ? '' : 's'}` : 'inactive'} {debugHuddleState ? '(debug)' : ''}</div>
+			<div>ce live event: {ceHasLiveEvent ? 'yes' : 'no'} · huddle card: {showHuddleCard ? 'shown' : 'hidden'}</div>
 			<div class="debug-swatch-row">primary: <span class="swatch" style="background: {eventColumnConfig?.colors?.primary};"></span><span>{eventColumnConfig?.colors?.primary}</span></div>
 			<div class="debug-swatch-row">card bg: <span class="swatch" style="background: {eventColumnConfig?.eventCard?.bgColor};"></span><span>{eventColumnConfig?.eventCard?.bgColor}</span></div>
 		</div>

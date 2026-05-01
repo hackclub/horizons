@@ -17,6 +17,19 @@
 		onEventClick?: (id: string) => void;
 		focusedEventId?: string | null;
 		hasLiveEvent?: boolean;
+		debugEvents?: CommunityEvent[] | null;
+	}
+
+	export interface CommunityEvent {
+		id: string;
+		name: string;
+		start: Date;
+		end: Date;
+		tagline: string;
+		joinInfo: string;
+		description: string;
+		actionUrl: string;
+		actionLabel: string;
 	}
 
 	let {
@@ -31,21 +44,11 @@
 		onEventClick,
 		focusedEventId = $bindable(null),
 		hasLiveEvent = $bindable(false),
+		debugEvents = null,
 	}: Props = $props();
 
-	interface CommunityEvent {
-		id: string;
-		name: string;
-		start: Date;
-		end: Date;
-		tagline: string;
-		joinInfo: string;
-		description: string;
-		actionUrl: string;
-		actionLabel: string;
-	}
-
-	let events = $state<CommunityEvent[]>([]);
+	let fetchedEvents = $state<CommunityEvent[]>([]);
+	let events = $derived<CommunityEvent[]>(debugEvents ?? fetchedEvents);
 	let now = $state(new Date());
 
 	function formatTime(d: Date): string {
@@ -114,7 +117,7 @@
 		api.GET('/api/community-events')
 			.then(({ data }) => {
 				if (!data) return;
-				events = data.map((item) => ({
+				fetchedEvents = data.map((item) => ({
 					id: item.communityEventId,
 					name: item.name,
 					start: new Date(item.start),
