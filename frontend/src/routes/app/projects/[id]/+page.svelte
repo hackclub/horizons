@@ -10,6 +10,7 @@
 	import { createGridNav } from '$lib/nav/wasd.svelte';
 	import { projectDetailStore, fetchProjectDetail, preloadEditData } from '$lib/store/projectDetailCache';
 	import type { components } from '$lib/api';
+	import { api } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
 
 	type ProjectResponse = components['schemas']['ProjectResponse'];
@@ -78,6 +79,21 @@
 				: null
 	);
 	let hoursLabel = $derived(isApproved ? 'approved' : 'submitted');
+
+	let refreshingHours = $state(false);
+
+	async function refreshTrackedHours() {
+		if (refreshingHours) return;
+		refreshingHours = true;
+		try {
+			await api.POST('/api/hackatime/hours/recalculate');
+			await fetchProjectDetail(projectId, true);
+		} catch {
+			// Silently fail — the existing hours stay shown.
+		} finally {
+			refreshingHours = false;
+		}
+	}
 
 	const nav = createGridNav({
 		columns: () => [1, 1],
@@ -152,9 +168,24 @@
 				{/if}
 				<!-- Hackatime Hours & Linked Projects -->
 				{#if hackatimeInfo}
-					<p class="font-bricolage text-[22px] font-semibold text-black/60 m-0">
-						tracked {currentHours} hrs{submittedHours !== null ? ` · ${hoursLabel} ${submittedHours} hrs` : ''}
-					</p>
+					<div class="flex items-center gap-2">
+						<p class="font-bricolage text-[22px] font-semibold text-black/60 m-0">
+							tracked {currentHours} hrs{submittedHours !== null ? ` · ${hoursLabel} ${submittedHours} hrs` : ''}
+						</p>
+						<button
+							type="button"
+							aria-label="Refresh tracked hours"
+							title="Refresh tracked hours"
+							class="refresh-hours"
+							class:spinning={refreshingHours}
+							onclick={refreshTrackedHours}
+						>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+								<path d="M21 12a9 9 0 1 1-3-6.7"/>
+								<path d="M21 3v6h-6"/>
+							</svg>
+						</button>
+					</div>
 					{#if hackatimeInfo.hackatimeProjects.length > 0}
 						<div class="flex flex-wrap gap-1">
 							{#each hackatimeInfo.hackatimeProjects as name}
@@ -387,5 +418,31 @@
 	.action-btn.selected {
 		background-color: #ffa936;
 		transform: scale(var(--juice-scale));
+	}
+
+	.refresh-hours {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		background: none;
+		border: none;
+		color: black;
+		opacity: 0.5;
+		cursor: pointer;
+		transition: opacity 0.15s ease, transform 0.15s ease;
+	}
+	.refresh-hours:hover {
+		opacity: 1;
+		transform: rotate(25deg);
+	}
+	@keyframes refresh-spin {
+		from { transform: rotate(0deg); }
+		to   { transform: rotate(360deg); }
+	}
+	.refresh-hours.spinning {
+		opacity: 1;
+		animation: refresh-spin 0.8s linear infinite;
+		pointer-events: none;
 	}
 </style>
