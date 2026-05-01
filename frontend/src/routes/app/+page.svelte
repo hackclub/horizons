@@ -1,10 +1,10 @@
 <script lang="ts">
 	import CircleIn from '$lib/components/anim/CircleIn.svelte';
 	import TextWave from '$lib/components/TextWave.svelte';
-	import CommunityEventsCard from '$lib/components/CommunityEventsCard.svelte';
-	import ProjectsCard from '$lib/components/ProjectsCard.svelte';
-	import EventsCard from '$lib/components/EventsCard.svelte';
-	import EventColumnCard from '$lib/components/EventColumnCard.svelte';
+	import CommunityEventsCard from '$lib/components/cards/CommunityEventsCard.svelte';
+	import ProjectsCard from '$lib/components/cards/ProjectsCard.svelte';
+	import EventsCard from '$lib/components/cards/EventsCard.svelte';
+	import EventColumnCard from '$lib/components/cards/EventColumnCard.svelte';
 	import logoSvg from '$lib/assets/Logo.svg';
 	import communitySvg from '$lib/assets/home/community.svg';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
@@ -40,17 +40,16 @@
 	// Column index constants — when CE card is hidden, all columns to its right shift left by 1.
 	const COL_LEFT = HIDE_COMMUNITY_EVENTS ? 0 : 1;
 	const COL_PINNED_EVENT = HIDE_COMMUNITY_EVENTS ? 1 : 2;
-	const COL_SHOP = HIDE_COMMUNITY_EVENTS ? 2 : 3;
-	const COL_COMMUNITY = HIDE_COMMUNITY_EVENTS ? 3 : 4;
-	const COL_FAQ = HIDE_COMMUNITY_EVENTS ? 4 : 5;
-	const COL_ADMIN = HIDE_COMMUNITY_EVENTS ? 5 : 6;
+	const COL_MIDDLE = HIDE_COMMUNITY_EVENTS ? 2 : 3;
+	const COL_FAQ = HIDE_COMMUNITY_EVENTS ? 3 : 4;
+	const COL_ADMIN = HIDE_COMMUNITY_EVENTS ? 4 : 5;
 
 	const cardDescriptions: Record<string, string> = {
 		[`${COL_LEFT}-0`]: 'Create projects, track your progress, and submit them for review!',
 		[`${COL_LEFT}-1`]: 'Check out upcoming Horizons events!',
 		[`${COL_PINNED_EVENT}-0`]: 'Track your progress for your pinned event!',
-		[`${COL_SHOP}-0`]: 'Spend your approved hours on rewards!',
-		[`${COL_COMMUNITY}-0`]: 'Check out online events we\'re running for the community!',
+		[`${COL_MIDDLE}-0`]: 'Spend your approved hours on rewards!',
+		[`${COL_MIDDLE}-1`]: 'Check out online events we\'re running for the community!',
 		[`${COL_FAQ}-0`]: 'Got questions? Find answers here.',
 	};
 	if (!HIDE_COMMUNITY_EVENTS) {
@@ -73,13 +72,6 @@
 	let completedHours = $state(0);
 	let targetHours = $state(30);
 	let pinnedEventImageUrl = $state<string | null>(null);
-
-	const round1 = (n: number) => Number((Math.round(n * 10) / 10).toFixed(1));
-	let approvedDisplay = $derived(round1(approvedHours));
-	let completedMinusApprovedHours = $derived(round1(Math.max(0, completedHours - approvedHours)));
-	let remainingHours = $derived(round1(Math.max(0, targetHours - completedHours)));
-	let approvedPct = $derived(targetHours > 0 ? Math.min(100, (approvedHours / targetHours) * 100) : 0);
-	let completedPct = $derived(targetHours > 0 ? Math.min(100, ((completedHours - approvedHours) / targetHours) * 100) : 0);
 
 	// Load cached pinned event instantly
 	const cached = getCachedPinnedEvent();
@@ -126,8 +118,7 @@
 		? [
 			['/app/projects?back', '/app/events'],
 			['/app/events'],
-			['/app/shop?back'],
-			['/app/community'],
+			['/app/shop?back', '/app/community'],
 			['/faq?from=app'],
 			['/admin'],
 		]
@@ -135,8 +126,7 @@
 			['/app/community'],
 			['/app/projects?back', '/app/events'],
 			['/app/events'],
-			['/app/shop?back'],
-			['/app/community'],
+			['/app/shop?back', '/app/community'],
 			['/faq?from=app'],
 			['/admin'],
 		];
@@ -195,7 +185,7 @@
 
 	const nav = createGridNav({
 		columns: () => {
-			const base = HIDE_COMMUNITY_EVENTS ? [2, 1, 1, 1, 1] : [1, 2, 1, 1, 1, 1];
+			const base = HIDE_COMMUNITY_EVENTS ? [2, 1, 2, 1] : [1, 2, 1, 2, 1];
 			return isAdmin ? [...base, 1] : base;
 		},
 		onSelect: (col, row) => {
@@ -212,7 +202,7 @@
 	// Refs for scroll targets (index = nav column)
 	let scrollContainer = $state<HTMLElement | null>(null);
 	let cardsRow = $state<HTMLElement | null>(null);
-	let cardRefs = $state<(HTMLElement | null)[]>([null, null, null, null, null, null, null]);
+	let cardRefs = $state<(HTMLElement | null)[]>([null, null, null, null, null, null]);
 
 	// Slide cards row so selected card is visible with a peek of the next card.
 	// Use offsetLeft (layout position, unaffected by transform) to avoid mid-transition jitter.
@@ -384,117 +374,57 @@
 					{/if}
 				</div>
 
-				<!-- Middle Column -->
-				<div class="middle-col shrink-0">
-					<!-- Event / Nexus Card (informational, not navigable) -->
-					<div class="event-card-wrapper enter-up flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="30ms" style:--enter-delay="100ms" style:--exit-right-delay="150ms">
-						<div class="card event-card relative" style="background-color: {pinnedEventConfig?.eventCard?.bgColor ?? '#fac393'}; {pinnedEventConfig?.eventCard?.bgImage ? `background-image: url(${pinnedEventConfig.eventCard.bgImage}); background-size: cover; background-position: center;` : ''}">
-							{#if pinnedEventConfig?.eventCard?.gradient}
-								<div class="event-card-gradient full-gradient" style="background: {pinnedEventConfig.eventCard.gradient};"></div>
-							{/if}
-							{#if pinnedEventConfig?.eventCard?.compactGradient}
-								<div class="event-card-gradient compact-gradient" style="background: {pinnedEventConfig.eventCard.compactGradient};"></div>
-							{/if}
-							<!-- Full progress view -->
-							<div class="full-progress">
-								<p class="absolute top-4 right-5 font-cook text-[24px] font-semibold text-black m-0 z-10" style="-webkit-text-stroke: 8px #f3e8d8; paint-order: stroke fill;">PROGRESS</p>
-								<div class="flex flex-col gap-3 w-full relative flex-1 min-h-0">
-									<div class="flex-1 min-h-0 w-full">
-										<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="h-full w-full object-contain object-left" />
-									</div>
-									<div class="card progress-card shrink-0">
-										<div class="progress-bar">
-											{#if approvedPct > 0}
-												<div class="progress-segment" style="width: {approvedPct}%; background-color: {pinnedEventConfig?.progressBar?.approved ?? '#ffa936'};">
-													<span class="progress-label">{approvedDisplay} HOURS APPROVED</span>
-												</div>
-											{/if}
-											{#if completedPct > 0}
-												<div class="progress-segment" style="width: {completedPct}%; background-color: {pinnedEventConfig?.progressBar?.completed ?? '#f86d95'};">
-													<span class="progress-label">{completedMinusApprovedHours} HOURS COMPLETED</span>
-												</div>
-											{/if}
-											<div class="flex-1" style="background-color: {pinnedEventConfig?.progressBar?.remaining ?? '#46467c'};"></div>
-										</div>
-										<p class="font-bricolage text-[16px] font-semibold text-black m-0 text-left">
-											{#if remainingHours > 0}
-												{postOnboarding ? `WORK ${remainingHours} HOURS TO GET YOUR TICKET TO THE EVENT!` : `${remainingHours} HOURS TO GO (${targetHours} needed)`}
-											{:else}
-												GOAL REACHED!
-											{/if}
-										</p>
-									</div>
-								</div>
+				<!-- Middle Column: Shop + Community stacked -->
+				<div bind:this={cardRefs[COL_MIDDLE]} class="middle-col shrink-0">
+					<!-- Shop -->
+					<div class="enter-up flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="60ms" style:--enter-delay="150ms" style:--exit-right-delay="150ms">
+						<a href="/app/shop" class="card nav-card shop-card"
+							class:selected={nav.isSelected(COL_MIDDLE, 0)}
+							onmouseenter={() => handleCardHover(COL_MIDDLE, 0)}
+							onclick={(e) => { e.preventDefault(); navigateTo('/app/shop?back'); }}>
+							<!-- Shop bag icon -->
+							<div class="card-bg-icon" style="right: -10px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
+								<svg class="w-full h-full" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<path d="M150 0C199.706 0 240 40.2944 240 90H300V300H0V90H60C60 40.2944 100.294 0 150 0ZM150 36C120.177 36 96 60.1766 96 90H204C204 60.1766 179.823 36 150 36Z" fill="currentColor"/>
+								</svg>
 							</div>
-							<!-- Compact progress view -->
-							<div class="compact-progress">
-								<img src={pinnedEventConfig?.logo ?? '/logos/nexus.webp'} alt={pinnedEventConfig?.name ?? 'Horizons'} class="compact-logo object-contain object-left shrink-0 relative" />
-								<div class="text-right text-[24px] text-white tracking-[0.24px] relative">
-									<p class="font-cook m-0">PROGRESS</p>
-									<p class="font-bricolage font-semibold m-0">
-										{#if remainingHours > 0}
-											{remainingHours} hours to go!
-										{:else}
-											Goal reached!
-										{/if}
-									</p>
-								</div>
+							<div class="card-text z-10">
+								<p class="font-cook text-[40px] font-semibold text-black m-0">SHOP</p>
+								<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
+									BUY STUFF FOR YOURSELF!
+								</p>
 							</div>
-						</div>
+							{#if nav.isSelected(COL_MIDDLE, 0) && !postOnboarding}
+								{@render hintPill('TO VISIT SHOP')}
+							{/if}
+							{#if postOnboarding && nav.isSelected(COL_MIDDLE, 0)}
+								{@render popoverWithHint(cardDescriptions[`${COL_MIDDLE}-0`], 'TO VISIT SHOP')}
+							{/if}
+						</a>
 					</div>
 
-					<!-- Shop + Events Row -->
-					<div class="bottom-row">
-						<!-- Shop -->
-						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="60ms" style:--enter-delay="150ms" style:--exit-right-delay="150ms">
-							<a bind:this={cardRefs[COL_SHOP]} href="/app/shop" class="card nav-card shop-card"
-								class:selected={nav.isSelected(COL_SHOP, 0)}
-								onmouseenter={() => handleCardHover(COL_SHOP, 0)}
-								onclick={(e) => { e.preventDefault(); navigateTo('/app/shop?back'); }}>
-								<!-- Shop bag icon -->
-								<div class="card-bg-icon" style="right: -10px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
-									<svg class="w-full h-full" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-										<path d="M150 0C199.706 0 240 40.2944 240 90H300V300H0V90H60C60 40.2944 100.294 0 150 0ZM150 36C120.177 36 96 60.1766 96 90H204C204 60.1766 179.823 36 150 36Z" fill="currentColor"/>
-									</svg>
-								</div>
-								<div class="card-text z-10">
-									<p class="font-cook text-[40px] font-semibold text-black m-0">SHOP</p>
-									<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-										BUY STUFF FOR YOURSELF!
-									</p>
-								</div>
-								{#if nav.isSelected(COL_SHOP, 0) && !postOnboarding}
-									{@render hintPill('TO VISIT SHOP')}
-								{/if}
-								{#if postOnboarding && nav.isSelected(COL_SHOP, 0)}
-									{@render popoverWithHint(cardDescriptions[`${COL_SHOP}-0`], 'TO VISIT SHOP')}
-								{/if}
-							</a>
-						</div>
-
-						<!-- Community -->
-						<div class="enter-down flex-1" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms" style:--exit-right-delay="150ms">
-							<a bind:this={cardRefs[COL_COMMUNITY]} href="/app/community" class="card nav-card community-card"
-								class:selected={nav.isSelected(COL_COMMUNITY, 0)}
-								onmouseenter={() => handleCardHover(COL_COMMUNITY, 0)}
-								onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}>
-								<div class="card-bg-icon" style="right: -20px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
-									<img src={communitySvg} alt="" class="w-full h-full" />
-								</div>
-								<div class="card-text z-10">
-									<p class="font-cook text-[40px] font-semibold text-black m-0">COMMUNITY</p>
-									<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-										SEE WHAT'S HAPPENING!
-									</p>
-								</div>
-								{#if nav.isSelected(COL_COMMUNITY, 0) && !postOnboarding}
-									{@render hintPill('TO VIEW COMMUNITY')}
-								{/if}
-								{#if postOnboarding && nav.isSelected(COL_COMMUNITY, 0)}
-									{@render popoverWithHint(cardDescriptions[`${COL_COMMUNITY}-0`], 'TO VIEW COMMUNITY')}
-								{/if}
-							</a>
-						</div>
+					<!-- Community -->
+					<div class="enter-down flex-1 min-h-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="90ms" style:--enter-delay="200ms" style:--exit-right-delay="150ms">
+						<a href="/app/community" class="card nav-card community-card"
+							class:selected={nav.isSelected(COL_MIDDLE, 1)}
+							onmouseenter={() => handleCardHover(COL_MIDDLE, 1)}
+							onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}>
+							<div class="card-bg-icon" style="right: -20px; top: 50%; transform: translateY(-50%); width: 200px; height: 200px;">
+								<img src={communitySvg} alt="" class="w-full h-full" />
+							</div>
+							<div class="card-text z-10">
+								<p class="font-cook text-[40px] font-semibold text-black m-0">COMMUNITY</p>
+								<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
+									SEE WHAT'S HAPPENING!
+								</p>
+							</div>
+							{#if nav.isSelected(COL_MIDDLE, 1) && !postOnboarding}
+								{@render hintPill('TO VIEW COMMUNITY')}
+							{/if}
+							{#if postOnboarding && nav.isSelected(COL_MIDDLE, 1)}
+								{@render popoverWithHint(cardDescriptions[`${COL_MIDDLE}-1`], 'TO VIEW COMMUNITY')}
+							{/if}
+						</a>
 					</div>
 				</div>
 
@@ -630,20 +560,13 @@
 		transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 	}
 
-	/* Middle column layout */
+	/* Middle column layout — Shop + Community stacked */
 	.middle-col {
 		display: flex;
 		flex-direction: column;
 		gap: 24px;
-		width: 966px;
+		width: 471px;
 		height: 100%;
-	}
-
-	.bottom-row {
-		display: flex;
-		gap: 24px;
-		flex: 1;
-		min-height: 0;
 	}
 
 	/* Info row */
@@ -729,102 +652,6 @@
 		width: 462px;
 		height: 100%;
 		display: flex;
-	}
-
-	.event-card-wrapper {
-		container-type: size;
-	}
-
-	.event-card {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		justify-content: flex-end;
-		padding: 24px 24px 28px;
-		height: 100%;
-		overflow: hidden;
-		background-color: #fac393;
-	}
-
-	.event-card-gradient {
-		position: absolute;
-		inset: 0;
-		pointer-events: none;
-	}
-
-	.compact-gradient {
-		display: none;
-	}
-
-	.full-progress {
-		display: contents;
-	}
-
-	.compact-progress {
-		display: none;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
-		gap: 24px;
-	}
-
-	.compact-logo {
-		height: auto;
-		width: auto;
-		max-height: calc(100cqh - 48px);
-		max-width: 100%;
-	}
-
-	@container (max-height: 200px) {
-		.full-progress {
-			display: none;
-		}
-		.full-gradient {
-			display: none;
-		}
-		.compact-gradient {
-			display: block;
-		}
-		.compact-progress {
-			display: flex;
-		}
-		.event-card {
-			justify-content: center;
-			padding: 24px;
-		}
-	}
-
-	.progress-card {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		align-items: flex-start;
-		justify-content: flex-end;
-		padding: 16px;
-		background-color: #f3e8d8;
-	}
-
-	.progress-bar {
-		display: flex;
-		width: 100%;
-		height: clamp(32px, 6cqh, 40px);
-		border-radius: 4px;
-		overflow: hidden;
-	}
-
-	.progress-segment {
-		display: flex;
-		align-items: flex-end;
-		justify-content: flex-end;
-		padding: 4px 4px 4px 8px;
-	}
-
-	.progress-label {
-		font-family: 'Bricolage Grotesque', sans-serif;
-		font-size: 12px;
-		font-weight: 600;
-		color: black;
-		white-space: nowrap;
 	}
 
 	.shop-card {
