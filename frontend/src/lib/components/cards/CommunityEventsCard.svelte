@@ -171,7 +171,7 @@
 							<p class="font-bricolage text-[14px] text-black/70 m-0">{event.tagline.toUpperCase()}</p>
 						{/if}
 						<div class="ce-actions">
-							{#if event.actionUrl}
+							{#if event.actionUrl && live}
 								<a
 									class="ce-action"
 									href={event.actionUrl}
@@ -179,7 +179,7 @@
 									rel="noopener noreferrer"
 									onclick={(e) => e.stopPropagation()}
 								>
-									{(event.actionLabel || (live ? 'Join Now' : 'Open')).toUpperCase()}
+									{(event.actionLabel || 'Join Now').toUpperCase()}
 								</a>
 							{/if}
 							<div class="ce-times">
