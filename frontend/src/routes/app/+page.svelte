@@ -4,6 +4,7 @@
 	import CommunityEventsCard from '$lib/components/CommunityEventsCard.svelte';
 	import ProjectsCard from '$lib/components/ProjectsCard.svelte';
 	import EventsCard from '$lib/components/EventsCard.svelte';
+	import EventColumnCard from '$lib/components/EventColumnCard.svelte';
 	import logoSvg from '$lib/assets/Logo.svg';
 	import communitySvg from '$lib/assets/home/community.svg';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
@@ -38,14 +39,16 @@
 
 	// Column index constants — when CE card is hidden, all columns to its right shift left by 1.
 	const COL_LEFT = HIDE_COMMUNITY_EVENTS ? 0 : 1;
-	const COL_SHOP = HIDE_COMMUNITY_EVENTS ? 1 : 2;
-	const COL_COMMUNITY = HIDE_COMMUNITY_EVENTS ? 2 : 3;
-	const COL_FAQ = HIDE_COMMUNITY_EVENTS ? 3 : 4;
-	const COL_ADMIN = HIDE_COMMUNITY_EVENTS ? 4 : 5;
+	const COL_PINNED_EVENT = HIDE_COMMUNITY_EVENTS ? 1 : 2;
+	const COL_SHOP = HIDE_COMMUNITY_EVENTS ? 2 : 3;
+	const COL_COMMUNITY = HIDE_COMMUNITY_EVENTS ? 3 : 4;
+	const COL_FAQ = HIDE_COMMUNITY_EVENTS ? 4 : 5;
+	const COL_ADMIN = HIDE_COMMUNITY_EVENTS ? 5 : 6;
 
 	const cardDescriptions: Record<string, string> = {
 		[`${COL_LEFT}-0`]: 'Create projects, track your progress, and submit them for review!',
 		[`${COL_LEFT}-1`]: 'Check out upcoming Horizons events!',
+		[`${COL_PINNED_EVENT}-0`]: 'Track your progress for your pinned event!',
 		[`${COL_SHOP}-0`]: 'Spend your approved hours on rewards!',
 		[`${COL_COMMUNITY}-0`]: 'Check out online events we\'re running for the community!',
 		[`${COL_FAQ}-0`]: 'Got questions? Find answers here.',
@@ -69,6 +72,7 @@
 	let approvedHours = $state(0);
 	let completedHours = $state(0);
 	let targetHours = $state(30);
+	let pinnedEventImageUrl = $state<string | null>(null);
 
 	const round1 = (n: number) => Number((Math.round(n * 10) / 10).toFixed(1));
 	let approvedDisplay = $derived(round1(approvedHours));
@@ -111,6 +115,7 @@
 				pinnedEventConfig = eventsMap[slug];
 				const hourCost = event?.hourCost ?? 30;
 				targetHours = hourCost;
+				pinnedEventImageUrl = event?.imageUrl ?? null;
 				setCachedPinnedEvent(slug, hourCost);
 			}
 		}
@@ -120,6 +125,7 @@
 	const hrefs: string[][] = HIDE_COMMUNITY_EVENTS
 		? [
 			['/app/projects?back', '/app/events'],
+			['/app/events'],
 			['/app/shop?back'],
 			['/app/community'],
 			['/faq?from=app'],
@@ -128,6 +134,7 @@
 		: [
 			['/app/community'],
 			['/app/projects?back', '/app/events'],
+			['/app/events'],
 			['/app/shop?back'],
 			['/app/community'],
 			['/faq?from=app'],
@@ -188,7 +195,7 @@
 
 	const nav = createGridNav({
 		columns: () => {
-			const base = HIDE_COMMUNITY_EVENTS ? [2, 1, 1, 1] : [1, 2, 1, 1, 1];
+			const base = HIDE_COMMUNITY_EVENTS ? [2, 1, 1, 1, 1] : [1, 2, 1, 1, 1, 1];
 			return isAdmin ? [...base, 1] : base;
 		},
 		onSelect: (col, row) => {
@@ -205,7 +212,7 @@
 	// Refs for scroll targets (index = nav column)
 	let scrollContainer = $state<HTMLElement | null>(null);
 	let cardsRow = $state<HTMLElement | null>(null);
-	let cardRefs = $state<(HTMLElement | null)[]>([null, null, null, null, null, null]);
+	let cardRefs = $state<(HTMLElement | null)[]>([null, null, null, null, null, null, null]);
 
 	// Slide cards row so selected card is visible with a peek of the next card.
 	// Use offsetLeft (layout position, unaffected by transform) to avoid mid-transition jitter.
@@ -352,6 +359,29 @@
 							onanimationend={() => { shakingKey = null; }}
 						/>
 					</div>
+				</div>
+
+				<!-- Pinned Event Column Card -->
+				<div bind:this={cardRefs[COL_PINNED_EVENT]} class="event-column-wrapper enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="20ms" style:--enter-delay="80ms" style:--exit-right-delay="150ms">
+					<EventColumnCard
+						slug={pinnedEventSlug}
+						config={pinnedEventConfig}
+						imageUrl={pinnedEventImageUrl}
+						hourCost={targetHours}
+						completedHours={completedHours}
+						approvedHours={approvedHours}
+						shipped={approvedHours > 0}
+						selected={nav.isSelected(COL_PINNED_EVENT, 0)}
+						onmouseenter={() => handleCardHover(COL_PINNED_EVENT, 0)}
+						onclick={(e) => { e.preventDefault(); navigateTo('/app/events'); }}
+					>
+						{#snippet progressHint()}
+							{@render hintRow('TO VIEW EVENTS')}
+						{/snippet}
+					</EventColumnCard>
+					{#if postOnboarding && nav.isSelected(COL_PINNED_EVENT, 0)}
+						{@render popoverWithHint(cardDescriptions[`${COL_PINNED_EVENT}-0`], 'TO VIEW EVENTS')}
+					{/if}
 				</div>
 
 				<!-- Middle Column -->
@@ -692,6 +722,13 @@
 		gap: 24px;
 		width: 471px;
 		height: 100%;
+	}
+
+	.event-column-wrapper {
+		position: relative;
+		width: 462px;
+		height: 100%;
+		display: flex;
 	}
 
 	.event-card-wrapper {
