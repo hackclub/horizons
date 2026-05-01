@@ -60,24 +60,24 @@
 			<p class="font-cook text-[36px] font-semibold text-black m-0">LOADING...</p>
 		</div>
 	{:else}
-		<div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none">
+		<div class="hidden sm:block absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none">
 			<TurbulentImage src={screenshotUrl || heroPlaceholder} alt={title} inset="0 0 0 0" filterId="hero-turbulence" />
 		</div>
 
 		<!-- Presubmit card -->
-		<div class="absolute left-1/2 top-9/16 -translate-x-[calc(50%+0.5px)] -translate-y-[calc(50%+0.5px)] bg-[#f3e8d8] border-4 border-black rounded-[20px] p-[30px] shadow-[4px_4px_0px_0px_black] flex flex-col gap-4 overflow-clip z-[1]">
+		<div class="relative w-[calc(100%-2rem)] max-w-150 mx-auto mt-20 mb-8 sm:absolute sm:left-1/2 sm:top-9/16 sm:-translate-x-[calc(50%+0.5px)] sm:-translate-y-[calc(50%+0.5px)] sm:w-auto sm:max-w-none sm:mx-0 sm:mt-0 sm:mb-0 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col gap-4 overflow-clip z-1">
 			<!-- Header -->
 			<div class="flex flex-col text-black">
-				<h1 class="font-cook text-[36px] font-semibold m-0 leading-normal">READY TO SUBMIT?</h1>
+				<h1 class="font-cook text-[26px] sm:text-[36px] font-semibold m-0 leading-normal">READY TO SUBMIT?</h1>
 				<div class="font-bricolage">
-					<p class="text-[20px] leading-[1.5] m-0">Shipped Project Requirements</p>
+					<p class="text-[18px] sm:text-[20px] leading-[1.5] m-0">Shipped Project Requirements</p>
 					<p class="text-[14px] leading-[1.5] tracking-[-0.22px] m-0">Every project submitted must be fully "shipped." Use the checklists below to confirm your project qualifies.</p>
 				</div>
 			</div>
 
 			<!-- Checklist -->
 			<div class="flex items-start justify-center w-full">
-				<div class="flex flex-col gap-4 w-[487px]">
+				<div class="flex flex-col gap-4 w-full max-w-[487px]">
 					{#each checklistItems as item, i}
 						<label class="checklist-item border-2 border-black rounded-lg p-2 w-full flex gap-2.5 items-center justify-center cursor-pointer overflow-clip {checked[i] ? "bg-[#ffa936]" : "bg-[#f3e8d8]"}">
 							<p class="font-bricolage text-[14px] font-normal leading-[1.5] tracking-[-0.154px] text-black flex-1">{item}</p>
@@ -107,7 +107,9 @@
 			background-color var(--selected-duration) ease,
 			transform var(--juice-duration) var(--juice-easing);
 	}
-	.checklist-item:hover {
-		transform: scale(var(--juice-scale));
+	@media (hover: hover) {
+		.checklist-item:hover {
+			transform: scale(var(--juice-scale));
+		}
 	}
 </style>

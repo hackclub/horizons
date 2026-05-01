@@ -36,9 +36,17 @@
 	});
 
 	let windowWidth = $state(0);
-	let isMobile = $derived(windowWidth > 0 && windowWidth < 480);
+	let isMobile = $derived(windowWidth > 0 && windowWidth < 640);
+	let isProjectsRoute = $derived(page.url.pathname.startsWith('/app/projects'));
 
 	let { children } = $props();
+
+	// Mobile entry point: route bare /app to the mobile-ready /app/projects.
+	$effect(() => {
+		if (authed && isMobile && page.url.pathname === '/app') {
+			goto('/app/projects');
+		}
+	});
 
 	let disableAnimations = false;
 
@@ -102,7 +110,7 @@
 
 {#if !authed}
 	<div class="fixed inset-0 bg-black z-50"></div>
-{:else if isMobile}
+{:else if isMobile && !isProjectsRoute}
 	<div class="fixed inset-0 z-50 bg-[#271c0c] flex flex-col items-center justify-center gap-4 p-8 text-center">
 		<p class="font-cook text-[32px] font-semibold text-[#f3e8d8] leading-tight">THIS SITE ISN'T READY FOR MOBILE YET.</p>
 		<p class="font-bricolage text-[18px] font-semibold text-[#f3e8d8] tracking-wide">We recommend opening this on desktop.</p>
@@ -110,7 +118,7 @@
 {:else}
 	<BG {disableAnimations}>
 		{#key page.url.pathname}
-			<div class="page-transition">
+			<div class="page-transition" class:scrollable={isProjectsRoute}>
 				{@render children()}
 			</div>
 		{/key}
@@ -127,5 +135,10 @@
 	.page-transition {
 		position: absolute;
 		inset: 0;
+	}
+	@media (max-width: 639px) {
+		.page-transition.scrollable {
+			overflow-y: auto;
+		}
 	}
 </style>

@@ -72,9 +72,9 @@
 
 <div class="relative size-full">
 	<!-- Project form card -->
-	<div class="absolute left-1/2 top-1/2 -translate-x-[calc(50%+0.5px)] -translate-y-[calc(50%+0.5px)] w-[520px] bg-[#f3e8d8] border-4 border-black rounded-[20px] p-[30px] shadow-[4px_4px_0px_0px_black] flex flex-col justify-between overflow-clip z-[1]">
+	<div class="relative w-[calc(100%-2rem)] max-w-130 mx-auto mt-20 mb-8 sm:absolute sm:left-1/2 sm:top-1/2 sm:-translate-x-[calc(50%+0.5px)] sm:-translate-y-[calc(50%+0.5px)] sm:w-130 sm:mt-0 sm:mb-0 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between overflow-clip z-1">
 		<div class="flex flex-col gap-2 w-full">
-			<h1 class="font-cook text-4xl font-semibold text-black m-0 leading-normal">Create New Project</h1>
+			<h1 class="font-cook text-2xl sm:text-4xl font-semibold text-black m-0 leading-normal">Create New Project</h1>
 
 			<FormField label="Title" id="title" placeholder="Horizons" maxlength={30} bind:value={title} />
 			<FormSelect label="Project Type" id="project-type" options={projectTypes} bind:value={projectType} />

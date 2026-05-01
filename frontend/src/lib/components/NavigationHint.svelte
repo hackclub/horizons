@@ -15,7 +15,7 @@
 	};
 </script>
 
-<div class="absolute {positionClasses[position]} z-20">
+<div class="absolute {positionClasses[position]} z-20 hidden sm:block">
 	<div class="flex items-center gap-5 px-7 py-5 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden">
 		{#each segments as segment, i (i)}
 			{#if segment.type === 'text'}

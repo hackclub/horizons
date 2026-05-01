@@ -138,9 +138,9 @@
 			<p class="font-bricolage text-[32px] font-semibold text-black m-0">{error}</p>
 		</div>
 	{:else if project}
-		<!-- Hero image -->
+		<!-- Hero image (desktop only — overflows on mobile) -->
 		<div
-			class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none"
+			class="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none"
 			style="opacity: {navigating || !entered ? 0 : 1}; transition: opacity 0.4s ease;"
 		>
 			<TurbulentImage
@@ -151,18 +151,28 @@
 			/>
 		</div>
 
+		<!-- Mobile hero (sized to viewport) -->
+		<div class="block sm:hidden w-full h-56 mt-20 mb-4 px-4 z-0 pointer-events-none">
+			<img
+				src={project.screenshotUrl || heroPlaceholder}
+				alt={project.projectTitle}
+				class="w-full h-full object-cover rounded-[20px] border-4 border-black"
+				style="opacity: {navigating || !entered ? 0 : 1}; transition: opacity 0.4s ease;"
+			/>
+		</div>
+
 		<!-- Project details card -->
-		<div class="absolute bottom-20 left-1/2 -translate-x-[calc(50%+0.5px)] z-2">
+		<div class="relative w-full px-4 pb-8 sm:absolute sm:bottom-20 sm:left-1/2 sm:-translate-x-[calc(50%+0.5px)] sm:px-0 sm:pb-0 sm:w-auto z-2">
 		<div
-			class="detail-card w-181.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start gap-8 overflow-hidden"
+			class="detail-card w-full sm:w-181.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start gap-5 sm:gap-8 overflow-hidden"
 			class:exiting={navigating}
 		>
 			<div class="flex flex-col gap-2 w-full leading-normal text-black">
-				<p class="font-cook text-[36px] font-semibold m-0">
+				<p class="font-cook text-[26px] sm:text-[36px] font-semibold m-0 break-words">
 					{project.projectTitle}
 				</p>
 				{#if project.description}
-					<p class="font-bricolage text-[32px] font-semibold m-0">
+					<p class="font-bricolage text-[20px] sm:text-[32px] font-semibold m-0 break-words">
 						{project.description}
 					</p>
 				{/if}
@@ -240,7 +250,7 @@
 					</svg>
 
 					<!-- Info Panels -->
-					<div class="flex gap-3">
+					<div class="flex flex-col sm:flex-row gap-3">
 						<!-- Reviewer Feedback -->
 						{#if reviewerFeedback}
 							<div class="flex-1 bg-[rgba(0,0,0,0.1)] rounded-xl p-4 flex flex-col gap-1 min-w-0">
@@ -297,9 +307,9 @@
 				</div>
 			{/if}
 
-			<div class="flex gap-2.5 w-full justify-center">
+			<div class="flex flex-col sm:flex-row gap-2.5 w-full justify-center">
 				<button
-					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+					class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
 					class:selected={nav.usingKeyboard && nav.isSelected(0, 0)}
 					class:keyboard={nav.usingKeyboard}
 					class:pending={isPending}
@@ -310,7 +320,7 @@
 					EDIT PROJECT
 				</button>
 				<button
-					class="action-btn w-70.25 py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+					class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
 					class:selected={nav.usingKeyboard && nav.isSelected(1, 0)}
 					class:keyboard={nav.usingKeyboard}
 					class:pending={isPending}
@@ -414,10 +424,15 @@
 		cursor: not-allowed;
 	}
 
-	.action-btn:not(.pending):not(.keyboard):hover,
 	.action-btn.selected {
 		background-color: #ffa936;
 		transform: scale(var(--juice-scale));
+	}
+	@media (hover: hover) {
+		.action-btn:not(.pending):not(.keyboard):hover {
+			background-color: #ffa936;
+			transform: scale(var(--juice-scale));
+		}
 	}
 
 	.refresh-hours {
@@ -432,9 +447,11 @@
 		cursor: pointer;
 		transition: opacity 0.15s ease, transform 0.15s ease;
 	}
-	.refresh-hours:hover {
-		opacity: 1;
-		transform: rotate(25deg);
+	@media (hover: hover) {
+		.refresh-hours:hover {
+			opacity: 1;
+			transform: rotate(25deg);
+		}
 	}
 	@keyframes refresh-spin {
 		from { transform: rotate(0deg); }
