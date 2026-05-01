@@ -345,16 +345,20 @@
 				);
 				return;
 			}
-			// Left/right releases huddle and falls through to grid column nav.
-			if (
-				e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' ||
-				e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D'
-			) {
-				huddleNavSelected = false;
-			}
+			// Left/right falls through — the grid moves columns, and the
+			// `nav.col !== 0` $effect resets huddleNavSelected when we actually
+			// leave column 0. Pressing left while already at col 0 keeps the
+			// huddle selected (nothing to the left).
 		}
 
+		const colBefore = nav.col;
 		nav.handleKeydown(e);
+
+		// Coming back to column 0 from a different column with a live huddle —
+		// land on the huddle card first instead of the events card.
+		if (colBefore !== 0 && nav.col === 0 && showHuddleCard) {
+			huddleNavSelected = true;
+		}
 	}
 
 	// If the user navigates away from column 0 (via grid), drop huddle focus.
