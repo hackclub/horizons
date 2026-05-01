@@ -202,14 +202,14 @@
 							{@html parseMarkdownText(selectedEvent.joinInfo)}
 						</div>
 					{/if}
-					{#if selectedEvent.actionUrl}
+					{#if selectedEvent.actionUrl && isLive(selectedEvent)}
 						<a
 							class="action-btn"
 							href={selectedEvent.actionUrl}
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							{(selectedEvent.actionLabel || 'Open').toUpperCase()}
+							{selectedEvent.actionLabel || 'Join Now'}
 						</a>
 					{/if}
 					{#if isLive(selectedEvent)}
@@ -436,26 +436,35 @@
 
 	.action-btn {
 		align-self: flex-start;
-		background: black;
-		color: #f3e8d8;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: black;
 		border: 2px solid black;
-		border-radius: 10px;
-		padding: 8px 18px;
-		font-family: 'Cooper', 'Cooper Black', serif;
-		font-size: 22px;
+		border-radius: 8px;
+		padding: 8px 16px;
+		font-family: 'Bricolage Grotesque', sans-serif;
+		font-size: 20px;
+		font-weight: 400;
 		text-decoration: none;
-		box-shadow: 3px 3px 0px 0px black;
-		transition: transform 0.1s ease, box-shadow 0.1s ease;
+		animation: action-btn-pulse 1.5s ease-in-out infinite;
+		transition: transform var(--juice-duration, 0.2s) var(--juice-easing, ease);
 	}
 
 	.action-btn:hover {
-		transform: translate(-1px, -1px);
-		box-shadow: 4px 4px 0px 0px black;
+		transform: scale(var(--juice-scale, 1.04));
 	}
 
-	.action-btn:active {
-		transform: translate(1px, 1px);
-		box-shadow: 1px 1px 0px 0px black;
+	@keyframes action-btn-pulse {
+		0%, 100% { background-color: #fdd9a8; }
+		50%      { background-color: #fba74d; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.action-btn {
+			animation: none;
+			background-color: #ffa936;
+		}
 	}
 
 	/* Info row */
