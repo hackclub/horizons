@@ -163,7 +163,6 @@
 		justify-content: flex-end;
 		width: 100%;
 		height: 100%;
-		min-height: 480px;
 		padding: 30px;
 		border: 4px solid black;
 		border-radius: 20px;
