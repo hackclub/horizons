@@ -9,7 +9,8 @@
 		hourCost?: number;
 		completedHours?: number;
 		approvedHours?: number;
-		shipped?: boolean;
+		/** Hours that are submitted/shipped and awaiting review. */
+		pendingHours?: number;
 		attendCount?: number | null;
 		onclick?: (e: MouseEvent) => void;
 		onmouseenter?: () => void;
@@ -24,7 +25,7 @@
 		hourCost = 30,
 		completedHours = 0,
 		approvedHours = 0,
-		shipped = false,
+		pendingHours = 0,
 		attendCount = null,
 		onclick,
 		onmouseenter,
@@ -37,16 +38,18 @@
 	const targetHours = $derived(hourCost);
 	const completedDisplay = $derived(round1(completedHours));
 	const approvedDisplay = $derived(round1(approvedHours));
+	const pendingDisplay = $derived(round1(pendingHours));
 
 	type ProgressState = 'qualified' | 'ship' | 'pending-met' | 'approved-majority' | 'default';
 
 	const progressState = $derived<ProgressState>((() => {
 		if (targetHours <= 0) return 'default';
+		// Approved already past goal → qualified.
 		if (approvedDisplay >= targetHours) return 'qualified';
-		if (completedDisplay >= targetHours) {
-			if (!shipped) return 'ship';
-			return 'pending-met';
-		}
+		// Approved + pending will get them past goal once approved → pending-met.
+		if (approvedDisplay + pendingDisplay >= targetHours) return 'pending-met';
+		// They've logged enough hours but haven't shipped enough into review → ship.
+		if (completedDisplay >= targetHours) return 'ship';
 		const majorityApproved =
 			completedDisplay > 0 &&
 			(approvedDisplay >= completedDisplay / 2 || approvedDisplay >= completedDisplay);
