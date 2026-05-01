@@ -63,6 +63,10 @@
 			.sort((a, b) => a.start.getTime() - b.start.getTime())
 	);
 
+	function isLive(event: CommunityEvent): boolean {
+		return event.start.getTime() <= now.getTime() && event.end.getTime() >= now.getTime();
+	}
+
 	function handleEventClick(e: MouseEvent, id: string) {
 		e.preventDefault();
 		e.stopPropagation();
@@ -135,6 +139,7 @@
 			<p class="font-bricolage text-[16px] text-black/50 m-0 px-2">No upcoming events.</p>
 		{:else}
 			{#each upcoming as event, i (event.id)}
+				{@const live = isLive(event)}
 				<button
 					bind:this={eventEls[i]}
 					type="button"
@@ -147,15 +152,14 @@
 						<p class="font-bricolage text-[16px] text-black m-0">{weekdayShort(event.start)}</p>
 					</div>
 					<div class="ce-details">
+						{#if live}
+							<p class="ce-live font-cook m-0">LIVE</p>
+						{/if}
 						<p class="font-cook text-[20px] text-black leading-tight m-0">{event.name.toUpperCase()}</p>
 						{#if event.tagline}
-							<p class="font-bricolage text-[16px] text-black/70 m-0">{event.tagline.toUpperCase()}</p>
+							<p class="font-bricolage text-[14px] text-black/70 m-0">{event.tagline.toUpperCase()}</p>
 						{/if}
-						<div class="ce-times">
-							<span class="ce-time">{formatTime(event.start)}</span>
-							<span class="ce-dash">&ndash;</span>
-							<span class="ce-time">{formatTime(event.end)}</span>
-							<span class="ce-tz">{tzAbbr(event.start)}</span>
+						<div class="ce-actions">
 							{#if event.actionUrl}
 								<a
 									class="ce-action"
@@ -164,9 +168,15 @@
 									rel="noopener noreferrer"
 									onclick={(e) => e.stopPropagation()}
 								>
-									{(event.actionLabel || 'Open').toUpperCase()}
+									{(event.actionLabel || (live ? 'Join Now' : 'Open')).toUpperCase()}
 								</a>
 							{/if}
+							<div class="ce-times">
+								<span class="ce-time">{formatTime(event.start)}</span>
+								<span class="ce-dash">&ndash;</span>
+								<span class="ce-time">{formatTime(event.end)}</span>
+								<span class="ce-tz">{tzAbbr(event.start)}</span>
+							</div>
 						</div>
 					</div>
 				</button>
@@ -312,9 +322,24 @@
 		min-width: 0;
 	}
 
+	.ce-live {
+		color: #fc5b3c;
+		font-size: 14px;
+		letter-spacing: 0.04em;
+		line-height: 1;
+	}
+
+	.ce-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+		margin-top: 2px;
+	}
+
 	.ce-times {
 		display: flex;
-		gap: 8px;
+		gap: 6px;
 		align-items: center;
 	}
 
@@ -323,25 +348,30 @@
 		border-radius: 8px;
 		padding: 2px 8px;
 		font-family: 'Bricolage Grotesque', sans-serif;
-		font-size: 16px;
+		font-size: 14px;
 		color: black;
 	}
 
 	.ce-action {
-		margin-left: auto;
-		background: black;
-		color: #f3e8d8;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: transparent;
+		color: black;
+		border: 2px solid black;
 		border-radius: 8px;
-		padding: 2px 10px;
+		padding: 4px 12px;
 		font-family: 'Bricolage Grotesque', sans-serif;
 		font-size: 14px;
 		font-weight: 600;
 		text-decoration: none;
-		transition: opacity 0.15s ease;
+		transition: background-color 0.15s ease, color 0.15s ease;
+		white-space: nowrap;
 	}
 
 	.ce-action:hover {
-		opacity: 0.85;
+		background: black;
+		color: #f3e8d8;
 	}
 
 	.ce-dash {
