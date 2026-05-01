@@ -11,10 +11,12 @@
 		usingKeyboard?: boolean;
 		postOnboarding?: boolean;
 		description?: string;
+		hideEnterHint?: boolean;
 		onmouseenter?: () => void;
 		onclick?: (e: MouseEvent) => void;
 		onEventClick?: (id: string) => void;
 		focusedEventId?: string | null;
+		hasLiveEvent?: boolean;
 	}
 
 	let {
@@ -23,10 +25,12 @@
 		usingKeyboard = true,
 		postOnboarding = false,
 		description = '',
+		hideEnterHint = false,
 		onmouseenter,
 		onclick,
 		onEventClick,
 		focusedEventId = $bindable(null),
+		hasLiveEvent = $bindable(false),
 	}: Props = $props();
 
 	interface CommunityEvent {
@@ -66,6 +70,10 @@
 	function isLive(event: CommunityEvent): boolean {
 		return event.start.getTime() <= now.getTime() && event.end.getTime() >= now.getTime();
 	}
+
+	$effect(() => {
+		hasLiveEvent = events.some(isLive);
+	});
 
 	function handleEventClick(e: MouseEvent, id: string) {
 		e.preventDefault();
@@ -183,7 +191,7 @@
 			{/each}
 		{/if}
 	</div>
-	{#if selected && !postOnboarding}
+	{#if selected && !postOnboarding && !hideEnterHint}
 		<div class="enter-hint">
 			<img
 				src={usingKeyboard ? enterSvg : clickSvg}

@@ -2,6 +2,7 @@
 	import CircleIn from '$lib/components/anim/CircleIn.svelte';
 	import TextWave from '$lib/components/TextWave.svelte';
 	import CommunityEventsCard from '$lib/components/cards/CommunityEventsCard.svelte';
+	import LiveHuddleCard from '$lib/components/cards/LiveHuddleCard.svelte';
 	import ProjectsCard from '$lib/components/cards/ProjectsCard.svelte';
 	import GuidesCard from '$lib/components/cards/GuidesCard.svelte';
 	import SlackCard from '$lib/components/cards/SlackCard.svelte';
@@ -74,6 +75,17 @@
 	let pinnedEventImageUrl = $state<string | null>(null);
 	let eventHourCosts = $state<Record<string, number>>({});
 
+	// #horizons huddle state — populated by polling /api/huddles/status. When `huddleActive`
+	// is true, a LiveHuddleCard is rendered beneath the community-events card.
+	const HORIZONS_SLACK_CHANNEL = 'C0AGKQ6K476';
+	let huddleActive = $state(false);
+	let huddleMembers = $state(0);
+	let ceHasLiveEvent = $state(false);
+
+	// Live community events take precedence over huddles, and the huddle card stays
+	// hidden during the post-onboarding tour to avoid drowning out the highlight popovers.
+	const showHuddleCard = $derived(huddleActive && !ceHasLiveEvent && !postOnboarding);
+
 	// --- DEBUG: ?debug enables overlay to preview each event + each progress state ---
 	type DebugProgressState = 'qualified' | 'ship' | 'pending-met' | 'approved-majority' | 'default';
 	const debugMode = $derived(page.url.searchParams.has('debug'));
@@ -119,6 +131,27 @@
 			approvedHours = Math.round(((approvedRes.data as any).totalApprovedHours ?? 0) * 10) / 10;
 		}
 	}
+
+	async function fetchHuddleStatus() {
+		try {
+			const res = await api.GET('/api/huddles/status', {
+				params: { query: { channel: HORIZONS_SLACK_CHANNEL } },
+			});
+			if (res.data) {
+				huddleActive = !!res.data.active;
+				huddleMembers = res.data.memberCount ?? 0;
+			}
+		} catch {
+			// Slack edge API can flake; treat failures as "no huddle".
+			huddleActive = false;
+		}
+	}
+
+	onMount(() => {
+		fetchHuddleStatus();
+		const huddleInterval = setInterval(fetchHuddleStatus, 60_000);
+		return () => clearInterval(huddleInterval);
+	});
 
 	onMount(async () => {
 		await Promise.all([userStore.load(), fetchHours()]);
@@ -230,6 +263,12 @@
 				triggerShake(col, row);
 			} else if (!HIDE_COMMUNITY_EVENTS && col === 0 && ceFocusedEventId) {
 				navigateTo(`/app/community?event=${encodeURIComponent(ceFocusedEventId)}`);
+			} else if (!HIDE_COMMUNITY_EVENTS && col === 0 && showHuddleCard) {
+				window.open(
+					`https://hackclub.enterprise.slack.com/archives/${HORIZONS_SLACK_CHANNEL}`,
+					'_blank',
+					'noopener,noreferrer',
+				);
 			} else {
 				const href = hrefs[col][row];
 				if (/^https?:\/\//.test(href)) {
@@ -348,18 +387,28 @@
 			<div class="cards-row" bind:this={cardsRow}>
 				<!-- Community Events (preview card, leftmost) -->
 				{#if !HIDE_COMMUNITY_EVENTS}
-					<div class="enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="0ms" style:--exit-right-delay="150ms">
-						<CommunityEventsCard
-							bind:element={cardRefs[0]}
-							bind:focusedEventId={ceFocusedEventId}
-							selected={nav.isSelected(0, 0)}
-							usingKeyboard={nav.usingKeyboard}
-							postOnboarding={postOnboarding}
-							description={cardDescriptions['0-0']}
-							onmouseenter={() => handleCardHover(0, 0)}
-							onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
-							onEventClick={(id) => navigateTo(`/app/community?event=${encodeURIComponent(id)}`)}
-						/>
+					<div class="enter-up shrink-0 ce-column" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="0ms" style:--exit-right-delay="150ms">
+						<div class="ce-events-slot">
+							<CommunityEventsCard
+								bind:element={cardRefs[0]}
+								bind:focusedEventId={ceFocusedEventId}
+								bind:hasLiveEvent={ceHasLiveEvent}
+								selected={nav.isSelected(0, 0)}
+								usingKeyboard={nav.usingKeyboard}
+								postOnboarding={postOnboarding}
+								description={cardDescriptions['0-0']}
+								hideEnterHint={showHuddleCard && !ceFocusedEventId}
+								onmouseenter={() => handleCardHover(0, 0)}
+								onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
+								onEventClick={(id) => navigateTo(`/app/community?event=${encodeURIComponent(id)}`)}
+							/>
+						</div>
+						{#if showHuddleCard}
+							<LiveHuddleCard
+								memberCount={huddleMembers}
+								usingKeyboard={nav.usingKeyboard}
+							/>
+						{/if}
 					</div>
 				{/if}
 
@@ -702,6 +751,20 @@
 	}
 
 	/* Card-specific styles */
+	/* Community-events column with optional LiveHuddleCard underneath */
+	.ce-column {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		width: 471px;
+		height: 100%;
+	}
+	.ce-events-slot {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+	}
+
 	/* Left stacked column */
 	.left-col {
 		display: flex;
