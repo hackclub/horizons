@@ -187,6 +187,18 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+		transform-origin: center;
+		will-change: transform;
+		animation: bg-drift 12s ease-in-out infinite alternate;
+	}
+
+	@keyframes bg-drift {
+		from { transform: scale(1.08) translate(-1.5%, 0.8%); }
+		to   { transform: scale(1.08) translate(1.5%, -0.8%); }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.card-bg-img { animation: none; }
 	}
 
 	.card-bg-gradient {
