@@ -63,11 +63,13 @@
 
 	<!-- Dialog step: Jelly excited -->
 	{#if isDialogStep}
-		<div class="absolute bottom-20 left-1/2 -translate-x-[calc(50%-30px)] w-181.75">
-			<div class="absolute bottom-5 -left-20 -z-1">
+		<div class="fixed bottom-4 left-4 right-4 z-20 sm:absolute sm:bottom-20 sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-[calc(50%-30px)] sm:w-181.75 sm:z-auto">
+			<!-- Mobile-only bean character (above the dialog) -->
+			<img src={beanSiblingsSide} alt="" class="block sm:hidden absolute bottom-full -right-4 mb-2 w-24 pointer-events-none" />
+			<div class="hidden sm:block absolute bottom-5 -left-20 -z-1">
 				<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
 			</div>
-			<div class="relative w-full min-h-45 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] p-7.5 flex flex-col gap-4">
+			<div class="relative w-full min-h-45 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] p-5 sm:p-7.5 flex flex-col gap-4">
 				<div class="flex flex-col gap-2">
 					<p class="font-cook text-2xl text-black">BEAN</p>
 					<p class="font-bricolage text-2xl font-semibold text-black leading-normal">YAYAYA!! I'm so excited for you to build your first project!</p>
@@ -79,12 +81,12 @@
 
 	<!-- Card steps -->
 	{#if !isDialogStep}
-		<div class="w-full flex items-center justify-center py-8 my-auto">
-			<div class="relative">
-				<div class="absolute -top-7.5 -left-22.5 z-0">
+		<div class="w-full flex items-center justify-center px-4 py-8 sm:px-0 sm:my-auto">
+			<div class="relative w-full sm:w-auto flex justify-center">
+				<div class="hidden sm:block absolute -top-7.5 -left-22.5 z-0">
 					<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
 				</div>
-				<div class="relative z-1 w-181.75 min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-hidden">
+				<div class="relative z-1 w-full max-w-[727px] sm:w-181.75 min-h-0 sm:min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-hidden gap-6">
 				{#if isStep1}
 					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
@@ -122,7 +124,7 @@
 						</div>
 					</div>
 					<button
-						class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
+						class="juice-btn card-btn w-full max-w-[415px] sm:w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
 						class:card-continue-ready={hackatimeLinked}
 						onclick={() => step++}
 						disabled={!hackatimeLinked}
@@ -179,7 +181,7 @@
 							<p class="font-bricolage text-lg font-medium text-black leading-normal text-center">Once you've figured out what type of project you want to make, hit continue!</p>
 						</div>
 					</div>
-					<button class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer mt-1 hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={() => step++}>
+					<button class="juice-btn card-btn w-full max-w-[415px] sm:w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer mt-1 hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={() => step++}>
 						Continue
 					</button>
 				{/if}
@@ -206,7 +208,7 @@
 					<div class="flex flex-col gap-2 w-full">
 						<FormError message={projectError} />
 						<button
-							class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
+							class="juice-btn card-btn w-full max-w-[415px] sm:w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
 							class:card-submit-ready={projectFormReady}
 							onclick={handleProjectSubmit}
 							disabled={projectSubmitting}

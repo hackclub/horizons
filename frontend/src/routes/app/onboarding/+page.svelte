@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
 	import CircleIn from '$lib/components/anim/CircleIn.svelte';
@@ -114,7 +115,12 @@
 		}
 	];
 
-	const steps = $derived([...baseSteps, ...(!hasProjects ? noProjectSteps : [])]);
+	// `?debug` lets us walk through every step regardless of project state (so the
+	// project-creation/Hackatime steps stay visible even for already-onboarded users).
+	const debugMode = $derived(page.url.searchParams.has('debug'));
+	const showAllSteps = $derived(!hasProjects || debugMode);
+
+	const steps = $derived([...baseSteps, ...(showAllSteps ? noProjectSteps : [])]);
 
 	const selectedApiEvent = $derived(
 		selectedEvent ? apiEvents.find((e) => e.slug === selectedEvent) : null
@@ -165,7 +171,7 @@
 		await api.POST('/api/events/auth/pinned-event' as any, {
 			body: { slug: selectedEvent }
 		});
-		if (!hasProjects) {
+		if (showAllSteps) {
 			step++;
 		} else {
 			await completeOnboarding();
@@ -225,13 +231,13 @@
 	<!-- Event cards -->
 	{#if currentStep.showEvents}
 		<div
-			class="flex flex-wrap justify-center content-start gap-8 max-w-[calc(298px*4+32px*3)] absolute top-0 bottom-0 overflow-y-auto p-2 transition-opacity duration-400 ease-in-out"
+			class="relative w-full px-4 pt-8 pb-64 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:justify-center sm:content-start sm:gap-8 sm:max-w-[calc(298px*4+32px*3)] sm:absolute sm:top-0 sm:bottom-0 sm:overflow-y-auto sm:p-2 sm:px-0 sm:py-0 transition-opacity duration-400 ease-in-out"
 			style="opacity: {currentStep.eventsOpacity}; pointer-events: {isEventSelectStep ? 'auto' : 'none'};"
 		>
-			<div class="w-full h-10 shrink-0"></div>
+			<div class="hidden sm:block w-full h-10 shrink-0"></div>
 			{#each events as event}
 				<button
-					class="event-card w-74.5 h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing)"
+					class="event-card w-full sm:w-74.5 h-60 sm:h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing) p-3 sm:p-0"
 					class:selected={selectedEvent === event.slug}
 					style={event.slug === 'nexus' && event.eventCard?.bgImage
 						? `background-image: url(${event.eventCard.bgImage}); background-size: cover; background-position: center;`
@@ -242,8 +248,9 @@
 					<div class="flex items-center justify-center flex-1 p-3 min-h-0">
 						<img src={event.logo} alt={event.name} class="max-w-65 max-h-full object-contain" />
 					</div>
+					<p class="block sm:hidden font-cook text-lg leading-none whitespace-nowrap" class:text-white={event.slug === 'nexus'}>{event.name}</p>
 					{#if event.location || (event.startDate && event.endDate)}
-						<div class="flex flex-col items-center pb-3 shrink-0 leading-tight" class:text-white={event.slug === 'nexus'}>
+						<div class="flex flex-col items-center pt-1 sm:pt-0 pb-3 shrink-0 leading-tight" class:text-white={event.slug === 'nexus'}>
 							{#if event.location}
 								<p class="font-bricolage text-base font-semibold whitespace-nowrap">{event.location}</p>
 							{/if}
@@ -255,8 +262,8 @@
 				</button>
 			{/each}
 			<button
-				class="event-card w-74.5 h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing)"
-				onclick={async (e) => { e.stopPropagation(); if (!hasProjects) { step++; } else { await completeOnboarding(); goto('/app?post-onboarding'); } }}
+				class="event-card w-full sm:w-74.5 h-60 sm:h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing) p-3 sm:p-0"
+				onclick={async (e) => { e.stopPropagation(); if (showAllSteps) { step++; } else { await completeOnboarding(); goto('/app?post-onboarding'); } }}
 				disabled={!isEventSelectStep}
 			>
 				<div class="flex flex-col items-center justify-center flex-1 p-3 min-h-0 gap-1">
@@ -264,18 +271,18 @@
 					<p class="font-bricolage text-sm font-semibold text-black opacity-60">I'll decide another time</p>
 				</div>
 			</button>
-			<div class="w-full h-75 shrink-0"></div>
+			<div class="hidden sm:block w-full h-75 shrink-0"></div>
 		</div>
 	{/if}
 
 	<!-- Card steps (Hackatime setup / Project form) -->
 	{#if isCardStep}
-		<div class="w-full flex items-center justify-center py-8 my-auto">
-			<div class="relative">
-				<div class="absolute -top-7.5 -left-22.5 z-0">
+		<div class="w-full flex items-center justify-center px-4 py-8 sm:px-0 sm:my-auto">
+			<div class="relative w-full sm:w-auto flex justify-center">
+				<div class="hidden sm:block absolute -top-7.5 -left-22.5 z-0">
 					<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
 				</div>
-				<div class="relative z-1 w-181.75 min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-clip">
+				<div class="relative z-1 w-full max-w-[727px] sm:w-181.75 min-h-0 sm:min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-clip gap-6">
 				{#if isHackatimeStep}
 					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
@@ -286,7 +293,7 @@
 						</div>
 					</div>
 					<button
-						class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
+						class="juice-btn card-btn w-full max-w-[415px] sm:w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:not-disabled:scale-(--juice-scale) hover:not-disabled:bg-[#ffa936] disabled:opacity-40 disabled:cursor-default"
 						class:card-continue-ready={hackatimeLinked}
 						onclick={() => step++}
 						disabled={!hackatimeLinked}
@@ -316,7 +323,7 @@
 					<div class="flex flex-col gap-2 w-full">
 						<FormError message={projectError} />
 						<button
-							class="juice-btn card-btn w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
+							class="juice-btn card-btn w-full max-w-[415px] sm:w-103.75 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer self-center hover:scale-(--juice-scale) hover:bg-[#ffa936] disabled:opacity-60 disabled:cursor-default"
 							class:card-submit-ready={projectFormReady}
 							onclick={handleProjectSubmit}
 							disabled={projectSubmitting}
@@ -332,20 +339,22 @@
 
 	<!-- Character image (centered, step 1 only) -->
 	{#if currentStep.imageStyle === 'bottom'}
-		<div class="absolute bottom-50 flex justify-center">
+		<div class="hidden sm:flex absolute bottom-50 justify-center">
 			<img src={currentStep.image} alt="Bean siblings" class="h-62.5 object-contain -mb-5" />
 		</div>
 	{/if}
 
 	<!-- Dialog box (for dialog-based steps) -->
 	{#if !isCardStep}
-		<div class="absolute bottom-20 left-1/2 -translate-x-[calc(50%-30px)] w-181.75">
+		<div class="fixed bottom-4 left-4 right-4 z-20 sm:absolute sm:bottom-20 sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-[calc(50%-30px)] sm:w-181.75 sm:z-auto">
+			<!-- Mobile-only bean character (above the dialog) -->
+			<img src={beanSiblingsSide} alt="" class="block sm:hidden absolute bottom-full -right-4 mb-2 w-24 pointer-events-none" />
 			{#if currentStep.imageStyle === 'side'}
-				<div class="absolute bottom-5 -left-20 -z-1">
+				<div class="hidden sm:block absolute bottom-5 -left-20 -z-1">
 					<img src={currentStep.image} alt="Bean siblings" class="h-45 object-contain" />
 				</div>
 			{/if}
-			<div class="relative w-full min-h-45 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] p-7.5 flex flex-col gap-4">
+			<div class="relative w-full min-h-45 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] p-5 sm:p-7.5 flex flex-col gap-4">
 			<div class="flex flex-col gap-2">
 				<p class="font-cook text-2xl text-black whitespace-nowrap">{currentStep.speaker}</p>
 				<p class="font-bricolage text-2xl font-semibold text-black leading-normal">{@html currentStep.text}</p>
@@ -367,11 +376,11 @@
 			{/if}
 
 			{#if isExperienceStep}
-				<div class="flex gap-2.5 w-full">
+				<div class="flex flex-col sm:flex-row gap-2.5 w-full">
 					<button class="juice-btn flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); step++; }}>
 						Yes!
 					</button>
-					<button class="juice-btn flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); goto('/app/onboarding/tutorial'); }}>
+					<button class="juice-btn flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); goto(`/app/onboarding/tutorial${page.url.searchParams.has('debug') ? '?debug' : ''}`); }}>
 						No, this is my first time.
 					</button>
 				</div>
@@ -387,8 +396,10 @@
 		            background-color 0.2s ease-in-out;
 	}
 
-	.event-card:not(:disabled):not(.selected):hover {
-		transform: scale(var(--juice-scale));
+	@media (hover: hover) {
+		.event-card:not(:disabled):not(.selected):hover {
+			transform: scale(var(--juice-scale));
+		}
 	}
 
 	.event-card.selected {

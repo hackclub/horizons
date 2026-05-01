@@ -37,7 +37,10 @@
 
 	let windowWidth = $state(0);
 	let isMobile = $derived(windowWidth > 0 && windowWidth < 640);
-	let isProjectsRoute = $derived(page.url.pathname.startsWith('/app/projects'));
+	let isMobileAllowedRoute = $derived(
+		page.url.pathname.startsWith('/app/projects') ||
+		page.url.pathname.startsWith('/app/onboarding')
+	);
 
 	let { children } = $props();
 
@@ -62,8 +65,12 @@
 
 		if (!authResult) return;
 
+		// `?debug` lets us preview onboarding pages even when onboarding is gated off
+		// in env, or when the current user has already completed onboarding.
+		const onboardingDebug = page.url.searchParams.has('debug');
+
 		// If onboarding is disabled, redirect away from onboarding pages
-		if (env.PUBLIC_ENABLE_ONBOARDING !== 'true' && page.url.pathname.startsWith('/app/onboarding')) {
+		if (env.PUBLIC_ENABLE_ONBOARDING !== 'true' && page.url.pathname.startsWith('/app/onboarding') && !onboardingDebug) {
 			goto('/app');
 			return;
 		}
@@ -110,7 +117,7 @@
 
 {#if !authed}
 	<div class="fixed inset-0 bg-black z-50"></div>
-{:else if isMobile && !isProjectsRoute}
+{:else if isMobile && !isMobileAllowedRoute}
 	<div class="fixed inset-0 z-50 bg-[#271c0c] flex flex-col items-center justify-center gap-4 p-8 text-center">
 		<p class="font-cook text-[32px] font-semibold text-[#f3e8d8] leading-tight">THIS SITE ISN'T READY FOR MOBILE YET.</p>
 		<p class="font-bricolage text-[18px] font-semibold text-[#f3e8d8] tracking-wide">We recommend opening this on desktop.</p>
@@ -118,7 +125,7 @@
 {:else}
 	<BG {disableAnimations}>
 		{#key page.url.pathname}
-			<div class="page-transition" class:scrollable={isProjectsRoute}>
+			<div class="page-transition" class:scrollable={isMobileAllowedRoute}>
 				{@render children()}
 			</div>
 		{/key}
