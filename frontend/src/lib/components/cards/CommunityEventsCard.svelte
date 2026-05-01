@@ -11,10 +11,13 @@
 		usingKeyboard?: boolean;
 		postOnboarding?: boolean;
 		description?: string;
-		hideEnterHint?: boolean;
 		onmouseenter?: () => void;
 		onclick?: (e: MouseEvent) => void;
 		onEventClick?: (id: string) => void;
+		/** Called when the user presses down at (or past) the last event in the
+		 *  list. The parent uses this to release keyboard focus to a sibling
+		 *  card stacked beneath this one (e.g. the live huddle card). */
+		onReleaseDown?: () => void;
 		focusedEventId?: string | null;
 		hasLiveEvent?: boolean;
 		debugEvents?: CommunityEvent[] | null;
@@ -38,10 +41,10 @@
 		usingKeyboard = true,
 		postOnboarding = false,
 		description = '',
-		hideEnterHint = false,
 		onmouseenter,
 		onclick,
 		onEventClick,
+		onReleaseDown,
 		focusedEventId = $bindable(null),
 		hasLiveEvent = $bindable(false),
 		debugEvents = null,
@@ -108,6 +111,13 @@
 			e.preventDefault();
 			focusedIndex = Math.max(-1, focusedIndex - 1);
 		} else if (dir === 'down') {
+			// At (or past) the last event, hand off to the parent so it can
+			// move focus to a sibling card stacked beneath this one.
+			if (focusedIndex >= upcoming.length - 1 && onReleaseDown) {
+				e.preventDefault();
+				onReleaseDown();
+				return;
+			}
 			e.preventDefault();
 			focusedIndex = Math.min(upcoming.length - 1, Math.max(0, focusedIndex + 1));
 		}
@@ -194,7 +204,7 @@
 			{/each}
 		{/if}
 	</div>
-	{#if selected && !postOnboarding && !hideEnterHint}
+	{#if selected && !postOnboarding}
 		<div class="enter-hint">
 			<img
 				src={usingKeyboard ? enterSvg : clickSvg}
