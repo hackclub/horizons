@@ -72,6 +72,7 @@
 	let completedHours = $state(0);
 	let targetHours = $state(30);
 	let pinnedEventImageUrl = $state<string | null>(null);
+	let eventHourCosts = $state<Record<string, number>>({});
 
 	// --- DEBUG: ?debug enables overlay to preview each event + each progress state ---
 	type DebugProgressState = 'qualified' | 'ship' | 'pending-met' | 'approved-majority' | 'default';
@@ -84,15 +85,17 @@
 	const eventColumnImage = $derived(
 		debugEventSlug ? (eventsMap[debugEventSlug]?.eventCard?.bgImage ?? null) : pinnedEventImageUrl
 	);
+	const eventColumnTarget = $derived(eventHourCosts[eventColumnSlug] ?? targetHours);
 	const eventColumnValues = $derived.by(() => {
-		const t = targetHours;
+		const t = eventColumnTarget;
 		switch (debugProgressState) {
-			case 'qualified':         return { completed: t,        approved: t,        shipped: true };
-			case 'ship':              return { completed: t,        approved: 0,        shipped: false };
-			case 'pending-met':       return { completed: t,        approved: 0,        shipped: true };
-			case 'approved-majority': return { completed: t * 0.7,  approved: t * 0.55, shipped: true };
-			case 'default':           return { completed: t * 0.7,  approved: t * 0.1,  shipped: false };
-			default:                  return { completed: completedHours, approved: approvedHours, shipped: approvedHours > 0 };
+			case 'qualified':         return { completed: t,        approved: t,        pending: 0 };
+			case 'ship':              return { completed: t,        approved: 0,        pending: 0 };
+			case 'pending-met':       return { completed: t,        approved: t / 2,    pending: t / 2 };
+			case 'approved-majority': return { completed: t * 0.7,  approved: t * 0.55, pending: 0 };
+			case 'default':           return { completed: t * 0.7,  approved: t * 0.1,  pending: 0 };
+			// Live values: treat unapproved completed hours as pending until per-event ship lookup is wired.
+			default:                  return { completed: completedHours, approved: approvedHours, pending: Math.max(0, completedHours - approvedHours) };
 		}
 	});
 
@@ -121,7 +124,10 @@
 		await Promise.all([userStore.load(), fetchHours()]);
 
 		// Refresh from API and update cache
-		const pinnedRes = await api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null);
+		const [pinnedRes, eventsRes] = await Promise.all([
+			api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null),
+			api.GET('/api/events' as any, {}).catch(() => null),
+		]);
 		if (pinnedRes?.data) {
 			const event = (pinnedRes.data as any).event;
 			const slug = event?.slug;
@@ -134,7 +140,15 @@
 				setCachedPinnedEvent(slug, hourCost);
 			}
 		}
-
+		if (eventsRes?.data && Array.isArray(eventsRes.data)) {
+			const map: Record<string, number> = {};
+			for (const ev of eventsRes.data as any[]) {
+				if (ev?.slug && typeof ev?.hourCost === 'number') {
+					map[ev.slug] = ev.hourCost;
+				}
+			}
+			eventHourCosts = map;
+		}
 	});
 
 	const hrefs: string[][] = HIDE_COMMUNITY_EVENTS
@@ -383,10 +397,10 @@
 						slug={eventColumnSlug}
 						config={eventColumnConfig}
 						imageUrl={eventColumnImage}
-						hourCost={targetHours}
+						hourCost={eventColumnTarget}
 						completedHours={eventColumnValues.completed}
 						approvedHours={eventColumnValues.approved}
-						shipped={eventColumnValues.shipped}
+						pendingHours={eventColumnValues.pending}
 						selected={nav.isSelected(COL_PINNED_EVENT, 0)}
 						onmouseenter={() => handleCardHover(COL_PINNED_EVENT, 0)}
 						onclick={(e) => { e.preventDefault(); navigateTo('/app/events'); }}
@@ -560,10 +574,10 @@
 		</div>
 
 		<div class="debug-section debug-readout">
-			<div>target: {targetHours}h</div>
+			<div>target: {eventColumnTarget}h</div>
 			<div>completed: {eventColumnValues.completed.toFixed(1)}h</div>
 			<div>approved: {eventColumnValues.approved.toFixed(1)}h</div>
-			<div>shipped: {eventColumnValues.shipped}</div>
+			<div>pending: {eventColumnValues.pending.toFixed(1)}h</div>
 			<div class="debug-swatch-row">primary: <span class="swatch" style="background: {eventColumnConfig?.colors?.primary};"></span><span>{eventColumnConfig?.colors?.primary}</span></div>
 			<div class="debug-swatch-row">card bg: <span class="swatch" style="background: {eventColumnConfig?.eventCard?.bgColor};"></span><span>{eventColumnConfig?.eventCard?.bgColor}</span></div>
 		</div>
