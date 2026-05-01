@@ -65,6 +65,9 @@
 	let listEl: HTMLDivElement;
 	let clickWasSelected = false;
 
+	let windowWidth = $state(0);
+	let isMobile = $derived(windowWidth > 0 && windowWidth < 640);
+
 	const nav = createListNav({
 		count: () => projects.length + 1, // +1 for create project card
 		wheel: 80,
@@ -83,6 +86,10 @@
 	});
 
 	async function updateScroll() {
+		if (isMobile) {
+			scrollOffset = 0;
+			return;
+		}
 		await tick();
 		if (!listEl) return;
 		const cards = listEl.querySelectorAll('.project-card') as NodeListOf<HTMLElement>;
@@ -148,11 +155,11 @@
 	});
 </script>
 
-<svelte:window onkeydown={nav.handleKeydown} onwheel={nav.handleWheel} />
+<svelte:window bind:innerWidth={windowWidth} onkeydown={nav.handleKeydown} onwheel={nav.handleWheel} />
 
 <div class="relative size-full">
-	<!-- Hero image -->
-	<div style="opacity: {navigating || !entered ? 0 : selectedProject ? 1 : 0}; transition: opacity 0.4s ease;">
+	<!-- Hero image (desktop only) -->
+	<div class="hidden sm:block" style="opacity: {navigating || !entered ? 0 : selectedProject ? 1 : 0}; transition: opacity 0.4s ease;">
 		<TurbulentImage
 			src={selectedProject?.screenshotUrl ?? heroPlaceholder}
 			alt={selectedProject?.projectTitle ?? 'New Project'}
@@ -161,38 +168,43 @@
 		/>
 	</div>
 
+	<!-- Mobile-only page header -->
+	<h1 class="sm:hidden font-cook text-[28px] font-semibold text-black m-0 px-4 pt-20 leading-none">PROJECTS</h1>
+
 	<!-- Scrollable project list -->
-	<div class="absolute left-10.5 top-45 bottom-10 w-215 overflow-visible z-2" role="listbox" tabindex="-1">
-		<div class="flex flex-col gap-7.5" bind:this={listEl} style="transform: translateY({scrollOffset}px); transition: transform var(--juice-duration) var(--juice-easing);">
+	<div class="relative w-full px-4 pt-6 pb-24 sm:absolute sm:left-10.5 sm:top-45 sm:bottom-10 sm:w-215 sm:px-0 sm:pt-0 sm:pb-0 sm:overflow-visible z-2" role="listbox" tabindex="-1">
+		<div class="flex flex-col gap-4 sm:gap-7.5" bind:this={listEl} style="transform: translateY({isMobile ? 0 : scrollOffset}px); transition: transform var(--juice-duration) var(--juice-easing);">
 			{#if loading}
-				<div class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex items-center justify-center" style="width: 649px;">
-					<p class="font-cook font-semibold text-black text-[40px] m-0 opacity-50">LOADING...</p>
+				<div class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex items-center justify-center w-full sm:w-[649px]">
+					<p class="font-cook font-semibold text-black text-[28px] sm:text-[40px] m-0 opacity-50">LOADING...</p>
 				</div>
 			{:else if error}
-				<div class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex items-center justify-center" style="width: 649px;">
-					<p class="font-cook font-semibold text-black text-[40px] m-0 opacity-50">{error}</p>
+				<div class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex items-center justify-center w-full sm:w-[649px]">
+					<p class="font-cook font-semibold text-black text-[28px] sm:text-[40px] m-0 opacity-50">{error}</p>
 				</div>
 			{:else}
 				{#each projects as project, i (project.projectId)}
 					{@const selected = i === nav.selectedIndex}
 					{@const status = statusMap[String(project.projectId)] ?? null}
 					<button
-						class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start overflow-hidden relative cursor-pointer text-left outline-none"
+						class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start overflow-hidden relative cursor-pointer text-left outline-none w-full"
 						class:selected
 						class:exiting={navigating}
 						onpointerdown={() => { clickWasSelected = nav.selectedIndex === i; }}
-						onfocus={() => { nav.selectedIndex = i; updateScroll(); }}
-						onclick={() => { if (clickWasSelected) { navigateTo(`/app/projects/${project.projectId}`) } }}
-						style="--card-index: {i}; width: {selected ? '824px' : '649px'}; background-color: {selected ? 'var(--selected-color)' : '#f3e8d8'}; gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
+						onfocus={() => { if (!isMobile) { nav.selectedIndex = i; updateScroll(); } }}
+						onclick={() => { if (isMobile || clickWasSelected) { navigateTo(`/app/projects/${project.projectId}`) } }}
+						style={isMobile
+							? `--card-index: ${i};`
+							: `--card-index: ${i}; width: ${selected ? '824px' : '649px'}; background-color: ${selected ? 'var(--selected-color)' : '#f3e8d8'}; gap: ${selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;`}
 					>
 						<div class="flex flex-col gap-1 z-1 w-full">
-							<p class="font-cook font-semibold text-black m-0 leading-[1.1] transition-[font-size_0.3s_ease]" style="font-size: {selected ? '64px' : '40px'};">{project.projectTitle}</p>
-							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease]" style="font-size: {selected ? '32px' : '20px'};">{project.description ?? ''}</p>
-							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease]" style="font-size: {selected ? '32px' : '20px'};">{project.nowHackatimeHours ?? 0} hrs tracked</p>
+							<p class="font-cook font-semibold text-black m-0 leading-[1.1] transition-[font-size_0.3s_ease] text-[28px] sm:text-[40px]" style={!isMobile && selected ? 'font-size: 64px;' : ''}>{project.projectTitle}</p>
+							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style={!isMobile && selected ? 'font-size: 32px;' : ''}>{project.description ?? ''}</p>
+							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style={!isMobile && selected ? 'font-size: 32px;' : ''}>{project.nowHackatimeHours ?? 0} hrs tracked</p>
 						</div>
 
 						<div
-							class="grid z-1"
+							class="z-1 hidden sm:grid"
 							style="grid-template-rows: {selected ? '1fr' : '0fr'}; opacity: {selected ? 1 : 0}; transition: grid-template-rows 0.15s ease, opacity 0.15s ease;"
 						>
 							<div class="overflow-hidden flex items-center gap-2">
@@ -219,22 +231,25 @@
 				{/each}
 
 				<!-- Create Project Card -->
+				{@const createSelected = nav.selectedIndex === projects.length}
 				<button
-					class="project-card border-dashed bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start overflow-hidden relative cursor-pointer text-left outline-none"
-					class:selected={nav.selectedIndex === projects.length}
+					class="project-card border-dashed bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start overflow-hidden relative cursor-pointer text-left outline-none w-full"
+					class:selected={createSelected}
 					class:exiting={navigating}
 					onpointerdown={() => { clickWasSelected = nav.selectedIndex === projects.length; }}
-					onfocus={() => { nav.selectedIndex = projects.length; updateScroll(); }}
-					onclick={() => { if (clickWasSelected) { navigateTo('/app/projects/new'); } }}
-					style="--card-index: {projects.length}; width: {nav.selectedIndex === projects.length ? '824px' : '649px'}; background-color: {nav.selectedIndex === projects.length ? 'var(--selected-color)' : '#f3e8d8'}; gap: {nav.selectedIndex === projects.length ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
+					onfocus={() => { if (!isMobile) { nav.selectedIndex = projects.length; updateScroll(); } }}
+					onclick={() => { if (isMobile || clickWasSelected) { navigateTo('/app/projects/new'); } }}
+					style={isMobile
+						? `--card-index: ${projects.length};`
+						: `--card-index: ${projects.length}; width: ${createSelected ? '824px' : '649px'}; background-color: ${createSelected ? 'var(--selected-color)' : '#f3e8d8'}; gap: ${createSelected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;`}
 				>
 					<div class="flex flex-col gap-1 z-1 w-full">
-						<p class="font-cook font-semibold text-black m-0 leading-[1.1] opacity-70 transition-[font-size_0.3s_ease]" style="font-size: {nav.selectedIndex === projects.length ? '64px' : '40px'};">+ CREATE PROJECT</p>
+						<p class="font-cook font-semibold text-black m-0 leading-[1.1] opacity-70 transition-[font-size_0.3s_ease] text-[28px] sm:text-[40px]" style={!isMobile && createSelected ? 'font-size: 64px;' : ''}>+ CREATE PROJECT</p>
 					</div>
 
 					<div
-						class="grid z-1"
-						style="grid-template-rows: {nav.selectedIndex === projects.length ? '1fr' : '0fr'}; opacity: {nav.selectedIndex === projects.length ? 1 : 0}; transition: grid-template-rows 0.15s ease, opacity 0.15s ease;"
+						class="z-1 hidden sm:grid"
+						style="grid-template-rows: {createSelected ? '1fr' : '0fr'}; opacity: {createSelected ? 1 : 0}; transition: grid-template-rows 0.15s ease, opacity 0.15s ease;"
 					>
 						<div class="overflow-hidden flex items-center gap-2 whitespace-nowrap">
 							<InputPrompt type="Enter" />
@@ -251,12 +266,14 @@
 		</div>
 	</div>
 
-	<!-- Back button -->
-	<BackButton
-		onclick={() => navigateTo('/app?noanimate', { exitBack: true })}
-		exiting={backExiting}
-		flyIn={page.url.searchParams.has('back')}
-	/>
+	<!-- Back button (desktop only — on mobile, /app redirects back here) -->
+	<div class="hidden sm:block">
+		<BackButton
+			onclick={() => navigateTo('/app?noanimate', { exitBack: true })}
+			exiting={backExiting}
+			flyIn={page.url.searchParams.has('back')}
+		/>
+	</div>
 
 	<div class="fade-wrap" class:entered class:exiting={navigating}>
 		<NavigationHint

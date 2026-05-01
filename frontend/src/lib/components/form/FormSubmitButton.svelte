@@ -24,7 +24,7 @@
 
 <div class="flex items-center justify-center w-full">
 	<button
-		class="submit-btn bg-[#ffa936] border-2 border-black rounded-lg px-4 py-2 w-[415px] font-bricolage text-base font-semibold text-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed {customClass}"
+		class="submit-btn bg-[#ffa936] border-2 border-black rounded-lg px-4 py-2 w-full max-w-[415px] font-bricolage text-base font-semibold text-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed {customClass}"
 		class:blink
 		type="button"
 		{onclick}
