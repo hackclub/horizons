@@ -73,6 +73,29 @@
 	let targetHours = $state(30);
 	let pinnedEventImageUrl = $state<string | null>(null);
 
+	// --- DEBUG: ?debug enables overlay to preview each event + each progress state ---
+	type DebugProgressState = 'qualified' | 'ship' | 'pending-met' | 'approved-majority' | 'default';
+	const debugMode = $derived(page.url.searchParams.has('debug'));
+	let debugEventSlug = $state<string>('');
+	let debugProgressState = $state<DebugProgressState | ''>('');
+
+	const eventColumnSlug = $derived(debugEventSlug || pinnedEventSlug);
+	const eventColumnConfig = $derived(eventsMap[eventColumnSlug] ?? pinnedEventConfig);
+	const eventColumnImage = $derived(
+		debugEventSlug ? (eventsMap[debugEventSlug]?.eventCard?.bgImage ?? null) : pinnedEventImageUrl
+	);
+	const eventColumnValues = $derived.by(() => {
+		const t = targetHours;
+		switch (debugProgressState) {
+			case 'qualified':         return { completed: t,        approved: t,        shipped: true };
+			case 'ship':              return { completed: t,        approved: 0,        shipped: false };
+			case 'pending-met':       return { completed: t,        approved: 0,        shipped: true };
+			case 'approved-majority': return { completed: t * 0.7,  approved: t * 0.55, shipped: true };
+			case 'default':           return { completed: t * 0.7,  approved: t * 0.1,  shipped: false };
+			default:                  return { completed: completedHours, approved: approvedHours, shipped: approvedHours > 0 };
+		}
+	});
+
 	// Load cached pinned event instantly
 	const cached = getCachedPinnedEvent();
 	if (cached && eventsMap[cached.slug]) {
@@ -357,13 +380,13 @@
 				<!-- Pinned Event Column Card -->
 				<div bind:this={cardRefs[COL_PINNED_EVENT]} class="event-column-wrapper enter-up shrink-0" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="20ms" style:--enter-delay="80ms" style:--exit-right-delay="150ms">
 					<EventColumnCard
-						slug={pinnedEventSlug}
-						config={pinnedEventConfig}
-						imageUrl={pinnedEventImageUrl}
+						slug={eventColumnSlug}
+						config={eventColumnConfig}
+						imageUrl={eventColumnImage}
 						hourCost={targetHours}
-						completedHours={completedHours}
-						approvedHours={approvedHours}
-						shipped={approvedHours > 0}
+						completedHours={eventColumnValues.completed}
+						approvedHours={eventColumnValues.approved}
+						shipped={eventColumnValues.shipped}
 						selected={nav.isSelected(COL_PINNED_EVENT, 0)}
 						onmouseenter={() => handleCardHover(COL_PINNED_EVENT, 0)}
 						onclick={(e) => { e.preventDefault(); navigateTo('/app/events'); }}
@@ -509,6 +532,43 @@
 		</div>
 	</div>
 </div>
+
+{#if debugMode}
+	<div class="debug-panel">
+		<div class="debug-title">DEBUG · /app?debug</div>
+
+		<div class="debug-section">
+			<label class="debug-label" for="debug-event">Event</label>
+			<select id="debug-event" class="debug-select" bind:value={debugEventSlug}>
+				<option value="">— actual pinned ({pinnedEventSlug}) —</option>
+				{#each Object.entries(eventsMap) as [slug, cfg] (slug)}
+					<option value={slug}>{cfg.name} ({slug})</option>
+				{/each}
+			</select>
+		</div>
+
+		<div class="debug-section">
+			<div class="debug-label">Progress state</div>
+			<div class="debug-buttons">
+				<button class:active={debugProgressState === ''} onclick={() => (debugProgressState = '')}>actual</button>
+				<button class:active={debugProgressState === 'default'} onclick={() => (debugProgressState = 'default')}>default</button>
+				<button class:active={debugProgressState === 'approved-majority'} onclick={() => (debugProgressState = 'approved-majority')}>approved-majority</button>
+				<button class:active={debugProgressState === 'ship'} onclick={() => (debugProgressState = 'ship')}>ship</button>
+				<button class:active={debugProgressState === 'pending-met'} onclick={() => (debugProgressState = 'pending-met')}>pending-met</button>
+				<button class:active={debugProgressState === 'qualified'} onclick={() => (debugProgressState = 'qualified')}>qualified</button>
+			</div>
+		</div>
+
+		<div class="debug-section debug-readout">
+			<div>target: {targetHours}h</div>
+			<div>completed: {eventColumnValues.completed.toFixed(1)}h</div>
+			<div>approved: {eventColumnValues.approved.toFixed(1)}h</div>
+			<div>shipped: {eventColumnValues.shipped}</div>
+			<div class="debug-swatch-row">primary: <span class="swatch" style="background: {eventColumnConfig?.colors?.primary};"></span><span>{eventColumnConfig?.colors?.primary}</span></div>
+			<div class="debug-swatch-row">card bg: <span class="swatch" style="background: {eventColumnConfig?.eventCard?.bgColor};"></span><span>{eventColumnConfig?.eventCard?.bgColor}</span></div>
+		</div>
+	</div>
+{/if}
 
 <style>
 	/* Page layout — fill the absolute-positioned container exactly */
@@ -830,5 +890,104 @@
 	.enter-hint-key {
 		height: 22px;
 		width: auto;
+	}
+
+	/* Debug overlay (?debug) */
+	.debug-panel {
+		position: fixed;
+		bottom: 16px;
+		right: 16px;
+		z-index: 9999;
+		min-width: 320px;
+		max-width: 380px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding: 14px 16px;
+		background: rgba(20, 20, 20, 0.92);
+		color: #f5f5f5;
+		border: 2px solid #ffa936;
+		border-radius: 12px;
+		font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+		font-size: 12px;
+		line-height: 1.4;
+		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+	}
+
+	.debug-title {
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		color: #ffa936;
+	}
+
+	.debug-section {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.debug-label {
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: #aaa;
+	}
+
+	.debug-select {
+		background: #2a2a2a;
+		color: #f5f5f5;
+		border: 1px solid #444;
+		border-radius: 6px;
+		padding: 6px 8px;
+		font: inherit;
+	}
+
+	.debug-buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+
+	.debug-buttons button {
+		background: #2a2a2a;
+		color: #f5f5f5;
+		border: 1px solid #444;
+		border-radius: 6px;
+		padding: 4px 8px;
+		font: inherit;
+		cursor: pointer;
+	}
+
+	.debug-buttons button:hover {
+		border-color: #ffa936;
+	}
+
+	.debug-buttons button.active {
+		background: #ffa936;
+		color: #1a1a1a;
+		border-color: #ffa936;
+		font-weight: 600;
+	}
+
+	.debug-readout {
+		gap: 2px;
+		font-size: 11px;
+		color: #ddd;
+		padding-top: 6px;
+		border-top: 1px dashed #444;
+	}
+
+	.debug-swatch-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.swatch {
+		display: inline-block;
+		width: 14px;
+		height: 14px;
+		border: 1px solid #555;
+		border-radius: 3px;
 	}
 </style>
