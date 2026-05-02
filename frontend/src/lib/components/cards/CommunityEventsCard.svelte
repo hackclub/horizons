@@ -155,6 +155,7 @@
 	{onmouseenter}
 	{onclick}>
 	<p class="font-cook text-[16px] text-black m-0">UPCOMING COMMUNITY EVENTS</p>
+	<div class="ce-banner"></div>
 	<div class="ce-list">
 		{#if upcoming.length === 0}
 			<p class="font-bricolage text-[16px] text-black/50 m-0 px-2">No upcoming events.</p>
@@ -260,6 +261,16 @@
 		flex-direction: column;
 		gap: 16px;
 		padding: 16px;
+	}
+
+	.ce-banner {
+		width: 100%;
+		height: 117px;
+		border-radius: 8px;
+		background-image: url('/event-bgs/free-sticker.png');
+		background-size: cover;
+		background-position: center;
+		flex-shrink: 0;
 	}
 
 	.ce-list {
