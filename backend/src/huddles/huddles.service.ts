@@ -80,12 +80,13 @@ export class HuddlesService {
       response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain;charset=UTF-8',
           ...(this.edgeHeaders ?? {}),
         },
         body: JSON.stringify({
           token: this.clientToken,
           channel_ids: channelIds,
+          enterprise_token: this.clientToken,
         }),
         redirect: 'follow',
       });
