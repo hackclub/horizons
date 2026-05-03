@@ -14,6 +14,7 @@
 	import { EXIT_DURATION } from '$lib';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { setCachedPinnedEvent, clearCachedPinnedEvent } from '$lib/store/pinnedEventCache';
+	import { m } from '$lib/paraglide/messages.js';
 
 	type EventResponse = components['schemas']['EventResponse'];
 
@@ -62,7 +63,7 @@
 				currentPinnedSlug = (pinnedRes.data as any).event?.slug ?? null;
 			}
 		} catch {
-			error = 'Failed to load events';
+			error = m.events_list_load_error();
 		} finally {
 			loading = false;
 		}
@@ -171,7 +172,7 @@
 		<div class="flex flex-col gap-7.5" bind:this={listEl} style="transform: translateY({scrollOffset}px); transition: transform var(--juice-duration) var(--juice-easing);">
 			{#if loading}
 				<div class="event-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex items-center justify-center" style="width: 649px;">
-					<p class="font-cook font-semibold text-black text-[40px] m-0 opacity-50">LOADING...</p>
+					<p class="font-cook font-semibold text-black text-[40px] m-0 opacity-50">{m.events_list_loading()}</p>
 				</div>
 			{:else if error}
 				<div class="event-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex items-center justify-center" style="width: 649px;">
@@ -191,14 +192,14 @@
 					>
 						{#if currentPinnedSlug === event.slug}
 							<span class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black z-1" style="background-color: {getCardBgSelected(event)};">
-								PINNED
+								{m.events_list_pinned_badge()}
 							</span>
 						{/if}
 
 						<div class="flex flex-col gap-1 z-1 w-full">
 							<img
 								src={event.config.logo}
-								alt="{event.config.name} logo"
+								alt={m.events_list_logo_alt({ name: event.config.name })}
 								class="h-18.75 w-auto object-contain object-left"
 								style="max-width: {event.config.logoMaxWidth ?? '264px'};"
 							/>
@@ -219,11 +220,11 @@
 							<div class="overflow-hidden flex items-center gap-2">
 								<InputPrompt type="Enter" />
 
-								<span class="font-bricolage text-2xl font-bold text-black">OR</span>
+								<span class="font-bricolage text-2xl font-bold text-black">{m.events_list_or()}</span>
 
 								<InputPrompt type="click" />
 
-								<span class="font-bricolage text-2xl font-bold text-black">{currentPinnedSlug === event.slug ? 'TO UNPIN' : 'TO PIN'}</span>
+								<span class="font-bricolage text-2xl font-bold text-black">{currentPinnedSlug === event.slug ? m.events_list_to_unpin() : m.events_list_to_pin()}</span>
 							</div>
 						</div>
 					</button>
@@ -242,11 +243,11 @@
 	<div class="fade-wrap" class:entered class:exiting={navigating}>
 		<NavigationHint
 			segments={[
-				{ type: 'text', value: 'USE' },
+				{ type: 'text', value: m.events_list_nav_use() },
 				{ type: 'input', value: 'WS' },
-				{ type: 'text', value: 'OR' },
+				{ type: 'text', value: m.events_list_or() },
 				{ type: 'input', value: 'mouse-scroll' },
-				{ type: 'text', value: 'TO NAVIGATE' }
+				{ type: 'text', value: m.events_list_nav_to_navigate() }
 			]}
 			position="bottom-right"
 		/>
@@ -256,7 +257,7 @@
 	{#if pinnedSlug}
 		<div class="pinned-popup absolute top-13 left-1/2 z-20" class:exiting={pinnedDismissing}>
 			<div class="flex items-center gap-2.5 px-7 py-5 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black]">
-				<p class="font-cook text-[24px] font-semibold text-black m-0 whitespace-nowrap">EVENT {pinnedAction === 'pinned' ? 'PINNED' : 'UNPINNED'}!</p>
+				<p class="font-cook text-[24px] font-semibold text-black m-0 whitespace-nowrap">{pinnedAction === 'pinned' ? m.events_list_event_pinned() : m.events_list_event_unpinned()}</p>
 			</div>
 		</div>
 	{/if}

@@ -4,6 +4,7 @@
 	import clickSvg from '$lib/assets/prompts/click.svg';
 	import { parseNavKey } from '$lib/nav/wasd.svelte';
 	import { api } from '$lib/api';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		element?: HTMLElement | null;
@@ -154,10 +155,10 @@
 	class:input-keyboard={usingKeyboard}
 	{onmouseenter}
 	{onclick}>
-	<p class="font-cook text-[16px] text-black m-0">UPCOMING COMMUNITY EVENTS</p>
+	<p class="font-cook text-[16px] text-black m-0">{m.comp_cecard_upcoming_title()}</p>
 	<div class="ce-list">
 		{#if upcoming.length === 0}
-			<p class="font-bricolage text-[16px] text-black/50 m-0 px-2">No upcoming events.</p>
+			<p class="font-bricolage text-[16px] text-black/50 m-0 px-2">{m.comp_cecard_no_upcoming()}</p>
 		{:else}
 			{#each upcoming as event, i (event.id)}
 				{@const live = isLive(event)}
@@ -174,7 +175,7 @@
 					</div>
 					<div class="ce-details">
 						{#if live}
-							<p class="ce-live font-cook m-0">LIVE</p>
+							<p class="ce-live font-cook m-0">{m.comp_cecard_live()}</p>
 						{/if}
 						<p class="font-cook text-[20px] text-black leading-tight m-0">{event.name.toUpperCase()}</p>
 						{#if event.tagline}
@@ -189,7 +190,7 @@
 									rel="noopener noreferrer"
 									onclick={(e) => e.stopPropagation()}
 								>
-									{(event.actionLabel || 'Join Now').toUpperCase()}
+									{(event.actionLabel || m.comp_cecard_join_now()).toUpperCase()}
 								</a>
 							{/if}
 							<div class="ce-times">
@@ -208,10 +209,10 @@
 		<div class="enter-hint">
 			<img
 				src={usingKeyboard ? enterSvg : clickSvg}
-				alt={usingKeyboard ? 'Enter' : 'Click'}
+				alt={usingKeyboard ? m.comp_cecard_enter() : m.comp_cecard_click()}
 				class="enter-hint-key"
 			/>
-			<span class="font-bricolage text-[12px] text-black font-semibold">TO VIEW COMMUNITY EVENTS</span>
+			<span class="font-bricolage text-[12px] text-black font-semibold">{m.comp_cecard_to_view()}</span>
 		</div>
 	{/if}
 
@@ -221,10 +222,10 @@
 			<div class="popover-hint">
 				<img
 					src={usingKeyboard ? enterSvg : clickSvg}
-					alt={usingKeyboard ? 'Enter' : 'Click'}
+					alt={usingKeyboard ? m.comp_cecard_enter() : m.comp_cecard_click()}
 					class="enter-hint-key"
 				/>
-				<span class="font-bricolage text-[12px] text-black font-semibold">TO VIEW COMMUNITY EVENTS</span>
+				<span class="font-bricolage text-[12px] text-black font-semibold">{m.comp_cecard_to_view()}</span>
 			</div>
 		</div>
 	{/if}

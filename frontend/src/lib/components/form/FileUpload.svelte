@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api } from '$lib/api';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		label?: string;
@@ -11,13 +12,14 @@
 	}
 
 	let {
-		label = 'Screenshot',
+		label,
 		mediaUrl = $bindable(null),
 		mediaPreview = $bindable(null),
 		onupload,
 		onerror,
 		hideHint = false,
 	}: Props = $props();
+	const resolvedLabel = $derived(label ?? m.comp_fileupload_default_label());
 
 	let fileInput: HTMLInputElement;
 	let uploading = $state(false);
@@ -46,7 +48,7 @@
 		} else {
 			mediaPreview = null;
 			mediaUrl = null;
-			onerror?.('Failed to upload file. Please try again.');
+			onerror?.(m.comp_fileupload_failed());
 		}
 
 		uploading = false;
@@ -56,7 +58,7 @@
 
 <div class="flex flex-col gap-1 w-full">
 	<!-- svelte-ignore a11y_label_has_associated_control -->
-	<label class="font-bricolage text-base font-semibold text-black leading-normal">{label}</label>
+	<label class="font-bricolage text-base font-semibold text-black leading-normal">{resolvedLabel}</label>
 	<input
 		bind:this={fileInput}
 		type="file"
@@ -71,10 +73,10 @@
 			onclick={() => fileInput.click()}
 			disabled={uploading}
 		>
-			<img src={mediaPreview} alt="Upload preview" class="w-full h-32 object-cover" />
+			<img src={mediaPreview} alt={m.comp_fileupload_preview_alt()} class="w-full h-32 object-cover" />
 			{#if uploading}
 				<div class="absolute inset-0 bg-black/40 flex items-center justify-center">
-					<span class="font-bricolage text-base font-semibold text-white">Uploading...</span>
+					<span class="font-bricolage text-base font-semibold text-white">{m.comp_fileupload_uploading()}</span>
 				</div>
 			{/if}
 		</button>
@@ -84,12 +86,12 @@
 			type="button"
 			onclick={() => fileInput.click()}
 		>
-			<span class="font-bricolage text-base font-semibold text-black/50 text-center block">+ Upload {label}</span>
+			<span class="font-bricolage text-base font-semibold text-black/50 text-center block">{m.comp_fileupload_upload_label({ label: resolvedLabel })}</span>
 		</button>
 	{/if}
 	{#if !hideHint}
 		<p class="font-bricolage text-xs font-semibold text-black/60 m-0 leading-normal">
-			If your project is difficult to experience, we recommend adding a video to your README
+			{m.comp_fileupload_video_hint()}
 		</p>
 	{/if}
 </div>

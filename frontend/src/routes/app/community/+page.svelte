@@ -6,6 +6,7 @@
 	import { onMount } from 'svelte';
 	import { createListNav } from '$lib/nav/wasd.svelte';
 	import { api } from '$lib/api';
+	import { m } from '$lib/paraglide/messages.js';
 
 	let entered = $state(false);
 	let navigating = $state(false);
@@ -166,7 +167,7 @@
 		<!-- Back button (in flow) -->
 		<button class="back-btn fly-top" class:entered class:exiting={navigating} style="--fly-delay: 0ms; --fly-exit-delay: 150ms;" onclick={goBack}>
 			<InputPrompt type="ESC" />
-			<span class="font-cook text-2xl font-semibold text-black">BACK</span>
+			<span class="font-cook text-2xl font-semibold text-black">{m.app_community_back()}</span>
 		</button>
 
 		<!-- Main Content Area -->
@@ -209,14 +210,14 @@
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							{selectedEvent.actionLabel || 'Join Now'}
+							{selectedEvent.actionLabel || m.app_community_join_now()}
 						</a>
 					{/if}
 					{#if isLive(selectedEvent)}
-						<span class="live-badge"><span class="live-dot"></span>LIVE NOW</span>
+						<span class="live-badge"><span class="live-dot"></span>{m.app_community_live_now()}</span>
 					{/if}
 				{:else}
-					<p class="font-bricolage text-[20px] text-black/50 m-0">No upcoming events</p>
+					<p class="font-bricolage text-[20px] text-black/50 m-0">{m.app_community_no_events()}</p>
 				{/if}
 			</div>
 
@@ -225,7 +226,7 @@
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="list-clip" bind:this={listClipEl} onwheel={nav.handleWheel}>
 				<div class="list-inner" bind:this={listEl} style="transform: translateY({scrollOffset}px)">
-					<p class="font-cook text-[24px] text-black m-0 shrink-0">COMMUNITY EVENTS</p>
+					<p class="font-cook text-[24px] text-black m-0 shrink-0">{m.app_community_title()}</p>
 					{#each monthGroups as group}
 						<p class="font-cook text-[16px] text-black/60 m-0 shrink-0">{group.label}</p>
 						{#each group.events as event}
@@ -257,7 +258,7 @@
 									</div>
 								</div>
 								{#if isLive(event)}
-									<span class="live-badge"><span class="live-dot"></span>LIVE</span>
+									<span class="live-badge"><span class="live-dot"></span>{m.app_community_live()}</span>
 								{/if}
 							</button>
 						{/each}
@@ -271,11 +272,11 @@
 		<div class="info-row" class:exiting={navigating}>
 			<div class="card info-card">
 				<div class="flex items-center gap-5">
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">USE</p>
+					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{m.app_community_nav_use()}</p>
 					<InputPrompt type="WS" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">OR</p>
+					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{m.app_community_nav_or()}</p>
 					<InputPrompt type="mouse-scroll" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">TO NAVIGATE</p>
+					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{m.app_community_nav_to_navigate()}</p>
 				</div>
 			</div>
 		</div>

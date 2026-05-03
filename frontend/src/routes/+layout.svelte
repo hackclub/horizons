@@ -2,6 +2,8 @@
 	import texture from '$lib/assets/texture.png'
 	import './layout.css';
 	import { onMount } from 'svelte';
+	import { m } from '$lib/paraglide/messages.js';
+	import LocaleSwitcher from '$lib/components/LocaleSwitcher.svelte';
 
 	let { children } = $props();
 
@@ -45,19 +47,19 @@
 <svelte:head>
 	<link rel="icon" href="/favicon.ico" sizes="any" />
 	<link rel="icon" href="/favicon.png" type="image/png" />
-	<title>Horizons | Hack Club</title>
-	<meta name="description" content="High school flagship hackathons across the world, brought to you by Hack Club." />
+	<title>{m.landing_meta_title()}</title>
+	<meta name="description" content={m.landing_meta_description()} />
 
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://horizons.hackclub.com/" />
-	<meta property="og:title" content="Horizons | Hack Club" />
-	<meta property="og:description" content="High school flagship hackathons across the world, brought to you by Hack Club." />
+	<meta property="og:title" content={m.landing_meta_title()} />
+	<meta property="og:description" content={m.landing_meta_description()} />
 	<meta property="og:image" content="https://cdn.hackclub.com/019cc6d0-c592-7ddd-afb1-5685cc0e8aa0/splash.jpg" />
 
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:url" content="https://horizons.hackclub.com/" />
-	<meta name="twitter:title" content="Horizons | Hack Club" />
-	<meta name="twitter:description" content="High school flagship hackathons across the world, brought to you by Hack Club." />
+	<meta name="twitter:title" content={m.landing_meta_title()} />
+	<meta name="twitter:description" content={m.landing_meta_description()} />
 	<meta name="twitter:image" content="https://cdn.hackclub.com/019cc6d0-c592-7ddd-afb1-5685cc0e8aa0/splash.jpg" />
 </svelte:head>
 
@@ -77,6 +79,10 @@
 
 		<div class="content-area absolute inset-10 overflow-hidden" style="background-color: var(--layout-bg, #f3e8d8)">
 			{@render children()}
+		</div>
+
+		<div class="absolute bottom-3 right-12 z-50 pointer-events-auto">
+			<LocaleSwitcher />
 		</div>
 	</div>
 {/if}

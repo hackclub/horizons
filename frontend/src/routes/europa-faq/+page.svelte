@@ -7,6 +7,7 @@
 	import { api } from '$lib/api';
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
+	import { m } from '$lib/paraglide/messages.js';
 
 	let markdown = $state('');
 	let isAuthed = $state(false);
@@ -76,7 +77,7 @@
 </script>
 
 <svelte:head>
-	<title>FAQ</title>
+	<title>{m.faq_europa_page_title()}</title>
 </svelte:head>
 
 <svelte:window onkeydown={handleKeydown} />

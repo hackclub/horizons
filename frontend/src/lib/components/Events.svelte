@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		markdown?: string;
@@ -250,7 +251,7 @@
 				</div>
 				<button
 					class="shrink-0 w-9 h-9 bg-black text-[#f3e8d8] rounded-full border-2 border-black flex items-center justify-center font-bricolage font-bold text-sm cursor-pointer hover:opacity-70 transition-opacity"
-					onclick={closeCard} aria-label="Close"
+					onclick={closeCard} aria-label={m.comp_events_close()}
 				>✕</button>
 			</div>
 
@@ -265,7 +266,7 @@
 					<span class="date-box">{d.endBox}</span>
 				{/if}
 				{#if isLive(openEvent)}
-					<span class="live-badge"><span class="live-dot"></span>Live now</span>
+					<span class="live-badge"><span class="live-dot"></span>{m.comp_events_live_now()}</span>
 				{/if}
 			</div>
 
@@ -292,7 +293,7 @@
 <div class="w-full flex flex-col items-center pb-12 px-4">
 	<div class="w-full" style="max-width: 740px">
 		<h1 class="font-cook text-black tracking-widest text-center mb-12" style="font-size: 3rem">
-			Community Events
+			{m.comp_events_community_events()}
 		</h1>
 
 		<div class="flex flex-col gap-10">
@@ -315,7 +316,7 @@
 							class:live={isLive(event)}
 							style="--card-index: {gi * 10 + i}"
 							onclick={() => openCard(event.id)}
-							aria-label="View details for {event.name}"
+							aria-label={m.comp_events_view_details({ name: event.name })}
 						>
 							<div class="flex items-stretch gap-4">
 								<!-- Day stamp -->
@@ -347,7 +348,7 @@
 										</div>
 									{/if}
 									{#if isLive(event)}
-										<span class="live-badge"><span class="live-dot"></span>Live</span>
+										<span class="live-badge"><span class="live-dot"></span>{m.comp_events_live()}</span>
 									{/if}
 								</div>
 							</div>

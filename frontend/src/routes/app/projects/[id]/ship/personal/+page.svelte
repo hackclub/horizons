@@ -6,6 +6,7 @@
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { FormCard, FormButtons } from '$lib/components/form';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const projectId = $derived(page.params.id);
 
@@ -66,27 +67,27 @@
 <div class="relative size-full">
 	{#if loading}
 		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-			<p class="font-cook text-[36px] font-semibold text-black m-0">LOADING...</p>
+			<p class="font-cook text-[36px] font-semibold text-black m-0">{m.projects_ship_personal_loading()}</p>
 		</div>
 	{:else}
 		<div class="hidden sm:block absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none">
 			<TurbulentImage src={heroUrl || heroPlaceholder} alt={projectTitle} inset="0 0 0 0" filterId="hero-turbulence" />
 		</div>
 
-		<FormCard title="MISSING PERSONAL INFO">
+		<FormCard title={m.projects_ship_personal_title()}>
 			<p class="font-bricolage text-[20px] leading-normal tracking-[-0.22px] text-black m-0">
-				We're missing:<br />
-				- Your mailing address (we use this address for record-keeping and statistics, and also to ship you prizes!)<br />
-                AND/OR <br />
-				- Eligibility via. ID Verification (to ensure adults are not participating in Horizons, we need your ID to be checked through <a href="https://auth.hackclub.com/verifications/document" target="_blank" rel="noopener noreferrer" class="underline">HCA</a>. Horizons does not see your ID whatsoever)
+				{m.projects_ship_personal_intro()}<br />
+				{m.projects_ship_personal_address_item()}<br />
+                {m.projects_ship_personal_and_or()} <br />
+				{@html m.projects_ship_personal_id_item_html()}
 				<br /><br />
-				<a href="https://auth.hackclub.com/" target="_blank" rel="noopener noreferrer" class="underline">Set this up at HCA.</a> Once you're done, hit the RE-AUTH button.
+				<a href="https://auth.hackclub.com/" target="_blank" rel="noopener noreferrer" class="underline">{m.projects_ship_personal_setup_link()}</a> {m.projects_ship_personal_after_setup()}
 			</p>
 			<FormButtons
 				onback={() => goto(`/app/projects/${projectId}/ship/project`)}
 				onnext={handleReauth}
-				nextLabel="RE-AUTH"
-				loadingLabel="REDIRECTING..."
+				nextLabel={m.projects_ship_personal_reauth()}
+				loadingLabel={m.projects_ship_personal_redirecting()}
 				loading={reauthing}
 			/>
 		</FormCard>

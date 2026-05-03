@@ -5,6 +5,7 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface ShopItem {
 		itemId: number;
@@ -39,7 +40,7 @@
 			]);
 
 			if (itemRes.error) {
-				error = 'Failed to load item';
+				error = m.shop_item_load_error();
 			} else {
 				item = itemRes.data as unknown as ShopItem;
 				if (item?.variants?.length) {
@@ -139,14 +140,14 @@
 			class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden bg-[#f3e8d8] w-[480px] h-[569px] flex items-center justify-center"
 		>
 			{#if loading}
-				<p class="font-bricolage font-semibold text-[28px] text-black/50 m-0">LOADING...</p>
+				<p class="font-bricolage font-semibold text-[28px] text-black/50 m-0">{m.shop_item_loading()}</p>
 			{:else if error}
 				<p class="font-bricolage font-semibold text-[28px] text-black/50 m-0">{error}</p>
 			{:else if item}
 				<div class="flex flex-col gap-6 items-start w-[447px]">
 					<div class="flex flex-col gap-2 text-black">
 						<p class="font-cook text-[36px] leading-normal m-0">{item.name}</p>
-							<p class="font-bricolage text-[18px] text-black/60 leading-normal m-0">{item.cost}h · approx. {calcDays(item.cost)} days of coding</p>
+							<p class="font-bricolage text-[18px] text-black/60 leading-normal m-0">{m.shop_item_cost_summary({ cost: item.cost, days: calcDays(item.cost) })}</p>
 						{#if item.regions.length > 0}
 							<div class="flex flex-wrap gap-1.5">
 								{#each item.regions as region}
@@ -161,7 +162,7 @@
 
 					<div class="bg-black/10 rounded-[8px] p-2 w-[431px]">
 						<p class="font-bricolage text-[16px] text-black leading-normal m-0">
-							Your balance: <span class="font-semibold">{balance !== null ? `${balance} hours` : '...'}</span>
+							{m.shop_item_your_balance()} <span class="font-semibold">{balance !== null ? m.shop_item_balance_hours({ balance }) : '...'}</span>
 						</p>
 					</div>
 
@@ -183,7 +184,7 @@
 						class="border-2 border-black rounded-[8px] px-4 py-2 bg-transparent font-bricolage font-semibold text-[16px] text-black/50 leading-normal cursor-not-allowed"
 						disabled
 					>
-						Purchase
+						{m.shop_item_purchase()}
 					</button>
 				</div>
 			{/if}

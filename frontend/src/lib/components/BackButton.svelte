@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import InputPrompt from './InputPrompt.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		onclick: () => void;
@@ -23,7 +24,7 @@
 	<button
 		class="flex items-center gap-2.5 p-3 sm:p-5 bg-[#f3e8d8] border-4 border-black rounded-[14px] sm:rounded-[20px] shadow-[4px_4px_0px_0px_black] cursor-pointer overflow-hidden hover:bg-[#ffa936]"
 		{onclick}
-		aria-label="Back"
+		aria-label={m.comp_backbtn_back()}
 		style="transition: background-color var(--selected-duration) ease, transform var(--juice-duration) var(--juice-easing);"
 		onmouseenter={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(var(--juice-scale))'}
 		onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
@@ -33,7 +34,7 @@
 		</svg>
 		<span class="hidden sm:contents">
 			<InputPrompt type="ESC" />
-			<span class="font-cook text-2xl font-semibold text-black">BACK</span>
+			<span class="font-cook text-2xl font-semibold text-black">{m.comp_backbtn_label()}</span>
 		</span>
 	</button>
 </div>

@@ -8,17 +8,18 @@
 	import { invalidateProjectCaches } from '$lib/store/projectDetailCache';
 	import { invalidateCache } from '$lib/store/projectCache';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	type ProjectType = components['schemas']['CreateProjectDto']['projectType'];
 
 	const projectTypes = [
-		{ label: 'Windows Playable', value: 'windows_playable' },
-		{ label: 'Mac Playable', value: 'mac_playable' },
-		{ label: 'Linux Playable', value: 'linux_playable' },
-		{ label: 'Web Playable', value: 'web_playable' },
-		{ label: 'Cross-Platform Playable', value: 'cross_platform_playable' },
-		{ label: 'Hardware', value: 'hardware' },
-		{ label: 'Mobile App', value: 'mobile_app' },
+		{ label: m.projects_ship_project_type_windows_playable(), value: 'windows_playable' },
+		{ label: m.projects_ship_project_type_mac_playable(), value: 'mac_playable' },
+		{ label: m.projects_ship_project_type_linux_playable(), value: 'linux_playable' },
+		{ label: m.projects_ship_project_type_web_playable(), value: 'web_playable' },
+		{ label: m.projects_ship_project_type_cross_platform_playable(), value: 'cross_platform_playable' },
+		{ label: m.projects_ship_project_type_hardware(), value: 'hardware' },
+		{ label: m.projects_ship_project_type_mobile_app(), value: 'mobile_app' },
 	];
 
 	const projectId = $derived(page.params.id);
@@ -51,8 +52,8 @@
 	function formatYswsList(names: string[]): string {
 		if (names.length === 0) return '';
 		if (names.length === 1) return names[0];
-		if (names.length === 2) return `${names[0]} and ${names[1]}`;
-		return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+		if (names.length === 2) return m.projects_ship_project_ysws_list_two({ a: names[0], b: names[1] });
+		return m.projects_ship_project_ysws_list_many({ head: names.slice(0, -1).join(', '), last: names[names.length - 1] });
 	}
 
 	let demoUrlStatus = $state<'idle' | 'checking' | 'ok' | 'error'>('idle');
@@ -89,7 +90,7 @@
 			}
 		} catch {
 			demoUrlStatus = 'error';
-			demoUrlError = "Hmm, something's not right. We couldn't reach your site — please make sure the URL is correct and reachable.";
+			demoUrlError = m.projects_ship_project_demo_url_unreachable();
 			demoUrlFavicon = null;
 		}
 	}
@@ -100,7 +101,7 @@
 		const url = demoUrl.trim();
 		if (url && !isValidUrl(url)) {
 			demoUrlStatus = 'error';
-			demoUrlError = 'Invalid URL format';
+			demoUrlError = m.projects_ship_project_invalid_url();
 			demoUrlFavicon = null;
 		} else {
 			checkDemoUrl(demoUrl);
@@ -113,7 +114,7 @@
 			const url = demoUrl.trim();
 			if (url && !isValidUrl(url)) {
 				demoUrlStatus = 'error';
-				demoUrlError = 'Invalid URL format';
+				demoUrlError = m.projects_ship_project_invalid_url();
 				demoUrlFavicon = null;
 			} else {
 				checkDemoUrl(demoUrl);
@@ -139,8 +140,8 @@
 	}
 
 	function validateCodeUrlFormat(url: string): string | null {
-		if (!isValidUrl(url)) return 'Invalid URL format';
-		if (isGitHubUrl(url) && !githubRepoRegex.test(url.trim())) return 'GitHub URL should point to the repository root (e.g. https://github.com/user/repo), not a specific file or page.';
+		if (!isValidUrl(url)) return m.projects_ship_project_invalid_url();
+		if (isGitHubUrl(url) && !githubRepoRegex.test(url.trim())) return m.projects_ship_project_github_root_required();
 		return null;
 	}
 
@@ -185,7 +186,7 @@
 			}
 		} catch {
 			codeUrlStatus = 'error';
-			codeUrlError = "Hmm, something's not right. We couldn't reach your repository — please make sure it's public and the URL is correct.";
+			codeUrlError = m.projects_ship_project_code_url_unreachable();
 			codeUrlType = null;
 		}
 	}
@@ -196,7 +197,7 @@
 		const url = codeUrl.trim();
 		if (url && !isValidUrl(url)) {
 			codeUrlStatus = 'error';
-			codeUrlError = 'Invalid URL format';
+			codeUrlError = m.projects_ship_project_invalid_url();
 			codeUrlType = null;
 		} else {
 			checkCodeUrl(codeUrl);
@@ -209,7 +210,7 @@
 			const url = codeUrl.trim();
 			if (url && !isValidUrl(url)) {
 				codeUrlStatus = 'error';
-				codeUrlError = 'Invalid URL format';
+				codeUrlError = m.projects_ship_project_invalid_url();
 				codeUrlType = null;
 			} else {
 				checkCodeUrl(codeUrl);
@@ -247,7 +248,7 @@
 			}
 		} catch {
 			readmeUrlStatus = 'error';
-			readmeUrlError = "Hmm, something's not right. We couldn't reach your README — please make sure the URL is correct and reachable.";
+			readmeUrlError = m.projects_ship_project_readme_url_unreachable();
 		}
 	}
 
@@ -257,7 +258,7 @@
 		const url = readmeUrl.trim();
 		if (url && !isValidUrl(url)) {
 			readmeUrlStatus = 'error';
-			readmeUrlError = 'Invalid URL format';
+			readmeUrlError = m.projects_ship_project_invalid_url();
 		} else {
 			checkReadmeUrl(readmeUrl);
 		}
@@ -269,7 +270,7 @@
 			const url = readmeUrl.trim();
 			if (url && !isValidUrl(url)) {
 				readmeUrlStatus = 'error';
-				readmeUrlError = 'Invalid URL format';
+				readmeUrlError = m.projects_ship_project_invalid_url();
 			} else {
 				checkReadmeUrl(readmeUrl);
 			}
@@ -364,7 +365,7 @@
 			if (codeUrl) checkCodeUrl(codeUrl);
 			if (readmeUrl) checkReadmeUrl(readmeUrl);
 		} else {
-			errorMsg = 'Failed to load project';
+			errorMsg = m.projects_ship_project_load_failed();
 		}
 
 		if (allHackatimeRes.data) {
@@ -440,50 +441,50 @@
 		
 		if (!title.trim()) {
 			missing.add('title');
-			missingLabels.push('Title');
+			missingLabels.push(m.projects_ship_project_label_title());
 		}
 		if (!description.trim()) {
 			missing.add('description');
-			missingLabels.push('Description');
+			missingLabels.push(m.projects_ship_project_label_description());
 		}
 		if (!demoUrl.trim()) {
 			missing.add('demo-url');
-			missingLabels.push('Demo URL');
+			missingLabels.push(m.projects_ship_project_label_demo_url());
 		}
 		if (!codeUrl.trim()) {
 			missing.add('code-url');
-			missingLabels.push('Code URL');
+			missingLabels.push(m.projects_ship_project_label_code_url());
 		}
 		if (!readmeUrl.trim()) {
 			missing.add('readme-url');
-			missingLabels.push('README URL');
+			missingLabels.push(m.projects_ship_project_label_readme_url());
 		}
 		if (!mediaUrl) {
 			missing.add('media');
-			missingLabels.push('Screenshot');
+			missingLabels.push(m.projects_ship_project_label_screenshot());
 		}
 		if (isHardware && !journalUrl.trim()) {
 			missing.add('journal-url');
-			missingLabels.push('Journal URL');
+			missingLabels.push(m.projects_ship_project_label_journal_url());
 		}
 		if (selectedHackatimeNames.size === 0) {
 			missing.add('hackatime');
-			missingLabels.push('Hackatime Project');
+			missingLabels.push(m.projects_ship_project_label_hackatime());
 		}
 
 		if (missing.size > 0) {
 			missingFields = missing;
-			errorMsg = `Required: ${missingLabels.join(', ')}`;
+			errorMsg = m.projects_ship_project_required({ fields: missingLabels.join(', ') });
 			return;
 		}
 
 		if (hasUrlErrors) {
-			errorMsg = 'Please fix the URL errors before continuing.';
+			errorMsg = m.projects_ship_project_fix_url_errors();
 			return;
 		}
 
 		if (urlsChecking) {
-			errorMsg = 'Please wait for URL checks to finish.';
+			errorMsg = m.projects_ship_project_wait_url_checks();
 			return;
 		}
 
@@ -518,10 +519,10 @@
 			goto(`/app/projects/${projectId}/ship/personal`);
 		} else if (!projectRes.data) {
 			const err = projectRes.error as any;
-			errorMsg = err?.message ?? err?.error ?? 'Failed to save project. Please try again.';
+			errorMsg = err?.message ?? err?.error ?? m.projects_ship_project_save_failed();
 		} else {
 			const err = hackatimeRes.error as any;
-			errorMsg = err?.message ?? err?.error ?? 'Failed to update Hackatime projects. Please try again.';
+			errorMsg = err?.message ?? err?.error ?? m.projects_ship_project_hackatime_update_failed();
 		}
 
 		submitting = false;
@@ -533,24 +534,24 @@
 <div class="relative size-full">
 	{#if loading}
 		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-			<p class="font-cook text-[36px] font-semibold text-black m-0">LOADING...</p>
+			<p class="font-cook text-[36px] font-semibold text-black m-0">{m.projects_ship_project_loading()}</p>
 		</div>
 	{:else}
 		<div class="hidden sm:block absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none">
 			<TurbulentImage src={mediaPreview || heroPlaceholder} alt={title} inset="0 0 0 0" filterId="hero-turbulence" />
 		</div>
 
-		<FormCard title="READY TO SUBMIT?" subtitle="Fill out this information and make sure it looks correct">
+		<FormCard title={m.projects_ship_project_title()} subtitle={m.projects_ship_project_subtitle()}>
 			{#if hasApprovedSubmission}
 				<div class="border-2 border-black rounded-lg bg-[#ffd97a] shadow-[2px_2px_0px_0px_black] px-3 py-2 font-bricolage text-sm font-semibold text-black">
-					This is an update to an approved project. Please note what was added/changed in your description.
+					{m.projects_ship_project_approved_notice()}
 				</div>
 			{/if}
 			{#if hasPriorYswsSubmission}
 				<div class="border-2 border-black rounded-lg bg-[#bcd1f5] shadow-[2px_2px_0px_0px_black] px-3 py-2 font-bricolage text-sm font-semibold text-black">
-					<p class="m-0">This project was already submitted to another YSWS. If this is an update to that project, please clarify what was added/changed in your description.</p>
+					<p class="m-0">{m.projects_ship_project_prior_ysws_notice()}</p>
 					{#if priorYswsNames.length > 0}
-						<p class="m-0 mt-1 italic font-normal text-xs text-black/70">Previously submitted to {formatYswsList(priorYswsNames)}.</p>
+						<p class="m-0 mt-1 italic font-normal text-xs text-black/70">{m.projects_ship_project_prior_ysws_list({ list: formatYswsList(priorYswsNames) })}</p>
 					{/if}
 				</div>
 			{/if}
@@ -559,28 +560,28 @@
 				<div class="flex-1 flex flex-col gap-2 min-w-0">
 					<div class={missingFields.has('title') ? 'error-wrapper' : ''}>
 						<FormField
-							label="Title"
+							label={m.projects_ship_project_field_title()}
 							id="title"
 							placeholder="Horizons"
 							bind:value={title}
 							onblur={() => handleFieldBlur('title')}
 						/>
 						{#if missingFields.has('title')}
-							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
+							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">{m.projects_ship_project_fill_me_out()}</span>
 						{/if}
 					</div>
-					<FormSelect label="Project Type" id="project-type" options={projectTypes} bind:value={projectType} />
+					<FormSelect label={m.projects_ship_project_field_project_type()} id="project-type" options={projectTypes} bind:value={projectType} />
 					<div class={missingFields.has('description') ? 'error-wrapper' : ''}>
 						<FormTextarea
-							label="Description"
+							label={m.projects_ship_project_field_description()}
 							id="description"
-							placeholder="Describe what your project does..."
+							placeholder={m.projects_ship_project_description_placeholder()}
 							bind:value={description}
 							onblur={() => handleFieldBlur('description')}
 						/>
-						<p class="text-black/50 text-xs font-semibold mt-1 m-0">If this is a resubmission, please note what was updated from your previous submission.</p>
+						<p class="text-black/50 text-xs font-semibold mt-1 m-0">{m.projects_ship_project_resubmission_note()}</p>
 						{#if missingFields.has('description')}
-							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
+							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">{m.projects_ship_project_fill_me_out()}</span>
 						{/if}
 					</div>
 					<div class={missingFields.has('media') ? 'error-wrapper' : ''}>
@@ -591,14 +592,14 @@
 							onupload={() => handleFieldBlur('media')}
 						/>
 						{#if missingFields.has('media')}
-							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
+							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">{m.projects_ship_project_fill_me_out()}</span>
 						{/if}
 					</div>
 				</div>
 				<div class="flex-1 flex flex-col gap-2 min-w-0">
 					<div class={missingFields.has('demo-url') ? 'error-wrapper' : ''}>
 						<FormField
-							label="Demo URL"
+							label={m.projects_ship_project_field_demo_url()}
 							id="demo-url"
 							type="url"
 							placeholder="https://username.itch.io/mygame"
@@ -621,9 +622,9 @@
 										{#if demoUrlStatus === 'checking'}
 											<div class="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
 										{:else if demoUrlStatus === 'ok' && demoUrlFavicon}
-											<img src={demoUrlFavicon} alt="Site favicon" class="w-5 h-5" />
+											<img src={demoUrlFavicon} alt={m.projects_ship_project_favicon_alt()} class="w-5 h-5" />
 										{:else if demoUrlStatus === 'error'}
-											<span class="demo-url-warning" title={demoUrlError || 'URL unreachable'}>
+											<span class="demo-url-warning" title={demoUrlError || m.projects_ship_project_url_unreachable_title()}>
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-amber-500">
 													<path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
 												</svg>
@@ -637,12 +638,12 @@
 							{/snippet}
 						</FormField>
 						{#if missingFields.has('demo-url')}
-							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
+							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">{m.projects_ship_project_fill_me_out()}</span>
 						{/if}
 					</div>
 					<div class={missingFields.has('code-url') ? 'error-wrapper' : ''}>
 						<FormField
-							label="Code URL"
+							label={m.projects_ship_project_field_code_url()}
 							id="code-url"
 							type="url"
 							placeholder="https://github.com/username/myproject"
@@ -675,7 +676,7 @@
 												<path d="M23.546 10.93L13.067.452c-.604-.603-1.582-.603-2.188 0L8.708 2.627l2.76 2.76c.645-.215 1.379-.07 1.889.441.516.515.658 1.258.438 1.9l2.66 2.66c.645-.222 1.387-.078 1.9.435.721.72.721 1.884 0 2.604-.72.719-1.885.719-2.604 0-.54-.541-.674-1.337-.404-1.996L12.86 8.955v6.525c.176.086.342.203.488.348.713.721.713 1.883 0 2.6-.713.721-1.88.721-2.593 0-.713-.717-.713-1.879 0-2.6.182-.18.387-.316.605-.406V8.835c-.217-.091-.424-.222-.6-.401-.545-.545-.676-1.342-.396-2.009L7.636 3.7.45 10.881c-.6.605-.6 1.584 0 2.189l10.48 10.477c.604.604 1.582.604 2.186 0l10.43-10.43c.605-.603.605-1.582 0-2.187"/>
 											</svg>
 										{:else if codeUrlStatus === 'error'}
-											<span title={codeUrlError || 'URL unreachable'}>
+											<span title={codeUrlError || m.projects_ship_project_url_unreachable_title()}>
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-amber-500">
 													<path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
 												</svg>
@@ -689,12 +690,12 @@
 							{/snippet}
 						</FormField>
 						{#if missingFields.has('code-url')}
-							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
+							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">{m.projects_ship_project_fill_me_out()}</span>
 						{/if}
 					</div>
 					<div class={missingFields.has('readme-url') ? 'error-wrapper' : ''}>
 						<FormField
-							label="README URL"
+							label={m.projects_ship_project_field_readme_url()}
 							id="readme-url"
 							type="url"
 							placeholder="https://github.com/username/myproject/blob/main/README.md"
@@ -721,7 +722,7 @@
 												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
 											</svg>
 										{:else if readmeUrlStatus === 'error'}
-											<span title={readmeUrlError || 'URL unreachable'}>
+											<span title={readmeUrlError || m.projects_ship_project_url_unreachable_title()}>
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-amber-500">
 													<path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
 												</svg>
@@ -735,13 +736,13 @@
 							{/snippet}
 						</FormField>
 						{#if missingFields.has('readme-url')}
-							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
+							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">{m.projects_ship_project_fill_me_out()}</span>
 						{/if}
 					</div>
 					{#if isHardware}
 						<div class={missingFields.has('journal-url') ? 'error-wrapper' : ''}>
 							<FormField
-								label="JOURNAL.md URL"
+								label={m.projects_ship_project_field_journal_url()}
 								id="journal-url"
 								type="url"
 								placeholder="https://github.com/username/repo/blob/main/JOURNAL.md"
@@ -749,7 +750,7 @@
 								onblur={() => handleFieldBlur('journal-url')}
 							/>
 							{#if missingFields.has('journal-url')}
-								<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
+								<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">{m.projects_ship_project_fill_me_out()}</span>
 							{/if}
 						</div>
 					{/if}
@@ -764,7 +765,7 @@
 							loading={hackatimeLoading}
 						/>
 						{#if missingFields.has('hackatime')}
-							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">Fill me out!</span>
+							<span class="text-red-600 text-sm font-semibold absolute right-0 top-0">{m.projects_ship_project_fill_me_out()}</span>
 						{/if}
 					</div>
 				</div>

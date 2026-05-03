@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { Snippet } from 'svelte';
     import ChevronSvg from '$lib/assets/shapes/chevron.svg';
+    import { m } from '$lib/paraglide/messages.js';
 
     interface Props {
         title: string;
@@ -72,10 +73,10 @@
                     onkeydown={handleEmailKeydown}
                     oninput={handleEmailInput}
                 />
-                <button class="signup-btn" class:valid={isValidEmail} onclick={(e) => { e.stopPropagation(); onSignup?.(email); }}>SIGN UP</button>
+                <button class="signup-btn" class:valid={isValidEmail} onclick={(e) => { e.stopPropagation(); onSignup?.(email); }}>{m.comp_menu_signup()}</button>
             </div>
             {#if signupHint}
-                <p class="signup-hint" class:visible={selected && ((!email && !emailFocused) || (emailFocused && isValidEmail) || showInvalidHint)} class:error={showInvalidHint}>{showInvalidHint ? 'Please enter a valid email' : (emailFocused && isValidEmail ? 'Press enter to sign up' : signupHint)}</p>
+                <p class="signup-hint" class:visible={selected && ((!email && !emailFocused) || (emailFocused && isValidEmail) || showInvalidHint)} class:error={showInvalidHint}>{showInvalidHint ? m.comp_menu_invalid_email() : (emailFocused && isValidEmail ? m.comp_menu_press_enter_signup() : signupHint)}</p>
             {/if}
         {/if}
     </div>

@@ -23,9 +23,10 @@
 	import yaml from 'js-yaml';
 	import type { EventConfig } from '$lib/events/types';
 	import eventsRaw from '$lib/events/events.yaml?raw';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const phrases = [
-		"IT'S! TIME! TO! COOK!",
+		m.app_home_header_phrase(),
 	];
 	const headerText = phrases[Math.floor(Math.random() * phrases.length)];
 
@@ -46,15 +47,15 @@
 	const COL_ADMIN = HIDE_COMMUNITY_EVENTS ? 4 : 5;
 
 	const cardDescriptions: Record<string, string> = {
-		[`${COL_LEFT}-0`]: 'Create projects, track your progress, and submit them for review!',
-		[`${COL_LEFT}-1`]: 'Learn to build stuff with our guides!',
-		[`${COL_PINNED_EVENT}-0`]: 'Track your progress for your pinned event!',
-		[`${COL_MIDDLE}-0`]: 'Chat with other Horizons hackers in #horizons!',
-		[`${COL_MIDDLE}-1`]: 'Spend your approved hours on rewards!',
-		[`${COL_FAQ}-0`]: 'Got questions? Find answers here.',
+		[`${COL_LEFT}-0`]: m.app_home_card_desc_projects(),
+		[`${COL_LEFT}-1`]: m.app_home_card_desc_guides(),
+		[`${COL_PINNED_EVENT}-0`]: m.app_home_card_desc_pinned_event(),
+		[`${COL_MIDDLE}-0`]: m.app_home_card_desc_slack(),
+		[`${COL_MIDDLE}-1`]: m.app_home_card_desc_shop(),
+		[`${COL_FAQ}-0`]: m.app_home_card_desc_faq(),
 	};
 	if (!HIDE_COMMUNITY_EVENTS) {
-		cardDescriptions['0-0'] = 'See what\'s coming up in the community!';
+		cardDescriptions['0-0'] = m.app_home_card_desc_community();
 	}
 
 	let userName = $derived($userStore.userName);
@@ -111,14 +112,14 @@
 	const debugCommunityEvents = $derived.by(() => {
 		if (debugCommunityState === '') return null;
 		const t = Date.now();
-		const m = (mins: number) => mins * 60_000;
+		const mins = (n: number) => n * 60_000;
 		const make = (
 			id: string,
 			name: string,
 			tagline: string,
 			startMs: number,
 			endMs: number,
-			actionLabel = 'Join',
+			actionLabel = m.app_home_debug_join(),
 		) => ({
 			id,
 			name,
@@ -134,16 +135,16 @@
 			case 'none':
 				return [];
 			case 'live':
-				return [make('debug-live', 'Lock-In Lock In Call', "Hell yeah we're cooking", t - m(15), t + m(45))];
+				return [make('debug-live', 'Lock-In Lock In Call', "Hell yeah we're cooking", t - mins(15), t + mins(45))];
 			case 'upcoming':
 				return [
-					make('debug-up-1', 'Kickoff Hangout', 'Meet the cohort', t + m(60 * 6), t + m(60 * 7)),
-					make('debug-up-2', 'Demo Friday', 'Show what you built', t + m(60 * 24), t + m(60 * 26)),
+					make('debug-up-1', 'Kickoff Hangout', 'Meet the cohort', t + mins(60 * 6), t + mins(60 * 7)),
+					make('debug-up-2', 'Demo Friday', 'Show what you built', t + mins(60 * 24), t + mins(60 * 26)),
 				];
 			case 'mixed':
 				return [
-					make('debug-live', 'Lock-In Lock In Call', "Hell yeah we're cooking", t - m(15), t + m(45)),
-					make('debug-up-1', 'Demo Friday', 'Show what you built', t + m(60 * 24), t + m(60 * 26)),
+					make('debug-live', 'Lock-In Lock In Call', "Hell yeah we're cooking", t - mins(15), t + mins(45)),
+					make('debug-up-1', 'Demo Friday', 'Show what you built', t + mins(60 * 24), t + mins(60 * 26)),
 				];
 		}
 	});
@@ -445,7 +446,7 @@
 <svelte:window onkeydown={handlePageKeydown} onmousemove={(e) => { mouseX = e.clientX; mouseY = e.clientY; lastMouseMoveTime = performance.now(); hasInteracted = true; }} />
 
 {#snippet hintRow(text: string)}
-	<img src={nav.usingKeyboard ? enterSvg : clickSvg} alt={nav.usingKeyboard ? 'Enter' : 'Click'} class="enter-hint-key" />
+	<img src={nav.usingKeyboard ? enterSvg : clickSvg} alt={nav.usingKeyboard ? m.app_home_alt_enter() : m.app_home_alt_click()} class="enter-hint-key" />
 	<span class="font-bricolage text-[12px] text-black font-semibold">{text}</span>
 {/snippet}
 
@@ -473,15 +474,15 @@
 		<!-- Header -->
 		<div class="flex items-end gap-2 w-full shrink-0 exit-up enter-up" class:exiting={navigating} class:exit-right={exitRight} style:--exit-right-delay="0ms">
 			<div class="w-[347.58px] h-[75.13px] shrink-0">
-				<img src={logoSvg} alt="Horizon" class="w-full h-full block" />
+				<img src={logoSvg} alt={m.app_home_alt_logo()} class="w-full h-full block" />
 			</div>
 			<p class="font-cook text-[18px] font-semibold text-black m-0 whitespace-nowrap">
 				<TextWave text={headerText} disabled={disableAnimations} />
 			</p>
 			<a href="https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476" target="_blank" rel="noopener noreferrer" class="card slack-card ml-auto">
 				<div class="flex flex-col">
-					<p class="font-cook text-[20px] font-semibold text-black m-0 whitespace-nowrap leading-tight">Join 1000+ teenagers at #horizons</p>
-					<p class="font-bricolage text-[14px] font-semibold text-black/50 m-0 leading-tight">Open the Hack Club Slack</p>
+					<p class="font-cook text-[20px] font-semibold text-black m-0 whitespace-nowrap leading-tight">{m.app_home_join_slack_title()}</p>
+					<p class="font-bricolage text-[14px] font-semibold text-black/50 m-0 leading-tight">{m.app_home_join_slack_subtitle()}</p>
 				</div>
 				<svg class="shrink-0" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
 					<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
@@ -565,11 +566,11 @@
 						onclick={(e) => { e.preventDefault(); navigateTo('/app/events'); }}
 					>
 						{#snippet progressHint()}
-							{@render hintRow('TO VIEW EVENTS')}
+							{@render hintRow(m.app_home_hint_to_view_events())}
 						{/snippet}
 					</EventColumnCard>
 					{#if postOnboarding && nav.isSelected(COL_PINNED_EVENT, 0)}
-						{@render popoverWithHint(cardDescriptions[`${COL_PINNED_EVENT}-0`], 'TO VIEW EVENTS')}
+						{@render popoverWithHint(cardDescriptions[`${COL_PINNED_EVENT}-0`], m.app_home_hint_to_view_events())}
 					{/if}
 				</div>
 
@@ -599,16 +600,16 @@
 								</svg>
 							</div>
 							<div class="card-text z-10">
-								<p class="font-cook text-[40px] font-semibold text-black m-0">SHOP</p>
+								<p class="font-cook text-[40px] font-semibold text-black m-0">{m.app_home_shop_title()}</p>
 								<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-									BUY STUFF FOR YOURSELF!
+									{m.app_home_shop_subtitle()}
 								</p>
 							</div>
 							{#if nav.isSelected(COL_MIDDLE, 1) && !postOnboarding}
-								{@render hintPill('TO VISIT SHOP')}
+								{@render hintPill(m.app_home_hint_to_visit_shop())}
 							{/if}
 							{#if postOnboarding && nav.isSelected(COL_MIDDLE, 1)}
-								{@render popoverWithHint(cardDescriptions[`${COL_MIDDLE}-1`], 'TO VISIT SHOP')}
+								{@render popoverWithHint(cardDescriptions[`${COL_MIDDLE}-1`], m.app_home_hint_to_visit_shop())}
 							{/if}
 						</a>
 					</div>
@@ -628,16 +629,16 @@
 							</svg>
 						</div>
 						<div class="card-text z-10">
-							<p class="font-cook text-[40px] font-semibold text-black m-0">FAQ</p>
+							<p class="font-cook text-[40px] font-semibold text-black m-0">{m.app_home_faq_title()}</p>
 							<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-								NEED HELP?
+								{m.app_home_faq_subtitle()}
 							</p>
 						</div>
 						{#if nav.isSelected(COL_FAQ, 0) && !postOnboarding}
-							{@render hintPill('TO VIEW FAQ')}
+							{@render hintPill(m.app_home_hint_to_view_faq())}
 						{/if}
 						{#if postOnboarding && nav.isSelected(COL_FAQ, 0)}
-							{@render popoverWithHint(cardDescriptions[`${COL_FAQ}-0`], 'TO VIEW FAQ')}
+							{@render popoverWithHint(cardDescriptions[`${COL_FAQ}-0`], m.app_home_hint_to_view_faq())}
 						{/if}
 					</a>
 				</div>
@@ -656,13 +657,13 @@
 								</svg>
 							</div>
 							<div class="card-text z-10">
-								<p class="font-cook text-[40px] font-semibold text-black m-0">ADMIN</p>
+								<p class="font-cook text-[40px] font-semibold text-black m-0">{m.app_home_admin_title()}</p>
 								<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-									MANAGE HORIZONS
+									{m.app_home_admin_subtitle()}
 								</p>
 							</div>
 							{#if nav.isSelected(COL_ADMIN, 0)}
-								{@render hintPill('TO ADMIN PANEL')}
+								{@render hintPill(m.app_home_hint_to_admin_panel())}
 							{/if}
 						</a>
 					</div>
@@ -674,11 +675,11 @@
 		<div class="info-row enter-down" class:exiting={navigating && !exitRight} style:--exit-delay="0ms" style:--enter-delay="300ms">
 			<div class="card nav-hint-card" class:nav-hint-hidden={hasInteracted}>
 				<div class="flex items-center gap-5">
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">USE</p>
+					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{m.app_home_nav_use()}</p>
 					<InputPrompt type="WASD" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">OR</p>
+					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{m.app_home_nav_or()}</p>
 					<InputPrompt type="mouse" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">TO NAVIGATE</p>
+					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{m.app_home_nav_to_navigate()}</p>
 				</div>
 			</div>
 
@@ -690,10 +691,10 @@
 							class="refer-btn py-2 px-4 border-2 border-black rounded-lg bg-[#ffa936] font-bricolage text-base font-semibold text-black cursor-pointer"
 							onclick={() => navigateTo('/app/refer?back', { exitRight: true })}
 						>
-							Refer a Friend
+							{m.app_home_refer_a_friend()}
 						</button>
 					{/if}
-					<button class="logout-btn" onclick={async () => { await api.POST('/api/user/auth/logout'); window.location.href = '/'; }} aria-label="Logout">
+					<button class="logout-btn" onclick={async () => { await api.POST('/api/user/auth/logout'); window.location.href = '/'; }} aria-label={m.app_home_aria_logout()}>
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 							<path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>

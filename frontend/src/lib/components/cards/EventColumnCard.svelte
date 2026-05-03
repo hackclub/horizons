@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { EventConfig } from '$lib/events/types';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		slug: string;
@@ -90,7 +91,7 @@
 	<div class="card-details">
 		<img
 			src={config.logo}
-			alt="{config.name} logo"
+			alt={m.comp_eventcolcard_logo_alt({ name: config.name })}
 			class="card-logo"
 			style="max-width: {config.logoMaxWidth ?? '218px'};"
 		/>
@@ -103,7 +104,7 @@
 			{/if}
 			{#if attendCount !== null && attendCount !== undefined}
 				<p class="font-bricolage font-semibold text-[16px] text-black m-0 leading-normal">
-					{attendCount} plan to attend
+					{m.comp_eventcolcard_plan_to_attend({ count: attendCount })}
 				</p>
 			{/if}
 		</div>
@@ -115,32 +116,32 @@
 		>
 			{#if progressState === 'qualified'}
 				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
-					{round1(targetHours)}/{round1(targetHours)} approved • QUALIFIED
+					{m.comp_eventcolcard_qualified({ hours: round1(targetHours), total: round1(targetHours) })}
 				</p>
 			{:else if progressState === 'ship'}
 				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
-					{completedDisplay}/{round1(targetHours)} hours completed
+					{m.comp_eventcolcard_hours_completed({ completed: completedDisplay, total: round1(targetHours) })}
 				</p>
 				<p class="font-cook text-[12px] text-black m-0 leading-normal whitespace-nowrap">
-					Ship to qualify Now
+					{m.comp_eventcolcard_ship_to_qualify()}
 				</p>
 			{:else if progressState === 'pending-met'}
 				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
-					{completedDisplay}/{round1(targetHours)} hours completed
+					{m.comp_eventcolcard_hours_completed({ completed: completedDisplay, total: round1(targetHours) })}
 				</p>
 			{:else if progressState === 'approved-majority'}
 				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
-					{approvedDisplay}/{round1(targetHours)} hours approved
+					{m.comp_eventcolcard_hours_approved({ approved: approvedDisplay, total: round1(targetHours) })}
 				</p>
 				<p class="font-cook text-[12px] text-black/60 m-0 leading-normal whitespace-nowrap">
-					{completedDisplay}/{round1(targetHours)} hours completed
+					{m.comp_eventcolcard_hours_completed({ completed: completedDisplay, total: round1(targetHours) })}
 				</p>
 			{:else}
 				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
-					{completedDisplay}/{round1(targetHours)} hours completed
+					{m.comp_eventcolcard_hours_completed({ completed: completedDisplay, total: round1(targetHours) })}
 				</p>
 				<p class="font-cook text-[12px] text-black/60 m-0 leading-normal whitespace-nowrap">
-					{approvedDisplay}/{round1(targetHours)} hours approved
+					{m.comp_eventcolcard_hours_approved({ approved: approvedDisplay, total: round1(targetHours) })}
 				</p>
 			{/if}
 			{#if progressHint}

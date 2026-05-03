@@ -1,5 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import { api, type components } from '$lib/api';
+import { m } from '$lib/paraglide/messages.js';
 
 type ProjectResponse = components['schemas']['ProjectResponse'];
 
@@ -52,10 +53,10 @@ export async function fetchProjects(forceRefresh = false) {
 			});
 			return projects;
 		} else {
-			throw new Error('Invalid data format');
+			throw new Error(m.ts_projects_invalid_data());
 		}
 	} catch (err) {
-		const errorMsg = err instanceof Error ? err.message : 'Failed to load projects';
+		const errorMsg = err instanceof Error ? err.message : m.ts_projects_load_failed();
 		projectsStore.set({
 			projects: [],
 			loading: false,

@@ -12,6 +12,7 @@
 	import type { components } from '$lib/api';
 	import { api } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
+	import { m } from '$lib/paraglide/messages.js';
 
 	type ProjectResponse = components['schemas']['ProjectResponse'];
 
@@ -78,7 +79,7 @@
 				? (latestSubmission?.hackatimeHours ?? null)
 				: null
 	);
-	let hoursLabel = $derived(isApproved ? 'approved' : 'submitted');
+	let hoursLabel = $derived(isApproved ? m.projects_detail_hours_label_approved() : m.projects_detail_hours_label_submitted());
 
 	let refreshingHours = $state(false);
 
@@ -130,11 +131,11 @@
 <div class="relative size-full">
 	{#if loading}
 		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-			<p class="font-cook text-[36px] font-semibold text-black m-0">LOADING...</p>
+			<p class="font-cook text-[36px] font-semibold text-black m-0">{m.projects_detail_loading()}</p>
 		</div>
 	{:else if error}
 		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-			<p class="font-cook text-[36px] font-semibold text-black m-0">ERROR</p>
+			<p class="font-cook text-[36px] font-semibold text-black m-0">{m.projects_detail_error()}</p>
 			<p class="font-bricolage text-[32px] font-semibold text-black m-0">{error}</p>
 		</div>
 	{:else if project}
@@ -180,12 +181,12 @@
 				{#if hackatimeInfo}
 					<div class="flex items-center gap-2">
 						<p class="font-bricolage text-[22px] font-semibold text-black/60 m-0">
-							tracked {currentHours} hrs{submittedHours !== null ? ` · ${hoursLabel} ${submittedHours} hrs` : ''}
+							{submittedHours !== null ? m.projects_detail_tracked_with_submitted({ hours: currentHours, label: hoursLabel, submitted: submittedHours }) : m.projects_detail_tracked({ hours: currentHours })}
 						</p>
 						<button
 							type="button"
-							aria-label="Refresh tracked hours"
-							title="Refresh tracked hours"
+							aria-label={m.projects_detail_refresh_hours_label()}
+							title={m.projects_detail_refresh_hours_label()}
 							class="refresh-hours"
 							class:spinning={refreshingHours}
 							onclick={refreshTrackedHours}
@@ -218,10 +219,10 @@
 				{@const reviewerFeedback = latestSubmission?.hoursJustification}
 				{@const step2Color = isApproved ? '#ffa936' : isRejected ? '#e05632' : isPending ? '#ffa936' : '#f3e8d8'}
 				{@const step3Color = isApproved ? '#ffa936' : '#f3e8d8'}
-				{@const step2Label = isRejected ? 'Rejected' : 'Under Review'}
+				{@const step2Label = isRejected ? m.projects_detail_status_rejected() : m.projects_detail_status_under_review()}
 
 				<div class="flex flex-col gap-3 w-full border-4 border-black rounded-[20px] p-4">
-					<p class="font-cook text-[28px] font-semibold text-black m-0">SUBMISSION TRACKING</p>
+					<p class="font-cook text-[28px] font-semibold text-black m-0">{m.projects_detail_submission_tracking()}</p>
 
 					<!-- Arrow progress bar -->
 					<svg viewBox="-2 -2 604 52" style="width: 100%; aspect-ratio: 604 / 52; display: block;" xmlns="http://www.w3.org/2000/svg">
@@ -244,9 +245,9 @@
 						<rect width="600" height="48" rx="11" ry="11" fill="none" stroke="black" stroke-width="3" />
 						<polyline points="200,0 216,24 200,48" fill="none" stroke="black" stroke-width="2.5" stroke-linejoin="round" />
 						<polyline points="400,0 416,24 400,48" fill="none" stroke="black" stroke-width="2.5" stroke-linejoin="round" />
-						<text x="100" y="24" dominant-baseline="middle" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif" font-size="19" fill="black">Submitted</text>
+						<text x="100" y="24" dominant-baseline="middle" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif" font-size="19" fill="black">{m.projects_detail_status_submitted()}</text>
 						<text x="308" y="24" dominant-baseline="middle" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif" font-size="19" fill="black">{step2Label}</text>
-						<text x="500" y="24" dominant-baseline="middle" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif" font-size="19" fill="black">Approved</text>
+						<text x="500" y="24" dominant-baseline="middle" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif" font-size="19" fill="black">{m.projects_detail_status_approved()}</text>
 					</svg>
 
 					<!-- Info Panels -->
@@ -254,14 +255,14 @@
 						<!-- Reviewer Feedback -->
 						{#if reviewerFeedback}
 							<div class="flex-1 bg-[rgba(0,0,0,0.1)] rounded-xl p-4 flex flex-col gap-1 min-w-0">
-								<p class="font-bricolage text-[15px] font-bold text-black m-0">Reviewer Feedback</p>
+								<p class="font-bricolage text-[15px] font-bold text-black m-0">{m.projects_detail_reviewer_feedback()}</p>
 								<p class="font-bricolage text-[14px] text-black m-0 line-clamp-4">{reviewerFeedback}</p>
 								<button
 									type="button"
 									class="font-bricolage text-[13px] font-semibold text-black underline self-start cursor-pointer mt-0.5"
 									onclick={() => (feedbackOpen = true)}
 								>
-									Read more
+									{m.projects_detail_read_more()}
 								</button>
 							</div>
 						{/if}
@@ -299,7 +300,7 @@
 										<circle cx="8" cy="8" r="6.5" stroke="black" stroke-width="1.5"/>
 										<path d="M8 4.5V8L10 10" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 									</svg>
-									<span>Submitted {formattedDate} {#if daysAgo !== null}<span class="text-black/60"> ({daysAgo === 0 ? 'today' : daysAgo === 1 ? '1 day ago' : `${daysAgo} days ago`})</span>{/if}</span>
+									<span>{m.projects_detail_submitted_on({ date: formattedDate })} {#if daysAgo !== null}<span class="text-black/60"> ({daysAgo === 0 ? m.projects_detail_days_ago_today() : daysAgo === 1 ? m.projects_detail_days_ago_one() : m.projects_detail_days_ago_many({ days: daysAgo })})</span>{/if}</span>
 								</div>
 							{/if}
 						</div>
@@ -317,7 +318,7 @@
 					onmouseenter={() => nav.select(0, 0)}
 					disabled={isPending}
 				>
-					EDIT PROJECT
+					{m.projects_detail_edit_project()}
 				</button>
 				<button
 					class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
@@ -328,7 +329,7 @@
 					onmouseenter={() => nav.select(1, 0)}
 					disabled={isPending}
 				>
-					{hasSubmission ? 'RE-SHIP' : 'SHIP'}
+					{hasSubmission ? m.projects_detail_re_ship() : m.projects_detail_ship()}
 				</button>
 			</div>
 		</div>
@@ -341,23 +342,23 @@
 			class="fixed inset-0 z-50 flex items-center justify-center p-6"
 			role="dialog"
 			aria-modal="true"
-			aria-label="Reviewer feedback"
+			aria-label={m.projects_detail_reviewer_feedback()}
 		>
 			<button
 				type="button"
 				class="absolute inset-0 bg-black/50 cursor-default"
-				aria-label="Close reviewer feedback"
+				aria-label={m.projects_detail_close_feedback_label()}
 				onclick={() => (feedbackOpen = false)}
 			></button>
 			<div class="relative max-w-2xl w-full max-h-[80vh] bg-[#f3e8d8] border-4 border-black rounded-[20px] p-6 shadow-[4px_4px_0px_0px_black] flex flex-col gap-3 overflow-hidden">
 				<div class="flex items-center justify-between gap-4">
-					<p class="font-cook text-[28px] font-semibold text-black m-0">REVIEWER FEEDBACK</p>
+					<p class="font-cook text-[28px] font-semibold text-black m-0">{m.projects_detail_reviewer_feedback_heading()}</p>
 					<button
 						type="button"
 						class="font-bricolage text-[14px] font-semibold text-black underline cursor-pointer"
 						onclick={() => (feedbackOpen = false)}
 					>
-						Close
+						{m.projects_detail_close()}
 					</button>
 				</div>
 				<p class="font-bricolage text-[16px] text-black m-0 whitespace-pre-wrap break-words flex-1 min-h-0 overflow-y-auto">{latestSubmission.hoursJustification}</p>
@@ -371,9 +372,9 @@
 	<div class="fade-wrap" class:entered class:exiting={navigating}>
 		<NavigationHint
 			segments={[
-				{ type: 'text', value: 'USE' },
+				{ type: 'text', value: m.projects_detail_nav_use() },
 				{ type: 'input', value: 'AD' },
-				{ type: 'text', value: 'TO NAVIGATE' }
+				{ type: 'text', value: m.projects_detail_nav_to_navigate() }
 			]}
 			position="bottom-right"
 		/>

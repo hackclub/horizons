@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { m } from '$lib/paraglide/messages.js';
 
     interface Props {
         text?: string;
@@ -10,7 +11,8 @@
         textColor?: string;
     }
 
-    let { text = ">PRESS ENTER", fontSize = 32, wave = false, pressed = false, disableAnimations = false, textColor = undefined }: Props = $props();
+    let { text, fontSize = 32, wave = false, pressed = false, disableAnimations = false, textColor = undefined }: Props = $props();
+    const resolvedText = $derived(text ?? m.comp_boba_press_enter());
 
     const shouldWave = $derived(wave && !disableAnimations);
     const fillColor = $derived(textColor ?? 'black');
@@ -21,7 +23,7 @@
     let charWidths = $state<number[]>([]);
     let measured = false;
 
-    const chars = $derived(text.split(''));
+    const chars: string[] = $derived(resolvedText.split(''));
     const spacing = 8;
     const charPositions = $derived(() => {
         let x = 5 - (spacing * chars.length)/2;
@@ -60,7 +62,7 @@
     }
 
     $effect(() => {
-        text;
+        resolvedText;
         fontSize;
         measured = false;
         requestAnimationFrame(updateWidth);
@@ -70,7 +72,7 @@
 <div class="boba-container">
     <svg width={svgWidth || 'auto'} height={fontSize + 22} overflow="visible" fill="none" xmlns="http://www.w3.org/2200/svg">
         <!-- Hidden measurement text -->
-        <text bind:this={measureEl} fill={textColor ?? 'black'} stroke="#F9F3EB" style="white-space: pre; paint-order: stroke; opacity: 0; pointer-events: none; font-family: var(--font-cook);" stroke-width="22" stroke-linejoin="round" xml:space="preserve" font-size={fontSize} font-weight="600" letter-spacing="0em"><tspan x="5" y={fontSize}>{text}</tspan></text>
+        <text bind:this={measureEl} fill={textColor ?? 'black'} stroke="#F9F3EB" style="white-space: pre; paint-order: stroke; opacity: 0; pointer-events: none; font-family: var(--font-cook);" stroke-width="22" stroke-linejoin="round" xml:space="preserve" font-size={fontSize} font-weight="600" letter-spacing="0em"><tspan x="5" y={fontSize}>{resolvedText}</tspan></text>
         
         {#if shouldWave && charWidths.length > 0}
             {#each chars as char, i}
@@ -88,8 +90,8 @@
                 </g>
             {/each}
         {:else}
-            <text class="boba-shadow" class:pressed={pressed} stroke="black" style="white-space: pre; paint-order: stroke; font-family: var(--font-cook);" stroke-width="22" stroke-linejoin="round" xml:space="preserve" font-size={fontSize} font-weight="600" letter-spacing="0em"><tspan x="5" y={fontSize}>{text}</tspan></text>
-            <text class="front" class:pressed={pressed} bind:this={textEl} stroke={pressed ? '#FFA936' : '#F9F3EB'} style="white-space: pre; paint-order: stroke; transition: stroke 0.15s ease; font-family: var(--font-cook); fill: {fillColor};" stroke-width="15" stroke-linejoin="round" xml:space="preserve" font-size={fontSize} font-weight="600" letter-spacing="0em"><tspan x="5" y={fontSize}>{text}</tspan></text>
+            <text class="boba-shadow" class:pressed={pressed} stroke="black" style="white-space: pre; paint-order: stroke; font-family: var(--font-cook);" stroke-width="22" stroke-linejoin="round" xml:space="preserve" font-size={fontSize} font-weight="600" letter-spacing="0em"><tspan x="5" y={fontSize}>{resolvedText}</tspan></text>
+            <text class="front" class:pressed={pressed} bind:this={textEl} stroke={pressed ? '#FFA936' : '#F9F3EB'} style="white-space: pre; paint-order: stroke; transition: stroke 0.15s ease; font-family: var(--font-cook); fill: {fillColor};" stroke-width="15" stroke-linejoin="round" xml:space="preserve" font-size={fontSize} font-weight="600" letter-spacing="0em"><tspan x="5" y={fontSize}>{resolvedText}</tspan></text>
         {/if}
     </svg>
 </div>

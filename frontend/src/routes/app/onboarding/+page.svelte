@@ -12,6 +12,7 @@
 	import HackatimeLinkButton from '$lib/components/HackatimeLinkButton.svelte';
 	import { invalidateAllProjectCaches } from '$lib/store/projectDetailCache';
 	import { fetchProjects } from '$lib/store/projectCache';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface ApiEvent {
 		slug: string;
@@ -48,8 +49,8 @@
 
 	const baseSteps = [
 		{
-			speaker: 'THE FERRETLINGS',
-			text: "Hiiii! *ferret noises* We are the ferretlings! We're here to introduce you to Hack Club's Horizons!",
+			speaker: m.app_onboarding_speaker_ferretlings(),
+			text: m.app_onboarding_step_intro(),
 			image: beanSiblings,
 			imageStyle: 'bottom' as const,
 			showEvents: false,
@@ -58,8 +59,8 @@
 			showHackatimeSetup: false
 		},
 		{
-			speaker: 'BEAN',
-			text: "We're running 7 hackathons across the world, and <u>you're invited!</u>",
+			speaker: m.app_onboarding_speaker_bean(),
+			text: m.app_onboarding_step_hackathons(),
 			image: beanSiblingsSide,
 			imageStyle: 'side' as const,
 			showEvents: true,
@@ -69,8 +70,8 @@
 			showHackatimeSetup: false
 		},
 		{
-			speaker: 'JELLY',
-			text: 'Choose which event you want to go to!',
+			speaker: m.app_onboarding_speaker_jelly(),
+			text: m.app_onboarding_step_choose_event(),
 			image: beanSiblingsSide,
 			imageStyle: 'side' as const,
 			showEvents: true,
@@ -83,8 +84,8 @@
 
 	const noProjectSteps = [
 		{
-			speaker: 'JELLY',
-			text: 'Have you built a project before?',
+			speaker: m.app_onboarding_speaker_jelly(),
+			text: m.app_onboarding_step_built_before(),
 			image: beanSiblingsSide,
 			imageStyle: 'side' as const,
 			showEvents: false,
@@ -185,7 +186,7 @@
 
 	async function handleProjectSubmit() {
 		if (!projectTitle.trim() || !projectDescription.trim()) {
-			projectError = 'Title and description are required';
+			projectError = m.app_onboarding_error_required_fields();
 			return;
 		}
 
@@ -205,12 +206,12 @@
 			invalidateAllProjectCaches();
 			goto('/app?post-onboarding');
 		} else {
-			let message = response.statusText || 'An unknown error occurred';
+			let message = response.statusText || m.app_onboarding_error_unknown();
 			try {
 				const body = await response.json();
 				if (body?.message) message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
 			} catch {}
-			projectError = `Failed to create project: ${message}`;
+			projectError = m.app_onboarding_error_create_project({ message });
 		}
 
 		projectSubmitting = false;
@@ -260,8 +261,8 @@
 				disabled={!isEventSelectStep}
 			>
 				<div class="flex flex-col items-center justify-center flex-1 p-3 min-h-0 gap-1">
-					<p class="font-cook text-2xl text-black leading-none">CHOOSE LATER</p>
-					<p class="font-bricolage text-sm font-semibold text-black opacity-60">I'll decide another time</p>
+					<p class="font-cook text-2xl text-black leading-none">{m.app_onboarding_choose_later()}</p>
+					<p class="font-bricolage text-sm font-semibold text-black opacity-60">{m.app_onboarding_choose_later_subtitle()}</p>
 				</div>
 			</button>
 			<div class="w-full h-75 shrink-0"></div>
@@ -273,14 +274,14 @@
 		<div class="w-full flex items-center justify-center py-8 my-auto">
 			<div class="relative">
 				<div class="absolute -top-7.5 -left-22.5 z-0">
-					<img src={beanSiblingsSide} alt="Bean siblings" class="h-45 object-contain" />
+					<img src={beanSiblingsSide} alt={m.app_onboarding_alt_bean_siblings()} class="h-45 object-contain" />
 				</div>
 				<div class="relative z-1 w-181.75 min-h-165.5 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between items-center overflow-clip">
 				{#if isHackatimeStep}
 					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
 							<div class="flex flex-col gap-2">
-								<p class="font-bricolage text-2xl font-medium text-black leading-normal">Make sure to set up the Hackatime extension.</p>
+								<p class="font-bricolage text-2xl font-medium text-black leading-normal">{m.app_onboarding_hackatime_setup()}</p>
 							</div>
 							<HackatimeLinkButton bind:linked={hackatimeLinked} variant="card" />
 						</div>
@@ -291,7 +292,7 @@
 						onclick={() => step++}
 						disabled={!hackatimeLinked}
 					>
-						Continue
+						{m.app_onboarding_continue()}
 					</button>
 				{/if}
 
@@ -299,15 +300,15 @@
 					<div class="w-full flex-1">
 						<div class="flex flex-col gap-6 w-full">
 							<div class="flex flex-col gap-2">
-								<h1 class="font-cook text-2xl text-black leading-normal">CREATE YOUR PROJECT</h1>
-								<p class="font-bricolage text-2xl font-medium text-black leading-normal">Fill out the following fields! You can put an existing project, or the idea for a new project.</p>
-								<p class="font-bricolage text-base font-medium text-black/60 leading-normal">Don't worry, this doesn't have to be final, you can change all of this later!</p>
+								<h1 class="font-cook text-2xl text-black leading-normal">{m.app_onboarding_create_project_title()}</h1>
+								<p class="font-bricolage text-2xl font-medium text-black leading-normal">{m.app_onboarding_create_project_desc()}</p>
+								<p class="font-bricolage text-base font-medium text-black/60 leading-normal">{m.app_onboarding_create_project_disclaimer()}</p>
 							</div>
 							<div class="flex flex-col gap-4 w-full">
-								<FormField label="Title" id="title" placeholder="Horizons" maxlength={30} bind:value={projectTitle} />
-								<FormTextarea label="Description" id="description" placeholder="Describe what your project does..." maxlength={500} bind:value={projectDescription} />
+								<FormField label={m.app_onboarding_label_title()} id="title" placeholder={m.app_onboarding_placeholder_title()} maxlength={30} bind:value={projectTitle} />
+								<FormTextarea label={m.app_onboarding_label_description()} id="description" placeholder={m.app_onboarding_placeholder_description()} maxlength={500} bind:value={projectDescription} />
 								<div class="flex flex-col gap-1 w-full">
-									<label class="font-bricolage text-base font-semibold text-black leading-normal">Screenshot <span class="opacity-60">(optional)</span></label>
+									<label class="font-bricolage text-base font-semibold text-black leading-normal">{m.app_onboarding_label_screenshot()} <span class="opacity-60">{m.app_onboarding_optional()}</span></label>
 									<FileUpload label="" hideHint bind:mediaUrl bind:mediaPreview onerror={(msg) => projectError = msg} />
 								</div>
 							</div>
@@ -321,7 +322,7 @@
 							onclick={handleProjectSubmit}
 							disabled={projectSubmitting}
 						>
-							{projectSubmitting ? 'Creating...' : 'Create Project'}
+							{projectSubmitting ? m.app_onboarding_creating() : m.app_onboarding_create_project_btn()}
 						</button>
 					</div>
 				{/if}
@@ -333,7 +334,7 @@
 	<!-- Character image (centered, step 1 only) -->
 	{#if currentStep.imageStyle === 'bottom'}
 		<div class="absolute bottom-50 flex justify-center">
-			<img src={currentStep.image} alt="Bean siblings" class="h-62.5 object-contain -mb-5" />
+			<img src={currentStep.image} alt={m.app_onboarding_alt_bean_siblings()} class="h-62.5 object-contain -mb-5" />
 		</div>
 	{/if}
 
@@ -342,7 +343,7 @@
 		<div class="absolute bottom-20 left-1/2 -translate-x-[calc(50%-30px)] w-181.75">
 			{#if currentStep.imageStyle === 'side'}
 				<div class="absolute bottom-5 -left-20 -z-1">
-					<img src={currentStep.image} alt="Bean siblings" class="h-45 object-contain" />
+					<img src={currentStep.image} alt={m.app_onboarding_alt_bean_siblings()} class="h-45 object-contain" />
 				</div>
 			{/if}
 			<div class="relative w-full min-h-45 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] p-7.5 flex flex-col gap-4">
@@ -352,15 +353,15 @@
 			</div>
 
 			{#if step < eventSelectStep}
-				<p class="font-bricolage text-sm font-semibold text-black mt-2 animate-blink">Click anywhere to continue</p>
+				<p class="font-bricolage text-sm font-semibold text-black mt-2 animate-blink">{m.app_onboarding_click_to_continue()}</p>
 			{/if}
 
 			{#if isEventSelectStep}
 				<div class="flex justify-between items-center gap-4">
-					<p class="font-bricolage text-base font-semibold text-black opacity-60">You can change which event you want to go to later!</p>
+					<p class="font-bricolage text-base font-semibold text-black opacity-60">{m.app_onboarding_event_change_later()}</p>
 					{#if selectedEvent}
 						<button class="juice-btn py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936] shrink-0" onclick={(e) => { e.stopPropagation(); handleEventContinue(); }}>
-							Continue
+							{m.app_onboarding_continue()}
 						</button>
 					{/if}
 				</div>
@@ -369,10 +370,10 @@
 			{#if isExperienceStep}
 				<div class="flex gap-2.5 w-full">
 					<button class="juice-btn flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); step++; }}>
-						Yes!
+						{m.app_onboarding_experience_yes()}
 					</button>
 					<button class="juice-btn flex-1 py-2 px-4 border-2 border-black rounded-lg bg-transparent font-bricolage text-base font-semibold text-black cursor-pointer hover:scale-(--juice-scale) hover:bg-[#ffa936]" onclick={(e) => { e.stopPropagation(); goto('/app/onboarding/tutorial'); }}>
-						No, this is my first time.
+						{m.app_onboarding_experience_no()}
 					</button>
 				</div>
 			{/if}

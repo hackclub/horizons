@@ -6,6 +6,7 @@
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { FormSubmitButton } from '$lib/components/form';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const projectId = $derived($page.params.id);
 
@@ -14,10 +15,10 @@
 	let title = $state('');
 
 	const checklistItems = [
-		'You have an experienceable link (a URL where anyone can try your project now)',
-		'Your project has a screenshot uploaded (if it\'s difficult to experience, add a video to your README)',
-		'Your project description clearly explains what it does',
-		'AI use is declared in your project\'s README'
+		m.projects_ship_presubmit_check_link(),
+		m.projects_ship_presubmit_check_screenshot(),
+		m.projects_ship_presubmit_check_description(),
+		m.projects_ship_presubmit_check_ai()
 	];
 
 	let checked = $state<boolean[]>(checklistItems.map(() => false));
@@ -57,7 +58,7 @@
 <div class="relative size-full">
 	{#if loading}
 		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-			<p class="font-cook text-[36px] font-semibold text-black m-0">LOADING...</p>
+			<p class="font-cook text-[36px] font-semibold text-black m-0">{m.projects_ship_presubmit_loading()}</p>
 		</div>
 	{:else}
 		<div class="hidden sm:block absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none">
@@ -68,10 +69,10 @@
 		<div class="relative w-[calc(100%-2rem)] max-w-150 mx-auto mt-20 mb-8 sm:absolute sm:left-1/2 sm:top-9/16 sm:-translate-x-[calc(50%+0.5px)] sm:-translate-y-[calc(50%+0.5px)] sm:w-auto sm:max-w-none sm:mx-0 sm:mt-0 sm:mb-0 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col gap-4 overflow-clip z-1">
 			<!-- Header -->
 			<div class="flex flex-col text-black">
-				<h1 class="font-cook text-[26px] sm:text-[36px] font-semibold m-0 leading-normal">READY TO SUBMIT?</h1>
+				<h1 class="font-cook text-[26px] sm:text-[36px] font-semibold m-0 leading-normal">{m.projects_ship_presubmit_title()}</h1>
 				<div class="font-bricolage">
-					<p class="text-[18px] sm:text-[20px] leading-[1.5] m-0">Shipped Project Requirements</p>
-					<p class="text-[14px] leading-[1.5] tracking-[-0.22px] m-0">Every project submitted must be fully "shipped." Use the checklists below to confirm your project qualifies.</p>
+					<p class="text-[18px] sm:text-[20px] leading-[1.5] m-0">{m.projects_ship_presubmit_requirements_heading()}</p>
+					<p class="text-[14px] leading-[1.5] tracking-[-0.22px] m-0">{m.projects_ship_presubmit_requirements_blurb()}</p>
 				</div>
 			</div>
 

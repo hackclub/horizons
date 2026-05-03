@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
+
 	interface Props {
 		backLabel?: string;
 		nextLabel?: string;
@@ -11,9 +13,9 @@
 	}
 
 	let {
-		backLabel = '← BACK',
-		nextLabel = 'NEXT →',
-		loadingLabel = 'SAVING...',
+		backLabel,
+		nextLabel,
+		loadingLabel,
 		onback,
 		onnext,
 		disabled = false,
@@ -28,7 +30,7 @@
 		type="button"
 		onclick={onback}
 	>
-		{backLabel}
+		{backLabel ?? m.comp_form_buttons_back()}
 	</button>
 	<button
 		class="next-btn bg-[#ffa936] border-2 border-black rounded-lg px-4 py-2 w-[231px] font-bricolage text-base font-semibold text-black cursor-pointer"
@@ -37,7 +39,7 @@
 		onclick={onnext}
 		disabled={disabled || loading}
 	>
-		{loading ? loadingLabel : nextLabel}
+		{loading ? (loadingLabel ?? m.comp_form_buttons_saving()) : (nextLabel ?? m.comp_form_buttons_next())}
 	</button>
 </div>
 

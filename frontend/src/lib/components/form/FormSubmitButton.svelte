@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
+
 	interface Props {
 		label?: string;
 		loadingLabel?: string;
@@ -11,8 +13,8 @@
 	}
 
 	let {
-		label = 'NEXT →',
-		loadingLabel = 'SAVING...',
+		label,
+		loadingLabel,
 		onclick,
 		disabled = false,
 		loading = false,
@@ -31,7 +33,7 @@
 		{onfocus}
 		disabled={disabled || loading}
 	>
-		{loading ? loadingLabel : label}
+		{loading ? (loadingLabel ?? m.comp_form_submit_saving()) : (label ?? m.comp_form_submit_default())}
 	</button>
 </div>
 

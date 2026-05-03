@@ -9,6 +9,7 @@
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
 	import stickerSheetImg from '$lib/assets/refer/sticker-sheet.png';
 	import switchLiteImg from '$lib/assets/refer/switch-lite.png';
+	import { m } from '$lib/paraglide/messages.js';
 
 	type ReferralUser = components['schemas']['ReferralUserResponse'];
 
@@ -73,23 +74,23 @@
 		<!-- Back button -->
 		<button class="back-btn fly-left" class:entered class:exiting={navigating} style="--fly-in-delay: 0ms; --fly-out-delay: 0ms;" onclick={goBack}>
 			<InputPrompt type="ESC" />
-			<span class="font-cook text-2xl font-semibold text-black">BACK</span>
+			<span class="font-cook text-2xl font-semibold text-black">{m.app_refer_back()}</span>
 		</button>
 
 		<!-- Content (vertically centered in remaining space) -->
 		<div class="content-area fly-left" class:entered class:exiting={navigating} style="--fly-in-delay: 150ms; --fly-out-delay: 150ms;">
 			<!-- Left column: Refer card -->
 			<div class="card refer-card">
-				<p class="font-cook text-[32px] text-black m-0">REFER YOUR FRIENDS</p>
+				<p class="font-cook text-[32px] text-black m-0">{m.app_refer_title()}</p>
 
 				<div class="flex flex-col gap-2">
-					<p class="font-bricolage text-[20px] text-black m-0">Share this link with your friends</p>
+					<p class="font-bricolage text-[20px] text-black m-0">{m.app_refer_share_link()}</p>
 					<div class="flex gap-4 items-center">
 						<div class="link-box">
 							<p class="font-bricolage text-[20px] text-black m-0 whitespace-nowrap overflow-hidden text-ellipsis">{shareUrl || '...'}</p>
 						</div>
 						<button class="copy-btn" onclick={copyLink}>
-							{copied ? 'Copied!' : 'Copy'}
+							{copied ? m.app_refer_copied() : m.app_refer_copy()}
 						</button>
 					</div>
 				</div>
@@ -97,34 +98,34 @@
 				<!-- Sticker sheet reward -->
 				<div class="flex items-center justify-between w-full">
 					<div class="flex flex-col gap-1 w-[369px]">
-						<p class="font-bricolage text-[20px] text-black m-0">Refer 3 friends to get this exclusive sticker sheet:</p>
-						<p class="font-bricolage text-[12px] text-black m-0">*Your friends must complete the onboarding flow</p>
+						<p class="font-bricolage text-[20px] text-black m-0">{m.app_refer_sticker_reward()}</p>
+						<p class="font-bricolage text-[12px] text-black m-0">{m.app_refer_sticker_disclaimer()}</p>
 					</div>
-					<img src={stickerSheetImg} alt="Sticker sheet reward" class="w-45 h-25 object-cover rotate-5" />
+					<img src={stickerSheetImg} alt={m.app_refer_alt_sticker()} class="w-45 h-25 object-cover rotate-5" />
 				</div>
 
 				<!-- Switch reward -->
 				<div class="flex items-center justify-between w-full">
 					<div class="flex flex-col gap-1 w-[369px]">
-						<p class="font-bricolage text-[20px] text-black m-0">Refer friends to earn tickets to win a chance to get a Nintendo Switch Lite.</p>
-						<p class="font-bricolage text-[12px] text-black m-0">*Your friends must verify their IDs through Hack Club Auth</p>
+						<p class="font-bricolage text-[20px] text-black m-0">{m.app_refer_switch_reward()}</p>
+						<p class="font-bricolage text-[12px] text-black m-0">{m.app_refer_switch_disclaimer()}</p>
 					</div>
-					<img src={switchLiteImg} alt="Nintendo Switch Lite" class="w-[213px] h-[120px] object-cover -rotate-5" />
+					<img src={switchLiteImg} alt={m.app_refer_alt_switch()} class="w-[213px] h-[120px] object-cover -rotate-5" />
 				</div>
 			</div>
 
 			<!-- Right column: Referrals list -->
 			<div class="referrals-col">
-				<p class="font-cook text-[24px] text-black m-0">YOUR REFERRALS ({referrals.length})</p>
+				<p class="font-cook text-[24px] text-black m-0">{m.app_refer_your_referrals({ count: referrals.length })}</p>
 
 				<div class="referrals-scroll">
 					{#if loading}
 						<div class="referral-card">
-							<p class="font-cook text-[20px] text-black m-0 opacity-50">LOADING...</p>
+							<p class="font-cook text-[20px] text-black m-0 opacity-50">{m.app_refer_loading()}</p>
 						</div>
 					{:else if referrals.length === 0}
 						<div class="referral-card">
-							<p class="font-bricolage text-[20px] text-black/50 m-0">No referrals yet. Share your link!</p>
+							<p class="font-bricolage text-[20px] text-black/50 m-0">{m.app_refer_empty()}</p>
 						</div>
 					{:else}
 						{#each referrals as referral, i}
@@ -136,9 +137,9 @@
 								onfocus={() => { nav.selectedIndex = i; }}
 							>
 								<div class="flex items-center justify-between w-full">
-									<p class="font-cook text-[20px] text-black m-0">{(referral.displayName ?? 'UNKNOWN').toUpperCase()}</p>
+									<p class="font-cook text-[20px] text-black m-0">{(referral.displayName ?? m.app_refer_unknown()).toUpperCase()}</p>
 									<span class="font-bricolage text-sm font-semibold px-3 py-1 rounded-full border-2 border-black {referral.onboardComplete ? 'bg-[#91D374]' : 'bg-[#f3e8d8]'}">
-										{referral.onboardComplete ? 'Onboarded' : 'Pending'}
+										{referral.onboardComplete ? m.app_refer_status_onboarded() : m.app_refer_status_pending()}
 									</span>
 								</div>
 								<p class="font-bricolage text-[20px] text-black m-0">{referral.slackUserId ?? '—'}</p>
@@ -153,20 +154,20 @@
 		<div class="info-row" class:exiting={navigating}>
 			<div class="card info-card">
 				<div class="flex items-center gap-5">
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">USE</p>
+					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{m.app_refer_nav_use()}</p>
 					<InputPrompt type="WASD" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">OR</p>
+					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{m.app_refer_nav_or()}</p>
 					<InputPrompt type="mouse" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">TO NAVIGATE</p>
+					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">{m.app_refer_nav_to_navigate()}</p>
 				</div>
 			</div>
 
 			<div class="card info-card user-card">
 				<p class="font-cook text-[24px] font-semibold text-black m-0">{userName}</p>
 				<button class="refer-btn" onclick={copyLink}>
-					{copied ? 'Copied!' : 'Refer a Friend'}
+					{copied ? m.app_refer_copied() : m.app_refer_refer_a_friend()}
 				</button>
-				<button class="logout-btn" onclick={async () => { await api.POST('/api/user/auth/logout'); window.location.href = '/'; }} aria-label="Logout">
+				<button class="logout-btn" onclick={async () => { await api.POST('/api/user/auth/logout'); window.location.href = '/'; }} aria-label={m.app_refer_aria_logout()}>
 					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 						<path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 						<path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>

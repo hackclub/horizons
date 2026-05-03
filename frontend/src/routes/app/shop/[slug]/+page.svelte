@@ -9,6 +9,7 @@
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
 	import { getShopBranding, type ShopBranding } from '$lib/data/shops';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface ShopItem {
 		itemId: number;
@@ -51,7 +52,7 @@
 				params: { path: { slug } }
 			});
 			if (apiError) {
-				error = 'Failed to load items';
+				error = m.shop_detail_load_error();
 			} else {
 				items = (data as unknown as ShopItem[]) ?? [];
 			}
@@ -199,7 +200,7 @@
 			style="background-color: #f3e8d8; height: 300px;"
 		>
 			<p class="font-bricolage font-semibold text-[28px] text-black/50 m-0">
-				{#if loading}LOADING...{:else if error}{error}{:else if selectedRegion && items.length > 0}No items in this region{:else}Shop items coming soon{/if}
+				{#if loading}{m.shop_detail_loading()}{:else if error}{error}{:else if selectedRegion && items.length > 0}{m.shop_detail_no_items_region()}{:else}{m.shop_detail_coming_soon()}{/if}
 			</p>
 		</div>
 
@@ -211,7 +212,7 @@
 					class:active={selectedRegion === ''}
 					onclick={() => { selectedRegion = ''; skipItemAnimation = true; }}
 				>
-					All
+					{m.shop_detail_region_all()}
 				</button>
 				{#each availableRegions as region}
 					<button
@@ -291,11 +292,11 @@
 <div class="fade-wrap absolute inset-0 pointer-events-none z-20" class:entered class:exiting={navigating || interacted}>
 	<NavigationHint
 		segments={[
-			{ type: 'text', value: 'USE' },
+			{ type: 'text', value: m.shop_detail_nav_use() },
 			{ type: 'input', value: 'WASD' },
-			{ type: 'text', value: 'OR' },
+			{ type: 'text', value: m.shop_detail_or() },
 			{ type: 'input', value: 'mouse' },
-			{ type: 'text', value: 'TO NAVIGATE' }
+			{ type: 'text', value: m.shop_detail_nav_to_navigate() }
 		]}
 		position="bottom-right"
 	/>

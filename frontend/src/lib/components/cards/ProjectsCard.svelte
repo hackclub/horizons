@@ -5,6 +5,7 @@
 	import { projectsStore, fetchProjects } from '$lib/store/projectCache';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
 	import clickSvg from '$lib/assets/prompts/click.svg';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		selected?: boolean;
@@ -147,14 +148,14 @@
 	{#if activeCodersToday !== null}
 		<div class="active-coders-tag">
 			<span class="active-coders-dot"></span>
-			<span class="font-bricolage text-[12px] text-black">{activeCodersToday} {activeCodersToday === 1 ? 'person' : 'people'} coding today</span>
+			<span class="font-bricolage text-[12px] text-black">{activeCodersToday === 1 ? m.comp_projectscard_coders_today_one({ count: activeCodersToday }) : m.comp_projectscard_coders_today_other({ count: activeCodersToday })}</span>
 		</div>
 	{/if}
 
 	<div class="card-text z-10">
-		<p class="font-cook text-[40px] font-semibold text-black m-0">PROJECTS</p>
+		<p class="font-cook text-[40px] font-semibold text-black m-0">{m.comp_projectscard_title()}</p>
 		<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-			CREATE AND SHIP YOUR PROJECTS
+			{m.comp_projectscard_tagline()}
 		</p>
 	</div>
 
@@ -166,7 +167,7 @@
 				<div class="project-slide-overlay"></div>
 				<div class="project-slide-info">
 					<p class="font-cook text-[40px] font-semibold text-white m-0 leading-none">{project.projectTitle}</p>
-					<p class="font-bricolage text-[24px] font-semibold text-white m-0 tracking-[0.24px]">{(project.nowHackatimeHours ?? 0).toFixed(1)} HRS TRACKED</p>
+					<p class="font-bricolage text-[24px] font-semibold text-white m-0 tracking-[0.24px]">{m.comp_projectscard_hrs_tracked({ hours: (project.nowHackatimeHours ?? 0).toFixed(1) })}</p>
 				</div>
 			</div>
 		{/key}
@@ -176,10 +177,10 @@
 		<div class="enter-hint">
 			<img
 				src={usingKeyboard ? enterSvg : clickSvg}
-				alt={usingKeyboard ? 'Enter' : 'Click'}
+				alt={usingKeyboard ? m.comp_projectscard_enter() : m.comp_projectscard_click()}
 				class="enter-hint-key"
 			/>
-			<span class="font-bricolage text-[12px] text-black font-semibold">TO SHOW PROJECTS</span>
+			<span class="font-bricolage text-[12px] text-black font-semibold">{m.comp_projectscard_to_show()}</span>
 		</div>
 	{/if}
 
@@ -189,10 +190,10 @@
 			<div class="popover-hint">
 				<img
 					src={usingKeyboard ? enterSvg : clickSvg}
-					alt={usingKeyboard ? 'Enter' : 'Click'}
+					alt={usingKeyboard ? m.comp_projectscard_enter() : m.comp_projectscard_click()}
 					class="enter-hint-key"
 				/>
-				<span class="font-bricolage text-[12px] text-black font-semibold">TO SHOW PROJECTS</span>
+				<span class="font-bricolage text-[12px] text-black font-semibold">{m.comp_projectscard_to_show()}</span>
 			</div>
 		</div>
 	{/if}

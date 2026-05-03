@@ -1,0 +1,18 @@
+{
+	"faq_page_title": "FAQ",
+	"faq_sol_page_title": "FAQ",
+	"faq_arcana_page_title": "FAQ",
+	"faq_crux_page_title": "FAQ",
+	"faq_europa_page_title": "FAQ",
+	"faq_event_sign_back_in_title": "SIGN BACK IN",
+	"faq_event_sign_back_in_subtitle": "GET BACK TO WORKING ON YOUR PROJECTS!",
+	"faq_event_join_now_title": "JOIN NOW",
+	"faq_event_join_now_subtitle": "START WORKING ON YOUR PROJECTS!",
+	"faq_event_whats_this_title": "WHAT'S THIS?",
+	"faq_event_whats_this_subtitle": "LEARN MORE ABOUT THE EVENT!",
+	"faq_event_signup_hint_keyboard": "Press enter to enter your email",
+	"faq_event_signup_hint_click": "Click to enter your email",
+	"faq_event_disable_animations": "Disable animations",
+	"faq_event_back": "< BACK",
+	"faq_event_not_found": "Event \"{name}\" not found"
+}

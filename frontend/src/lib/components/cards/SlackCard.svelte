@@ -2,6 +2,7 @@
 	import slackSvg from '$lib/assets/home/slack.svg';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
 	import clickSvg from '$lib/assets/prompts/click.svg';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		selected?: boolean;
@@ -21,11 +22,12 @@
 		shaking = false,
 		postOnboarding = false,
 		description = '',
-		memberCount = '2000+ people in #horizons',
+		memberCount,
 		onmouseenter,
 		onclick,
 		onanimationend,
 	}: Props = $props();
+	const resolvedMemberCount = $derived(memberCount ?? m.comp_slackcard_default_member_count());
 
 	const HREF = 'https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476';
 </script>
@@ -52,13 +54,13 @@
 	<!-- Member count pill -->
 	<div class="member-pill">
 		<span class="member-dot"></span>
-		<span class="font-bricolage text-[12px] text-black whitespace-nowrap">{memberCount}</span>
+		<span class="font-bricolage text-[12px] text-black whitespace-nowrap">{resolvedMemberCount}</span>
 	</div>
 
 	<div class="card-text z-10">
-		<p class="font-cook text-[40px] font-semibold text-black m-0">SLACK</p>
+		<p class="font-cook text-[40px] font-semibold text-black m-0">{m.comp_slackcard_title()}</p>
 		<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-			Chat w/ people!
+			{m.comp_slackcard_tagline()}
 		</p>
 	</div>
 
@@ -66,10 +68,10 @@
 		<div class="enter-hint">
 			<img
 				src={usingKeyboard ? enterSvg : clickSvg}
-				alt={usingKeyboard ? 'Enter' : 'Click'}
+				alt={usingKeyboard ? m.comp_slackcard_enter() : m.comp_slackcard_click()}
 				class="enter-hint-key"
 			/>
-			<span class="font-bricolage text-[12px] text-black font-semibold">TO OPEN SLACK</span>
+			<span class="font-bricolage text-[12px] text-black font-semibold">{m.comp_slackcard_to_open()}</span>
 		</div>
 	{/if}
 
@@ -79,10 +81,10 @@
 			<div class="popover-hint">
 				<img
 					src={usingKeyboard ? enterSvg : clickSvg}
-					alt={usingKeyboard ? 'Enter' : 'Click'}
+					alt={usingKeyboard ? m.comp_slackcard_enter() : m.comp_slackcard_click()}
 					class="enter-hint-key"
 				/>
-				<span class="font-bricolage text-[12px] text-black font-semibold">TO OPEN SLACK</span>
+				<span class="font-bricolage text-[12px] text-black font-semibold">{m.comp_slackcard_to_open()}</span>
 			</div>
 		</div>
 	{/if}

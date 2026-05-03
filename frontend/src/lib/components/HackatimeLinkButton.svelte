@@ -1,6 +1,7 @@
 <script lang="ts">
 	import hackatimeIcon from '$lib/assets/icons/hackatime.svg';
 	import { api } from '$lib/api';
+	import { m } from '$lib/paraglide/messages.js';
 
 	let { linked = $bindable(false), variant = 'default' }: { linked?: boolean; variant?: 'default' | 'card' } = $props();
 
@@ -80,7 +81,7 @@
 		</div>
 		<div class="flex flex-col gap-1 items-start">
 			<div class="flex items-center gap-1">
-				<span class="font-bricolage text-2xl font-semibold text-black">Link Hackatime</span>
+				<span class="font-bricolage text-2xl font-semibold text-black">{m.comp_hackatime_link()}</span>
 				{#if (status === 'unlinked' || status === 'invalid') && !linking}
 					<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 						<path d="M4.7943 1.01921C4.7943 0.456645 5.25095 0 5.81351 0L14.9808 0.000703475C15.5434 0.000703733 15.9993 0.456645 15.9993 1.01921L16 10.1865C16 10.7491 15.5434 11.2057 14.9808 11.2057C14.4185 11.2056 13.9626 10.7495 13.9623 10.1872V3.47826L1.44054 16L0 14.5595L12.5217 2.03772H5.81281C5.25053 2.03742 4.79437 1.58154 4.7943 1.01921Z" fill="black"/>
@@ -90,19 +91,19 @@
 			<div class="card-status-badge" class:linked={status === 'linked'} class:unlinked={status !== 'linked'}>
 				<span class="font-bricolage text-base font-semibold text-white">
 					{#if status === 'loading'}
-						Loading...
+						{m.comp_hackatime_loading()}
 					{:else if status === 'linked'}
-						Hackatime Linked
+						{m.comp_hackatime_linked()}
 					{:else if linking}
-						Waiting...
+						{m.comp_hackatime_waiting()}
 					{:else if status === 'invalid'}
-						Token Expired
+						{m.comp_hackatime_token_expired()}
 					{:else}
-						Not Linked
+						{m.comp_hackatime_not_linked()}
 					{/if}
 				</span>
 			</div>
-			<span class="font-bricolage text-base font-semibold text-black/60">Hackatime keeps track of the amount of time you spend on your projects! <a href="https://hackatime.hackclub.com/my/wakatime_setup" target="_blank" rel="noopener" class="underline text-black/60" onclick={(e) => e.stopPropagation()}>Hackatime Setup</a></span>
+			<span class="font-bricolage text-base font-semibold text-black/60">{m.comp_hackatime_card_description()} <a href="https://hackatime.hackclub.com/my/wakatime_setup" target="_blank" rel="noopener" class="underline text-black/60" onclick={(e) => e.stopPropagation()}>{m.comp_hackatime_setup_link()}</a></span>
 		</div>
 	</button>
 {:else}
@@ -119,16 +120,16 @@
 			<img src={hackatimeIcon} alt="Hackatime" class="w-8 h-[39px]" />
 			<div class="flex flex-col items-start leading-normal">
 				{#if status === 'loading'}
-					<span class="font-bricolage text-base font-bold text-black">Loading...</span>
+					<span class="font-bricolage text-base font-bold text-black">{m.comp_hackatime_loading()}</span>
 				{:else if status === 'linked'}
-					<span class="font-bricolage text-base font-bold text-black">Linked</span>
-					<span class="font-bricolage text-base font-normal text-black">Hackatime account connected</span>
+					<span class="font-bricolage text-base font-bold text-black">{m.comp_hackatime_btn_linked()}</span>
+					<span class="font-bricolage text-base font-normal text-black">{m.comp_hackatime_btn_linked_desc()}</span>
 				{:else if status === 'invalid'}
-					<span class="font-bricolage text-base font-bold text-black">{linking ? 'Waiting...' : 'Expired'}</span>
-					<span class="font-bricolage text-base font-normal text-black">{linking ? 'Complete linking in the new tab' : 'Token expired — click to relink'}</span>
+					<span class="font-bricolage text-base font-bold text-black">{linking ? m.comp_hackatime_waiting() : m.comp_hackatime_btn_expired()}</span>
+					<span class="font-bricolage text-base font-normal text-black">{linking ? m.comp_hackatime_complete_in_tab() : m.comp_hackatime_btn_expired_desc()}</span>
 				{:else}
-					<span class="font-bricolage text-base font-bold text-black">{linking ? 'Waiting...' : 'Unlinked'}</span>
-					<span class="font-bricolage text-base font-normal text-black">{linking ? 'Complete linking in the new tab' : 'Link account to Hackatime'}</span>
+					<span class="font-bricolage text-base font-bold text-black">{linking ? m.comp_hackatime_waiting() : m.comp_hackatime_btn_unlinked()}</span>
+					<span class="font-bricolage text-base font-normal text-black">{linking ? m.comp_hackatime_complete_in_tab() : m.comp_hackatime_btn_unlinked_desc()}</span>
 				{/if}
 			</div>
 		</div>

@@ -10,6 +10,7 @@
 	import { api } from '$lib/api';
 	import { shopConfigs, type ShopBranding } from '$lib/data/shops';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Shop {
 		shopId: number;
@@ -35,7 +36,7 @@
 		try {
 			const { data, error: apiError } = await api.GET('/api/shop/shops');
 			if (apiError) {
-				error = 'Failed to load shops';
+				error = m.shop_list_load_error();
 			} else {
 				allShops = (data as unknown as Shop[]) ?? [];
 			}
@@ -121,7 +122,7 @@
 			{#if loading || error || shops.length === 0}
 				<div class="shop-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex items-center justify-center shrink-0 self-center" class:exiting={navigating} style="--card-index: 0; width: 548px; height: 300px;">
 					<p class="font-cook font-semibold text-black text-[40px] m-0 opacity-50">
-						{#if loading}LOADING...{:else if error}{error}{:else}NO SHOPS AVAILABLE{/if}
+						{#if loading}{m.shop_list_loading()}{:else if error}{error}{:else}{m.shop_list_empty()}{/if}
 					</p>
 				</div>
 			{:else}
@@ -161,7 +162,7 @@
 								class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black z-10"
 								style="background-color: {branding?.tag?.color ?? '#d1d5db'};"
 							>
-								{branding?.tag?.text ?? 'CLOSED'}
+								{branding?.tag?.text ?? m.shop_list_closed()}
 							</span>
 						{/if}
 
@@ -191,9 +192,9 @@
 						{#if selected && !inactive}
 							<div class="flex items-center gap-2 z-1 mt-3">
 								<InputPrompt type="Enter" color={branding?.navHintColor ?? 'black'} />
-								<span class="font-bricolage text-2xl font-bold" style="color: {branding?.navHintColor ?? 'black'};">OR</span>
+								<span class="font-bricolage text-2xl font-bold" style="color: {branding?.navHintColor ?? 'black'};">{m.shop_list_or()}</span>
 								<InputPrompt type="click" color={branding?.navHintColor ?? 'black'} />
-								<span class="font-bricolage text-2xl font-bold" style="color: {branding?.navHintColor ?? 'black'};">TO VIEW</span>
+								<span class="font-bricolage text-2xl font-bold" style="color: {branding?.navHintColor ?? 'black'};">{m.shop_list_to_view()}</span>
 							</div>
 						{/if}
 					</button>
@@ -213,11 +214,11 @@
 	<div class="fade-wrap" class:entered class:exiting={navigating || interacted}>
 		<NavigationHint
 			segments={[
-				{ type: 'text', value: 'USE' },
+				{ type: 'text', value: m.shop_list_nav_use() },
 				{ type: 'input', value: 'AD' },
-				{ type: 'text', value: 'OR' },
+				{ type: 'text', value: m.shop_list_or() },
 				{ type: 'input', value: 'mouse-scroll' },
-				{ type: 'text', value: 'TO NAVIGATE' }
+				{ type: 'text', value: m.shop_list_nav_to_navigate() }
 			]}
 			position="bottom-right"
 		/>

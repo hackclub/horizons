@@ -10,7 +10,9 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"generate:api": "openapi-typescript http://localhost:3000/api/docs-json -o src/lib/api/schema.d.ts"
+		"generate:api": "openapi-typescript http://localhost:3000/api/docs-json -o src/lib/api/schema.d.ts",
+		"i18n:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide",
+		"i18n:merge": "node scripts/merge-messages.mjs"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
@@ -27,6 +29,7 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
+		"@inlang/paraglide-js": "^2.17.0",
 		"cobe": "^2.0.1",
 		"dompurify": "^3.4.0",
 		"gsap": "^3.14.2",

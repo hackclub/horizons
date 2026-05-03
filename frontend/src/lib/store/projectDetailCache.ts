@@ -1,5 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import { api, type components } from '$lib/api';
+import { m } from '$lib/paraglide/messages.js';
 
 type ProjectResponse = components['schemas']['ProjectResponse'];
 
@@ -79,7 +80,7 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 		if (projectRes.data) {
 			project = projectRes.data as ProjectResponse;
 		} else {
-			error = 'Failed to load project';
+			error = m.ts_project_load_failed();
 		}
 
 		if (submissionsRes.data) {
@@ -128,7 +129,7 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 
 		return { project, submission, hackatimeInfo };
 	} catch (err) {
-		const errorMsg = err instanceof Error ? err.message : 'Failed to load project details';
+		const errorMsg = err instanceof Error ? err.message : m.ts_project_details_load_failed();
 		projectDetailStore.set({
 			project: null,
 			submission: null,
@@ -225,7 +226,7 @@ export async function fetchEditData(id: string, forceRefresh = false) {
 		if (projectRes.data) {
 			project = projectRes.data as ProjectResponse;
 		} else {
-			error = 'Failed to load project';
+			error = m.ts_project_load_failed();
 		}
 
 		// Merge linked (for this project) + unlinked projects — linked shown first
@@ -266,7 +267,7 @@ export async function fetchEditData(id: string, forceRefresh = false) {
 
 		return cacheEntry;
 	} catch (err) {
-		const errorMsg = err instanceof Error ? err.message : 'Failed to load edit data';
+		const errorMsg = err instanceof Error ? err.message : m.ts_project_edit_load_failed();
 		editDataStore.set({
 			project: null,
 			allHackatimeProjects: [],

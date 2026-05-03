@@ -13,6 +13,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { createListNav, parseNavKey, isNavKey, clampIndex, navState } from '$lib/nav/wasd.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	import hIcon from '$lib/assets/icons/h.svg';
 	import huhIcon from '$lib/assets/icons/huh.svg';
@@ -347,7 +348,7 @@
 
 		<label class="disable-anim-checkbox">
 			<input type="checkbox" bind:checked={disableAnimations} />
-			Disable animations
+			{m.faq_event_disable_animations()}
 		</label>
 	{/if}
 
@@ -377,8 +378,8 @@
 				<div class="w-full flex justify-center" in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 500 }} bind:this={cardRefs[0]} onmouseenter={() => { if (!signupEmailFocused) nav.select(0); }}>
 					{#if isAuthed}
 						<MenuItem
-							title="SIGN BACK IN"
-							subtitle="GET BACK TO WORKING ON YOUR PROJECTS!"
+							title={m.faq_event_sign_back_in_title()}
+							subtitle={m.faq_event_sign_back_in_subtitle()}
 							chevron
 							selected={nav.selectedIndex === 0}
 							preserveIcon
@@ -393,8 +394,8 @@
 						</MenuItem>
 					{:else}
 						<MenuItem
-							title={config.menu[0]?.title ?? 'JOIN NOW'}
-							subtitle={config.menu[0]?.subtitle ?? 'START WORKING ON YOUR PROJECTS!'}
+							title={config.menu[0]?.title ?? m.faq_event_join_now_title()}
+							subtitle={config.menu[0]?.subtitle ?? m.faq_event_join_now_subtitle()}
 							chevron
 							selected={nav.selectedIndex === 0}
 							preserveIcon
@@ -403,7 +404,7 @@
 							bind:email={signupEmail}
 							bind:emailFocused={signupEmailFocused}
 							onSignup={activateJoinNow}
-							signupHint={navState.usingKeyboard ? "Press enter to enter your email" : "Click to enter your email"}
+							signupHint={navState.usingKeyboard ? m.faq_event_signup_hint_keyboard() : m.faq_event_signup_hint_click()}
 							onclick={isMobile ? () => activateJoinNow('') : undefined}
 						>
 							{#snippet icon()}
@@ -416,8 +417,8 @@
 				</div>
 				<div class="w-full flex justify-center" in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 600 }} bind:this={cardRefs[1]} onmouseenter={() => { if (!signupEmailFocused) nav.select(1); }}>
 					<MenuItem
-						title={config.menu[1]?.title ?? "WHAT'S THIS?"}
-						subtitle={config.menu[1]?.subtitle ?? 'LEARN MORE ABOUT THE EVENT!'}
+						title={config.menu[1]?.title ?? m.faq_event_whats_this_title()}
+						subtitle={config.menu[1]?.subtitle ?? m.faq_event_whats_this_subtitle()}
 						selected={nav.selectedIndex === 1}
 						preserveIcon
 						{disableAnimations}
@@ -441,7 +442,7 @@
 				class="absolute bottom-0 left-4 bg-transparent border-none cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-200"
 				onclick={() => { activated = false; isTransitioning = false; }}
 			>
-				<BobaText text="< BACK" fontSize={24} {disableAnimations} />
+				<BobaText text={m.faq_event_back()} fontSize={24} {disableAnimations} />
 			</button>
 		</div>
 	{/if}

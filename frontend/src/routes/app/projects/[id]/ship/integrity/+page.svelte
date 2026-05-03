@@ -6,6 +6,7 @@
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { FormCard, FormButtons } from '$lib/components/form';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const projectId = $derived(page.params.id);
 
@@ -42,26 +43,26 @@
 <div class="relative size-full">
 	{#if loading}
 		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-			<p class="font-cook text-[36px] font-semibold text-black m-0">LOADING...</p>
+			<p class="font-cook text-[36px] font-semibold text-black m-0">{m.projects_ship_integrity_loading()}</p>
 		</div>
 	{:else}
 		<div class="hidden sm:block absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none">
 			<TurbulentImage src={heroUrl || heroPlaceholder} alt={projectTitle} inset="0 0 0 0" filterId="hero-turbulence" />
 		</div>
 
-		<FormCard title="HACKATIME INTEGRITY AGREEMENT">
+		<FormCard title={m.projects_ship_integrity_title()}>
 			<div class="bg-white/50 rounded-lg p-2 w-full">
 				<p class="font-bricolage text-[20px] leading-normal tracking-[-0.22px] text-black m-0">
-					Don't cheat the time tracking system. No bots, no fake key presses, no UI manipulation. If you do, you'll be banned from Hackatime and other participating YSWS / events / programs
+					{m.projects_ship_integrity_warning()}
 				</p>
 			</div>
 			<p class="font-bricolage text-[20px] leading-normal tracking-[-0.22px] text-black m-0">
-				By submitting your project to Horizons, you agree to the Hackatime Integrity Agreement.
+				{m.projects_ship_integrity_agree_blurb()}
 			</p>
 			<FormButtons
 				onback={() => goto(`/app/projects/${projectId}/ship/project`)}
 				onnext={() => goto(`/app/projects/${projectId}/ship/finish`)}
-				nextLabel="AGREE TO TERMS →"
+				nextLabel={m.projects_ship_integrity_agree_button()}
 				blink
 			/>
 		</FormCard>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
 	import { page } from '$app/state';
@@ -437,8 +438,8 @@ void main(){
 <svelte:window onkeydown={handleGlobalKeydown} />
 
 <svelte:head>
-	<title>Horizons | Hack Club</title>
-	<meta name="description" content="High school flagship hackathons across the world, brought to you by Hack Club." />
+	<title>{m.landing_meta_title()}</title>
+	<meta name="description" content={m.landing_meta_description()} />
 </svelte:head>
 
 <BG class="landing-page overflow-x-hidden overflow-y-auto overscroll-none font-['Bricolage_Grotesque',sans-serif]">
@@ -454,16 +455,16 @@ void main(){
 		</div>
 
 		<!-- Orpheus flag -->
-		<img src={flagOrpheus} alt="Hack Club" class="absolute -top-1 left-[59px] w-[135px] h-auto z-5 sm:left-[59px] max-sm:left-[24px] max-sm:w-[200px] max-sm:h-auto" />
+		<img src={flagOrpheus} alt={m.landing_hack_club_alt()} class="absolute -top-1 left-[59px] w-[135px] h-auto z-5 sm:left-[59px] max-sm:left-[24px] max-sm:w-[200px] max-sm:h-auto" />
 	</div>
 
 	<!-- ===== HERO SECTION ===== -->
 	<section class="relative flex flex-col gap-6 pt-[70px] px-[59px] max-w-[1020px] max-lg:px-6 max-lg:pt-[80px] sm:h-[70vh] sm:min-h-[600px] sm:z-1 max-sm:items-center max-sm:pt-24 max-sm:pb-10 max-sm:px-4">
-		<img src={heroLogo} alt="Horizons" class="w-[560px] h-auto max-lg:w-full max-lg:max-w-[560px] max-sm:mt-6" />
+		<img src={heroLogo} alt={m.landing_hero_logo_alt()} class="w-[560px] h-auto max-lg:w-full max-lg:max-w-[560px] max-sm:mt-6" />
 
 		<div class="font-cook max-sm:text-center">
-			<p class="hero-subtitle text-[32px] text-black m-0 leading-[1.2] max-sm:text-base max-sm:whitespace-normal whitespace-nowrap">We're running 7 hackathons across the world.</p>
-			<p class="hero-title text-[48px] text-black m-0 leading-[1.2] max-sm:text-2xl">And you're invited.</p>
+			<p class="hero-subtitle text-[32px] text-black m-0 leading-[1.2] max-sm:text-base max-sm:whitespace-normal whitespace-nowrap">{m.landing_hero_subtitle()}</p>
+			<p class="hero-title text-[48px] text-black m-0 leading-[1.2] max-sm:text-2xl">{m.landing_hero_title()}</p>
 		</div>
 
 		<!-- Signup Card (desktop) -->
@@ -481,17 +482,17 @@ void main(){
 			</div>
 			{#if isReturningUser}
 				<div class="relative flex flex-col items-center justify-center gap-6 py-5 px-[30px] z-1">
-					<p class="font-cook text-[48px] text-black m-0 leading-none">LOG BACK IN</p>
+					<p class="font-cook text-[48px] text-black m-0 leading-none">{m.landing_log_back_in()}</p>
 					<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink!">
 						<InputPrompt type="Enter" />
-						<p class="font-bold text-sm text-black leading-6">OR</p>
+						<p class="font-bold text-sm text-black leading-6">{m.landing_or()}</p>
 						<InputPrompt type="click" />
-						<p class="font-bold text-sm text-black leading-6">TO LOG BACK IN</p>
+						<p class="font-bold text-sm text-black leading-6">{m.landing_to_log_back_in()}</p>
 					</div>
 				</div>
 			{:else}
 			<div class="relative flex flex-col gap-4 justify-center py-5 px-[30px] z-1">
-				<p class="font-cook text-[32px] text-black m-0 leading-none">SIGN UP NOW</p>
+				<p class="font-cook text-[32px] text-black m-0 leading-none">{m.landing_sign_up_now()}</p>
 				<div class="flex gap-3 items-center">
 					<input
 						id="signup-email"
@@ -515,20 +516,20 @@ void main(){
 							if (isValidEmail) handleSignup(signupEmail);
 							else showInvalidHint = true;
 						}}
-					>SIGN UP</button>
+					>{m.landing_sign_up()}</button>
 				</div>
 				{#if showInvalidHint}
-					<p class="font-['Bricolage_Grotesque',sans-serif] text-sm m-0 text-[#c00]">Please enter a valid email</p>
+					<p class="font-['Bricolage_Grotesque',sans-serif] text-sm m-0 text-[#c00]">{m.landing_invalid_email()}</p>
 				{/if}
 				<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {emailFocused ? 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden' : 'opacity-100 max-h-10'}">
 					<InputPrompt type="Enter" />
-					<p class="font-bold text-sm text-black leading-6">OR</p>
+					<p class="font-bold text-sm text-black leading-6">{m.landing_or()}</p>
 					<InputPrompt type="click" />
-					<p class="font-bold text-sm text-black leading-6">TO FOCUS</p>
+					<p class="font-bold text-sm text-black leading-6">{m.landing_to_focus()}</p>
 				</div>
 				<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {emailFocused && isValidEmail ? 'opacity-100 max-h-10' : 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden'}">
 					<InputPrompt type="Enter" />
-					<p class="font-bold text-sm text-black leading-6">TO SIGN UP</p>
+					<p class="font-bold text-sm text-black leading-6">{m.landing_to_sign_up()}</p>
 				</div>
 			</div>
 			{/if}
@@ -540,7 +541,7 @@ void main(){
 				<button
 					class="signup-btn valid border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
 					onclick={goToApp}
-				>LOG BACK IN</button>
+				>{m.landing_log_back_in()}</button>
 			{:else}
 				<input
 					type="email"
@@ -561,14 +562,14 @@ void main(){
 						if (isValidEmail) handleSignup(signupEmail);
 						else showInvalidHint = true;
 					}}
-				>SIGN UP</button>
+				>{m.landing_sign_up()}</button>
 				{#if showInvalidHint}
-					<p class="font-bricolage text-sm m-0 text-[#c00] text-center">Please enter a valid email</p>
+					<p class="font-bricolage text-sm m-0 text-[#c00] text-center">{m.landing_invalid_email()}</p>
 				{/if}
 			{/if}
 		</div>
 
-		<p class="font-['Bricolage_Grotesque',sans-serif] text-2xl font-medium text-[#666] max-sm:hidden">Scroll to read more...</p>
+		<p class="font-['Bricolage_Grotesque',sans-serif] text-2xl font-medium text-[#666] max-sm:hidden">{m.landing_scroll_to_read_more()}</p>
 	</section>
 
 	<!-- ===== BLURB SECTION ===== -->
@@ -579,12 +580,12 @@ void main(){
 
 		<div class="bg-black w-full relative py-[51px] px-[81px] pb-[60px] min-h-[620px] max-sm:min-h-0 overflow-hidden max-sm:overflow-visible max-sm:py-[30px] max-sm:px-4">
 			<div class="text-white text-2xl leading-relaxed max-w-[700px] max-sm:text-lg [&_p]:m-0 [&_.bold]:font-bold">
-				<p>This summer, we're running something we've never done before.</p>
+				<p>{m.landing_blurb_intro()}</p>
 				<p class="bold">&ZeroWidthSpace;</p>
-				<p class="bold">7 hackathons. Ran by teenagers across the globe. For teenagers everywhere.</p>
+				<p class="bold">{m.landing_blurb_headline()}</p>
 				<p class="bold">&ZeroWidthSpace;</p>
-				<p>Fly out to San Francisco, Sydney, Toronto, Berlin, Cairo, Singapore or Sao Paulo. For Free.</p>
-				<p>Go on an adventure of a lifetime.</p>
+				<p>{m.landing_blurb_cities()}</p>
+				<p>{m.landing_blurb_adventure()}</p>
 			</div>
 
 			<!-- How steps -->
@@ -593,18 +594,18 @@ void main(){
 					<img src={blurbPhoto} alt="" class="absolute max-w-none" style="width: 218.8%; height: 467.01%; left: -70.3%; top: -70.94%;" />
 				</div>
 				<div class="relative z-1 flex flex-col gap-4 justify-center h-full pl-[81px] pr-[80px] max-sm:pl-10 max-sm:pr-4 max-sm:py-8">
-					<p class="text-2xl font-semibold text-black m-0 max-sm:text-lg">How?</p>
+					<p class="text-2xl font-semibold text-black m-0 max-sm:text-lg">{m.landing_how_heading()}</p>
 					<div class="flex gap-2 items-center">
 						<div class="border-2 border-black rounded-full w-[30px] h-[30px] flex items-center justify-center text-xl text-black shrink-0">1</div>
-						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:whitespace-normal max-sm:text-lg">Sign up for Horizons</p>
+						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:whitespace-normal max-sm:text-lg">{m.landing_how_step_1()}</p>
 					</div>
 					<div class="flex gap-2 items-start">
 						<div class="border-2 border-black rounded-full w-[30px] h-[30px] flex items-center justify-center text-xl text-black shrink-0">2</div>
-						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:whitespace-normal max-sm:text-lg">Spend 30-35 hours hacking & shipping projects<br /><span class="text-black/60">(that's about a week!)</span></p>
+						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:whitespace-normal max-sm:text-lg">{m.landing_how_step_2_main()}<br /><span class="text-black/60">{m.landing_how_step_2_aside()}</span></p>
 					</div>
 					<div class="flex gap-2 items-start">
 						<div class="border-2 border-black rounded-full w-[30px] h-[30px] flex items-center justify-center text-xl text-black shrink-0">3</div>
-						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:whitespace-normal max-sm:text-lg">Earn your ticket to a hackathon of your choosing</p>
+						<p class="text-2xl text-black m-0 leading-[1.4] whitespace-nowrap max-sm:whitespace-normal max-sm:text-lg">{m.landing_how_step_3()}</p>
 					</div>
 				</div>
 			</div>
@@ -655,11 +656,11 @@ void main(){
 
 	<!-- ===== PREVIOUS EVENTS SECTION ===== -->
 	<section class="relative z-1 p-[60px] max-sm:p-6 max-sm:pt-10">
-		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-base">Hackathons we've ran before...</h2>
+		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-base">{m.landing_prev_events_heading()}</h2>
 		<div class="flex gap-8 items-center justify-center flex-wrap max-sm:flex-col max-sm:gap-8">
 			<!-- Shipwrecked -->
 			<a href="https://shipwrecked.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center max-sm:w-full max-sm:h-auto max-sm:p-4 max-sm:gap-2.5" style="background-image: url({prevEventBg1})">
-				<img src={prevEventLogo1} alt="Shipwrecked" class="relative z-1 object-cover w-[139px] h-[88px]" />
+				<img src={prevEventLogo1} alt={m.landing_event_shipwrecked()} class="relative z-1 object-cover w-[139px] h-[88px]" />
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = 'uXWMr0gdLJA'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = 'uXWMr0gdLJA'; } }}>
 					<img src="https://img.youtube.com/vi/uXWMr0gdLJA/maxresdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover/vid:scale-110" />
@@ -667,12 +668,12 @@ void main(){
 						<svg class="w-12 h-12 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
 					</div>
 				</div>
-				<p class="relative z-1 text-base font-semibold text-black text-center m-0">A hackathon on an island in the Boston Harbor!</p>
+				<p class="relative z-1 text-base font-semibold text-black text-center m-0">{m.landing_event_shipwrecked_desc()}</p>
 			</a>
 
 			<!-- Apocalypse -->
 			<a href="https://apocalypse.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center max-sm:w-full max-sm:h-auto max-sm:p-4 max-sm:gap-2.5" style="background-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.6)), url({prevEventBg2})">
-				<img src={prevEventLogo2} alt="Apocalypse" class="relative z-1 w-full object-cover" style="aspect-ratio: 3240/1080;" />
+				<img src={prevEventLogo2} alt={m.landing_event_apocalypse()} class="relative z-1 w-full object-cover" style="aspect-ratio: 3240/1080;" />
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = 'QvCoISXfcE8'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = 'QvCoISXfcE8'; } }}>
 					<img src="https://img.youtube.com/vi/QvCoISXfcE8/maxresdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover/vid:scale-110" />
@@ -680,12 +681,12 @@ void main(){
 						<svg class="w-12 h-12 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
 					</div>
 				</div>
-				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">Canada's largest high school hackathon!</p>
+				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">{m.landing_event_apocalypse_desc()}</p>
 			</a>
 
 			<!-- Scrapyard -->
 			<a href="https://scrapyard.hackclub.com" target="_blank" rel="noopener noreferrer" class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105 bg-[#f3e8d8] bg-cover bg-center max-sm:w-full max-sm:h-auto max-sm:p-4 max-sm:gap-2.5" style="background-image: url({prevEventBg3})">
-				<img src={scrapyardLogo} alt="Scrapyard" class="relative z-1 w-[119px] h-[57px]" />
+				<img src={scrapyardLogo} alt={m.landing_event_scrapyard()} class="relative z-1 w-[119px] h-[57px]" />
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="group/vid relative z-1 w-full aspect-video overflow-hidden rounded-lg cursor-pointer" onclick={(e) => { e.preventDefault(); e.stopPropagation(); activeVideo = '8iM1W8kXrQA'; }} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); activeVideo = '8iM1W8kXrQA'; } }}>
 					<img src="https://img.youtube.com/vi/8iM1W8kXrQA/maxresdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover/vid:scale-110" />
@@ -693,20 +694,20 @@ void main(){
 						<svg class="w-12 h-12 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
 					</div>
 				</div>
-				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">A hackathon about building the stupidest projects ever</p>
+				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">{m.landing_event_scrapyard_desc()}</p>
 			</a>
 
 			<!-- Campfire -->
 			<a href="https://flagship.campfire.hackclub.com" target="_blank" rel="noopener noreferrer" class="max-sm:hidden bg-[#160124] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] flex flex-col items-center justify-between overflow-hidden relative shrink-0 w-70 h-95 p-6 no-underline transition-transform duration-200 hover:scale-105">
 				<div class="relative z-1 w-[176px] h-[39px] overflow-hidden px-[5px]">
 					<div class="w-full aspect-[1233/180] relative overflow-hidden">
-						<img src={campfireLogo} alt="Campfire Flagship" class="absolute max-w-none" style="height: 181.11%; left: -4.46%; top: -11.11%; width: 109.81%;" />
+						<img src={campfireLogo} alt={m.landing_event_campfire()} class="absolute max-w-none" style="height: 181.11%; left: -4.46%; top: -11.11%; width: 109.81%;" />
 					</div>
 				</div>
 				<div class="relative z-1 w-full aspect-video overflow-hidden rounded-lg">
 					<img src={campfirePhoto} alt="" class="absolute inset-0 w-full h-full object-cover" />
 				</div>
-				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">A hackathon with a bunch of youtubers, including Michael Reeves and William Osman</p>
+				<p class="relative z-1 text-base font-semibold text-white text-center m-0 w-full">{m.landing_event_campfire_desc()}</p>
 			</a>
 		</div>
 	</section>
@@ -728,7 +729,7 @@ void main(){
 			<div class="summer-divider-mask absolute bottom-0 left-0 w-full aspect-[1444/120] z-20 rotate-180" style="background-color: #f3e8d8;"></div>
 
 			<div class="relative z-1 flex flex-col gap-8 h-full pt-[100px] pb-[100px] max-sm:pt-20 max-sm:pb-10 px-[60px] max-sm:px-4">
-				<h2 class="font-cook text-[32px] max-sm:text-base text-black m-0 whitespace-nowrap" style="-webkit-text-stroke: 8px #f3e8d8; paint-order: stroke fill;">This summer, we're running...</h2>
+				<h2 class="font-cook text-[32px] max-sm:text-base text-black m-0 whitespace-nowrap" style="-webkit-text-stroke: 8px #f3e8d8; paint-order: stroke fill;">{m.landing_summer_heading()}</h2>
 
 				<div class="flex-1 min-h-0 overflow-visible relative max-sm:overflow-hidden">
 					<div
@@ -799,7 +800,7 @@ void main(){
 
 	<!-- ===== FAQ SECTION ===== -->
 	<section class="relative z-1 p-[60px] max-sm:p-6 max-sm:pt-10">
-		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-2xl">FAQ</h2>
+		<h2 class="font-cook text-[32px] text-black m-0 mb-8 max-sm:text-2xl">{m.landing_faq_heading()}</h2>
 		<div class="flex flex-col gap-5 w-full">
 			{#each faqItems as item, i}
 				{@const isOpen = openFaqIndex === i}
@@ -826,7 +827,7 @@ void main(){
 				</button>
 			{/each}
 		</div>
-		<a href="/faq" class="inline-block mt-6 text-sm text-black/50 hover:text-black underline transition-colors">See all &rarr;</a>
+		<a href="/faq" class="inline-block mt-6 text-sm text-black/50 hover:text-black underline transition-colors">{m.landing_faq_see_all()}</a>
 	</section>
 
 	<!-- ===== LOWER CTA SECTION ===== -->
@@ -841,7 +842,7 @@ void main(){
 		<!-- CTA content — fixed height to prevent scale from shifting doc flow -->
 		<div class="h-100 max-sm:h-auto overflow-hidden">
 		<div class="flex flex-col items-center gap-8 py-16 px-[60px] max-sm:px-4 max-sm:py-8">
-			<h2 class="font-cook text-[32px] max-sm:text-2xl text-black m-0 text-center">Join us this summer!</h2>
+			<h2 class="font-cook text-[32px] max-sm:text-2xl text-black m-0 text-center">{m.landing_cta_heading()}</h2>
 
 			<!-- CTA signup card (desktop) -->
 			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
@@ -858,17 +859,17 @@ void main(){
 				</div>
 				{#if isReturningUser}
 					<div class="relative flex flex-col items-center justify-center gap-6 py-5 px-7.5 z-1">
-						<p class="font-cook text-[48px] text-black m-0 leading-none">LOG BACK IN</p>
+						<p class="font-cook text-[48px] text-black m-0 leading-none">{m.landing_log_back_in()}</p>
 						<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink!">
 							<InputPrompt type="Enter" />
-							<p class="font-bold text-sm text-black leading-6">OR</p>
+							<p class="font-bold text-sm text-black leading-6">{m.landing_or()}</p>
 							<InputPrompt type="click" />
-							<p class="font-bold text-sm text-black leading-6">TO LOG BACK IN</p>
+							<p class="font-bold text-sm text-black leading-6">{m.landing_to_log_back_in()}</p>
 						</div>
 					</div>
 				{:else}
 				<div class="relative flex flex-col gap-4 justify-center py-5 px-7.5 z-1">
-					<p class="font-cook text-[32px] text-black m-0 leading-none">SIGN UP NOW</p>
+					<p class="font-cook text-[32px] text-black m-0 leading-none">{m.landing_sign_up_now()}</p>
 					<div class="flex gap-3 items-center">
 						<input
 							id="cta-email"
@@ -892,20 +893,20 @@ void main(){
 								if (isValidCtaEmail) handleSignup(ctaEmail);
 								else ctaInvalidHint = true;
 							}}
-						>SIGN UP</button>
+						>{m.landing_sign_up()}</button>
 					</div>
 					{#if ctaInvalidHint}
-						<p class="font-bricolage text-sm m-0 text-[#c00]">Please enter a valid email</p>
+						<p class="font-bricolage text-sm m-0 text-[#c00]">{m.landing_invalid_email()}</p>
 					{/if}
 					<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {ctaEmailFocused ? 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden' : 'opacity-100 max-h-10'}">
 						<InputPrompt type="Enter" />
-						<p class="font-bold text-sm text-black leading-6">OR</p>
+						<p class="font-bold text-sm text-black leading-6">{m.landing_or()}</p>
 						<InputPrompt type="click" />
-						<p class="font-bold text-sm text-black leading-6">TO FOCUS</p>
+						<p class="font-bold text-sm text-black leading-6">{m.landing_to_focus()}</p>
 					</div>
 					<div class="flex gap-2 items-center [&_div]:h-8! [&_div]:shrink! transition-all duration-(--selected-duration) ease-out {ctaEmailFocused && isValidCtaEmail ? 'opacity-100 max-h-10' : 'opacity-0 pointer-events-none max-h-0 -mt-4 overflow-hidden'}">
 						<InputPrompt type="Enter" />
-						<p class="font-bold text-sm text-black leading-6">TO SIGN UP</p>
+						<p class="font-bold text-sm text-black leading-6">{m.landing_to_sign_up()}</p>
 					</div>
 				</div>
 				{/if}
@@ -917,7 +918,7 @@ void main(){
 					<button
 						class="signup-btn valid border-2 border-black rounded-lg py-2 px-4 font-bricolage text-2xl font-semibold text-black cursor-pointer w-full"
 						onclick={goToApp}
-					>LOG BACK IN</button>
+					>{m.landing_log_back_in()}</button>
 				{:else}
 					<input
 						type="email"
@@ -936,9 +937,9 @@ void main(){
 							if (isValidCtaEmail) handleSignup(ctaEmail);
 							else ctaInvalidHint = true;
 						}}
-					>SIGN UP</button>
+					>{m.landing_sign_up()}</button>
 					{#if ctaInvalidHint}
-						<p class="font-bricolage text-sm m-0 text-[#c00] text-center">Please enter a valid email</p>
+						<p class="font-bricolage text-sm m-0 text-[#c00] text-center">{m.landing_invalid_email()}</p>
 					{/if}
 				{/if}
 			</div>
@@ -956,41 +957,41 @@ void main(){
 			<!-- Top text -->
 			<div class="text-white max-w-[755px]">
 				<p class="text-2xl m-0">
-					<span class="font-semibold">A project by Hack Club</span><br />
-					With love from the Horizons team.
+					<span class="font-semibold">{m.landing_footer_project_by()}</span><br />
+					{m.landing_footer_love()}
 				</p>
 				<p class="text-base text-white mt-4 m-0 leading-relaxed">
-					Hack Club is a 501(c)(3) nonprofit and network of 60k+ technical high schoolers. We believe you learn best by building so we're creating community and providing grants so you can make awesome projects. In the past few years, we've partnered with GitHub to run <a href="https://summer.hackclub.com/" target="_blank" rel="noopener" class="text-white underline">Summer of Making</a>, hosted the <a href="https://github.com/hackclub/the-hacker-zephyr" target="_blank" rel="noopener" class="text-white underline">world's longest hackathon on land</a>, and ran <a href="https://www.youtube.com/watch?v=QvCoISXfcE8" target="_blank" rel="noopener" class="text-white underline">Canada's largest high school hackathon</a>.
+					{m.landing_footer_about_pre()} <a href="https://summer.hackclub.com/" target="_blank" rel="noopener" class="text-white underline">{m.landing_footer_about_link_som()}</a>{m.landing_footer_about_mid_1()} <a href="https://github.com/hackclub/the-hacker-zephyr" target="_blank" rel="noopener" class="text-white underline">{m.landing_footer_about_link_zephyr()}</a>{m.landing_footer_about_mid_2()} <a href="https://www.youtube.com/watch?v=QvCoISXfcE8" target="_blank" rel="noopener" class="text-white underline">{m.landing_footer_about_link_canada()}</a>{m.landing_footer_about_post()}
 				</p>
 			</div>
 
 			<!-- Link columns -->
 			<div class="flex gap-8 mt-10 flex-wrap max-sm:gap-4">
 				<div class="flex flex-col gap-4 w-48">
-					<p class="font-cook text-2xl max-sm:text-xl text-white m-0">HACK CLUB</p>
+					<p class="font-cook text-2xl max-sm:text-xl text-white m-0">{m.landing_footer_col_hackclub()}</p>
 					<div class="flex flex-col gap-2.5 text-2xl max-sm:text-xl text-white">
-						<a href="https://hackclub.com/philosophy" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Our Philosophy</a>
-						<a href="https://hackclub.com/team" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Team &amp; Board</a>
-						<a href="https://hackclub.com/donate" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Donate</a>
-						<a href="https://hackclub.com/print" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Print</a>
-						<a href="mailto:press@hackclub.com" class="text-white no-underline hover:underline">Press Inquiries</a>
+						<a href="https://hackclub.com/philosophy" target="_blank" rel="noopener" class="text-white no-underline hover:underline">{m.landing_footer_link_philosophy()}</a>
+						<a href="https://hackclub.com/team" target="_blank" rel="noopener" class="text-white no-underline hover:underline">{m.landing_footer_link_team()}</a>
+						<a href="https://hackclub.com/donate" target="_blank" rel="noopener" class="text-white no-underline hover:underline">{m.landing_footer_link_donate()}</a>
+						<a href="https://hackclub.com/print" target="_blank" rel="noopener" class="text-white no-underline hover:underline">{m.landing_footer_link_print()}</a>
+						<a href="mailto:press@hackclub.com" class="text-white no-underline hover:underline">{m.landing_footer_link_press()}</a>
 					</div>
 				</div>
 				<div class="flex flex-col gap-4 w-48">
-					<p class="font-cook text-2xl max-sm:text-xl text-white m-0">HORIZONS</p>
+					<p class="font-cook text-2xl max-sm:text-xl text-white m-0">{m.landing_footer_col_horizons()}</p>
 					<div class="flex flex-col gap-2.5 text-2xl max-sm:text-xl text-white">
-						<a href="/" class="text-white no-underline hover:underline font-semibold">Sign up now</a>
-						<a href="/faq" class="text-white no-underline hover:underline">FAQ</a>
-						<a href="https://guides.horizons.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Guides</a>
+						<a href="/" class="text-white no-underline hover:underline font-semibold">{m.landing_footer_link_signup()}</a>
+						<a href="/faq" class="text-white no-underline hover:underline">{m.landing_footer_link_faq()}</a>
+						<a href="https://guides.horizons.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">{m.landing_footer_link_guides()}</a>
 					</div>
 				</div>
 				<div class="flex flex-col gap-4 w-57 max-sm:w-48">
-					<p class="font-cook text-2xl max-sm:text-xl text-white m-0">COMMUNITY</p>
+					<p class="font-cook text-2xl max-sm:text-xl text-white m-0">{m.landing_footer_col_community()}</p>
 					<div class="flex flex-col gap-2.5 text-2xl max-sm:text-xl text-white">
-						<a href="https://hackclub.com/slack" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Slack</a>
-						<a href="https://jams.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Jams</a>
-						<a href="https://workshops.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Workshops</a>
-						<a href="https://hackclub.com/conduct" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Code of Conduct</a>
+						<a href="https://hackclub.com/slack" target="_blank" rel="noopener" class="text-white no-underline hover:underline">{m.landing_footer_link_slack()}</a>
+						<a href="https://jams.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">{m.landing_footer_link_jams()}</a>
+						<a href="https://workshops.hackclub.com" target="_blank" rel="noopener" class="text-white no-underline hover:underline">{m.landing_footer_link_workshops()}</a>
+						<a href="https://hackclub.com/conduct" target="_blank" rel="noopener" class="text-white no-underline hover:underline">{m.landing_footer_link_conduct()}</a>
 					</div>
 				</div>
 			</div>
@@ -1005,7 +1006,7 @@ void main(){
 			<div class="relative w-full max-w-4xl aspect-video mx-4" onclick={(e) => e.stopPropagation()}>
 				<iframe
 					src="https://www.youtube.com/embed/{activeVideo}?autoplay=1"
-					title="Event video"
+					title={m.landing_video_title()}
 					class="w-full h-full rounded-xl"
 					frameborder="0"
 					allow="autoplay; encrypted-media"

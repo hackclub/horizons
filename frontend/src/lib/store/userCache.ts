@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { api } from '$lib/api';
+import { m } from '$lib/paraglide/messages.js';
 
 interface UserCache {
 	userName: string;
@@ -31,7 +32,7 @@ export const userStore = {
 				const slackDisplayName = userRes.data?.slackDisplayName as string | null | undefined;
 
 				store.set({
-					userName: slackDisplayName || 'you',
+					userName: slackDisplayName || m.ts_user_default_name(),
 					referralCode: referralRes.data?.referralCode ?? '',
 					role: (userRes.data?.role as string) ?? '',
 					loaded: true,

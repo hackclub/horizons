@@ -2,6 +2,7 @@
 	import puzzleSvg from '$lib/assets/home/puzzle.svg';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
 	import clickSvg from '$lib/assets/prompts/click.svg';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		selected?: boolean;
@@ -44,9 +45,9 @@
 	</div>
 
 	<div class="card-text z-10">
-		<p class="font-cook text-[40px] font-semibold text-black m-0">GUIDES</p>
+		<p class="font-cook text-[40px] font-semibold text-black m-0">{m.comp_guidescard_title()}</p>
 		<p class="font-bricolage text-[24px] font-semibold text-black m-0 tracking-[0.24px]">
-			Learn to build stuff!
+			{m.comp_guidescard_tagline()}
 		</p>
 	</div>
 
@@ -54,10 +55,10 @@
 		<div class="enter-hint">
 			<img
 				src={usingKeyboard ? enterSvg : clickSvg}
-				alt={usingKeyboard ? 'Enter' : 'Click'}
+				alt={usingKeyboard ? m.comp_guidescard_enter() : m.comp_guidescard_click()}
 				class="enter-hint-key"
 			/>
-			<span class="font-bricolage text-[12px] text-black font-semibold">TO VIEW GUIDES</span>
+			<span class="font-bricolage text-[12px] text-black font-semibold">{m.comp_guidescard_to_view()}</span>
 		</div>
 	{/if}
 
@@ -67,10 +68,10 @@
 			<div class="popover-hint">
 				<img
 					src={usingKeyboard ? enterSvg : clickSvg}
-					alt={usingKeyboard ? 'Enter' : 'Click'}
+					alt={usingKeyboard ? m.comp_guidescard_enter() : m.comp_guidescard_click()}
 					class="enter-hint-key"
 				/>
-				<span class="font-bricolage text-[12px] text-black font-semibold">TO VIEW GUIDES</span>
+				<span class="font-bricolage text-[12px] text-black font-semibold">{m.comp_guidescard_to_view()}</span>
 			</div>
 		</div>
 	{/if}

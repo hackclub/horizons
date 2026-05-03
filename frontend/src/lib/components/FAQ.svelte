@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	export let markdown: string = '';
 
 	function parseMarkdownToFaq(markdown: string) {
@@ -82,7 +83,7 @@
 		<div class="relative w-full px-6 sm:px-12 md:px-16 py-10 sm:py-12 overflow-visible">
 			<div class="relative z-10">
 				<div class="max-w-2xl mx-auto space-y-8">
-					<h1 class="font-cook text-center text-black tracking-widest" style="font-size: 3rem">FAQ</h1>
+					<h1 class="font-cook text-center text-black tracking-widest" style="font-size: 3rem">{m.comp_faq_title()}</h1>
 
 					<div class="space-y-8">
 						{#each faqs as faq (faq.id)}

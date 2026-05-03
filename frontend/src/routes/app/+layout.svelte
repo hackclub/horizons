@@ -10,16 +10,17 @@
 	import { api } from '$lib/api';
 	import { env } from '$env/dynamic/public';
 	import { onMount } from 'svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	let authed = $state(false);
 	let showNavLoading = $state(false);
 	let navTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	const loadingMessages = [
-		"It's okay, my hotspot sucks too.",
-		"Your computer just needs time to cook",
-		"The coolness is almost here",
-		"How's your day going?",
+		m.app_layout_loading_msg_1(),
+		m.app_layout_loading_msg_2(),
+		m.app_layout_loading_msg_3(),
+		m.app_layout_loading_msg_4(),
 	];
 	let loadingMessage = $state('');
 
@@ -112,8 +113,8 @@
 	<div class="fixed inset-0 bg-black z-50"></div>
 {:else if isMobile && !isProjectsRoute}
 	<div class="fixed inset-0 z-50 bg-[#271c0c] flex flex-col items-center justify-center gap-4 p-8 text-center">
-		<p class="font-cook text-[32px] font-semibold text-[#f3e8d8] leading-tight">THIS SITE ISN'T READY FOR MOBILE YET.</p>
-		<p class="font-bricolage text-[18px] font-semibold text-[#f3e8d8] tracking-wide">We recommend opening this on desktop.</p>
+		<p class="font-cook text-[32px] font-semibold text-[#f3e8d8] leading-tight">{m.app_layout_mobile_not_ready()}</p>
+		<p class="font-bricolage text-[18px] font-semibold text-[#f3e8d8] tracking-wide">{m.app_layout_mobile_recommend_desktop()}</p>
 	</div>
 {:else}
 	<BG {disableAnimations}>
@@ -124,7 +125,7 @@
 		{/key}
 		{#if showNavLoading}
 			<div class="absolute bottom-8 right-10 z-50 flex flex-col items-end" transition:fade={{ duration: 300 }}>
-				<BobaText text="LOADING..." fontSize={32} wave />
+				<BobaText text={m.app_layout_loading()} fontSize={32} wave />
 				<p class="font-bricolage text-[14px] text-black/50 mt-2">{loadingMessage}</p>
 			</div>
 		{/if}

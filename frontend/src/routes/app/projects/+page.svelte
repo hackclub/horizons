@@ -12,6 +12,7 @@
 	import type { components } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	type ProjectResponse = components['schemas']['ProjectResponse'];
 
@@ -162,21 +163,21 @@
 	<div class="hidden sm:block" style="opacity: {navigating || !entered ? 0 : selectedProject ? 1 : 0}; transition: opacity 0.4s ease;">
 		<TurbulentImage
 			src={selectedProject?.screenshotUrl ?? heroPlaceholder}
-			alt={selectedProject?.projectTitle ?? 'New Project'}
+			alt={selectedProject?.projectTitle ?? m.projects_list_new_project_alt()}
 			inset="0 -40% 0 40%"
 			zIndex={0}
 		/>
 	</div>
 
 	<!-- Mobile-only page header -->
-	<h1 class="sm:hidden font-cook text-[28px] font-semibold text-black m-0 px-4 pt-20 leading-none">PROJECTS</h1>
+	<h1 class="sm:hidden font-cook text-[28px] font-semibold text-black m-0 px-4 pt-20 leading-none">{m.projects_list_title()}</h1>
 
 	<!-- Scrollable project list -->
 	<div class="relative w-full px-4 pt-6 pb-24 sm:absolute sm:left-10.5 sm:top-45 sm:bottom-10 sm:w-215 sm:px-0 sm:pt-0 sm:pb-0 sm:overflow-visible z-2" role="listbox" tabindex="-1">
 		<div class="flex flex-col gap-4 sm:gap-7.5" bind:this={listEl} style="transform: translateY({isMobile ? 0 : scrollOffset}px); transition: transform var(--juice-duration) var(--juice-easing);">
 			{#if loading}
 				<div class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex items-center justify-center w-full sm:w-[649px]">
-					<p class="font-cook font-semibold text-black text-[28px] sm:text-[40px] m-0 opacity-50">LOADING...</p>
+					<p class="font-cook font-semibold text-black text-[28px] sm:text-[40px] m-0 opacity-50">{m.projects_list_loading()}</p>
 				</div>
 			{:else if error}
 				<div class="project-card bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex items-center justify-center w-full sm:w-[649px]">
@@ -200,7 +201,7 @@
 						<div class="flex flex-col gap-1 z-1 w-full">
 							<p class="font-cook font-semibold text-black m-0 leading-[1.1] transition-[font-size_0.3s_ease] text-[28px] sm:text-[40px]" style={!isMobile && selected ? 'font-size: 64px;' : ''}>{project.projectTitle}</p>
 							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style={!isMobile && selected ? 'font-size: 32px;' : ''}>{project.description ?? ''}</p>
-							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style={!isMobile && selected ? 'font-size: 32px;' : ''}>{project.nowHackatimeHours ?? 0} hrs tracked</p>
+							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style={!isMobile && selected ? 'font-size: 32px;' : ''}>{m.projects_list_hours_tracked({ hours: project.nowHackatimeHours ?? 0 })}</p>
 						</div>
 
 						<div
@@ -210,11 +211,11 @@
 							<div class="overflow-hidden flex items-center gap-2">
 								<InputPrompt type="Enter" />
 
-								<span class="font-bricolage text-2xl font-bold text-black">OR</span>
+								<span class="font-bricolage text-2xl font-bold text-black">{m.projects_list_or()}</span>
 
 								<InputPrompt type="click" />
 
-								<span class="font-bricolage text-2xl font-bold text-black">TO VIEW</span>
+								<span class="font-bricolage text-2xl font-bold text-black">{m.projects_list_to_view()}</span>
 							</div>
 						</div>
 
@@ -244,7 +245,7 @@
 						: `--card-index: ${projects.length}; width: ${createSelected ? '824px' : '649px'}; background-color: ${createSelected ? 'var(--selected-color)' : '#f3e8d8'}; gap: ${createSelected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;`}
 				>
 					<div class="flex flex-col gap-1 z-1 w-full">
-						<p class="font-cook font-semibold text-black m-0 leading-[1.1] opacity-70 transition-[font-size_0.3s_ease] text-[28px] sm:text-[40px]" style={!isMobile && createSelected ? 'font-size: 64px;' : ''}>+ CREATE PROJECT</p>
+						<p class="font-cook font-semibold text-black m-0 leading-[1.1] opacity-70 transition-[font-size_0.3s_ease] text-[28px] sm:text-[40px]" style={!isMobile && createSelected ? 'font-size: 64px;' : ''}>{m.projects_list_create_card()}</p>
 					</div>
 
 					<div
@@ -258,7 +259,7 @@
 
 							<InputPrompt type="click" />
 
-							<span class="font-bricolage text-2xl font-bold text-black">TO CREATE</span>
+							<span class="font-bricolage text-2xl font-bold text-black">{m.projects_list_to_create()}</span>
 						</div>
 					</div>
 				</button>
@@ -278,11 +279,11 @@
 	<div class="fade-wrap" class:entered class:exiting={navigating}>
 		<NavigationHint
 			segments={[
-				{ type: 'text', value: 'USE' },
+				{ type: 'text', value: m.projects_list_nav_use() },
 				{ type: 'input', value: 'WS' },
-				{ type: 'text', value: 'OR' },
+				{ type: 'text', value: m.projects_list_nav_or() },
 				{ type: 'input', value: 'mouse-scroll' },
-				{ type: 'text', value: 'TO NAVIGATE' }
+				{ type: 'text', value: m.projects_list_nav_to_navigate() }
 			]}
 			position="bottom-right"
 		/>

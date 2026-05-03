@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { HTMLButtonAttributes } from 'svelte/elements';
     import BobaText from './BobaText.svelte';
+    import { m } from '$lib/paraglide/messages.js';
 
     interface Props extends HTMLButtonAttributes {
         text?: string;
@@ -14,7 +15,8 @@
         textColor?: string;
     }
 
-    let { text = ">PRESS ENTER", fontSize = 32, fallbackWidth = 0, pressed = false, blink = true, wave = false, className = "", disableAnimations = false, textColor = undefined, ...rest }: Props = $props();
+    let { text, fontSize = 32, fallbackWidth = 0, pressed = false, blink = true, wave = false, className = "", disableAnimations = false, textColor = undefined, ...rest }: Props = $props();
+    const resolvedText = $derived(text ?? m.comp_boba_press_enter());
 
     let buttonEl: HTMLButtonElement;
 
@@ -24,7 +26,7 @@
 </script>
 
 <button bind:this={buttonEl} class="boba-container {className}" class:blink={blink && !disableAnimations} {...rest}>
-    <BobaText {text} {fontSize} {wave} {pressed} {disableAnimations} {textColor} />
+    <BobaText text={resolvedText} {fontSize} {wave} {pressed} {disableAnimations} {textColor} />
 </button>
 
 <style>

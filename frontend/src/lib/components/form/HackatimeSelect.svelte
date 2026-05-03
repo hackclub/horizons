@@ -13,6 +13,7 @@
 
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { m } from '$lib/paraglide/messages.js';
 
 	let { projects, selectedNames, onToggle, loading = false }: Props = $props();
 
@@ -35,7 +36,7 @@
 <svelte:window onclick={handleClickOutside} />
 
 <div class="flex flex-col gap-1 w-full" bind:this={containerEl}>
-	<span class="font-bricolage text-base font-semibold text-black leading-normal">Hackatime Projects</span>
+	<span class="font-bricolage text-base font-semibold text-black leading-normal">{m.comp_hackatime_select_label()}</span>
 
 	<div class="relative w-full">
 		<!-- Trigger -->
@@ -47,7 +48,7 @@
 		>
 			<div class="flex flex-wrap gap-1 flex-1 min-w-0">
 				{#if selectedNames.size === 0}
-					<span class="font-bricolage text-base font-semibold text-black/40">None selected</span>
+					<span class="font-bricolage text-base font-semibold text-black/40">{m.comp_hackatime_select_none()}</span>
 				{:else}
 					{#each [...selectedNames] as name (name)}
 						<span class="bg-black text-[#f3e8d8] font-bricolage text-sm font-semibold px-2 py-0.5 rounded-sm whitespace-nowrap">
@@ -74,10 +75,10 @@
 				class="absolute top-full left-0 right-0 mt-1 bg-[#f3e8d8] border-2 border-black rounded-lg z-20 shadow-[2px_2px_0px_0px_black] max-h-60 overflow-y-auto dropdown-list"
 			>
 				{#if loading}
-					<div class="px-4 py-3 font-bricolage text-sm text-black/50 text-center">Loading...</div>
+					<div class="px-4 py-3 font-bricolage text-sm text-black/50 text-center">{m.comp_hackatime_select_loading()}</div>
 				{:else if projects.length === 0}
 					<div class="px-4 py-3 font-bricolage text-sm text-black/50 text-center">
-						No hackatime projects found. Make sure your hackatime account is linked.
+						{m.comp_hackatime_select_empty()}
 					</div>
 				{:else}
 					{#each projects as project (project.name)}

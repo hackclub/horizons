@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import BG from '$lib/components/BG.svelte';
 	import BobaText from '$lib/components/BobaText.svelte';
 	import TextWave from '$lib/components/TextWave.svelte';
@@ -346,12 +347,12 @@
         }}>
             <div class="flex flex-col items-center justify-center px-4 sm:px-16 pb-4">
                 <div out:captureLogoRect>
-                    <img src={Logo} alt="Hack Club Horizon" class="w-full max-w-7xl" />
+                    <img src={Logo} alt={m.landing_logo_alt()} class="w-full max-w-7xl" />
                 </div>
             </div>
             {#if !isTransitioning}
                 <!-- <p class="text-black font-cook text-center text-4xl tracking-widest mt-2 mb-4" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}>HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD</p> -->
-                <p class="text-black font-cook text-center text-lg sm:text-3xl tracking-wide sm:tracking-widest mt-2 mb-6" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}><TextWave text="HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD" duration={2} disabled={disableAnimations} /></p>
+                <p class="text-black font-cook text-center text-lg sm:text-3xl tracking-wide sm:tracking-widest mt-2 mb-6" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}><TextWave text={m.landing_tagline()} duration={2} disabled={disableAnimations} /></p>
             {/if}
 
             <div out:captureStripesRect>
@@ -360,14 +361,14 @@
 
             {#if !isTransitioning}
                 <div class="flex flex-col items-center justify-center px-4 sm:px-16 mt-8" out:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 100 }}>
-                    <BobaButton text={isMobile ? "> TAP  TO  START" : "> CLICK  OR  PRESS  ENTER"} fontSize={isMobile ? 22 : 32} fallbackWidth={isMobile ? 186 : 360} {pressed} className="select-none" wave {disableAnimations} />
+                    <BobaButton text={isMobile ? m.landing_start_mobile() : m.landing_start_desktop()} fontSize={isMobile ? 22 : 32} fallbackWidth={isMobile ? 186 : 360} {pressed} className="select-none" wave {disableAnimations} />
                 </div>
             {/if}
         </div>
 
         <label class="disable-anim-checkbox">
             <input type="checkbox" bind:checked={disableAnimations} />
-            Disable animations
+            {m.landing_disable_animations()}
         </label>
     {/if}
     {#if activated}
@@ -375,10 +376,10 @@
             <div class="flex flex-col w-full">
                 <div class="flex gap-2 sm:gap-4 items-center sm:items-end px-4 sm:px-10 pt-6 sm:pt-10 pb-3">
                     <div in:animateLogoIn>
-                        <img src={Logo} alt="Hack Club Horizon" class="h-14 sm:h-24" />
+                        <img src={Logo} alt={m.landing_logo_alt()} class="h-14 sm:h-24" />
                     </div>
                     <!-- <p in:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 200 }} class="tagline"><TextWave text="HACK CLUB'S " disabled={disableAnimations} /><span class="underline"><TextWave text="BIGGEST" disabled={disableAnimations} offset={12} /></span><TextWave text=" EVENT" disabled={disableAnimations} offset={19} /></p> -->
-                    <p in:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 200 }} class="tagline hidden sm:block"><TextWave text="HIGH SCHOOL FLAGSHIP HACKATHONS ACROSS THE WORLD" disabled={disableAnimations} /></p>
+                    <p in:fade={{ duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 200 }} class="tagline hidden sm:block"><TextWave text={m.landing_tagline()} disabled={disableAnimations} /></p>
                 </div>
                 <div in:animateStripesIn>
                     <Stripes small {disableAnimations} />
@@ -389,8 +390,8 @@
                 <div class="w-full flex justify-center" in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 500 }} bind:this={cardRefs[0]} onmouseenter={() => { if (!signupEmailFocused) nav.select(0); }}>
                     {#if isAuthed}
                         <MenuItem
-                            title="SIGN BACK IN"
-                            subtitle="GET BACK TO WORKING ON YOUR PROJECTS!"
+                            title={m.landing_menu_sign_back_in_title()}
+                            subtitle={m.landing_menu_sign_back_in_subtitle()}
                             chevron
                             selected={nav.selectedIndex === 0}
                             preserveIcon
@@ -398,13 +399,13 @@
                             onclick={() => activateJoinNow('')}
                         >
                             {#snippet icon()}
-                                <img src={horizonIcon} alt="Watch" />
+                                <img src={horizonIcon} alt={m.landing_icon_alt_watch()} />
                             {/snippet}
                         </MenuItem>
                     {:else}
                         <MenuItem
-                            title="JOIN NOW"
-                            subtitle="START WORKING ON YOUR PROJECTS!"
+                            title={m.landing_menu_join_now_title()}
+                            subtitle={m.landing_menu_join_now_subtitle()}
                             chevron
                             selected={nav.selectedIndex === 0}
                             preserveIcon
@@ -413,26 +414,26 @@
                             bind:email={signupEmail}
                             bind:emailFocused={signupEmailFocused}
                             onSignup={activateJoinNow}
-                            signupHint={navState.usingKeyboard ? "Press enter to enter your email" : "Click to enter your email"}
+                            signupHint={navState.usingKeyboard ? m.landing_signup_hint_keyboard() : m.landing_signup_hint_mouse()}
                             onclick={isMobile ? () => activateJoinNow('') : undefined}
                         >
                             {#snippet icon()}
-                                <img src={horizonIcon} alt="Watch" />
+                                <img src={horizonIcon} alt={m.landing_icon_alt_watch()} />
                             {/snippet}
                         </MenuItem>
                     {/if}
                 </div>
                 <div class="w-full flex justify-center" in:fly={{ x: disableAnimations ? 0 : 50, duration: disableAnimations ? 0 : 400, delay: disableAnimations ? 0 : 600 }} bind:this={cardRefs[1]} onmouseenter={() => { if (!signupEmailFocused) nav.select(1); }}>
                     <MenuItem
-                        title="WHAT'S HORIZONS?"
-                        subtitle="LEARN MORE ABOUT THE EVENT!"
+                        title={m.landing_menu_whats_horizons_title()}
+                        subtitle={m.landing_menu_whats_horizons_subtitle()}
                         selected={nav.selectedIndex === 1}
                         preserveIcon
                         {disableAnimations}
                         onclick={() => navigateToFaq()}
                     >
                         {#snippet icon()}
-                            <img src={faqIcon} alt="Watch" />
+                            <img src={faqIcon} alt={m.landing_icon_alt_watch()} />
                         {/snippet}
                     </MenuItem>
                 </div>
@@ -452,15 +453,15 @@
             </div>
 
             <div in:fly={{ y: disableAnimations ? 0 : 20, duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 800 }} class="hidden sm:flex justify-center absolute bottom-4 left-0 right-0">
-                <BobaText text="USE  WASD  OR  YOUR  MOUSE" fontSize={30} wave {disableAnimations} />
+                <BobaText text={m.landing_use_wasd()} fontSize={30} wave {disableAnimations} />
             </div>
 
-            <button 
+            <button
                 in:fly={{ y: disableAnimations ? 0 : 20, duration: disableAnimations ? 0 : 300, delay: disableAnimations ? 0 : 900 }}
                 class="absolute bottom-0 left-4 bg-transparent border-none cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-200"
                 onclick={() => { activated = false; isTransitioning = false; }}
             >
-                <BobaText text="< BACK" fontSize={24} {disableAnimations} />
+                <BobaText text={m.landing_back()} fontSize={24} {disableAnimations} />
             </button>
         </div>
     {/if}
