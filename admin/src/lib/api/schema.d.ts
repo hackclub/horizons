@@ -569,6 +569,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/fraud-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getFraudQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats": {
         parameters: {
             query?: never;
@@ -2231,6 +2247,60 @@ export interface components {
         };
         AdminMetricsResponse: {
             totals: components["schemas"]["MetricsTotals"];
+        };
+        FraudQueueProjectUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+            slackUserId: string | null;
+            isFraud: boolean;
+            isSus: boolean;
+        };
+        FraudQueueProjectResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            repoUrl: string | null;
+            playableUrl: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            latestSubmissionCreatedAt: string | null;
+            submissionCount: number;
+            latestSubmissionStatus: string | null;
+            joeProjectId: string | null;
+            joeFraudPassed: boolean | null;
+            /** Format: date-time */
+            joeFraudReviewedAt: string | null;
+            joeTrustScore: number | null;
+            joeJustification: string | null;
+            joeOutcomeStatus: string | null;
+            joeOutcomeReason: string | null;
+            /** Format: date-time */
+            joeOutcomeRecordedAt: string | null;
+            fraudQueueWaitMs: number | null;
+            overallWaitMs: number;
+            user: components["schemas"]["FraudQueueProjectUserResponse"];
+        };
+        FraudQueueStatsResponse: {
+            enabled: boolean;
+            totalProjects: number;
+            pendingCount: number;
+            passedCount: number;
+            failedCount: number;
+            notSubmittedCount: number;
+            avgResolvedFraudWaitMs: number | null;
+            medianResolvedFraudWaitMs: number | null;
+            longestPendingFraudWaitMs: number | null;
+            avgTrustScore: number | null;
+        };
+        FraudQueueResponse: {
+            stats: components["schemas"]["FraudQueueStatsResponse"];
+            inQueue: components["schemas"]["FraudQueueProjectResponse"][];
+            notInQueue: components["schemas"]["FraudQueueProjectResponse"][];
         };
         StatsFunnel: {
             totalUsers: number;
@@ -4110,6 +4180,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminMetricsResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getFraudQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FraudQueueResponse"];
                 };
             };
         };

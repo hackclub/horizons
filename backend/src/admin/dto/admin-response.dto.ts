@@ -1122,3 +1122,137 @@ export class EventStatsResponse {
   @ApiProperty({ type: EventStatsQualification })
   qualification: EventStatsQualification;
 }
+
+class FraudQueueProjectUserResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty({ type: String, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastName: string | null;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  slackUserId: string | null;
+
+  @ApiProperty()
+  isFraud: boolean;
+
+  @ApiProperty()
+  isSus: boolean;
+}
+
+export class FraudQueueProjectResponse {
+  @ApiProperty()
+  projectId: number;
+
+  @ApiProperty()
+  projectTitle: string;
+
+  @ApiProperty()
+  projectType: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  repoUrl: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  playableUrl: string | null;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  latestSubmissionCreatedAt: Date | null;
+
+  @ApiProperty()
+  submissionCount: number;
+
+  @ApiProperty({ type: String, nullable: true })
+  latestSubmissionStatus: string | null;
+
+  // Joe fields ----
+  @ApiProperty({ type: String, nullable: true })
+  joeProjectId: string | null;
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  joeFraudPassed: boolean | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  joeFraudReviewedAt: Date | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  joeTrustScore: number | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  joeJustification: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  joeOutcomeStatus: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  joeOutcomeReason: string | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  joeOutcomeRecordedAt: Date | null;
+
+  // ms waiting on Joe specifically — for pending: now - latestSubmissionCreatedAt; for resolved: joeFraudReviewedAt - latestSubmissionCreatedAt.
+  @ApiProperty({ type: Number, nullable: true })
+  fraudQueueWaitMs: number | null;
+
+  // ms since project was first created.
+  @ApiProperty()
+  overallWaitMs: number;
+
+  @ApiProperty({ type: FraudQueueProjectUserResponse })
+  user: FraudQueueProjectUserResponse;
+}
+
+export class FraudQueueStatsResponse {
+  @ApiProperty()
+  enabled: boolean;
+
+  @ApiProperty()
+  totalProjects: number;
+
+  @ApiProperty()
+  pendingCount: number;
+
+  @ApiProperty()
+  passedCount: number;
+
+  @ApiProperty()
+  failedCount: number;
+
+  @ApiProperty()
+  notSubmittedCount: number;
+
+  @ApiProperty({ type: Number, nullable: true })
+  avgResolvedFraudWaitMs: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  medianResolvedFraudWaitMs: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  longestPendingFraudWaitMs: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  avgTrustScore: number | null;
+}
+
+export class FraudQueueResponse {
+  @ApiProperty({ type: FraudQueueStatsResponse })
+  stats: FraudQueueStatsResponse;
+
+  @ApiProperty({ type: [FraudQueueProjectResponse] })
+  inQueue: FraudQueueProjectResponse[];
+
+  @ApiProperty({ type: [FraudQueueProjectResponse] })
+  notInQueue: FraudQueueProjectResponse[];
+}
