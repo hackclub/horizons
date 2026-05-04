@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { page } from '$app/state';
-    import BG from '$lib/components/BG.svelte';
-	import BobaText from '$lib/components/BobaText.svelte';
-	import SlideOut from '$lib/components/anim/SlideOut.svelte';
-	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
-	import { fade } from 'svelte/transition';
-	import { preloadProjects } from '$lib/store/projectCache';
-	import { requireAuth } from '$lib/auth';
-	import { api } from '$lib/api';
-	import { env } from '$env/dynamic/public';
-	import { onMount } from 'svelte';
+	import { page } from "$app/state";
+	import BG from "$lib/components/BG.svelte";
+	import BobaText from "$lib/components/BobaText.svelte";
+	import SlideOut from "$lib/components/anim/SlideOut.svelte";
+	import { afterNavigate, beforeNavigate, goto } from "$app/navigation";
+	import { fade } from "svelte/transition";
+	import { preloadProjects } from "$lib/store/projectCache";
+	import { requireAuth } from "$lib/auth";
+	import { api } from "$lib/api";
+	import { env } from "$env/dynamic/public";
+	import { onMount } from "svelte";
 
 	let authed = $state(false);
 	let showNavLoading = $state(false);
@@ -21,11 +21,14 @@
 		"The coolness is almost here",
 		"How's your day going?",
 	];
-	let loadingMessage = $state('');
+	let loadingMessage = $state("");
 
 	beforeNavigate(() => {
 		navTimeout = setTimeout(() => {
-			loadingMessage = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+			loadingMessage =
+				loadingMessages[
+					Math.floor(Math.random() * loadingMessages.length)
+				];
 			showNavLoading = true;
 		}, 1000);
 	});
@@ -37,14 +40,19 @@
 
 	let windowWidth = $state(0);
 	let isMobile = $derived(windowWidth > 0 && windowWidth < 640);
-	let isProjectsRoute = $derived(page.url.pathname.startsWith('/app/projects'));
+	let isProjectsRoute = $derived(
+		page.url.pathname.startsWith("/app/projects"),
+	);
+	let isCommunityRoute = $derived(
+		page.url.pathname.startsWith("/app/community"),
+	);
 
 	let { children } = $props();
 
 	// Mobile entry point: route bare /app to the mobile-ready /app/projects.
 	$effect(() => {
-		if (authed && isMobile && page.url.pathname === '/app') {
-			goto('/app/projects');
+		if (authed && isMobile && page.url.pathname === "/app") {
+			goto("/app/projects");
 		}
 	});
 
@@ -55,22 +63,30 @@
 		// Check auth and onboarding in parallel
 		const [authResult, onboardingRes] = await Promise.all([
 			requireAuth(),
-			env.PUBLIC_ENABLE_ONBOARDING === 'true' && !page.url.pathname.startsWith('/app/onboarding')
-				? api.GET('/api/user/auth/onboarding-status')
+			env.PUBLIC_ENABLE_ONBOARDING === "true" &&
+			!page.url.pathname.startsWith("/app/onboarding")
+				? api.GET("/api/user/auth/onboarding-status")
 				: Promise.resolve(null),
 		]);
 
 		if (!authResult) return;
 
 		// If onboarding is disabled, redirect away from onboarding pages
-		if (env.PUBLIC_ENABLE_ONBOARDING !== 'true' && page.url.pathname.startsWith('/app/onboarding')) {
-			goto('/app');
+		if (
+			env.PUBLIC_ENABLE_ONBOARDING !== "true" &&
+			page.url.pathname.startsWith("/app/onboarding")
+		) {
+			goto("/app");
 			return;
 		}
 
 		// Redirect to onboarding if not completed
-		if (onboardingRes && onboardingRes.data && !onboardingRes.data.onboardComplete) {
-			goto('/app/onboarding');
+		if (
+			onboardingRes &&
+			onboardingRes.data &&
+			!onboardingRes.data.onboardComplete
+		) {
+			goto("/app/onboarding");
 			return;
 		}
 
@@ -80,24 +96,24 @@
 		preloadProjects();
 
 		// Preload common assets in idle time
-		if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+		if (typeof window !== "undefined" && "requestIdleCallback" in window) {
 			requestIdleCallback(() => {
 				// Prefetch images
 				const images = [
-					'./assets/projects/hero-placeholder.png',
-					'./assets/home/tools.png',
-					'./assets/home/explore.png'
+					"./assets/projects/hero-placeholder.png",
+					"./assets/home/tools.png",
+					"./assets/home/explore.png",
 				];
-				images.forEach(src => {
+				images.forEach((src) => {
 					const img = new Image();
 					img.src = src;
 				});
 
 				// Preload routes as JS chunks
-				const routes = ['/app/projects/new'];
-				routes.forEach(route => {
-					const link = document.createElement('link');
-					link.rel = 'prefetch';
+				const routes = ["/app/projects/new"];
+				routes.forEach((route) => {
+					const link = document.createElement("link");
+					link.rel = "prefetch";
 					link.href = route;
 					document.head.appendChild(link);
 				});
@@ -110,10 +126,20 @@
 
 {#if !authed}
 	<div class="fixed inset-0 bg-black z-50"></div>
-{:else if isMobile && !isProjectsRoute}
-	<div class="fixed inset-0 z-50 bg-[#271c0c] flex flex-col items-center justify-center gap-4 p-8 text-center">
-		<p class="font-cook text-[32px] font-semibold text-[#f3e8d8] leading-tight">THIS SITE ISN'T READY FOR MOBILE YET.</p>
-		<p class="font-bricolage text-[18px] font-semibold text-[#f3e8d8] tracking-wide">We recommend opening this on desktop.</p>
+{:else if isMobile && !isProjectsRoute && !isCommunityRoute}
+	<div
+		class="fixed inset-0 z-50 bg-[#271c0c] flex flex-col items-center justify-center gap-4 p-8 text-center"
+	>
+		<p
+			class="font-cook text-[32px] font-semibold text-[#f3e8d8] leading-tight"
+		>
+			THIS SITE ISN'T READY FOR MOBILE YET.
+		</p>
+		<p
+			class="font-bricolage text-[18px] font-semibold text-[#f3e8d8] tracking-wide"
+		>
+			We recommend opening this on desktop.
+		</p>
 	</div>
 {:else}
 	<BG {disableAnimations}>
@@ -123,9 +149,14 @@
 			</div>
 		{/key}
 		{#if showNavLoading}
-			<div class="absolute bottom-8 right-10 z-50 flex flex-col items-end" transition:fade={{ duration: 300 }}>
+			<div
+				class="absolute bottom-8 right-10 z-50 flex flex-col items-end"
+				transition:fade={{ duration: 300 }}
+			>
 				<BobaText text="LOADING..." fontSize={32} wave />
-				<p class="font-bricolage text-[14px] text-black/50 mt-2">{loadingMessage}</p>
+				<p class="font-bricolage text-[14px] text-black/50 mt-2">
+					{loadingMessage}
+				</p>
 			</div>
 		{/if}
 	</BG>
