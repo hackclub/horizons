@@ -1210,6 +1210,12 @@ export class FraudQueueProjectResponse {
   @ApiProperty()
   overallWaitMs: number;
 
+  // For "Not submitted" projects: the most recent fraud_enqueue_failed reason
+  // (HTTP status + body, or thrown error message). Null when the project did
+  // reach Joe, or when no failure has been logged yet.
+  @ApiProperty({ type: String, nullable: true })
+  notSubmittedReason: string | null;
+
   @ApiProperty({ type: FraudQueueProjectUserResponse })
   user: FraudQueueProjectUserResponse;
 }

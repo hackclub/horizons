@@ -266,6 +266,14 @@
 										<p class="m-0 mt-1 text-rv-text whitespace-pre-wrap">{p.joeJustification}</p>
 									</details>
 								{/if}
+								{#if !p.joeProjectId && p.joeFraudPassed === null}
+									<div class="text-[12px] py-2 px-2.5 rounded-md border border-red-500/40 bg-red-500/10">
+										<p class="m-0 text-red-500 text-[11px] uppercase tracking-wide font-semibold">Not submitted to Joe</p>
+										<p class="m-0 mt-1 text-rv-text whitespace-pre-wrap wrap-break-word">
+											{p.notSubmittedReason ?? 'No failure logged yet — likely awaiting next fraud poll tick.'}
+										</p>
+									</div>
+								{/if}
 							</a>
 						{/each}
 					</div>

@@ -2234,6 +2234,34 @@ export class AdminService {
       },
     });
 
+    // For "Not submitted" projects (no joeProjectId, no decision yet), pull the
+    // most recent fraud_enqueue_failed audit entry for the latest submission so
+    // we can surface why Joe didn't accept it.
+    const notSubmittedSubmissionIds = projects
+      .filter((p) => p.joeProjectId === null && p.joeFraudPassed === null)
+      .map((p) => p.submissions[0]?.submissionId)
+      .filter((id): id is number => typeof id === 'number');
+
+    const failureLogs = notSubmittedSubmissionIds.length
+      ? await this.prisma.submissionAuditLog.findMany({
+          where: {
+            submissionId: { in: notSubmittedSubmissionIds },
+            action: 'fraud_enqueue_failed',
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { submissionId: true, changes: true, createdAt: true },
+        })
+      : [];
+
+    const failureBySubmission = new Map<number, string>();
+    for (const log of failureLogs) {
+      if (failureBySubmission.has(log.submissionId)) continue;
+      const error = (log.changes as { error?: unknown } | null)?.error;
+      if (typeof error === 'string' && error.length > 0) {
+        failureBySubmission.set(log.submissionId, error);
+      }
+    }
+
     const now = Date.now();
     const shaped = projects.map((p) => {
       const latest = p.submissions[0] ?? null;
@@ -2272,6 +2300,10 @@ export class AdminService {
         joeOutcomeRecordedAt: p.joeOutcomeRecordedAt,
         fraudQueueWaitMs,
         overallWaitMs: now - p.createdAt.getTime(),
+        notSubmittedReason:
+          p.joeProjectId === null && p.joeFraudPassed === null && latest
+            ? (failureBySubmission.get(latest.submissionId) ?? null)
+            : null,
         user: p.user,
       };
     });
