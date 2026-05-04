@@ -14,8 +14,16 @@
 	let saving = $state(false);
 	let savedFlash = $state(false);
 	let saveError = $state<string | null>(null);
+	let hasAutoOpened = $state(false);
 
 	let hasContent = $derived(content.trim().length > 0);
+
+	$effect(() => {
+		if (hasContent && !hasAutoOpened) {
+			isOpen = true;
+			hasAutoOpened = true;
+		}
+	});
 
 	function toggle() {
 		isOpen = !isOpen;
@@ -47,44 +55,48 @@
 	}
 </script>
 
-<div class="flex items-center justify-between px-4 py-2.5">
-	<div class="flex items-center">
-		<span class="text-[11px] uppercase tracking-[0.8px] text-rv-dim font-semibold">{title}</span>
-		{#if hasContent}
-			<span class="w-1.5 h-1.5 rounded-full bg-rv-accent ml-1.5"></span>
-		{/if}
-	</div>
-	<div class="flex items-center gap-1.5">
-		{#if saveError}
-			<span class="text-[11px] text-rv-red max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">{saveError}</span>
-		{:else if savedFlash}
-			<span class="text-[11px] text-rv-green">Saved</span>
-		{/if}
-		{#if isOpen}
+<div class={hasContent ? 'border-l-2 border-l-rv-accent bg-rv-accent/6' : ''}>
+	<div class="flex items-center justify-between px-4 py-2.5">
+		<div class="flex items-center gap-2">
+			<span class="text-[11px] uppercase tracking-[0.8px] {hasContent ? 'text-rv-accent' : 'text-rv-dim'} font-semibold">{title}</span>
+			{#if hasContent}
+				<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-rv-accent/15 text-rv-accent border border-rv-accent/40">
+					Has note
+				</span>
+			{/if}
+		</div>
+		<div class="flex items-center gap-1.5">
+			{#if saveError}
+				<span class="text-[11px] text-rv-red max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">{saveError}</span>
+			{:else if savedFlash}
+				<span class="text-[11px] text-rv-green">Saved</span>
+			{/if}
+			{#if isOpen}
+				<button
+					class="bg-rv-surface2 border border-rv-border text-rv-dim px-2.5 py-[3px] rounded text-[11px] font-inherit font-medium cursor-pointer transition-all duration-150 hover:text-rv-text hover:border-rv-accent"
+					onclick={handleSave}
+					disabled={saving}
+				>
+					{saving ? 'Saving...' : 'Save'}
+				</button>
+			{/if}
 			<button
-				class="bg-rv-surface2 border border-rv-border text-rv-dim px-2.5 py-[3px] rounded text-[11px] font-inherit font-medium cursor-pointer transition-all duration-150 hover:text-rv-text hover:border-rv-accent"
-				onclick={handleSave}
-				disabled={saving}
+				class="bg-transparent border border-rv-border text-rv-dim w-[22px] h-[22px] rounded text-sm cursor-pointer flex items-center justify-center transition-all duration-150 leading-none hover:text-rv-accent hover:border-rv-accent"
+				onclick={toggle}
 			>
-				{saving ? 'Saving...' : 'Save'}
+				{isOpen ? '−' : '+'}
 			</button>
-		{/if}
-		<button
-			class="bg-transparent border border-rv-border text-rv-dim w-[22px] h-[22px] rounded text-sm cursor-pointer flex items-center justify-center transition-all duration-150 leading-none hover:text-rv-accent hover:border-rv-accent"
-			onclick={toggle}
-		>
-			{isOpen ? '−' : '+'}
-		</button>
+		</div>
 	</div>
-</div>
 
-{#if isOpen}
-	<div class="px-4 pb-2.5">
-		<textarea
-			class="w-full bg-rv-bg border border-rv-border rounded-[6px] p-2.5 text-rv-text font-inherit text-[13px] leading-[1.6] resize-y min-h-[80px] focus:outline-none focus:border-rv-accent"
-			bind:value={content}
-			maxlength={1000}
-			placeholder="Notes about this {targetType}..."
-		></textarea>
-	</div>
-{/if}
+	{#if isOpen}
+		<div class="px-4 pb-2.5">
+			<textarea
+				class="w-full bg-rv-bg border border-rv-border rounded-[6px] p-2.5 text-rv-text font-inherit text-[13px] leading-[1.6] resize-y min-h-[80px] focus:outline-none focus:border-rv-accent"
+				bind:value={content}
+				maxlength={1000}
+				placeholder="Notes about this {targetType}..."
+			></textarea>
+		</div>
+	{/if}
+</div>
