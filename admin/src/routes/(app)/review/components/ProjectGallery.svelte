@@ -34,14 +34,19 @@
 	let pastReviews = $state<PastReview[]>([]);
 	let currentReviewerId = $state<number | null>(null);
 	let pastLoading = $state(true);
+	let isAdmin = $state(false);
 
 	onMount(async () => {
 		try {
-			const { data } = await api.GET('/api/reviewer/past-reviews');
-			if (data) {
-				pastReviews = data.reviews;
-				currentReviewerId = data.currentReviewerId;
+			const [{ data: pastData }, { data: meData }] = await Promise.all([
+				api.GET('/api/reviewer/past-reviews'),
+				api.GET('/api/user/auth/me'),
+			]);
+			if (pastData) {
+				pastReviews = pastData.reviews;
+				currentReviewerId = pastData.currentReviewerId;
 			}
+			isAdmin = meData?.role === 'admin' || meData?.role === 'superadmin';
 		} finally {
 			pastLoading = false;
 		}
@@ -205,6 +210,14 @@
 			>
 				Stats
 			</a>
+			{#if isAdmin}
+				<a
+					href="/admin/review/fraud-queue"
+					class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit no-underline inline-block cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text"
+				>
+					Fraud Queue
+				</a>
+			{/if}
 			<button
 				class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text disabled:opacity-40 disabled:cursor-not-allowed"
 				onclick={onRefresh}

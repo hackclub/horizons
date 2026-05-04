@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
 import { ManifestService } from '../manifest/manifest.service';
 import { MetricsService } from '../metrics/metrics.service';
+import { FraudReviewService } from '../fraud-review/fraud-review.service';
 import * as Papa from 'papaparse';
 
 const projectAdminInclude = {
@@ -46,6 +47,7 @@ export class AdminService {
     private slackService: SlackService,
     private manifestService: ManifestService,
     private metricsService: MetricsService,
+    private fraudReviewService: FraudReviewService,
   ) {}
 
   async getAllSubmissions() {
@@ -2199,5 +2201,139 @@ export class AdminService {
     }));
 
     return Papa.unparse(rows);
+  }
+
+  /**
+   * Admin fraud queue: every project that's been (or could have been) submitted
+   * to Joe, grouped by whether fraud review is still pending. Wait times are
+   * computed against the latest submission so resubmissions reset the clock.
+   */
+  async getFraudQueue() {
+    const projects = await this.prisma.project.findMany({
+      where: {
+        // Only projects that have at least one submission — pre-submission drafts
+        // never enter the fraud queue.
+        submissions: { some: {} },
+      },
+      include: {
+        user: {
+          select: {
+            userId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            slackUserId: true,
+            isFraud: true,
+            isSus: true,
+          },
+        },
+        submissions: {
+          orderBy: { createdAt: 'desc' },
+          select: { submissionId: true, createdAt: true, approvalStatus: true },
+        },
+      },
+    });
+
+    const now = Date.now();
+    const shaped = projects.map((p) => {
+      const latest = p.submissions[0] ?? null;
+      const submissionStart = latest
+        ? latest.createdAt.getTime()
+        : p.createdAt.getTime();
+
+      let fraudQueueWaitMs: number | null = null;
+      if (p.joeFraudPassed === null) {
+        fraudQueueWaitMs = now - submissionStart;
+      } else if (p.joeFraudReviewedAt) {
+        fraudQueueWaitMs = Math.max(
+          0,
+          p.joeFraudReviewedAt.getTime() - submissionStart,
+        );
+      }
+
+      return {
+        projectId: p.projectId,
+        projectTitle: p.projectTitle,
+        projectType: p.projectType,
+        repoUrl: p.repoUrl,
+        playableUrl: p.playableUrl,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        latestSubmissionCreatedAt: latest?.createdAt ?? null,
+        submissionCount: p.submissions.length,
+        latestSubmissionStatus: latest?.approvalStatus ?? null,
+        joeProjectId: p.joeProjectId,
+        joeFraudPassed: p.joeFraudPassed,
+        joeFraudReviewedAt: p.joeFraudReviewedAt,
+        joeTrustScore: p.joeTrustScore,
+        joeJustification: p.joeJustification,
+        joeOutcomeStatus: p.joeOutcomeStatus,
+        joeOutcomeReason: p.joeOutcomeReason,
+        joeOutcomeRecordedAt: p.joeOutcomeRecordedAt,
+        fraudQueueWaitMs,
+        overallWaitMs: now - p.createdAt.getTime(),
+        user: p.user,
+      };
+    });
+
+    const inQueue = shaped
+      .filter((p) => p.joeFraudPassed === null)
+      .sort((a, b) => (b.fraudQueueWaitMs ?? 0) - (a.fraudQueueWaitMs ?? 0));
+    const notInQueue = shaped
+      .filter((p) => p.joeFraudPassed !== null)
+      .sort((a, b) => {
+        const aT = a.joeFraudReviewedAt?.getTime() ?? 0;
+        const bT = b.joeFraudReviewedAt?.getTime() ?? 0;
+        return bT - aT;
+      });
+
+    const passedCount = shaped.filter((p) => p.joeFraudPassed === true).length;
+    const failedCount = shaped.filter((p) => p.joeFraudPassed === false).length;
+    const notSubmittedCount = shaped.filter(
+      (p) => p.joeProjectId === null && p.joeFraudPassed === null,
+    ).length;
+
+    const resolvedWaits = shaped
+      .filter((p) => p.joeFraudPassed !== null && p.fraudQueueWaitMs !== null)
+      .map((p) => p.fraudQueueWaitMs as number);
+    const avgResolvedFraudWaitMs = resolvedWaits.length
+      ? resolvedWaits.reduce((s, n) => s + n, 0) / resolvedWaits.length
+      : null;
+    const medianResolvedFraudWaitMs = (() => {
+      if (!resolvedWaits.length) return null;
+      const sorted = [...resolvedWaits].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+    })();
+
+    const longestPendingFraudWaitMs = inQueue.length
+      ? (inQueue[0].fraudQueueWaitMs ?? null)
+      : null;
+
+    const trustScores = shaped
+      .map((p) => p.joeTrustScore)
+      .filter((s): s is number => s !== null);
+    const avgTrustScore = trustScores.length
+      ? trustScores.reduce((s, n) => s + n, 0) / trustScores.length
+      : null;
+
+    return {
+      stats: {
+        enabled: this.fraudReviewService.isEnabled(),
+        totalProjects: shaped.length,
+        pendingCount: inQueue.length,
+        passedCount,
+        failedCount,
+        notSubmittedCount,
+        avgResolvedFraudWaitMs,
+        medianResolvedFraudWaitMs,
+        longestPendingFraudWaitMs,
+        avgTrustScore,
+      },
+      inQueue,
+      notInQueue,
+    };
   }
 }

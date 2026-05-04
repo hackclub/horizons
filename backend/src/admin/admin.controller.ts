@@ -51,6 +51,7 @@ import {
   EventStatsResponse,
   ImportCsvResponse,
   ProjectOwnerHackatimeProjectsResponse,
+  FraudQueueResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -180,6 +181,14 @@ export class AdminController {
   @ApiOkResponse({ type: AdminMetricsResponse })
   async getTotals() {
     return this.adminService.getTotals();
+  }
+
+  @Get('fraud-queue')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: FraudQueueResponse })
+  async getFraudQueue() {
+    return this.adminService.getFraudQueue();
   }
 
   @Get('stats')
