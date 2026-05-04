@@ -1,9 +1,12 @@
 import {
   Injectable,
   Logger,
+  OnModuleInit,
   ServiceUnavailableException,
   BadGatewayException,
 } from '@nestjs/common';
+
+const HORIZONS_SLACK_CHANNEL = 'C0AGKQ6K476';
 
 interface SlackHuddle {
   channel_id: string;
@@ -25,7 +28,7 @@ interface SlackHuddlesInfoResponse {
 }
 
 @Injectable()
-export class HuddlesService {
+export class HuddlesService implements OnModuleInit {
   private readonly logger = new Logger(HuddlesService.name);
   private readonly clientToken = process.env.SLACK_CLIENT_TOKEN || '';
   private readonly teamId = process.env.SLACK_TEAM_ID || 'T0266FRGM';
@@ -42,6 +45,19 @@ export class HuddlesService {
     if (!this.edgeHeaders) {
       this.logger.warn(
         'SLACK_EDGE_HEADERS not set — Slack edge API likely to reject requests',
+      );
+    }
+  }
+
+  async onModuleInit() {
+    if (!this.clientToken || !this.edgeHeaders) return;
+    try {
+      await this.fetchHuddles([HORIZONS_SLACK_CHANNEL]);
+      this.logger.log('Slack edge credentials verified');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Slack edge credential probe failed — huddle endpoint will 502 until SLACK_CLIENT_TOKEN / SLACK_EDGE_HEADERS are refreshed. (${message})`,
       );
     }
   }
@@ -80,12 +96,13 @@ export class HuddlesService {
       response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain;charset=UTF-8',
           ...(this.edgeHeaders ?? {}),
         },
         body: JSON.stringify({
           token: this.clientToken,
           channel_ids: channelIds,
+          enterprise_token: this.clientToken,
         }),
         redirect: 'follow',
       });
