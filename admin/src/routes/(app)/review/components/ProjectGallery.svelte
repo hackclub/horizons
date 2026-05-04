@@ -27,7 +27,8 @@
 
 	let selectedTypes = $state<Set<string>>(new Set());
 	let searchQuery = $state('');
-	let shipSortOrder = $state<'newest' | 'oldest'>('newest');
+	// Default to longest wait so reviewers triage the most-stale submissions first.
+	let waitSortOrder = $state<'longest' | 'shortest'>('longest');
 	let fraudFilter = $state<'all' | 'reviewed' | 'unreviewed'>('all');
 
 	let pastReviews = $state<PastReview[]>([]);
@@ -105,9 +106,10 @@
 					) && matchesFraudFilter(item.project.joeFraudPassed),
 			)
 			.sort((a, b) => {
+				// createdAt is the submission timestamp, so this sorts by wait time, not project age.
 				const aT = new Date(a.item.createdAt).getTime();
 				const bT = new Date(b.item.createdAt).getTime();
-				return shipSortOrder === 'newest' ? bT - aT : aT - bT;
+				return waitSortOrder === 'longest' ? aT - bT : bT - aT;
 			}),
 	);
 
@@ -245,18 +247,18 @@
 				Pending Queue <span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
 			</h2>
 			<div class="flex flex-wrap gap-2 items-center mb-3">
-				<span class="text-[11px] text-rv-dim">Ship time</span>
+				<span class="text-[11px] text-rv-dim">Wait time</span>
 				<button
-					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {shipSortOrder === 'newest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
-					onclick={() => (shipSortOrder = 'newest')}
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {waitSortOrder === 'longest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (waitSortOrder = 'longest')}
 				>
-					Newest
+					Longest wait
 				</button>
 				<button
-					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {shipSortOrder === 'oldest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
-					onclick={() => (shipSortOrder = 'oldest')}
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {waitSortOrder === 'shortest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (waitSortOrder = 'shortest')}
 				>
-					Oldest
+					Shortest wait
 				</button>
 
 				<span class="text-[11px] text-rv-dim ml-3">Fraud</span>
