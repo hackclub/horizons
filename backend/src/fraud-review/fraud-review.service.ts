@@ -103,7 +103,10 @@ export class FraudReviewService {
     }
 
     // 201 = created, 200 = already exists (deduplicated by organizerPlatformId)
-    return data.id ?? null;
+    if (!data.id) {
+      throw new Error(`Joe ${response.status}: response missing id — ${JSON.stringify(data)}`);
+    }
+    return data.id;
   }
 
   /**
@@ -276,12 +279,14 @@ export class FraudReviewService {
     const tickStartedAt = Date.now();
     this.logger.log('poll tick start');
 
-    // Step 1: submit any projects that never got sent to fraud review
+    // Step 1: submit any projects that never got sent to fraud review.
+    // Don't filter on approvalStatus — if the submission was rejected before
+    // Joe saw it, we still need to submit so the fraud queue resolves.
     const unsubmittedProjects = await this.prisma.project.findMany({
       where: {
         joeProjectId: null,
         joeFraudPassed: null,
-        submissions: { some: { approvalStatus: 'pending' } },
+        submissions: { some: {} },
       },
       select: { projectId: true },
     });
