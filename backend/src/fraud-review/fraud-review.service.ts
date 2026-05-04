@@ -82,31 +82,28 @@ export class FraudReviewService {
   async submitProject(payload: SubmitProjectPayload): Promise<string | null> {
     if (!this.enabled) return null;
 
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/events/${this.eventId}/projects`,
-        {
-          method: 'POST',
-          headers: this.authHeaders(),
-          body: JSON.stringify(payload),
-        },
-      );
+    const response = await fetch(
+      `${this.baseUrl}/events/${this.eventId}/projects`,
+      {
+        method: 'POST',
+        headers: this.authHeaders(),
+        body: JSON.stringify(payload),
+      },
+    );
 
-      const data = (await response.json()) as { id?: string };
+    const data = (await response.json()) as { id?: string };
 
-      if (!response.ok && response.status !== 200) {
-        this.logger.error(
-          `Fraud review submit failed (${response.status}): ${JSON.stringify(data)}`,
-        );
-        return null;
-      }
-
-      // 201 = created, 200 = already exists (deduplicated by organizerPlatformId)
-      return data.id ?? null;
-    } catch (error) {
-      this.logger.error('Fraud review submit request threw', error);
-      return null;
+    if (!response.ok && response.status !== 200) {
+      const body = JSON.stringify(data);
+      this.logger.error(`Fraud review submit failed (${response.status}): ${body}`);
+      // Throw so submitAndPersist's catch records a fraud_enqueue_failed audit
+      // entry with the upstream reason. Returning null here would silently drop
+      // the project into "Not submitted" state with no recorded explanation.
+      throw new Error(`Joe ${response.status}: ${body}`);
     }
+
+    // 201 = created, 200 = already exists (deduplicated by organizerPlatformId)
+    return data.id ?? null;
   }
 
   /**

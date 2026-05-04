@@ -2283,6 +2283,7 @@ export interface components {
             joeOutcomeRecordedAt: string | null;
             fraudQueueWaitMs: number | null;
             overallWaitMs: number;
+            notSubmittedReason: string | null;
             user: components["schemas"]["FraudQueueProjectUserResponse"];
         };
         FraudQueueStatsResponse: {
