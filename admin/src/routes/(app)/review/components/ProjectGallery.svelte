@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
-	import { timeAgo } from '../utils';
+	import { timeAgo, waitingFor } from '../utils';
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type PastReview = components['schemas']['PastReviewEntry'];
 
@@ -182,6 +182,14 @@
 			.replace(/\b\w/g, (char) => char.toUpperCase());
 	}
 
+	// Tint the "waiting" pill warmer as the wait grows so stale submissions stand out at a glance.
+	function waitingPillClass(dateStr: string): string {
+		const hours = (Date.now() - new Date(dateStr).getTime()) / 3_600_000;
+		if (hours >= 72) return 'bg-red-500/15 text-red-500 border-red-500/40';
+		if (hours >= 24) return 'bg-orange-500/15 text-orange-500 border-orange-500/40';
+		return 'bg-rv-tag-bg text-rv-dim border-rv-border';
+	}
+
 </script>
 
 <div class="flex flex-col h-screen overflow-hidden">
@@ -288,6 +296,16 @@
 						</p>
 						<div class="flex items-center gap-1.5 flex-wrap mt-1">
 							<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
+							<span
+								class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border {waitingPillClass(item.createdAt)}"
+								title="Submitted {new Date(item.createdAt).toLocaleString()}"
+							>
+								<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<circle cx="12" cy="12" r="10" />
+									<polyline points="12 6 12 12 16 14" />
+								</svg>
+								Waiting {waitingFor(item.createdAt)}
+							</span>
 							{#if activeOtherClaim}
 								<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-yellow-500/15 text-yellow-600 border border-yellow-500/40">
 									<span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
