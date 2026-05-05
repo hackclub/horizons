@@ -20,6 +20,9 @@ import {
   DeleteEventResponse,
   PinnedEventResponse,
   RemovedEventResponse,
+  TicketStatusResponse,
+  TicketTransactionResponse,
+  AttendeeResponse,
 } from './dto/events-response.dto';
 import { Public } from '../auth/public.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -58,6 +61,24 @@ export class EventsAuthController {
   @ApiOkResponse({ type: RemovedEventResponse })
   async removePinnedEvent(@Req() req: Request) {
     return this.eventsService.removePinnedEvent(req.user.userId);
+  }
+
+  @Get(':slug/ticket-status')
+  @ApiOkResponse({ type: TicketStatusResponse })
+  async getTicketStatus(@Param('slug') slug: string, @Req() req: Request) {
+    return this.eventsService.getTicketStatus(req.user.userId, slug);
+  }
+
+  @Post(':slug/rsvp')
+  @ApiCreatedResponse({ type: TicketTransactionResponse })
+  async rsvpToEvent(@Param('slug') slug: string, @Req() req: Request) {
+    return this.eventsService.rsvpToEvent(req.user.userId, slug);
+  }
+
+  @Post(':slug/ticket')
+  @ApiCreatedResponse({ type: TicketTransactionResponse })
+  async upgradeToTicket(@Param('slug') slug: string, @Req() req: Request) {
+    return this.eventsService.upgradeToTicket(req.user.userId, slug);
   }
 }
 
@@ -100,5 +121,11 @@ export class EventsAdminController {
   @ApiOkResponse({ type: DeleteEventResponse })
   async deleteEvent(@Param('slug') slug: string) {
     return this.eventsService.deleteEvent(slug);
+  }
+
+  @Get(':slug/attendees')
+  @ApiOkResponse({ type: [AttendeeResponse] })
+  async getAttendees(@Param('slug') slug: string) {
+    return this.eventsService.getEventAttendees(slug);
   }
 }

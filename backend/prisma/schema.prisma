@@ -306,21 +306,32 @@ model ShopItemVariant {
 model Transaction {
   transactionId   Int              @id @default(autoincrement()) @map("transaction_id")
   userId          Int              @map("user_id")
-  itemId          Int              @map("item_id")
+  kind            TransactionKind  @default(ShopItem)
+  itemId          Int?             @map("item_id")
   variantId       Int?             @map("variant_id")
+  eventId         Int?             @map("event_id")
   itemDescription String           @map("item_description") @db.VarChar(500)
   cost            Float
   isFulfilled     Boolean          @default(false) @map("is_fulfilled")
   fulfilledAt     DateTime?        @map("fulfilled_at")
   createdAt       DateTime         @default(now()) @map("created_at")
   user            User             @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  item            ShopItem         @relation(fields: [itemId], references: [itemId], onDelete: Cascade)
+  item            ShopItem?        @relation(fields: [itemId], references: [itemId], onDelete: Cascade)
   variant         ShopItemVariant? @relation(fields: [variantId], references: [variantId], onDelete: SetNull)
+  event           Event?           @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
 
+  @@unique([userId, eventId, kind], name: "uniq_user_event_kind")
   @@index([userId])
   @@index([itemId])
   @@index([variantId])
+  @@index([eventId])
   @@map("transactions")
+}
+
+enum TransactionKind {
+  ShopItem
+  EventRsvp
+  EventTicket
 }
 
 model GiftCode {
@@ -367,20 +378,25 @@ model PinnedItem {
 }
 
 model Event {
-  eventId     Int           @id @default(autoincrement()) @map("event_id")
-  slug        String        @unique @db.VarChar(100)
-  title       String        @db.VarChar(200)
-  description String?       @db.VarChar(1000)
-  imageUrl    String?       @map("image_url")
-  location    String?       @db.VarChar(300)
-  country     String?       @db.VarChar(100)
-  startDate   DateTime      @map("start_date") @db.Date
-  endDate     DateTime      @map("end_date") @db.Date
-  hourCost    Float         @map("hour_cost")
-  isActive    Boolean       @default(true) @map("is_active")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  pinnedBy    PinnedEvent[]
+  eventId       Int           @id @default(autoincrement()) @map("event_id")
+  slug          String        @unique @db.VarChar(100)
+  title         String        @db.VarChar(200)
+  description   String?       @db.VarChar(1000)
+  imageUrl      String?       @map("image_url")
+  location      String?       @db.VarChar(300)
+  country       String?       @db.VarChar(100)
+  startDate     DateTime      @map("start_date") @db.Date
+  endDate       DateTime      @map("end_date") @db.Date
+  hourCost      Float         @map("hour_cost")
+  rsvpCost      Float?        @map("rsvp_cost")
+  ticketCost    Float?        @map("ticket_cost")
+  rsvpEnabled   Boolean       @default(false) @map("rsvp_enabled")
+  ticketEnabled Boolean       @default(false) @map("ticket_enabled")
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  pinnedBy      PinnedEvent[]
+  transactions  Transaction[]
 
   @@map("events")
 }

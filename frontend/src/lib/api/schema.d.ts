@@ -569,6 +569,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/fraud-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getFraudQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats": {
         parameters: {
             query?: never;
@@ -1588,6 +1604,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/events/admin/{slug}/attendees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsAdminController_getAttendees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events/auth/pinned-event": {
         parameters: {
             query?: never;
@@ -1599,6 +1631,54 @@ export interface paths {
         put?: never;
         post: operations["EventsAuthController_setPinnedEvent"];
         delete: operations["EventsAuthController_removePinnedEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/auth/{slug}/ticket-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsAuthController_getTicketStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/auth/{slug}/rsvp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsAuthController_rsvpToEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/auth/{slug}/ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsAuthController_upgradeToTicket"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1789,6 +1869,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["GitHubController_getReadme"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/referral": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a user's referral code and referral count by Slack ID */
+        get: operations["IntegrationsController_getReferral"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2247,6 +2344,61 @@ export interface components {
         };
         AdminMetricsResponse: {
             totals: components["schemas"]["MetricsTotals"];
+        };
+        FraudQueueStatsResponse: {
+            enabled: boolean;
+            totalProjects: number;
+            pendingCount: number;
+            passedCount: number;
+            failedCount: number;
+            notSubmittedCount: number;
+            avgResolvedFraudWaitMs: number | null;
+            medianResolvedFraudWaitMs: number | null;
+            longestPendingFraudWaitMs: number | null;
+            avgTrustScore: number | null;
+        };
+        FraudQueueProjectUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+            slackUserId: string | null;
+            isFraud: boolean;
+            isSus: boolean;
+        };
+        FraudQueueProjectResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            repoUrl: string | null;
+            playableUrl: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            latestSubmissionCreatedAt: string | null;
+            submissionCount: number;
+            latestSubmissionStatus: string | null;
+            joeProjectId: string | null;
+            joeFraudPassed: boolean | null;
+            /** Format: date-time */
+            joeFraudReviewedAt: string | null;
+            joeTrustScore: number | null;
+            joeJustification: string | null;
+            joeOutcomeStatus: string | null;
+            joeOutcomeReason: string | null;
+            /** Format: date-time */
+            joeOutcomeRecordedAt: string | null;
+            fraudQueueWaitMs: number | null;
+            overallWaitMs: number;
+            notSubmittedReason: string | null;
+            user: components["schemas"]["FraudQueueProjectUserResponse"];
+        };
+        FraudQueueResponse: {
+            stats: components["schemas"]["FraudQueueStatsResponse"];
+            inQueue: components["schemas"]["FraudQueueProjectResponse"][];
+            notInQueue: components["schemas"]["FraudQueueProjectResponse"][];
         };
         StatsFunnel: {
             totalUsers: number;
@@ -3045,6 +3197,10 @@ export interface components {
             /** Format: date-time */
             endDate: string | null;
             hourCost: number;
+            rsvpCost: number | null;
+            ticketCost: number | null;
+            rsvpEnabled: boolean;
+            ticketEnabled: boolean;
             isActive: boolean;
             /** Format: date-time */
             createdAt: string;
@@ -3064,6 +3220,10 @@ export interface components {
             startDate: string;
             endDate: string;
             hourCost: number;
+            rsvpCost?: number;
+            ticketCost?: number;
+            rsvpEnabled?: boolean;
+            ticketEnabled?: boolean;
             isActive?: boolean;
         };
         EventResponse: {
@@ -3079,6 +3239,10 @@ export interface components {
             /** Format: date-time */
             endDate: string | null;
             hourCost: number;
+            rsvpCost: number | null;
+            ticketCost: number | null;
+            rsvpEnabled: boolean;
+            ticketEnabled: boolean;
             isActive: boolean;
             /** Format: date-time */
             createdAt: string;
@@ -3095,11 +3259,26 @@ export interface components {
             startDate?: string;
             endDate?: string;
             hourCost?: number;
+            rsvpCost?: number | null;
+            ticketCost?: number | null;
+            rsvpEnabled?: boolean;
+            ticketEnabled?: boolean;
             isActive?: boolean;
         };
         DeleteEventResponse: {
             deleted: boolean;
             slug: string;
+        };
+        AttendeeResponse: {
+            userId: number;
+            email: string;
+            firstName: string;
+            lastName: string;
+            /** Format: date-time */
+            rsvpAt: string | null;
+            /** Format: date-time */
+            ticketAt: string | null;
+            totalSpent: number;
         };
         PinnedEventDetailResponse: {
             eventId: number;
@@ -3123,6 +3302,18 @@ export interface components {
         };
         RemovedEventResponse: {
             removed: boolean;
+        };
+        TicketStatusResponse: {
+            slug: string;
+            rsvpCost: number | null;
+            ticketCost: number | null;
+            hasRsvp: boolean;
+            hasTicket: boolean;
+            balance: number;
+        };
+        TicketTransactionResponse: {
+            transactionId: number;
+            newBalance: number;
         };
         CommunityEventResponse: {
             communityEventId: string;
@@ -3271,6 +3462,12 @@ export interface components {
         };
         ReadmeResponse: {
             content?: string | null;
+        };
+        ReferralResponse: {
+            /** @description The user's referral code */
+            referralCode: string | null;
+            /** @description Number of users this user has referred */
+            referralCount: number;
         };
     };
     responses: never;
@@ -4149,6 +4346,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminMetricsResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getFraudQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FraudQueueResponse"];
                 };
             };
         };
@@ -5830,6 +6046,27 @@ export interface operations {
             };
         };
     };
+    EventsAdminController_getAttendees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendeeResponse"][];
+                };
+            };
+        };
+    };
     EventsAuthController_getPinnedEvent: {
         parameters: {
             query?: never;
@@ -5883,6 +6120,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RemovedEventResponse"];
+                };
+            };
+        };
+    };
+    EventsAuthController_getTicketStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketStatusResponse"];
+                };
+            };
+        };
+    };
+    EventsAuthController_rsvpToEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketTransactionResponse"];
+                };
+            };
+        };
+    };
+    EventsAuthController_upgradeToTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketTransactionResponse"];
                 };
             };
         };
@@ -6202,6 +6502,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadmeResponse"];
+                };
+            };
+        };
+    };
+    IntegrationsController_getReferral: {
+        parameters: {
+            query: {
+                /** @description Slack user ID (e.g. U0123ABC) */
+                slackId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralResponse"];
                 };
             };
         };
