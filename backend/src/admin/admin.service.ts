@@ -2368,4 +2368,60 @@ export class AdminService {
       notInQueue,
     };
   }
+
+  async getTransactionLedger(filters: {
+    kind?: 'ShopItem' | 'EventRsvp' | 'EventTicket';
+    userId?: number;
+    fulfilled?: boolean;
+    limit?: number;
+  }) {
+    const where: any = {};
+    if (filters.kind) where.kind = filters.kind;
+    if (filters.userId) where.userId = filters.userId;
+    if (filters.fulfilled !== undefined) where.isFulfilled = filters.fulfilled;
+
+    const entries = await this.prisma.transaction.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            userId: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        item: { select: { itemId: true, name: true } },
+        event: { select: { eventId: true, slug: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: filters.limit ?? 500,
+    });
+
+    const allTotals = await this.prisma.transaction.groupBy({
+      by: ['kind'],
+      _count: { _all: true },
+      _sum: { cost: true },
+    });
+
+    const summary = {
+      totalCount: 0,
+      totalSpent: 0,
+      shopCount: 0,
+      rsvpCount: 0,
+      ticketCount: 0,
+    };
+    for (const row of allTotals) {
+      const count = row._count._all;
+      const spent = row._sum.cost ?? 0;
+      summary.totalCount += count;
+      summary.totalSpent += spent;
+      if (row.kind === 'ShopItem') summary.shopCount = count;
+      else if (row.kind === 'EventRsvp') summary.rsvpCount = count;
+      else if (row.kind === 'EventTicket') summary.ticketCount = count;
+    }
+    summary.totalSpent = Math.round(summary.totalSpent * 10) / 10;
+
+    return { entries, summary };
+  }
 }
