@@ -369,12 +369,11 @@
 		editedHours = hours;
 	}
 
-	function handleReviewComplete() {
+	function handleReviewComplete(approved: boolean) {
 		// Backend auto-releases on verdict; tell the local manager to stop
 		// heartbeating so we don't ping a no-longer-ours claim.
 		claimManager.destroy();
-		// Skip the unsaved-changes prompt — this navigation is the natural
-		// follow-through of a submitted verdict.
+		// Verdict is saved — don't prompt on subsequent navigations from this view.
 		skipLeavePrompt = true;
 		// Mark this project seen so navigateNext skips past it (and any future
 		// resubmission of the same project) for the rest of the session.
@@ -383,13 +382,13 @@
 				...seenProjectIds,
 				currentSubmission.project.projectId,
 			]);
+			// Reflect the new verdict locally so TopBar shows "Already Approved/Rejected"
+			// without a refetch.
+			currentSubmission = { ...currentSubmission, reviewPassed: approved };
 		}
-		const nextIdx = findNextUnseen(currentIndex);
-		if (nextIdx !== -1) {
-			navigateTo(nextIdx);
-		} else {
-			goBack();
-		}
+		// Surface the project card after a verdict so the reviewer sees what they
+		// just decided on rather than the now-stale verdict form.
+		activeTab = 'card';
 	}
 </script>
 

@@ -21,7 +21,7 @@
 		/** Sum of hoursShipped from non-Horizons Manifest entries — already
 		 *  credited elsewhere, so subtracted from the delta sent to Airtable. */
 		priorYswsHoursShipped?: number;
-		onReviewComplete: () => void;
+		onReviewComplete: (approved: boolean) => void;
 	}
 
 	let {
@@ -44,6 +44,10 @@
 	let submitting = $state(false);
 	let savingDraft = $state(false);
 	let draftSavedFlash = $state(false);
+	// Stays true after a successful verdict so the submit buttons remain grayed
+	// out — prevents accidental double-submission once the parent has switched
+	// to a different tab. Resets when the submission changes.
+	let justSubmitted = $state(false);
 
 	// Approval form fields
 	let hoursJustification = $state('');
@@ -90,6 +94,7 @@
 		sendEmail = false;
 		changesComment = reviewerApproved ? '' : priorUserFeedback ?? '';
 		rejectSendEmail = false;
+		justSubmitted = false;
 	});
 
 	// Sync approved hours from the breakdown panel unless reviewer manually edited
@@ -118,7 +123,8 @@
 			});
 			if (error) throw new Error(`Failed to approve submission ${submissionId}`);
 			toast.success('Project approved');
-			onReviewComplete();
+			justSubmitted = true;
+			onReviewComplete(true);
 		} catch (error) {
 			console.error('Approval failed:', error);
 			toast.error(
@@ -147,7 +153,8 @@
 			});
 			if (error) throw new Error(`Failed to reject submission ${submissionId}`);
 			toast.success('Changes requested');
-			onReviewComplete();
+			justSubmitted = true;
+			onReviewComplete(false);
 		} catch (error) {
 			console.error('Review failed:', error);
 			toast.error(
@@ -304,9 +311,9 @@
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-green text-white border-rv-green disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitApproval}
-					disabled={submitting || savingDraft}
+					disabled={submitting || savingDraft || justSubmitted}
 				>
-					{submitting ? 'Submitting...' : 'Submit Approval'}
+					{submitting ? 'Submitting...' : justSubmitted ? 'Submitted' : 'Submit Approval'}
 				</button>
 			</div>
 		</div>
@@ -350,9 +357,9 @@
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-red text-white border-rv-red disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitChangesNeeded}
-					disabled={submitting || savingDraft}
+					disabled={submitting || savingDraft || justSubmitted}
 				>
-					{submitting ? 'Submitting...' : 'Request Changes'}
+					{submitting ? 'Submitting...' : justSubmitted ? 'Submitted' : 'Request Changes'}
 				</button>
 			</div>
 		</div>
