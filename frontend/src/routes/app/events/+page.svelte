@@ -20,19 +20,15 @@
 		title: string;
 		/** Lowercased label used when this item is referenced as another's prereq. */
 		prereqLabel?: string;
-		/** Hours of approved time the user must spend to purchase. */
-		cost?: number;
 		/** Another item key that must be purchased before this one is available. */
 		prereq?: ItemKey;
-		/** Auto-unlocks once approved hours hit this threshold (no purchase). */
-		unlockHours?: number;
 		/** Which event color drives the fill when available/purchased. */
 		colorKey?: 'primary' | 'secondary';
 	};
 
 	const navItems: NavItem[] = [
-		{ key: 'rsvp', title: 'RSVP', prereqLabel: 'RSVP', cost: 15, colorKey: 'secondary' },
-		{ key: 'ticket', title: 'Buy Ticket', prereqLabel: 'ticket', cost: 15, prereq: 'rsvp', colorKey: 'primary' },
+		{ key: 'rsvp', title: 'RSVP', prereqLabel: 'RSVP', colorKey: 'secondary' },
+		{ key: 'ticket', title: 'Buy Ticket', prereqLabel: 'ticket', prereq: 'rsvp', colorKey: 'primary' },
 		{ key: 'stipends', title: 'Travel Stipends', prereq: 'ticket' },
 		{ key: 'change', title: 'Change Event' },
 	];
@@ -46,31 +42,50 @@
 	let pinnedImageUrl = $state<string | null>(null);
 	let targetHours = $state(30);
 	let completedHours = $state(0);
-	let approvedHours = $state(0);
 	let loading = $state(true);
 	let shakingKey = $state<string | null>(null);
-	// Real "purchased" state isn't yet wired up to a backend — start empty;
-	// the debug panel can flip these to preview the various visual states.
-	let purchased = $state<Set<ItemKey>>(new Set());
+	// Purchase state mirrors /api/events/auth/:slug/ticket-status. When rsvpCost
+	// is null the event uses simple pinning (no RSVP transaction), so we treat
+	// the RSVP step as already done — see hydrateTicketStatus().
+	let rsvpCost = $state<number | null>(null);
+	let ticketCost = $state<number | null>(null);
+	let hasRsvp = $state(false);
+	let hasTicket = $state(false);
+	let balance = $state(0);
+	let purchasing = $state<ItemKey | null>(null);
+	let purchaseError = $state<string | null>(null);
 
 	// --- DEBUG: ?debug enables overlay to preview each event + each state ---
-	type DebugUnlockState = '' | 'none' | '15' | '30';
+	type DebugBalanceState = '' | 'none' | '15' | '30' | '60';
+	type DebugBoolState = '' | 'yes' | 'no';
 	const debugMode = $derived(page.url.searchParams.has('debug'));
 	let debugEventSlug = $state<string>('');
-	let debugUnlockState = $state<DebugUnlockState>('');
+	let debugBalanceState = $state<DebugBalanceState>('');
+	let debugRsvpState = $state<DebugBoolState>('');
+	let debugTicketState = $state<DebugBoolState>('');
+	let debugRsvpCost = $state<number | null>(15);
+	let debugTicketCost = $state<number | null>(15);
 
 	const effectiveSlug = $derived(debugEventSlug || pinnedSlug);
 	const effectiveConfig = $derived(eventsMap[effectiveSlug] ?? pinnedConfig);
 	const effectiveImage = $derived(
 		debugEventSlug ? (eventsMap[debugEventSlug]?.eventCard?.bgImage ?? null) : pinnedImageUrl
 	);
-	const effectiveApprovedHours = $derived(
-		debugUnlockState === '' ? approvedHours :
-		debugUnlockState === 'none' ? 0 :
-		Number(debugUnlockState)
+	const effectiveBalance = $derived(
+		debugBalanceState === '' ? balance :
+		debugBalanceState === 'none' ? 0 :
+		Number(debugBalanceState)
 	);
+	const effectiveHasRsvp = $derived(
+		debugRsvpState === '' ? hasRsvp : debugRsvpState === 'yes'
+	);
+	const effectiveHasTicket = $derived(
+		debugTicketState === '' ? hasTicket : debugTicketState === 'yes'
+	);
+	const effectiveRsvpCost = $derived(debugMode && debugEventSlug ? debugRsvpCost : rsvpCost);
+	const effectiveTicketCost = $derived(debugMode && debugEventSlug ? debugTicketCost : ticketCost);
 	const effectiveCompletedHours = $derived(
-		debugUnlockState === '' ? completedHours : Math.max(effectiveApprovedHours, completedHours)
+		debugBalanceState === '' ? completedHours : Math.max(effectiveBalance, completedHours)
 	);
 
 	// Hydrate from cache for instant render.
@@ -85,12 +100,36 @@
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
 	});
 
+	async function hydrateTicketStatus(slug: string) {
+		const res = await api
+			.GET('/api/events/auth/{slug}/ticket-status' as any, {
+				params: { path: { slug } },
+			})
+			.catch(() => null);
+		const data = res?.data as
+			| {
+					rsvpCost: number | null;
+					ticketCost: number | null;
+					hasRsvp: boolean;
+					hasTicket: boolean;
+					balance: number;
+				}
+			| undefined;
+		if (!data) return;
+		rsvpCost = data.rsvpCost;
+		ticketCost = data.ticketCost;
+		// Events with no RSVP cost are pinned-and-attended directly; treat that as
+		// implicitly "RSVP'd" so the UI shows the step done.
+		hasRsvp = data.hasRsvp || data.rsvpCost === null;
+		hasTicket = data.hasTicket;
+		balance = Math.round(data.balance * 10) / 10;
+	}
+
 	onMount(async () => {
 		try {
-			const [pinnedRes, totalRes, approvedRes] = await Promise.all([
+			const [pinnedRes, totalRes] = await Promise.all([
 				api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null),
 				api.GET('/api/hackatime/hours/total').catch(() => null),
-				api.GET('/api/hackatime/hours/approved').catch(() => null),
 			]);
 			const pinned = (pinnedRes?.data as any)?.event ?? null;
 			if (pinned?.slug && eventsMap[pinned.slug]) {
@@ -108,9 +147,7 @@
 			if (totalRes?.data) {
 				completedHours = Math.round(((totalRes.data as any).totalNowHackatimeHours ?? 0) * 10) / 10;
 			}
-			if (approvedRes?.data) {
-				approvedHours = Math.round(((approvedRes.data as any).totalApprovedHours ?? 0) * 10) / 10;
-			}
+			await hydrateTicketStatus(pinnedSlug);
 		} finally {
 			loading = false;
 		}
@@ -132,18 +169,27 @@
 
 	type ItemStatus = 'locked' | 'available' | 'purchased';
 
-	// Hours already spent on prior purchases. Cost-locked items use this to
-	// decide whether the user still has enough approved time to buy them.
-	const spentHours = $derived(
-		navItems.reduce((sum, it) => sum + (purchased.has(it.key) ? (it.cost ?? 0) : 0), 0)
-	);
-	const availableHours = $derived(Math.max(0, effectiveApprovedHours - spentHours));
+	function isPurchased(key: ItemKey): boolean {
+		if (key === 'rsvp') return effectiveHasRsvp;
+		if (key === 'ticket') return effectiveHasTicket;
+		return false;
+	}
+
+	function costFor(item: NavItem): number | null {
+		if (item.key === 'rsvp') return effectiveRsvpCost;
+		if (item.key === 'ticket') return effectiveTicketCost;
+		return null;
+	}
 
 	function statusOf(item: NavItem): ItemStatus {
-		if (purchased.has(item.key)) return 'purchased';
-		if (item.prereq && !purchased.has(item.prereq)) return 'locked';
-		if (item.cost !== undefined && availableHours < item.cost) return 'locked';
-		if (item.unlockHours !== undefined && effectiveApprovedHours < item.unlockHours) return 'locked';
+		if (isPurchased(item.key)) return 'purchased';
+		if (item.prereq && !isPurchased(item.prereq)) return 'locked';
+		const cost = costFor(item);
+		// Cost-bearing items: must be configured (non-null) and affordable.
+		if (item.colorKey) {
+			if (cost === null) return 'locked';
+			if (effectiveBalance < cost) return 'locked';
+		}
 		return 'available';
 	}
 
@@ -161,15 +207,18 @@
 	function subtitleFor(item: NavItem, status: ItemStatus): string | null {
 		if (status === 'purchased') return null;
 		if (status === 'locked') {
-			if (item.prereq) {
+			if (item.prereq && !isPurchased(item.prereq)) {
 				const prereq = navItems.find((it) => it.key === item.prereq);
 				return `Purchase ${prereq?.prereqLabel ?? prereq?.title ?? 'prereq'} first`;
 			}
-			if (item.unlockHours !== undefined) return `Unlocks at ${item.unlockHours} approved hours`;
+			const cost = costFor(item);
+			if (item.colorKey && cost === null) return 'Not yet available';
+			if (cost !== null) return `Purchase for ${cost} hours`;
 			return null;
 		}
 		// available
-		if (item.cost !== undefined) return `Purchase for ${item.cost} hours`;
+		const cost = costFor(item);
+		if (cost !== null) return `Purchase for ${cost} hours`;
 		return null;
 	}
 
@@ -188,10 +237,60 @@
 			return;
 		}
 		// Already purchased → fully disabled, no feedback.
-		if (statusOf(item) === 'purchased') return;
-		// Purchase / unlock flows aren't wired up to a backend yet — shake to
-		// acknowledge the press until those flows exist.
+		if (isPurchased(item.key)) return;
+		// Locked or in-flight → shake to indicate "no-op". Same treatment for
+		// non-purchasable items (Travel Stipends) that haven't been wired up yet.
+		if (statusOf(item) === 'locked' || purchasing) {
+			triggerShake(item.key);
+			return;
+		}
+		if (item.key === 'rsvp' || item.key === 'ticket') {
+			void purchase(item.key);
+			return;
+		}
+		// Travel Stipends has no backend flow yet — shake until it does.
 		triggerShake(item.key);
+	}
+
+	async function purchase(key: 'rsvp' | 'ticket') {
+		if (debugMode) {
+			// Debug mode just flips local state so the visual flow can be exercised
+			// without hitting the backend.
+			if (key === 'rsvp') hasRsvp = true; else hasTicket = true;
+			return;
+		}
+		purchasing = key;
+		purchaseError = null;
+		try {
+			const path = key === 'rsvp'
+				? '/api/events/auth/{slug}/rsvp'
+				: '/api/events/auth/{slug}/ticket';
+			const res = await api.POST(path as any, {
+				params: { path: { slug: pinnedSlug } },
+			});
+			const errBody = (res as any).error as { message?: string | string[] } | undefined;
+			if (errBody) {
+				const msg = Array.isArray(errBody.message)
+					? errBody.message.join(' ')
+					: errBody.message;
+				purchaseError = msg ?? 'Purchase failed';
+				triggerShake(key);
+				return;
+			}
+			const data = (res as any).data as { newBalance?: number } | undefined;
+			if (typeof data?.newBalance === 'number') {
+				balance = Math.round(data.newBalance * 10) / 10;
+			}
+			if (key === 'rsvp') hasRsvp = true; else hasTicket = true;
+			// Re-sync from the server so any other side effects (e.g. balance
+			// rounding, RSVP-count) are reflected.
+			void hydrateTicketStatus(pinnedSlug);
+		} catch (err) {
+			purchaseError = err instanceof Error ? err.message : 'Purchase failed';
+			triggerShake(key);
+		} finally {
+			purchasing = null;
+		}
 	}
 
 	const nav = createListNav({
@@ -264,6 +363,11 @@
 					<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
 						{loading && !debugMode ? '— / —' : `${round1(effectiveCompletedHours)}/${round1(targetHours)}`} hours completed
 					</p>
+					{#if !loading || debugMode}
+						<p class="font-cook text-[12px] text-black/60 m-0 leading-normal whitespace-nowrap">
+							{round1(effectiveBalance)} hour{round1(effectiveBalance) === 1 ? '' : 's'} available to spend
+						</p>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -274,7 +378,7 @@
 				{@const selected = i === nav.selectedIndex}
 				{@const status = statusOf(item)}
 				{@const sub = subtitleFor(item, status)}
-				{@const showPulse = status === 'available' && item.cost !== undefined}
+				{@const showPulse = status === 'available' && costFor(item) !== null}
 				{@const tintCream = selected && status !== 'locked' && !item.colorKey}
 				<div
 					class="nav-item-wrap fly-right"
@@ -314,6 +418,20 @@
 		flyIn={page.url.searchParams.has('back')}
 	/>
 
+	{#if purchaseError}
+		<div class="purchase-error" role="alert">
+			<p class="font-cook text-[18px] font-semibold text-black m-0">{purchaseError}</p>
+			<button
+				type="button"
+				class="purchase-error-dismiss"
+				onclick={() => (purchaseError = null)}
+				aria-label="Dismiss"
+			>
+				×
+			</button>
+		</div>
+	{/if}
+
 	<div class="fade-wrap" class:entered class:exiting={navigating}>
 		<NavigationHint
 			segments={[
@@ -343,37 +461,52 @@
 		</div>
 
 		<div class="debug-section">
-			<div class="debug-label">Approved hours</div>
+			<div class="debug-label">Balance</div>
 			<div class="debug-buttons">
-				<button class:active={debugUnlockState === ''} onclick={() => (debugUnlockState = '')}>actual ({round1(approvedHours)}h)</button>
-				<button class:active={debugUnlockState === 'none'} onclick={() => (debugUnlockState = 'none')}>0h</button>
-				<button class:active={debugUnlockState === '15'} onclick={() => (debugUnlockState = '15')}>15h</button>
-				<button class:active={debugUnlockState === '30'} onclick={() => (debugUnlockState = '30')}>30h</button>
+				<button class:active={debugBalanceState === ''} onclick={() => (debugBalanceState = '')}>actual ({round1(balance)}h)</button>
+				<button class:active={debugBalanceState === 'none'} onclick={() => (debugBalanceState = 'none')}>0h</button>
+				<button class:active={debugBalanceState === '15'} onclick={() => (debugBalanceState = '15')}>15h</button>
+				<button class:active={debugBalanceState === '30'} onclick={() => (debugBalanceState = '30')}>30h</button>
+				<button class:active={debugBalanceState === '60'} onclick={() => (debugBalanceState = '60')}>60h</button>
 			</div>
 		</div>
 
 		<div class="debug-section">
-			<div class="debug-label">Purchased</div>
+			<div class="debug-label">RSVP'd</div>
 			<div class="debug-buttons">
-				{#each navItems.filter((it) => it.cost !== undefined) as item (item.key)}
-					<button
-						class:active={purchased.has(item.key)}
-						onclick={() => {
-							const next = new Set(purchased);
-							if (next.has(item.key)) next.delete(item.key); else next.add(item.key);
-							purchased = next;
-						}}
-					>
-						{item.title}
-					</button>
-				{/each}
-				<button onclick={() => (purchased = new Set())}>reset</button>
+				<button class:active={debugRsvpState === ''} onclick={() => (debugRsvpState = '')}>actual ({hasRsvp ? 'yes' : 'no'})</button>
+				<button class:active={debugRsvpState === 'no'} onclick={() => (debugRsvpState = 'no')}>no</button>
+				<button class:active={debugRsvpState === 'yes'} onclick={() => (debugRsvpState = 'yes')}>yes</button>
 			</div>
 		</div>
 
+		<div class="debug-section">
+			<div class="debug-label">Has Ticket</div>
+			<div class="debug-buttons">
+				<button class:active={debugTicketState === ''} onclick={() => (debugTicketState = '')}>actual ({hasTicket ? 'yes' : 'no'})</button>
+				<button class:active={debugTicketState === 'no'} onclick={() => (debugTicketState = 'no')}>no</button>
+				<button class:active={debugTicketState === 'yes'} onclick={() => (debugTicketState = 'yes')}>yes</button>
+			</div>
+		</div>
+
+		{#if debugEventSlug}
+			<div class="debug-section">
+				<div class="debug-label">Mock costs (only when overriding event)</div>
+				<div class="debug-buttons">
+					<button class:active={debugRsvpCost !== null} onclick={() => (debugRsvpCost = debugRsvpCost === null ? 15 : null)}>
+						RSVP: {debugRsvpCost === null ? 'null' : `${debugRsvpCost}h`}
+					</button>
+					<button class:active={debugTicketCost !== null} onclick={() => (debugTicketCost = debugTicketCost === null ? 15 : null)}>
+						Ticket: {debugTicketCost === null ? 'null' : `${debugTicketCost}h`}
+					</button>
+				</div>
+			</div>
+		{/if}
+
 		<div class="debug-section debug-readout">
 			<div>slug: {effectiveSlug}{debugEventSlug ? ' (debug)' : ''}</div>
-			<div>approved: {round1(effectiveApprovedHours)}h{debugUnlockState ? ' (debug)' : ''}</div>
+			<div>balance: {round1(effectiveBalance)}h{debugBalanceState ? ' (debug)' : ''}</div>
+			<div>rsvpCost: {effectiveRsvpCost === null ? 'null' : `${effectiveRsvpCost}h`} · ticketCost: {effectiveTicketCost === null ? 'null' : `${effectiveTicketCost}h`}</div>
 			<div>completed: {round1(effectiveCompletedHours)}h / target: {round1(targetHours)}h</div>
 			<div class="debug-swatch-row">primary: <span class="swatch" style="background: {eventColor('primary')};"></span><span>{eventColor('primary')}</span></div>
 			<div class="debug-swatch-row">secondary: <span class="swatch" style="background: {eventColor('secondary')};"></span><span>{eventColor('secondary')}</span></div>
@@ -612,6 +745,38 @@
 	/* Pause the pulse on the focused item — the scale already calls it out. */
 	.nav-item.pulsing:not(.selected):not(.shaking) {
 		animation: pulse-bright 1.4s ease-in-out infinite;
+	}
+
+	/* Transient error popup near the top, similar to the EVENT PINNED feedback. */
+	.purchase-error {
+		position: absolute;
+		top: 24px;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 14px 20px;
+		background: #f86d95;
+		border: 4px solid black;
+		border-radius: 16px;
+		box-shadow: 4px 4px 0px 0px black;
+		z-index: 30;
+		max-width: 80%;
+	}
+	.purchase-error-dismiss {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border: 3px solid black;
+		border-radius: 50%;
+		background: white;
+		font: 600 18px/1 ui-sans-serif, system-ui;
+		color: black;
+		cursor: pointer;
+		padding: 0;
 	}
 
 	/* Debug overlay (?debug) */
