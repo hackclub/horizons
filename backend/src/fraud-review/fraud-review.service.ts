@@ -102,8 +102,20 @@ export class FraudReviewService {
       throw new Error(`Joe ${response.status}: ${body}`);
     }
 
-    // 201 = created, 200 = already exists (deduplicated by organizerPlatformId)
-    return data.id ?? null;
+    // 201 = created, 200 = already exists (deduplicated by organizerPlatformId).
+    // Joe must echo back the id in either case; a 2xx without an id is a
+    // protocol-level failure. Throw so submitAndPersist records an audit entry
+    // — otherwise the project stays joeProjectId=null with no recorded reason
+    // and the poll tick re-attempts forever in silence.
+    if (!data.id) {
+      const body = JSON.stringify(data);
+      this.logger.error(
+        `Fraud review accepted (${response.status}) but response had no id: ${body}`,
+      );
+      throw new Error(`Joe ${response.status} ok but no id: ${body}`);
+    }
+
+    return data.id;
   }
 
   /**
@@ -276,12 +288,16 @@ export class FraudReviewService {
     const tickStartedAt = Date.now();
     this.logger.log('poll tick start');
 
-    // Step 1: submit any projects that never got sent to fraud review
+    // Step 1: submit any projects that never got sent to fraud review.
+    // Don't gate on the latest submission still being pending — even when a
+    // reviewer rejected before Joe could weigh in, we want Joe's verdict
+    // recorded against the project so a future resubmission can use the
+    // reuseFraud / preDeterminedFraud paths instead of starting from scratch.
     const unsubmittedProjects = await this.prisma.project.findMany({
       where: {
         joeProjectId: null,
         joeFraudPassed: null,
-        submissions: { some: { approvalStatus: 'pending' } },
+        submissions: { some: {} },
       },
       select: { projectId: true },
     });
