@@ -118,9 +118,7 @@
 		if (!data) return;
 		rsvpCost = data.rsvpCost;
 		ticketCost = data.ticketCost;
-		// Events with no RSVP cost are pinned-and-attended directly; treat that as
-		// implicitly "RSVP'd" so the UI shows the step done.
-		hasRsvp = data.hasRsvp || data.rsvpCost === null;
+		hasRsvp = data.hasRsvp;
 		hasTicket = data.hasTicket;
 		balance = Math.round(data.balance * 10) / 10;
 	}
@@ -204,8 +202,15 @@
 		return '#f3e8d8';
 	}
 
+	/** Solid color mixed halfway between the item's own color and the deselected
+	 *  cream — softer than the active fill so purchased items recede visually. */
+	function purchasedBlend(item: NavItem): string {
+		const own = item.colorKey ? eventColor(item.colorKey) : eventColor('primary');
+		return `color-mix(in srgb, ${own} 50%, #f3e8d8)`;
+	}
+
 	function subtitleFor(item: NavItem, status: ItemStatus): string | null {
-		if (status === 'purchased') return null;
+		if (status === 'purchased') return 'Purchased!';
 		if (status === 'locked') {
 			if (item.prereq && !isPurchased(item.prereq)) {
 				const prereq = navItems.find((it) => it.key === item.prereq);
@@ -393,7 +398,11 @@
 						class:purchased={status === 'purchased'}
 						class:pulsing={showPulse}
 						class:shaking={shakingKey === item.key}
-						style:background-color={tintCream ? eventColor('primary') : bgColorFor(item, status)}
+						style:background={status === 'purchased'
+							? purchasedBlend(item)
+							: tintCream
+								? eventColor('primary')
+								: bgColorFor(item, status)}
 						onmouseenter={() => nav.select(i)}
 						onclick={() => activate(item)}
 						onanimationend={() => { if (shakingKey === item.key) shakingKey = null; }}
@@ -742,8 +751,7 @@
 		0%, 100% { filter: brightness(1); }
 		50%      { filter: brightness(1.18); }
 	}
-	/* Pause the pulse on the focused item — the scale already calls it out. */
-	.nav-item.pulsing:not(.selected):not(.shaking) {
+	.nav-item.pulsing:not(.shaking) {
 		animation: pulse-bright 1.4s ease-in-out infinite;
 	}
 
