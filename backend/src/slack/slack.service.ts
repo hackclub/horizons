@@ -456,7 +456,11 @@ export class SlackService {
       return { success: false, error: 'User has no linked Slack account' };
     }
 
-    const projectUrl = `${process.env.FRONTEND_URL || 'https://horizons.hackclub.com'}/app/projects/${data.projectId}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://horizons.hackclub.com';
+    const baseUrl = /^https?:\/\//.test(frontendUrl)
+      ? frontendUrl
+      : `https://${frontendUrl}`;
+    const projectUrl = `${baseUrl}/app/projects/${data.projectId}`;
 
     const blocks: SlackMessageBlock[] = [
       {
