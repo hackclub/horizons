@@ -77,16 +77,16 @@
 		return u.displayName ?? (u.slackUserId ? `@${u.slackUserId}` : 'Anonymous');
 	}
 
-	// Projects this reviewer has already voted on (any submission). Hide them
-	// from the pending queue so reviewers don't re-encounter resubmissions of
-	// projects they've already finalized.
-	let myReviewedProjectIds = $derived(
+	// Submissions this reviewer has already voted on. Hide them from the
+	// pending queue so reviewers don't re-encounter the same submission, but
+	// new resubmissions for the same project still appear.
+	let myReviewedSubmissionIds = $derived(
 		currentReviewerId === null
 			? new Set<number>()
 			: new Set(
 					pastReviews
 						.filter((r) => r.reviewerId === String(currentReviewerId))
-						.map((r) => r.projectId),
+						.map((r) => r.submissionId),
 				),
 	);
 
@@ -102,7 +102,7 @@
 			.map((item, index) => ({ item, index }))
 			.filter(
 				({ item }) =>
-					!myReviewedProjectIds.has(item.project.projectId) &&
+					!myReviewedSubmissionIds.has(item.submissionId) &&
 					!isActivelyClaimedByOther(item) &&
 					matchesFilters(
 						item.project.projectTitle,
