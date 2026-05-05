@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { slide } from 'svelte/transition';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -298,11 +297,16 @@
 				triggerShake(key);
 				return;
 			}
-			// Authoritative source: refetch from the server. Avoids the situation
-			// where a 2xx-but-no-persistence (or a stale local state) leaves the UI
-			// optimistically claiming a purchase that didn't stick.
+			// Apply the success result from the POST response immediately. The POST
+			// already returns the authoritative newBalance, so the UI reflects the
+			// deduction even if the follow-up hydrate is slow or silently fails.
+			if (key === 'rsvp') hasRsvp = true; else hasTicket = true;
+			const successData = (res as any).data as { newBalance?: number } | undefined;
+			if (typeof successData?.newBalance === 'number') {
+				balance = Math.round(successData.newBalance * 10) / 10;
+			}
+			// Re-sync for any other side effects (status changes, hour-cost flips).
 			await hydrateTicketStatus(pinnedSlug);
-			// If hydrate disagrees with the success response, surface that.
 			const persisted = key === 'rsvp' ? hasRsvp : hasTicket;
 			if (!persisted) {
 				purchaseError = 'Purchase did not persist — please try again.';
@@ -427,7 +431,9 @@
 				{@const sub = subtitleFor(item, status)}
 				{@const showPulse = status === 'available' && costFor(item) !== null}
 				{@const tintCream = selected && status !== 'locked' && !item.colorKey}
-				{@const action = selected ? actionLabelFor(item, status) : null}
+				{@const action = actionLabelFor(item, status)}
+				{@const showAction = selected && action !== null}
+				{@const showSub = !showAction && sub !== null}
 				<div
 					class="nav-item-wrap fly-right"
 					class:exiting={navigating}
@@ -453,25 +459,27 @@
 						<p class="font-cook text-[32px] text-black m-0 leading-normal whitespace-nowrap">
 							{item.title}
 						</p>
-						{#if action}
-							<div class="action-hint" transition:slide={{ duration: 220, axis: 'y' }}>
-								{#if purchasing !== item.key}
-									<img
-										src={nav.usingKeyboard ? enterSvg : clickSvg}
-										alt={nav.usingKeyboard ? 'Enter' : 'Click'}
-										class="action-key"
-									/>
-								{/if}
-								<span class="font-cook text-[16px] text-black leading-none">{action}</span>
+						<div class="hint-row" class:visible={showAction}>
+							<div class="hint-row-inner">
+								<div class="action-hint">
+									{#if purchasing !== item.key}
+										<img
+											src={nav.usingKeyboard ? enterSvg : clickSvg}
+											alt={nav.usingKeyboard ? 'Enter' : 'Click'}
+											class="action-key"
+										/>
+									{/if}
+									<span class="font-cook text-[16px] text-black leading-none">{action ?? ''}</span>
+								</div>
 							</div>
-						{:else if sub}
-							<p
-								class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap"
-								transition:slide={{ duration: 220, axis: 'y' }}
-							>
-								{sub}
-							</p>
-						{/if}
+						</div>
+						<div class="hint-row" class:visible={showSub}>
+							<div class="hint-row-inner">
+								<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
+									{sub ?? ''}
+								</p>
+							</div>
+						</div>
 					</button>
 				</div>
 			{/each}
@@ -758,6 +766,27 @@
 		height: 24px;
 		width: auto;
 		display: block;
+	}
+	/* CSS-only height animation via grid-template-rows: 0fr ↔ 1fr, plus opacity
+	   so the content fades out instead of snapping at the moment overflow
+	   clipping kicks in. Same pattern as the events explore page's PIN/UNPIN
+	   reveal. */
+	.hint-row {
+		display: grid;
+		grid-template-rows: 0fr;
+		opacity: 0;
+		transition: grid-template-rows 0.18s ease, opacity 0.18s ease;
+		width: 100%;
+	}
+	.hint-row.visible {
+		grid-template-rows: 1fr;
+		opacity: 1;
+	}
+	.hint-row-inner {
+		min-height: 0;
+		overflow: hidden;
+		display: flex;
+		justify-content: center;
 	}
 
 	/* Per-card staggered fly-in */
