@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -8,6 +9,8 @@
 	import eventsRaw from '$lib/events/events.yaml?raw';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import NavigationHint from '$lib/components/NavigationHint.svelte';
+	import enterSvg from '$lib/assets/prompts/enter.svg';
+	import clickSvg from '$lib/assets/prompts/click.svg';
 	import { createListNav } from '$lib/nav/wasd.svelte';
 	import { EXIT_DURATION } from '$lib';
 	import { getCachedPinnedEvent, setCachedPinnedEvent } from '$lib/store/pinnedEventCache';
@@ -54,6 +57,9 @@
 	let balance = $state(0);
 	let purchasing = $state<ItemKey | null>(null);
 	let purchaseError = $state<string | null>(null);
+	// First Enter / click arms the confirm prompt; the second commits the purchase.
+	// Cleared whenever the focused item changes (see effect below).
+	let confirmingKey = $state<ItemKey | null>(null);
 
 	// --- DEBUG: ?debug enables overlay to preview each event + each state ---
 	type DebugBalanceState = '' | 'none' | '15' | '30' | '60';
@@ -211,6 +217,7 @@
 
 	function subtitleFor(item: NavItem, status: ItemStatus): string | null {
 		if (status === 'purchased') return 'Purchased!';
+		if (confirmingKey === item.key) return 'Confirm?';
 		if (status === 'locked') {
 			if (item.prereq && !isPurchased(item.prereq)) {
 				const prereq = navItems.find((it) => it.key === item.prereq);
@@ -250,7 +257,14 @@
 			return;
 		}
 		if (item.key === 'rsvp' || item.key === 'ticket') {
-			void purchase(item.key);
+			// Two-step commit: first activation arms the confirm prompt, second commits.
+			// Leave confirmingKey set through the in-flight purchase so the label
+			// stays steady (the finally in purchase() clears it).
+			if (confirmingKey === item.key) {
+				void purchase(item.key);
+			} else {
+				confirmingKey = item.key;
+			}
 			return;
 		}
 		// Travel Stipends has no backend flow yet — shake until it does.
@@ -273,28 +287,33 @@
 			const res = await api.POST(path as any, {
 				params: { path: { slug: pinnedSlug } },
 			});
-			const errBody = (res as any).error as { message?: string | string[] } | undefined;
-			if (errBody) {
-				const msg = Array.isArray(errBody.message)
-					? errBody.message.join(' ')
-					: errBody.message;
-				purchaseError = msg ?? 'Purchase failed';
+			const ok = (res as any).response?.ok;
+			if (!ok) {
+				const status = (res as any).response?.status;
+				const errBody = (res as any).error as { message?: string | string[] } | undefined;
+				const msg = Array.isArray(errBody?.message)
+					? errBody!.message!.join(' ')
+					: errBody?.message;
+				purchaseError = msg ?? `Purchase failed (${status ?? 'network error'})`;
 				triggerShake(key);
 				return;
 			}
-			const data = (res as any).data as { newBalance?: number } | undefined;
-			if (typeof data?.newBalance === 'number') {
-				balance = Math.round(data.newBalance * 10) / 10;
+			// Authoritative source: refetch from the server. Avoids the situation
+			// where a 2xx-but-no-persistence (or a stale local state) leaves the UI
+			// optimistically claiming a purchase that didn't stick.
+			await hydrateTicketStatus(pinnedSlug);
+			// If hydrate disagrees with the success response, surface that.
+			const persisted = key === 'rsvp' ? hasRsvp : hasTicket;
+			if (!persisted) {
+				purchaseError = 'Purchase did not persist — please try again.';
+				triggerShake(key);
 			}
-			if (key === 'rsvp') hasRsvp = true; else hasTicket = true;
-			// Re-sync from the server so any other side effects (e.g. balance
-			// rounding, RSVP-count) are reflected.
-			void hydrateTicketStatus(pinnedSlug);
 		} catch (err) {
 			purchaseError = err instanceof Error ? err.message : 'Purchase failed';
 			triggerShake(key);
 		} finally {
 			purchasing = null;
+			confirmingKey = null;
 		}
 	}
 
@@ -315,6 +334,29 @@
 		const firstActionable = navItems.findIndex((it) => statusOf(it) === 'available');
 		if (firstActionable >= 0) nav.selectedIndex = firstActionable;
 	});
+
+	// Whenever focus shifts to a different item, drop any in-flight confirm.
+	let lastSelectedIndex = -1;
+	$effect(() => {
+		const idx = nav.selectedIndex;
+		if (idx !== lastSelectedIndex) {
+			if (confirmingKey && navItems[idx]?.key !== confirmingKey) {
+				confirmingKey = null;
+			}
+			lastSelectedIndex = idx;
+		}
+	});
+
+	function actionLabelFor(item: NavItem, status: ItemStatus): string | null {
+		if (item.key === 'change') return 'TO CHANGE';
+		if (item.key !== 'rsvp' && item.key !== 'ticket') return null;
+		if (status !== 'available') return null;
+		if (purchasing === item.key) return 'PURCHASING...';
+		const cost = costFor(item);
+		const verb = confirmingKey === item.key ? 'TO CONFIRM' : 'TO PURCHASE';
+		const noun = cost === 1 ? 'HOUR' : 'HOURS';
+		return cost !== null ? `${verb} (${cost} ${noun})` : verb;
+	}
 </script>
 
 <svelte:window onkeydown={nav.handleKeydown} onwheel={nav.handleWheel} />
@@ -385,6 +427,7 @@
 				{@const sub = subtitleFor(item, status)}
 				{@const showPulse = status === 'available' && costFor(item) !== null}
 				{@const tintCream = selected && status !== 'locked' && !item.colorKey}
+				{@const action = selected ? actionLabelFor(item, status) : null}
 				<div
 					class="nav-item-wrap fly-right"
 					class:exiting={navigating}
@@ -410,8 +453,22 @@
 						<p class="font-cook text-[32px] text-black m-0 leading-normal whitespace-nowrap">
 							{item.title}
 						</p>
-						{#if sub}
-							<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
+						{#if action}
+							<div class="action-hint" transition:slide={{ duration: 220, axis: 'y' }}>
+								{#if purchasing !== item.key}
+									<img
+										src={nav.usingKeyboard ? enterSvg : clickSvg}
+										alt={nav.usingKeyboard ? 'Enter' : 'Click'}
+										class="action-key"
+									/>
+								{/if}
+								<span class="font-cook text-[16px] text-black leading-none">{action}</span>
+							</div>
+						{:else if sub}
+							<p
+								class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap"
+								transition:slide={{ duration: 220, axis: 'y' }}
+							>
 								{sub}
 							</p>
 						{/if}
@@ -691,6 +748,16 @@
 	}
 	.nav-item.purchased {
 		cursor: default;
+	}
+	.action-hint {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.action-key {
+		height: 24px;
+		width: auto;
+		display: block;
 	}
 
 	/* Per-card staggered fly-in */
