@@ -51,6 +51,24 @@ export class CreateEventDto {
   @Min(0)
   hourCost: number;
 
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  rsvpCost?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  ticketCost?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  rsvpEnabled?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  ticketEnabled?: boolean;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;

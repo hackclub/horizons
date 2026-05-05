@@ -20,6 +20,10 @@
         startDate: string;
         endDate: string;
         hourCost: string;
+        rsvpCost: string;
+        ticketCost: string;
+        rsvpEnabled: boolean;
+        ticketEnabled: boolean;
         isActive: boolean;
     }>({
         slug: '',
@@ -31,6 +35,10 @@
         startDate: '',
         endDate: '',
         hourCost: '',
+        rsvpCost: '',
+        ticketCost: '',
+        rsvpEnabled: false,
+        ticketEnabled: false,
         isActive: true
     });
     let saving = $state(false);
@@ -43,18 +51,24 @@
         formSuccess = '';
 
         try {
+            const body = {
+                slug: eventForm.slug,
+                title: eventForm.title,
+                description: eventForm.description || undefined,
+                imageUrl: eventForm.imageUrl || undefined,
+                location: eventForm.location || undefined,
+                country: eventForm.country || undefined,
+                startDate: eventForm.startDate,
+                endDate: eventForm.endDate,
+                hourCost: parseFloat(eventForm.hourCost),
+                rsvpCost: eventForm.rsvpCost === '' ? undefined : parseFloat(eventForm.rsvpCost),
+                ticketCost: eventForm.ticketCost === '' ? undefined : parseFloat(eventForm.ticketCost),
+                rsvpEnabled: eventForm.rsvpCost === '' ? undefined : eventForm.rsvpEnabled,
+                ticketEnabled: eventForm.ticketCost === '' ? undefined : eventForm.ticketEnabled,
+            };
             const { data, error } = await api.POST('/api/events/admin', {
-                body: {
-                    slug: eventForm.slug,
-                    title: eventForm.title,
-                    description: eventForm.description || undefined,
-                    imageUrl: eventForm.imageUrl || undefined,
-                    location: eventForm.location || undefined,
-                    country: eventForm.country || undefined,
-                    startDate: eventForm.startDate,
-                    endDate: eventForm.endDate,
-                    hourCost: parseFloat(eventForm.hourCost)
-                }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                body: body as any
             });
 
             if (error) {
@@ -158,7 +172,7 @@
                 />
             </div>
             <div class="space-y-2">
-                <label class="text-sm font-medium text-ds-text-secondary" for="event-cost">Hour Cost *</label>
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-cost">Hour Goal *</label>
                 <TextField
                     id="event-cost"
                     type="number"
@@ -167,6 +181,36 @@
                     placeholder="0"
                     bind:value={eventForm.hourCost}
                 />
+            </div>
+            <div class="space-y-2">
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-rsvp-cost">RSVP Cost (hours)</label>
+                <TextField
+                    id="event-rsvp-cost"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="Leave blank for free / no RSVP flow"
+                    bind:value={eventForm.rsvpCost}
+                />
+                <label class="flex items-center gap-2 pt-1 text-xs text-ds-text-secondary" class:opacity-50={eventForm.rsvpCost === ''}>
+                    <Checkbox bind:checked={eventForm.rsvpEnabled} disabled={eventForm.rsvpCost === ''} />
+                    RSVPs open for purchase
+                </label>
+            </div>
+            <div class="space-y-2">
+                <label class="text-sm font-medium text-ds-text-secondary" for="event-ticket-cost">Full Ticket Cost (hours)</label>
+                <TextField
+                    id="event-ticket-cost"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="Leave blank for RSVP-only"
+                    bind:value={eventForm.ticketCost}
+                />
+                <label class="flex items-center gap-2 pt-1 text-xs text-ds-text-secondary" class:opacity-50={eventForm.ticketCost === ''}>
+                    <Checkbox bind:checked={eventForm.ticketEnabled} disabled={eventForm.ticketCost === ''} />
+                    Tickets open for purchase
+                </label>
             </div>
             <div class="flex items-center gap-4">
                 <label class="flex items-center gap-2 text-sm text-ds-text-secondary">

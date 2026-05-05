@@ -11,6 +11,7 @@
 		Gift,
 		ArrowRightLeft,
 		CalendarDays,
+		Receipt,
 		Settings,
 		ShieldCheck,
 		Upload,
@@ -42,6 +43,7 @@
 		{ href: '/users', label: 'Users', icon: Users },
 		{ href: '/shop', label: 'Shop', icon: ShoppingBag },
 		{ href: '/giftcodes', label: 'Gift Codes', icon: Gift },
+		{ href: '/transactions', label: 'Transactions', icon: Receipt },
 		{ href: '/events', label: 'Events', icon: ArrowRightLeft },
 		{ href: '/community-events', label: 'Community Events', icon: CalendarDays }
 	];

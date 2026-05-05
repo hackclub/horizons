@@ -1262,3 +1262,95 @@ export class FraudQueueResponse {
   @ApiProperty({ type: [FraudQueueProjectResponse] })
   notInQueue: FraudQueueProjectResponse[];
 }
+
+export class LedgerEntryUserSummary {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+}
+
+export class LedgerEntryItemSummary {
+  @ApiProperty()
+  itemId: number;
+
+  @ApiProperty()
+  name: string;
+}
+
+export class LedgerEntryEventSummary {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  title: string;
+}
+
+export class LedgerEntryResponse {
+  @ApiProperty()
+  transactionId: number;
+
+  @ApiProperty({
+    enum: ['ShopItem', 'EventRsvp', 'EventTicket'],
+  })
+  kind: 'ShopItem' | 'EventRsvp' | 'EventTicket';
+
+  @ApiProperty()
+  itemDescription: string;
+
+  @ApiProperty()
+  cost: number;
+
+  @ApiProperty()
+  isFulfilled: boolean;
+
+  @ApiProperty({ type: Date, nullable: true })
+  fulfilledAt: Date | null;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty({ type: LedgerEntryUserSummary })
+  user: LedgerEntryUserSummary;
+
+  @ApiProperty({ type: LedgerEntryItemSummary, nullable: true })
+  item: LedgerEntryItemSummary | null;
+
+  @ApiProperty({ type: LedgerEntryEventSummary, nullable: true })
+  event: LedgerEntryEventSummary | null;
+}
+
+export class LedgerSummaryResponse {
+  @ApiProperty()
+  totalCount: number;
+
+  @ApiProperty()
+  totalSpent: number;
+
+  @ApiProperty()
+  shopCount: number;
+
+  @ApiProperty()
+  rsvpCount: number;
+
+  @ApiProperty()
+  ticketCount: number;
+}
+
+export class LedgerResponse {
+  @ApiProperty({ type: [LedgerEntryResponse] })
+  entries: LedgerEntryResponse[];
+
+  @ApiProperty({ type: LedgerSummaryResponse })
+  summary: LedgerSummaryResponse;
+}

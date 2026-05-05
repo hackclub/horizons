@@ -52,6 +52,7 @@ import {
   ImportCsvResponse,
   ProjectOwnerHackatimeProjectsResponse,
   FraudQueueResponse,
+  LedgerResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -225,6 +226,33 @@ export class AdminController {
     const stats = await this.adminService.getEventStats(slug);
     if (!stats) throw new NotFoundException('Event not found');
     return stats;
+  }
+
+  @Get('transactions')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiQuery({ name: 'kind', required: false, enum: ['ShopItem', 'EventRsvp', 'EventTicket'] })
+  @ApiQuery({ name: 'userId', required: false, type: Number })
+  @ApiQuery({ name: 'fulfilled', required: false, type: Boolean })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiOkResponse({ type: LedgerResponse })
+  async getTransactionLedger(
+    @Query('kind') kind?: 'ShopItem' | 'EventRsvp' | 'EventTicket',
+    @Query('userId') userId?: string,
+    @Query('fulfilled') fulfilled?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getTransactionLedger({
+      kind,
+      userId: userId ? parseInt(userId, 10) : undefined,
+      fulfilled:
+        fulfilled === 'true'
+          ? true
+          : fulfilled === 'false'
+            ? false
+            : undefined,
+      limit: limit ? Math.min(parseInt(limit, 10), 2000) : undefined,
+    });
   }
 
   @Get('reviewer-leaderboard')
