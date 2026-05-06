@@ -28,7 +28,8 @@
 	let selectedTypes = $state<Set<string>>(new Set());
 	let searchQuery = $state('');
 	// Default to longest wait so reviewers triage the most-stale submissions first.
-	let waitSortOrder = $state<'longest' | 'shortest'>('longest');
+	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
+	let sortOrder = $state<SortOrder>('longest-wait');
 	let fraudFilter = $state<'all' | 'reviewed' | 'unreviewed'>('all');
 
 	let pastReviews = $state<PastReview[]>([]);
@@ -111,10 +112,20 @@
 					) && matchesFraudFilter(item.project.joeFraudPassed),
 			)
 			.sort((a, b) => {
+				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
+					// Submissions without recorded hours sink to the bottom regardless of direction
+					// so reviewers always see real values first.
+					const aH = a.item.hackatimeHours;
+					const bH = b.item.hackatimeHours;
+					if (aH == null && bH == null) return 0;
+					if (aH == null) return 1;
+					if (bH == null) return -1;
+					return sortOrder === 'most-hours' ? bH - aH : aH - bH;
+				}
 				// createdAt is the submission timestamp, so this sorts by wait time, not project age.
 				const aT = new Date(a.item.createdAt).getTime();
 				const bT = new Date(b.item.createdAt).getTime();
-				return waitSortOrder === 'longest' ? aT - bT : bT - aT;
+				return sortOrder === 'longest-wait' ? aT - bT : bT - aT;
 			}),
 	);
 
@@ -260,18 +271,30 @@
 				Pending Queue <span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
 			</h2>
 			<div class="flex flex-wrap gap-2 items-center mb-3">
-				<span class="text-[11px] text-rv-dim">Wait time</span>
+				<span class="text-[11px] text-rv-dim">Sort</span>
 				<button
-					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {waitSortOrder === 'longest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
-					onclick={() => (waitSortOrder = 'longest')}
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'longest-wait' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (sortOrder = 'longest-wait')}
 				>
 					Longest wait
 				</button>
 				<button
-					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {waitSortOrder === 'shortest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
-					onclick={() => (waitSortOrder = 'shortest')}
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'shortest-wait' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (sortOrder = 'shortest-wait')}
 				>
 					Shortest wait
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'most-hours' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (sortOrder = 'most-hours')}
+				>
+					Most hours
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'least-hours' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (sortOrder = 'least-hours')}
+				>
+					Least hours
 				</button>
 
 				<span class="text-[11px] text-rv-dim ml-3">Fraud</span>
@@ -311,6 +334,14 @@
 						</p>
 						<div class="flex items-center gap-1.5 flex-wrap mt-1">
 							<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
+							{#if item.hackatimeHours != null}
+								<span
+									class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border bg-rv-tag-bg text-rv-dim border-rv-border font-[Space_Mono,monospace]"
+									title="Hackatime hours submitted for this project"
+								>
+									{item.hackatimeHours.toFixed(1)}h
+								</span>
+							{/if}
 							<span
 								class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border {waitingPillClass(item.createdAt)}"
 								title="Submitted {new Date(item.createdAt).toLocaleString()}"
