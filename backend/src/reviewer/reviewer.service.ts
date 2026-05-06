@@ -77,13 +77,11 @@ export class ReviewerService {
    * Returns minimal info for the queue list, not full details.
    */
   async getReviewQueue(viewerId?: number) {
-    // Fraud and review run independently now, but still refresh fraud state on
-    // queue open so any late fraud results can finalize pending submissions
-    // before the reviewer sees them.
-    if (this.fraudReviewService.isEnabled()) {
-      await this.fraudReviewService.pollPendingProjects();
-    }
-
+    // Fraud sync runs in the background (5-minute @Interval) and is also
+    // triggered by the gallery's "Refresh Queue" button via
+    // /api/reviewer/fraud-review/refresh. Don't block the queue load on it —
+    // pollPendingProjects round-trips Joe + walks all pending projects, which
+    // adds ~10s of latency that reviewers feel on every page load.
     const submissions = await this.prisma.submission.findMany({
       where: {
         approvalStatus: 'pending',
