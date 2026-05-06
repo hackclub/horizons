@@ -4,6 +4,8 @@
 	import { theme, toggleTheme } from '$lib/themeStore';
 	import { api, type components } from '$lib/api';
 	import * as echarts from 'echarts';
+	import { Skeleton } from '$lib/components';
+	import StatCard from './StatCard.svelte';
 
 	type ReviewStats = components['schemas']['ReviewStatsResponse'];
 	type LeaderboardEntry = components['schemas']['LeaderboardEntry'];
@@ -611,11 +613,7 @@
 		</div>
 	</div>
 
-	{#if loading}
-		<div class="flex items-center justify-center h-64 text-rv-dim">
-			<p>Loading stats...</p>
-		</div>
-	{:else if error}
+	{#if error}
 		<div class="flex flex-col items-center justify-center h-64 gap-2 text-rv-red">
 			<p>{error}</p>
 			<button
@@ -623,7 +621,7 @@
 				onclick={loadStats}>Retry</button
 			>
 		</div>
-	{:else if stats}
+	{:else}
 		<div class="max-w-6xl mx-auto px-5 py-6 flex flex-col gap-6">
 			<!-- General stats cards -->
 			<section>
@@ -631,41 +629,37 @@
 					Last 30 Days
 				</h2>
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Avg Review Time
-						</div>
-						<div class="text-xl font-bold text-rv-accent">
-							{formatHours(stats.general.avgReviewTimeLast30Days)}
-						</div>
-					</div>
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Median Review Time
-						</div>
-						<div class="text-xl font-bold text-rv-accent">
-							{formatHours(stats.general.medianReviewTimeLast30Days)}
-						</div>
-					</div>
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Longest Wait
-						</div>
-						<div class="text-xl font-bold text-rv-red">
-							{formatHours(stats.general.longestWaitLast30Days)}
-						</div>
-					</div>
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Current Longest Wait
-						</div>
-						<div class="text-xl font-bold text-rv-red">
-							{formatHours(stats.general.longestCurrentWait)}
-						</div>
-					</div>
+					<StatCard
+						label="Avg Review Time"
+						value={formatHours(stats?.general.avgReviewTimeLast30Days ?? null)}
+						valueClass="text-rv-accent"
+						{loading}
+					/>
+					<StatCard
+						label="Median Review Time"
+						value={formatHours(stats?.general.medianReviewTimeLast30Days ?? null)}
+						valueClass="text-rv-accent"
+						{loading}
+					/>
+					<StatCard
+						label="Longest Wait"
+						value={formatHours(stats?.general.longestWaitLast30Days ?? null)}
+						valueClass="text-rv-red"
+						{loading}
+					/>
+					<StatCard
+						label="Current Longest Wait"
+						value={formatHours(stats?.general.longestCurrentWait ?? null)}
+						valueClass="text-rv-red"
+						{loading}
+					/>
 				</div>
 				<div class="mt-2 text-[11px] text-rv-dim">
-					{stats.general.reviewsLast30Days} reviews completed in the last 30 days
+					{#if loading}
+						<Skeleton class="h-3 w-64 inline-block align-middle" />
+					{:else}
+						{stats?.general.reviewsLast30Days ?? 0} reviews completed in the last 30 days
+					{/if}
 				</div>
 			</section>
 
@@ -705,57 +699,37 @@
 			<!-- Hours breakdown -->
 			<section>
 				<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Tracked Hours
-						</div>
-						<div class="text-xl font-bold text-rv-text">
-							{formatTotal(stats.hours.trackedHours)}
-						</div>
-					</div>
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Unshipped Hours
-						</div>
-						<div class="text-xl font-bold text-rv-text">
-							{formatTotal(stats.hours.unshippedHours)}
-						</div>
-					</div>
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Shipped Hours
-						</div>
-						<div class="text-xl font-bold text-rv-text">
-							{formatTotal(stats.hours.shippedHours)}
-						</div>
-					</div>
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Hours in Review
-						</div>
-						<div class="text-xl font-bold text-rv-text">
-							{formatTotal(stats.hours.hoursInReview)}
-						</div>
-					</div>
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Approved Hours
-						</div>
-						<div class="text-xl font-bold text-rv-text">
-							{formatTotal(stats.hours.approvedHours)}
-						</div>
-						<div class="text-[10px] text-rv-dim mt-0.5">
-							{formatTotal(stats.hours.weightedGrants)} weighted grants
-						</div>
-					</div>
-					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-							Rejected Hours
-						</div>
-						<div class="text-xl font-bold text-rv-text">
-							{formatTotal(stats.hours.rejectedHours)}
-						</div>
-					</div>
+					<StatCard
+						label="Tracked Hours"
+						value={stats ? formatTotal(stats.hours.trackedHours) : ''}
+						{loading}
+					/>
+					<StatCard
+						label="Unshipped Hours"
+						value={stats ? formatTotal(stats.hours.unshippedHours) : ''}
+						{loading}
+					/>
+					<StatCard
+						label="Shipped Hours"
+						value={stats ? formatTotal(stats.hours.shippedHours) : ''}
+						{loading}
+					/>
+					<StatCard
+						label="Hours in Review"
+						value={stats ? formatTotal(stats.hours.hoursInReview) : ''}
+						{loading}
+					/>
+					<StatCard
+						label="Approved Hours"
+						value={stats ? formatTotal(stats.hours.approvedHours) : ''}
+						sublabel={stats ? `${formatTotal(stats.hours.weightedGrants)} weighted grants` : null}
+						{loading}
+					/>
+					<StatCard
+						label="Rejected Hours"
+						value={stats ? formatTotal(stats.hours.rejectedHours) : ''}
+						{loading}
+					/>
 				</div>
 
 				<div class="bg-rv-surface border border-rv-border rounded-lg p-4 mt-3">
@@ -766,13 +740,18 @@
 						<select
 							bind:value={hoursDistMode}
 							class="rounded-md border border-rv-border bg-rv-surface2 px-2 py-1 text-xs text-rv-text"
+							disabled={loading}
 						>
 							<option value="unshipped">Unshipped (incl. pending/approved)</option>
 							<option value="shipped">Shipped but pending (incl. approved)</option>
 							<option value="approved">Approved hours</option>
 						</select>
 					</div>
-					<div bind:this={hoursDistributionEl} style="height: 220px;"></div>
+					{#if loading}
+						<Skeleton class="h-55 w-full" />
+					{:else}
+						<div bind:this={hoursDistributionEl} style="height: 220px;"></div>
+					{/if}
 				</div>
 			</section>
 			{/if}
@@ -781,66 +760,62 @@
 				<!-- Median Review Time -->
 				<section>
 					<div class="grid gap-3 sm:grid-cols-2 mb-3">
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-								Median Fraud Check Time This Week
-							</div>
-							<div class="text-xl font-bold text-rv-text">
-								{stats.reviewStats.medianFraudCheckTimeThisWeek != null
-									? formatHours(stats.reviewStats.medianFraudCheckTimeThisWeek)
-									: '—'}
-							</div>
-						</div>
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-								Last Project Fraud Check Time
-							</div>
-							<div class="text-xl font-bold text-rv-text">
-								{stats.reviewStats.lastProjectFraudCheckTime != null
-									? formatHours(stats.reviewStats.lastProjectFraudCheckTime)
-									: '—'}
-							</div>
-						</div>
+						<StatCard
+							label="Median Fraud Check Time This Week"
+							value={stats?.reviewStats.medianFraudCheckTimeThisWeek != null
+								? formatHours(stats.reviewStats.medianFraudCheckTimeThisWeek)
+								: '—'}
+							{loading}
+						/>
+						<StatCard
+							label="Last Project Fraud Check Time"
+							value={stats?.reviewStats.lastProjectFraudCheckTime != null
+								? formatHours(stats.reviewStats.lastProjectFraudCheckTime)
+								: '—'}
+							{loading}
+						/>
 					</div>
 					<div class="bg-rv-surface border border-rv-border rounded-lg p-4 mb-3">
 						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-2">
 							Median Fraud Check Time — Weekly Avg
 						</div>
-						<div bind:this={medianFraudCheckEl} style="height: 180px;"></div>
-						{#if stats.historical.medianFraudCheckTimeHours.length === 0}
-							<p class="text-[10px] text-rv-dim text-center mt-1">No historical data yet</p>
+						{#if loading}
+							<Skeleton class="h-45 w-full" />
+						{:else}
+							<div bind:this={medianFraudCheckEl} style="height: 180px;"></div>
+							{#if stats && stats.historical.medianFraudCheckTimeHours.length === 0}
+								<p class="text-[10px] text-rv-dim text-center mt-1">No historical data yet</p>
+							{/if}
 						{/if}
 					</div>
 					<hr class="my-4 border-rv-border opacity-50" />
 					<div class="grid gap-3 sm:grid-cols-2 mb-3">
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-								Median Review Time This Week
-							</div>
-							<div class="text-xl font-bold text-rv-text">
-								{stats.reviewStats.medianReviewTimeThisWeek != null
-									? formatHours(stats.reviewStats.medianReviewTimeThisWeek)
-									: '—'}
-							</div>
-						</div>
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-								Last Project Review Time
-							</div>
-							<div class="text-xl font-bold text-rv-text">
-								{stats.reviewStats.lastProjectReviewTime != null
-									? formatHours(stats.reviewStats.lastProjectReviewTime)
-									: '—'}
-							</div>
-						</div>
+						<StatCard
+							label="Median Review Time This Week"
+							value={stats?.reviewStats.medianReviewTimeThisWeek != null
+								? formatHours(stats.reviewStats.medianReviewTimeThisWeek)
+								: '—'}
+							{loading}
+						/>
+						<StatCard
+							label="Last Project Review Time"
+							value={stats?.reviewStats.lastProjectReviewTime != null
+								? formatHours(stats.reviewStats.lastProjectReviewTime)
+								: '—'}
+							{loading}
+						/>
 					</div>
 					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
 						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-2">
 							Median Review Time — Weekly Avg
 						</div>
-						<div bind:this={medianReviewEl} style="height: 180px;"></div>
-						{#if stats.historical.medianReviewTimeHours.length === 0}
-							<p class="text-[10px] text-rv-dim text-center mt-1">No historical data yet</p>
+						{#if loading}
+							<Skeleton class="h-45 w-full" />
+						{:else}
+							<div bind:this={medianReviewEl} style="height: 180px;"></div>
+							{#if stats && stats.historical.medianReviewTimeHours.length === 0}
+								<p class="text-[10px] text-rv-dim text-center mt-1">No historical data yet</p>
+							{/if}
 						{/if}
 					</div>
 				</section>
@@ -853,10 +828,38 @@
 						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-2">
 							Project flow through the two gates
 						</div>
-						<div bind:this={projectFunnelEl} style="height: 320px;"></div>
+						{#if loading}
+							<Skeleton class="h-80 w-full" />
+						{:else}
+							<div bind:this={projectFunnelEl} style="height: 320px;"></div>
+						{/if}
 					</div>
 
-					{#if funnelMatrix}
+					{#if loading}
+						<div class="bg-rv-surface border border-rv-border rounded-lg p-4 mb-3">
+							<Skeleton class="h-3 w-72 mb-3" />
+							<div class="grid grid-cols-[max-content_repeat(3,minmax(0,1fr))] gap-2">
+								<div></div>
+								{#each Array(3) as _}
+									<Skeleton class="h-3 w-24 mx-auto" />
+								{/each}
+								{#each Array(3) as _}
+									<Skeleton class="h-4 w-32" />
+									{#each Array(3) as _}
+										<Skeleton class="h-14 w-full" />
+									{/each}
+								{/each}
+							</div>
+						</div>
+						<div class="grid gap-3 sm:grid-cols-4 mb-3">
+							{#each Array(4) as _}
+								<div class="rounded-lg border border-rv-border bg-rv-surface p-4">
+									<Skeleton class="h-3 w-20 mb-2" />
+									<Skeleton class="h-7 w-16" />
+								</div>
+							{/each}
+						</div>
+					{:else if funnelMatrix}
 						<div class="bg-rv-surface border border-rv-border rounded-lg p-4 mb-3">
 							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-3">
 								Where every project sits right now (latest submission)
@@ -923,57 +926,49 @@
 					{/if}
 
 					<div class="grid gap-3 sm:grid-cols-3 mb-3">
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">Fraud Queue</div>
-							<div class="text-xl font-bold text-rv-text">
-								{formatCount(stats.reviewProjects.fraudQueue)}
-							</div>
-						</div>
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">Review Queue</div>
-							<div class="text-xl font-bold text-rv-text">
-								{formatCount(stats.reviewProjects.reviewQueue)}
-							</div>
-						</div>
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">Reviewed</div>
-							<div class="text-xl font-bold text-rv-text">
-								{formatCount(stats.reviewProjects.reviewed)}
-							</div>
-						</div>
+						<StatCard
+							label="Fraud Queue"
+							value={stats ? formatCount(stats.reviewProjects.fraudQueue) : ''}
+							{loading}
+						/>
+						<StatCard
+							label="Review Queue"
+							value={stats ? formatCount(stats.reviewProjects.reviewQueue) : ''}
+							{loading}
+						/>
+						<StatCard
+							label="Reviewed"
+							value={stats ? formatCount(stats.reviewProjects.reviewed) : ''}
+							{loading}
+						/>
 					</div>
 					<hr class="my-4 border-rv-border opacity-50" />
 					<div class="grid gap-3 sm:grid-cols-3 mb-3">
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-								Shipped This Week
-							</div>
-							<div class="text-xl font-bold text-rv-text">
-								{formatCount(stats.reviewProjects.shippedThisWeek)}
-							</div>
-						</div>
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-								Fraud Checked This Week
-							</div>
-							<div class="text-xl font-bold text-rv-text">
-								{formatCount(stats.reviewProjects.fraudCheckedThisWeek)}
-							</div>
-						</div>
-						<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
-							<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-1">
-								Reviewed This Week
-							</div>
-							<div class="text-xl font-bold text-rv-text">
-								{formatCount(stats.reviewProjects.reviewedThisWeek)}
-							</div>
-						</div>
+						<StatCard
+							label="Shipped This Week"
+							value={stats ? formatCount(stats.reviewProjects.shippedThisWeek) : ''}
+							{loading}
+						/>
+						<StatCard
+							label="Fraud Checked This Week"
+							value={stats ? formatCount(stats.reviewProjects.fraudCheckedThisWeek) : ''}
+							{loading}
+						/>
+						<StatCard
+							label="Reviewed This Week"
+							value={stats ? formatCount(stats.reviewProjects.reviewedThisWeek) : ''}
+							{loading}
+						/>
 					</div>
 					<div class="bg-rv-surface border border-rv-border rounded-lg p-4">
 						<div class="text-[11px] text-rv-dim uppercase tracking-wide mb-2">Projects (30d)</div>
-						<div bind:this={projectsReviewedEl} style="height: 200px;"></div>
-						{#if stats.historical.reviewsCompleted.length === 0 && (!stats.historical.projectsShipped || stats.historical.projectsShipped.length === 0)}
-							<p class="text-[10px] text-rv-dim text-center mt-1">No historical data yet</p>
+						{#if loading}
+							<Skeleton class="h-50 w-full" />
+						{:else}
+							<div bind:this={projectsReviewedEl} style="height: 200px;"></div>
+							{#if stats && stats.historical.reviewsCompleted.length === 0 && (!stats.historical.projectsShipped || stats.historical.projectsShipped.length === 0)}
+								<p class="text-[10px] text-rv-dim text-center mt-1">No historical data yet</p>
+							{/if}
 						{/if}
 					</div>
 				</section>
@@ -1005,7 +1000,17 @@
 					</div>
 				</div>
 
-				{#if currentLeaderboard.length === 0}
+				{#if loading}
+					<div class="bg-rv-surface border border-rv-border rounded-lg overflow-hidden p-4 flex flex-col gap-2">
+						{#each Array(5) as _}
+							<div class="flex items-center gap-3 py-1">
+								<Skeleton class="h-3 w-6" />
+								<Skeleton class="h-3 flex-1" />
+								<Skeleton class="h-3 w-10" />
+							</div>
+						{/each}
+					</div>
+				{:else if currentLeaderboard.length === 0}
 					<div
 						class="bg-rv-surface border border-rv-border rounded-lg p-6 text-center text-rv-dim text-sm"
 					>

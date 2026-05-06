@@ -401,11 +401,7 @@
 </svelte:head>
 
 <div class="font-[Inter,sans-serif] bg-rv-bg text-rv-text h-screen flex flex-col overflow-hidden">
-	{#if submissionLoading}
-		<div class="flex flex-col items-center justify-center h-screen gap-2 text-rv-dim bg-rv-bg">
-			<p>Loading submission...</p>
-		</div>
-	{:else if !currentSubmission}
+	{#if !submissionLoading && !currentSubmission}
 		<div class="flex flex-col items-center justify-center h-screen gap-3 text-rv-dim bg-rv-bg px-6">
 			<p class="text-rv-text text-[15px] m-0">Project #{projectId} isn't in the review system.</p>
 			<p class="text-[12px] text-rv-dim max-w-105 text-center m-0">
@@ -420,7 +416,7 @@
 			onNext={navigateNext}
 			onPrev={navigatePrev}
 			onBackToGallery={goBack}
-			reviewPassed={currentSubmission.reviewPassed}
+			reviewPassed={currentSubmission?.reviewPassed ?? null}
 			nextDisabled={!hasNextUnseen}
 		/>
 
@@ -428,16 +424,17 @@
 			<!-- LEFT PANEL -->
 			<div class="bg-rv-surface border-r border-rv-border overflow-y-auto">
 				<UserInfo
-					user={currentSubmission.project.user}
-					repoUrl={currentSubmission.project.repoUrl ?? currentSubmission.repoUrl}
-					playableUrl={currentSubmission.project.playableUrl ?? currentSubmission.playableUrl}
-					readmeUrl={currentSubmission.project.readmeUrl}
-					hackatimeHours={currentSubmission.hackatimeHours}
-					hackatimeProjects={currentSubmission.project.nowHackatimeProjects ?? []}
+					user={currentSubmission?.project.user}
+					repoUrl={currentSubmission?.project.repoUrl ?? currentSubmission?.repoUrl ?? null}
+					playableUrl={currentSubmission?.project.playableUrl ?? currentSubmission?.playableUrl ?? null}
+					readmeUrl={currentSubmission?.project.readmeUrl ?? null}
+					hackatimeHours={currentSubmission?.hackatimeHours ?? null}
+					hackatimeProjects={currentSubmission?.project.nowHackatimeProjects ?? []}
 					hackatimeProjectHours={hackatimeProjectHours}
-					joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
-					joeTrustScore={currentSubmission.project.joeTrustScore ?? null}
+					joeFraudPassed={currentSubmission?.project.joeFraudPassed ?? null}
+					joeTrustScore={currentSubmission?.project.joeTrustScore ?? null}
 					onHoursChange={handleHoursChange}
+					loading={submissionLoading}
 				/>
 
 				<hr class="border-none border-t border-rv-border m-0" />
@@ -445,8 +442,9 @@
 				<NotesSection
 					title="Notes — Project"
 					targetType="project"
-					targetId={currentSubmission.project.projectId}
+					targetId={currentSubmission?.project.projectId ?? 0}
 					bind:content={projectNote}
+					loading={submissionLoading}
 				/>
 
 				<hr class="border-none border-t border-rv-border m-0" />
@@ -454,17 +452,18 @@
 				<NotesSection
 					title="Notes — User"
 					targetType="user"
-					targetId={currentSubmission.project.user.userId}
+					targetId={currentSubmission?.project.user.userId ?? 0}
 					bind:content={userNote}
+					loading={submissionLoading}
 				/>
 
 				<hr class="border-none border-t border-rv-border m-0" />
 
-				<ManifestLookup lookup={manifestLookup} loading={manifestLoading} />
+				<ManifestLookup lookup={manifestLookup} loading={manifestLoading || submissionLoading} />
 
 				<hr class="border-none border-t border-rv-border m-0" />
 
-				{#if currentSubmission.submissions && currentSubmission.submissions.length > 1}
+				{#if currentSubmission && currentSubmission.submissions && currentSubmission.submissions.length > 1}
 					<SubmissionsList
 						submissions={currentSubmission.submissions}
 						activeSubmissionId={currentSubmission.submissionId}
@@ -473,7 +472,7 @@
 					<hr class="border-none border-t border-rv-border m-0" />
 				{/if}
 
-				<ReviewHistory timeline={currentSubmission.timeline} />
+				<ReviewHistory timeline={currentSubmission?.timeline ?? []} loading={submissionLoading} />
 			</div>
 
 			<!-- CENTER PANEL -->
@@ -482,63 +481,65 @@
 
 				<div class="flex-1 overflow-hidden relative">
 					<div class="absolute inset-0" class:hidden={activeTab !== 'readme'}>
-						<ReadmePanel markdown={readmeMarkdown} />
+						<ReadmePanel markdown={readmeMarkdown} loading={submissionLoading} />
 					</div>
-					<div class="absolute inset-0 flex flex-col" class:hidden={activeTab !== 'demo'}>
-						<DemoIframe
-							demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
-						/>
-					</div>
-					<div class="absolute inset-0" class:hidden={activeTab !== 'card'}>
-						<ProjectCardPanel
-							projectTitle={currentSubmission.project.projectTitle}
-							projectDescription={currentSubmission.project.description}
-							screenshotUrl={currentSubmission.screenshotUrl}
-							projectType={currentSubmission.project.projectType}
-							demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
-							codeUrl={currentSubmission.repoUrl ?? currentSubmission.project.repoUrl}
-							readmeUrl={currentSubmission.project.readmeUrl}
-						/>
-					</div>
-					<div class="absolute inset-0" class:hidden={activeTab !== 'verdict'}>
-						<VerdictPanel
-							submissionId={currentSubmission.submissionId}
-							hackatimeHours={currentSubmission.hackatimeHours}
-							{editedHours}
-							joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
-							reviewPassed={currentSubmission.reviewPassed}
-							priorApprovedHours={currentSubmission.approvedHours}
-							priorReviewerAnalysis={currentSubmission.reviewerAnalysis}
-							priorUserFeedback={currentSubmission.userFeedback}
-							isResubmission={(currentSubmission.submissions ?? []).some(
-								(s) => s.submissionId !== currentSubmission!.submissionId
-									&& new Date(s.createdAt) < new Date(currentSubmission!.createdAt),
-							)}
-							hasPriorYswsSubmission={(manifestLookup?.manifest?.submissions ?? []).some(
-								(s) => (s.yswsName ?? '').toLowerCase() !== 'horizons',
-							)}
-							priorYswsHoursShipped={(manifestLookup?.manifest?.submissions ?? [])
-								.filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
-								.reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0)}
-							priorReshipApprovedHours={(() => {
-								// Most recent OTHER approved submission for this project.
-								// Used to surface the implied delta on a reship: the reviewer
-								// is granting (current approvedHours - this) new hours.
-								const submissions = currentSubmission.submissions ?? [];
-								const currentCreatedAt = new Date(currentSubmission.createdAt).getTime();
-								const priorApproved = submissions
-									.filter((s) =>
-										s.submissionId !== currentSubmission!.submissionId
-										&& s.approvalStatus === 'approved'
-										&& s.approvedHours != null
-										&& new Date(s.createdAt).getTime() < currentCreatedAt,
-									)
-									.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-								return priorApproved[0]?.approvedHours ?? null;
-							})()}
-							onReviewComplete={handleReviewComplete}
-						/>
-					</div>
+					{#if currentSubmission}
+						<div class="absolute inset-0 flex flex-col" class:hidden={activeTab !== 'demo'}>
+							<DemoIframe
+								demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
+							/>
+						</div>
+						<div class="absolute inset-0" class:hidden={activeTab !== 'card'}>
+							<ProjectCardPanel
+								projectTitle={currentSubmission.project.projectTitle}
+								projectDescription={currentSubmission.project.description}
+								screenshotUrl={currentSubmission.screenshotUrl}
+								projectType={currentSubmission.project.projectType}
+								demoUrl={currentSubmission.playableUrl ?? currentSubmission.project.playableUrl}
+								codeUrl={currentSubmission.repoUrl ?? currentSubmission.project.repoUrl}
+								readmeUrl={currentSubmission.project.readmeUrl}
+							/>
+						</div>
+						<div class="absolute inset-0" class:hidden={activeTab !== 'verdict'}>
+							<VerdictPanel
+								submissionId={currentSubmission.submissionId}
+								hackatimeHours={currentSubmission.hackatimeHours}
+								{editedHours}
+								joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
+								reviewPassed={currentSubmission.reviewPassed}
+								priorApprovedHours={currentSubmission.approvedHours}
+								priorReviewerAnalysis={currentSubmission.reviewerAnalysis}
+								priorUserFeedback={currentSubmission.userFeedback}
+								isResubmission={(currentSubmission.submissions ?? []).some(
+									(s) => s.submissionId !== currentSubmission!.submissionId
+										&& new Date(s.createdAt) < new Date(currentSubmission!.createdAt),
+								)}
+								hasPriorYswsSubmission={(manifestLookup?.manifest?.submissions ?? []).some(
+									(s) => (s.yswsName ?? '').toLowerCase() !== 'horizons',
+								)}
+								priorYswsHoursShipped={(manifestLookup?.manifest?.submissions ?? [])
+									.filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
+									.reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0)}
+								priorReshipApprovedHours={(() => {
+									// Most recent OTHER approved submission for this project.
+									// Used to surface the implied delta on a reship: the reviewer
+									// is granting (current approvedHours - this) new hours.
+									const submissions = currentSubmission.submissions ?? [];
+									const currentCreatedAt = new Date(currentSubmission.createdAt).getTime();
+									const priorApproved = submissions
+										.filter((s) =>
+											s.submissionId !== currentSubmission!.submissionId
+											&& s.approvalStatus === 'approved'
+											&& s.approvedHours != null
+											&& new Date(s.createdAt).getTime() < currentCreatedAt,
+										)
+										.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+									return priorApproved[0]?.approvedHours ?? null;
+								})()}
+								onReviewComplete={handleReviewComplete}
+							/>
+						</div>
+					{/if}
 				</div>
 			</div>
 
@@ -546,14 +547,15 @@
 			<div class="bg-rv-surface border-l border-rv-border flex flex-col overflow-hidden">
 				<GitHubPanel
 					repo={githubRepo}
-					loading={githubLoading}
+					loading={githubLoading || submissionLoading}
 					error={githubError}
-					repoUrl={currentSubmission.project.repoUrl ?? currentSubmission.repoUrl ?? null}
+					repoUrl={currentSubmission?.project.repoUrl ?? currentSubmission?.repoUrl ?? null}
 				/>
 
 				<ReviewChecklist
-					submissionId={currentSubmission.submissionId}
+					submissionId={currentSubmission?.submissionId ?? 0}
 					bind:checkedItems
+					loading={submissionLoading}
 				/>
 			</div>
 		</div>

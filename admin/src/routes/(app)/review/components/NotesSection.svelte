@@ -1,14 +1,22 @@
 <script lang="ts">
 	import { api } from '$lib/api';
+	import { Skeleton } from '$lib/components';
 
 	interface Props {
 		title: string;
 		targetType: 'project' | 'user';
 		targetId: number;
 		content: string;
+		loading?: boolean;
 	}
 
-	let { title, targetType, targetId, content = $bindable('') }: Props = $props();
+	let {
+		title,
+		targetType,
+		targetId,
+		content = $bindable(''),
+		loading = false,
+	}: Props = $props();
 
 	let isOpen = $state(false);
 	let saving = $state(false);
@@ -56,6 +64,12 @@
 </script>
 
 <div class={hasContent ? 'border-l-2 border-l-rv-accent bg-rv-accent/6' : ''}>
+	{#if loading}
+		<div class="flex items-center justify-between px-4 py-2.5">
+			<Skeleton class="h-3 w-32" />
+			<Skeleton class="h-5.5 w-5.5" />
+		</div>
+	{:else}
 	<div class="flex items-center justify-between px-4 py-2.5">
 		<div class="flex items-center gap-2">
 			<span class="text-[11px] uppercase tracking-[0.8px] {hasContent ? 'text-rv-accent' : 'text-rv-dim'} font-semibold">{title}</span>
@@ -98,5 +112,6 @@
 				placeholder="Notes about this {targetType}..."
 			></textarea>
 		</div>
+	{/if}
 	{/if}
 </div>

@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
+	import { Skeleton } from '$lib/components';
 
 	interface Props {
 		markdown: string;
+		loading?: boolean;
 	}
 
-	let { markdown }: Props = $props();
+	let { markdown, loading = false }: Props = $props();
 
 	let sanitizedHtml = $derived(
 		markdown ? DOMPurify.sanitize(marked.parse(markdown) as string) : '',
@@ -14,7 +16,21 @@
 </script>
 
 <div class="readme-content h-full overflow-y-auto px-6 py-5 text-sm leading-[1.7] text-rv-text bg-rv-bg">
-	{#if sanitizedHtml}
+	{#if loading}
+		<div class="flex flex-col gap-3">
+			<Skeleton class="h-7 w-1/2 mb-2" />
+			<Skeleton class="h-4 w-full" />
+			<Skeleton class="h-4 w-11/12" />
+			<Skeleton class="h-4 w-10/12" />
+			<Skeleton class="h-4 w-full" />
+			<Skeleton class="h-4 w-9/12" />
+			<Skeleton class="h-32 w-full mt-3" />
+			<Skeleton class="h-4 w-full" />
+			<Skeleton class="h-4 w-10/12" />
+			<Skeleton class="h-4 w-11/12" />
+			<Skeleton class="h-4 w-2/3" />
+		</div>
+	{:else if sanitizedHtml}
 		{@html sanitizedHtml}
 	{:else}
 		<p class="text-rv-dim italic">No README content available.</p>

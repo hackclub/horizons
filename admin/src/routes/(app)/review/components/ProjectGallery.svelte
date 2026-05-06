@@ -3,6 +3,7 @@
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
 	import { timeAgo, waitingFor } from '../utils';
+	import { Skeleton } from '$lib/components';
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type PastReview = components['schemas']['PastReviewEntry'];
 
@@ -11,9 +12,10 @@
 		onSelect: (index: number) => void;
 		onRefresh: () => void;
 		refreshing?: boolean;
+		loading?: boolean;
 	}
 
-	let { items, onSelect, onRefresh, refreshing = false }: Props = $props();
+	let { items, onSelect, onRefresh, refreshing = false, loading = false }: Props = $props();
 
 	const PROJECT_TYPES = [
 		'windows_playable',
@@ -214,7 +216,11 @@
 	<div class="flex items-center justify-between px-6 py-4 bg-rv-surface border-b border-rv-border shrink-0">
 		<div class="font-[Space_Mono,monospace] font-bold text-[18px] text-rv-accent">HORIZONS <span class="text-rv-text font-normal text-[13px] ml-2">Project Review</span></div>
 		<div class="flex items-center gap-3">
-			<p class="text-[13px] text-rv-dim m-0">{filteredItems.length} of {items.length} projects</p>
+			{#if loading}
+				<Skeleton class="h-4 w-32" />
+			{:else}
+				<p class="text-[13px] text-rv-dim m-0">{filteredItems.length} of {items.length} projects</p>
+			{/if}
 			<a
 				href="/admin/review/stats"
 				class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit no-underline inline-block cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text"
@@ -268,7 +274,12 @@
 	<div class="overflow-y-auto flex-1">
 		<section class="px-6 pt-6 pb-2">
 			<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold mb-3">
-				Pending Queue <span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
+				Pending Queue
+				{#if loading}
+					<span class="ml-1 inline-block align-middle"><Skeleton class="h-3 w-8 inline-block" /></span>
+				{:else}
+					<span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
+				{/if}
 			</h2>
 			<div class="flex flex-wrap gap-2 items-center mb-3">
 				<span class="text-[11px] text-rv-dim">Sort</span>
@@ -318,6 +329,19 @@
 				</button>
 			</div>
 			<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
+				{#if loading}
+					{#each Array(12) as _}
+						<div class="flex flex-col gap-2 p-5 bg-rv-surface border border-rv-border rounded-[10px]">
+							<Skeleton class="h-4 w-3/4" />
+							<Skeleton class="h-3 w-1/2" />
+							<div class="flex items-center gap-1.5 flex-wrap mt-1">
+								<Skeleton class="h-5 w-20 rounded-xl" />
+								<Skeleton class="h-5 w-12 rounded-xl" />
+								<Skeleton class="h-5 w-24 rounded-xl" />
+							</div>
+						</div>
+					{/each}
+				{:else}
 				{#each filteredItems as { item, index } (item.submissionId)}
 					{@const activeOtherClaim =
 						item.claim && !item.claim.isMine && !item.claim.isStale
@@ -367,6 +391,7 @@
 				{:else}
 					<p class="col-span-full text-center text-rv-dim py-6 text-sm">No projects match your filters.</p>
 				{/each}
+				{/if}
 			</div>
 		</section>
 
