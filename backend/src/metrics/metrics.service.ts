@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { FraudReviewService } from '../fraud-review/fraud-review.service';
 
 /**
  * Shared computation of review-related metrics. Both AdminService (full
@@ -10,10 +9,7 @@ import { FraudReviewService } from '../fraud-review/fraud-review.service';
  */
 @Injectable()
 export class MetricsService {
-  constructor(
-    private prisma: PrismaService,
-    private fraudReviewService: FraudReviewService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   /**
    * Project-level hours: tracked / unshipped / shipped / in-review / approved / rejected, plus weighted grants.
@@ -333,13 +329,10 @@ export class MetricsService {
    * "This week" counts use a 7-day window ending at `asOf` (or now).
    */
   async computeReviewProjects(asOf?: Date) {
-    // Sync fraud decisions from Joe before counting so stats reflect current
-    // state rather than the last 5-minute poll tick. Skip for historical
-    // snapshots (asOf set) since those don't need a live sync.
-    if (!asOf && this.fraudReviewService.isEnabled()) {
-      await this.fraudReviewService.pollPendingProjects();
-    }
-
+    // Stats reflect data as of the last 5-minute background poll rather than
+    // syncing inline — pollPendingProjects round-trips Joe + walks all
+    // pending projects, which would otherwise add ~10s to every stats load.
+    // Reviewers can force-sync via the gallery's "Refresh Queue" button.
     const reference = asOf ?? new Date();
     const sevenDaysBefore = new Date(reference);
     sevenDaysBefore.setUTCDate(sevenDaysBefore.getUTCDate() - 7);
