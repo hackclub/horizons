@@ -476,7 +476,7 @@ export class HackatimeService {
       project.user.hackatimeStartDate ??
       new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z');
 
-    const durationsMap = await this.fetchHackatimeProjectDurationsAfterDate(
+    const durationsMap = await this.fetchHackatimePerProjectDurations(
       account,
       names,
       token,
@@ -640,32 +640,31 @@ export class HackatimeService {
     return { projectsMap };
   }
 
-  private async fetchHackatimeProjectDurationsAfterDate(
+  // Per-Hackatime-project durations for the breakdown UI. Each entry is the
+  // raw `total_seconds` for that project — these may overlap, so do not sum
+  // them to get a user total (use `fetchDeduplicatedTotalSeconds` instead).
+  private async fetchHackatimePerProjectDurations(
     hackatimeAccount: string,
     projectNames: string[],
     accessToken: string,
-    cutoffDate: Date = new Date(
-      process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
-    ),
+    cutoffDate: Date,
   ): Promise<Map<string, number>> {
-    const startDate = cutoffDate.toISOString().split('T')[0];
-    const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${startDate}`;
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    };
-
     const durationsMap = new Map<string, number>();
-
     for (const projectName of projectNames) {
       durationsMap.set(projectName, 0);
     }
+    if (projectNames.length === 0) return durationsMap;
+
+    const startDate = cutoffDate.toISOString().split('T')[0];
+    const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${startDate}`;
 
     try {
       const response = await fetch(uri, {
         method: 'GET',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       if (response.ok) {
@@ -692,6 +691,48 @@ export class HackatimeService {
     return durationsMap;
   }
 
+  // Hackatime returns deduplicated time across overlapping project heartbeats
+  // when called with `total_seconds=true&filter_by_project=<csv>`. Summing
+  // per-project `total_seconds` would double-count any minute where the user
+  // logged time against two of these projects at once.
+  private async fetchDeduplicatedTotalSeconds(
+    hackatimeAccount: string,
+    projectNames: string[],
+    accessToken: string,
+    cutoffDate: Date,
+  ): Promise<number> {
+    if (projectNames.length === 0) return 0;
+
+    const startDate = cutoffDate.toISOString().split('T')[0];
+    const params = new URLSearchParams({
+      features: 'projects',
+      start_date: startDate,
+      test_param: 'true',
+      total_seconds: 'true',
+      filter_by_project: projectNames.join(','),
+    });
+    const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?${params.toString()}`;
+
+    try {
+      const response = await fetch(uri, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) return 0;
+
+      const responseData = await response.json();
+      const totalSeconds = responseData?.data?.total_seconds;
+      return typeof totalSeconds === 'number' ? totalSeconds : 0;
+    } catch (error) {
+      console.error('Error fetching hackatime stats:', error);
+      return 0;
+    }
+  }
+
   private async calculateHackatimeHours(
     projectNames: string[],
     projectsMap: Map<string, number>,
@@ -703,22 +744,20 @@ export class HackatimeService {
       const cutoffDate =
         userStartDate ??
         new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z');
-      const filteredDurations =
-        await this.fetchHackatimeProjectDurationsAfterDate(
-          hackatimeAccount,
-          projectNames,
-          accessToken,
-          cutoffDate,
-        );
-
-      let totalSeconds = 0;
-      for (const name of projectNames) {
-        totalSeconds += filteredDurations.get(name) || 0;
-      }
+      const totalSeconds = await this.fetchDeduplicatedTotalSeconds(
+        hackatimeAccount,
+        projectNames,
+        accessToken,
+        cutoffDate,
+      );
 
       return Math.round((totalSeconds / 3600) * 10) / 10;
     }
 
+    // Fallback when we don't have user auth: best-effort sum from the cached
+    // per-project durations. This double-counts overlapping work but only
+    // runs in unauthenticated paths (no live token), so it's a degraded
+    // approximation rather than the canonical value.
     let totalSeconds = 0;
     for (const name of projectNames) {
       totalSeconds += projectsMap.get(name) ?? 0;
