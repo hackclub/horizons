@@ -23,6 +23,12 @@
     let backfillDays = $state('30');
     let backfillOverwrite = $state(false);
 
+    // Streaks backfill state
+    let streaksBackfillBusy = $state(false);
+    let streaksBackfillMessage = $state('');
+    let streaksBackfillError = $state('');
+    let streaksBackfillDays = $state('14');
+
     // Reviewer leaderboard state
     let reviewerLeaderboard = $state<ReviewerLeaderboardEntry[]>([]);
     let leaderboardLoading = $state(false);
@@ -130,6 +136,24 @@
             backfillError = err instanceof Error ? err.message : 'Backfill failed';
         } finally {
             backfillBusy = false;
+        }
+    }
+
+    async function runStreaksBackfill() {
+        if (streaksBackfillBusy) return;
+        streaksBackfillBusy = true;
+        streaksBackfillMessage = '';
+        streaksBackfillError = '';
+        try {
+            const { data, error } = await api.POST('/api/admin/streaks/backfill', {
+                params: { query: { days: parseInt(streaksBackfillDays) || 14 } },
+            });
+            if (error) { streaksBackfillError = 'Streaks backfill failed'; return; }
+            streaksBackfillMessage = `Backfilled streaks for ${data?.results?.length ?? 0} days.`;
+        } catch (err) {
+            streaksBackfillError = err instanceof Error ? err.message : 'Streaks backfill failed';
+        } finally {
+            streaksBackfillBusy = false;
         }
     }
 
@@ -267,6 +291,33 @@
                 <span class="text-xs text-ds-red">{backfillError}</span>
             {:else if backfillMessage}
                 <span class="text-xs text-ds-green">{backfillMessage}</span>
+            {/if}
+        </div>
+    </Card>
+
+    <!-- Streaks Backfill -->
+    <Card class="p-6 space-y-4">
+        <h2 class="text-xl font-semibold">Streaks Backfill</h2>
+        <p class="text-sm text-ds-text-secondary">
+            Recompute user streaks from Hackatime activity. Fetches daily coding hours and updates streak counters for all users.
+        </p>
+        <div class="flex items-center gap-3">
+            <label class="text-sm text-ds-text-secondary" for="streaks-backfill-days">Days to backfill:</label>
+            <input
+                id="streaks-backfill-days"
+                type="number"
+                min="1"
+                max="30"
+                bind:value={streaksBackfillDays}
+                class="w-20 rounded-md border border-ds-border bg-ds-surface px-3 py-1.5 text-sm text-ds-text"
+            />
+            <Button onclick={runStreaksBackfill} disabled={streaksBackfillBusy}>
+                {streaksBackfillBusy ? 'Running...' : 'Run Streaks Backfill'}
+            </Button>
+            {#if streaksBackfillError}
+                <span class="text-xs text-ds-red">{streaksBackfillError}</span>
+            {:else if streaksBackfillMessage}
+                <span class="text-xs text-ds-green">{streaksBackfillMessage}</span>
             {/if}
         </div>
     </Card>
