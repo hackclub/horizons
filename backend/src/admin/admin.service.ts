@@ -532,6 +532,7 @@ export class AdminService {
       approved10Plus,
       approved30Plus,
       approved60Plus,
+      perEvent,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { hackatimeAccount: { not: null } } }),
@@ -548,6 +549,7 @@ export class AdminService {
       this.countUsersWithApprovedHoursGte(10),
       this.countUsersWithApprovedHoursGte(30),
       this.countUsersWithApprovedHoursGte(60),
+      this.computeFunnelPerEvent(),
     ]);
 
     return {
@@ -560,7 +562,90 @@ export class AdminService {
       approved10Plus,
       approved30Plus,
       approved60Plus,
+      perEvent,
     };
+  }
+
+  private async computeFunnelPerEvent() {
+    // Same nine-stage funnel as `computeFunnel`, but scoped to the users who
+    // pinned each event. Done in one query so the page doesn't need N round
+    // trips when more events are added.
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        event_id: number;
+        title: string;
+        slug: string;
+        total_users: bigint;
+        has_hackatime: bigint;
+        created_project: bigint;
+        project_10_plus_hours: bigint;
+        at_least_1_submission: bigint;
+        at_least_1_approved_hour: bigint;
+        approved_10_plus: bigint;
+        approved_30_plus: bigint;
+        approved_60_plus: bigint;
+      }>
+    >`
+      WITH user_metrics AS (
+        SELECT
+          u.user_id,
+          (u.hackatime_account IS NOT NULL) AS has_hackatime,
+          EXISTS (
+            SELECT 1 FROM projects p WHERE p.user_id = u.user_id
+          ) AS has_project,
+          EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.user_id = u.user_id AND p.now_hackatime_hours >= 10
+          ) AS project_10h,
+          EXISTS (
+            SELECT 1 FROM projects p
+            INNER JOIN submissions s ON s.project_id = p.project_id
+            WHERE p.user_id = u.user_id
+          ) AS has_submission,
+          EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.user_id = u.user_id AND p.approved_hours >= 1
+          ) AS has_1h_approved,
+          COALESCE(
+            (SELECT SUM(p.approved_hours) FROM projects p WHERE p.user_id = u.user_id),
+            0
+          ) AS approved_total
+        FROM users u
+      )
+      SELECT
+        e.event_id,
+        e.title,
+        e.slug,
+        COUNT(*) AS total_users,
+        COUNT(*) FILTER (WHERE um.has_hackatime) AS has_hackatime,
+        COUNT(*) FILTER (WHERE um.has_project) AS created_project,
+        COUNT(*) FILTER (WHERE um.project_10h) AS project_10_plus_hours,
+        COUNT(*) FILTER (WHERE um.has_submission) AS at_least_1_submission,
+        COUNT(*) FILTER (WHERE um.has_1h_approved) AS at_least_1_approved_hour,
+        COUNT(*) FILTER (WHERE um.approved_total >= 10) AS approved_10_plus,
+        COUNT(*) FILTER (WHERE um.approved_total >= 30) AS approved_30_plus,
+        COUNT(*) FILTER (WHERE um.approved_total >= 60) AS approved_60_plus
+      FROM pinned_events pe
+      INNER JOIN events e ON e.event_id = pe.event_id
+      INNER JOIN user_metrics um ON um.user_id = pe.user_id
+      GROUP BY e.event_id, e.title, e.slug
+      ORDER BY total_users DESC
+    `;
+
+    return rows.map((r) => ({
+      eventId: r.event_id,
+      title: r.title,
+      slug: r.slug,
+      totalUsers: Number(r.total_users),
+      hasHackatime: Number(r.has_hackatime),
+      createdProject: Number(r.created_project),
+      project10PlusHours: Number(r.project_10_plus_hours),
+      atLeast1Submission: Number(r.at_least_1_submission),
+      atLeast1ApprovedHour: Number(r.at_least_1_approved_hour),
+      approved10Plus: Number(r.approved_10_plus),
+      approved30Plus: Number(r.approved_30_plus),
+      approved60Plus: Number(r.approved_60_plus),
+    }));
   }
 
   private async countUsersWithApprovedHoursGte(threshold: number): Promise<number> {

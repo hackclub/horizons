@@ -617,6 +617,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/streaks/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_backfillStreaks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/events/{slug}/stats": {
         parameters: {
             query?: never;
@@ -2097,6 +2113,10 @@ export interface components {
             };
             /** @description Hours tallied at the time of the last submission; null if never submitted */
             lastSubmittedHours?: number | null;
+            /** @description Consecutive days the user has logged >=1 hour on linked Hackatime projects, with timezone-aware lazy decay applied */
+            currentStreak: number;
+            /** @description Longest streak ever achieved by the user */
+            longestStreak: number;
         };
         DeleteProjectResponse: {
             deleted: boolean;
@@ -2122,6 +2142,11 @@ export interface components {
             referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
+            timezone: string | null;
+            currentStreak: number;
+            longestStreak: number;
+            /** Format: date */
+            lastActiveDate: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2197,6 +2222,11 @@ export interface components {
             referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
+            timezone: string | null;
+            currentStreak: number;
+            longestStreak: number;
+            /** Format: date */
+            lastActiveDate: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2344,6 +2374,11 @@ export interface components {
             referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
+            timezone: string | null;
+            currentStreak: number;
+            longestStreak: number;
+            /** Format: date */
+            lastActiveDate: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2416,6 +2451,20 @@ export interface components {
             inQueue: components["schemas"]["FraudQueueProjectResponse"][];
             notInQueue: components["schemas"]["FraudQueueProjectResponse"][];
         };
+        StatsFunnelEventEntry: {
+            eventId: number;
+            title: string;
+            slug: string;
+            totalUsers: number;
+            hasHackatime: number;
+            createdProject: number;
+            project10PlusHours: number;
+            atLeast1Submission: number;
+            atLeast1ApprovedHour: number;
+            approved10Plus: number;
+            approved30Plus: number;
+            approved60Plus: number;
+        };
         StatsFunnel: {
             totalUsers: number;
             hasHackatime: number;
@@ -2426,6 +2475,7 @@ export interface components {
             approved10Plus: number;
             approved30Plus: number;
             approved60Plus: number;
+            perEvent: components["schemas"]["StatsFunnelEventEntry"][];
         };
         StatsUserGrowth: {
             totalUsers: number;
@@ -4453,6 +4503,28 @@ export interface operations {
                 startDate?: string;
                 endDate?: string;
                 overwrite?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackfillResponse"];
+                };
+            };
+        };
+    };
+    AdminController_backfillStreaks: {
+        parameters: {
+            query?: {
+                /** @description Days to backfill (default 14, max 30) */
+                days?: number;
             };
             header?: never;
             path?: never;
