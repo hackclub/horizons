@@ -104,7 +104,12 @@ export class SlackService {
 
   async getSlackUserInfo(
     slackUserId: string,
-  ): Promise<{ displayName: string; email: string | null } | null> {
+  ): Promise<{
+    displayName: string;
+    email: string | null;
+    tz: string | null;
+    tzLabel: string | null;
+  } | null> {
     if (!this.botToken || !slackUserId) {
       return null;
     }
@@ -135,11 +140,18 @@ export class SlackService {
           data.user?.name ||
           'Unknown',
         email: data.user?.profile?.email || null,
+        tz: typeof data.user?.tz === 'string' ? data.user.tz : null,
+        tzLabel: typeof data.user?.tz_label === 'string' ? data.user.tz_label : null,
       };
     } catch (error) {
       console.error('Error fetching Slack user info:', error);
       return null;
     }
+  }
+
+  async getSlackUserTimezone(slackUserId: string): Promise<string | null> {
+    const info = await this.getSlackUserInfo(slackUserId);
+    return info?.tz ?? null;
   }
 
   private async fetchUsernameFromSlack(

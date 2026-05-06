@@ -50,6 +50,11 @@ model User {
   ageOverride  Boolean @default(false) @map("age_override")
   adminComment String? @map("admin_comment") @db.VarChar(1000)
 
+  timezone       String?   @map("timezone")
+  currentStreak  Int       @default(0) @map("current_streak")
+  longestStreak  Int       @default(0) @map("longest_streak")
+  lastActiveDate DateTime? @map("last_active_date") @db.Date
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -59,9 +64,25 @@ model User {
   transactions       Transaction[]
   pinnedItem         PinnedItem?
   pinnedEvent        PinnedEvent?
-  claimedSubmissions Submission[]       @relation("SubmissionClaimedBy")
+  claimedSubmissions Submission[]        @relation("SubmissionClaimedBy")
+  dailyActivity      UserDailyActivity[]
 
   @@map("users")
+}
+
+model UserDailyActivity {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  localDate DateTime @map("local_date") @db.Date
+  seconds   Int
+  qualified Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId, localDate])
+  @@index([userId, localDate(sort: Desc)])
+  @@map("user_daily_activity")
 }
 
 model Project {
