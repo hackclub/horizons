@@ -792,146 +792,144 @@
             </Button>
         </div>
 
+        {#snippet itemFormFields(idPrefix: string)}
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-ds-text-secondary" for="{idPrefix}-category"
+                        >Category *</label
+                    >
+                    <Select
+                        id="{idPrefix}-category"
+                        value={shopItemForm.shopId}
+                        onchange={(e) => {
+                            const val = parseInt((e.target as HTMLSelectElement).value, 10);
+                            shopItemForm.shopId = isNaN(val) ? null : val;
+                        }}
+                    >
+                        {#if shops.length === 0}
+                            <option value={null}>No categories — create one first</option>
+                        {:else}
+                            {#each shops as shop (shop.shopId)}
+                                <option value={shop.shopId}>{shop.slug}</option>
+                            {/each}
+                        {/if}
+                    </Select>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-ds-text-secondary" for="{idPrefix}-name"
+                        >Name *</label
+                    >
+                    <TextField
+                        id="{idPrefix}-name"
+                        placeholder="Item name"
+                        bind:value={shopItemForm.name}
+                    />
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-ds-text-secondary" for="{idPrefix}-cost"
+                        >Cost (hours) *</label
+                    >
+                    <TextField
+                        id="{idPrefix}-cost"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        placeholder="0"
+                        bind:value={shopItemForm.cost}
+                    />
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-ds-text-secondary" for="{idPrefix}-max-per-user"
+                        >Max per User</label
+                    >
+                    <TextField
+                        id="{idPrefix}-max-per-user"
+                        type="number"
+                        step="1"
+                        min="1"
+                        placeholder="Unlimited"
+                        bind:value={shopItemForm.maxPerUser}
+                    />
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-ds-text-secondary">Regions</label>
+                    <div class="flex flex-wrap gap-3">
+                        {#each AVAILABLE_REGIONS as region}
+                            <label class="flex items-center gap-1.5 text-sm text-ds-text-primary cursor-pointer">
+                                <Checkbox
+                                    checked={shopItemForm.regions.includes(region)}
+                                    onchange={(e) => {
+                                        if ((e.target as HTMLInputElement).checked) {
+                                            shopItemForm.regions = [...shopItemForm.regions, region];
+                                        } else {
+                                            shopItemForm.regions = shopItemForm.regions.filter(r => r !== region);
+                                        }
+                                    }}
+                                />
+                                {region}
+                            </label>
+                        {/each}
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-ds-text-secondary" for="{idPrefix}-image"
+                        >Image URL</label
+                    >
+                    <TextField
+                        id="{idPrefix}-image"
+                        placeholder="https://..."
+                        bind:value={shopItemForm.imageUrl}
+                    />
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-ds-text-secondary" for="{idPrefix}-description"
+                        >Description</label
+                    >
+                    <TextField
+                        multiline
+                        id="{idPrefix}-description"
+                        rows={2}
+                        placeholder="Item description..."
+                        bind:value={shopItemForm.description}
+                    />
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3 items-center">
+                <Button
+                    variant="approve"
+                    onclick={saveShopItem}
+                    disabled={shopItemSaving || !shopItemForm.name || !shopItemForm.cost || !shopItemForm.shopId}
+                >
+                    {shopItemSaving
+                        ? 'Saving...'
+                        : editingItemId
+                          ? 'Update Item'
+                          : 'Create Item'}
+                </Button>
+                {#if editingItemId}
+                    <Button variant="default" onclick={resetItemForm}>
+                        Cancel Edit
+                    </Button>
+                {/if}
+                {#if shopItemError}
+                    <span class="text-ds-red text-sm">{shopItemError}</span>
+                {/if}
+                {#if shopItemSuccess}
+                    <span class="text-ds-green text-sm">{shopItemSuccess}</span>
+                {/if}
+            </div>
+        {/snippet}
+
         {#if shopLoading}
             <div class="py-12 text-center text-ds-text-secondary">Loading shop data...</div>
         {:else if shopSubTab === 'items'}
-            <Card class="p-6 space-y-6">
-                <h3 class="text-lg font-semibold">
-                    {editingItemId ? 'Edit Item' : 'Create New Item'}
-                </h3>
-
-                <div class="grid gap-4 md:grid-cols-2">
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-ds-text-secondary" for="item-category"
-                            >Category *</label
-                        >
-                        <Select
-                            id="item-category"
-                            value={shopItemForm.shopId}
-                            onchange={(e) => {
-                                const val = parseInt((e.target as HTMLSelectElement).value, 10);
-                                shopItemForm.shopId = isNaN(val) ? null : val;
-                            }}
-                        >
-                            {#if shops.length === 0}
-                                <option value={null}>No categories — create one first</option>
-                            {:else}
-                                {#each shops as shop (shop.shopId)}
-                                    <option value={shop.shopId}>{shop.slug}</option>
-                                {/each}
-                            {/if}
-                        </Select>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-ds-text-secondary" for="item-name"
-                            >Name *</label
-                        >
-                        <TextField
-                            id="item-name"
-                            placeholder="Item name"
-                            bind:value={shopItemForm.name}
-                        />
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-ds-text-secondary" for="item-cost"
-                            >Cost (hours) *</label
-                        >
-                        <TextField
-                            id="item-cost"
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            placeholder="0"
-                            bind:value={shopItemForm.cost}
-                        />
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-ds-text-secondary" for="item-max-per-user"
-                            >Max per User</label
-                        >
-                        <TextField
-                            id="item-max-per-user"
-                            type="number"
-                            step="1"
-                            min="1"
-                            placeholder="Unlimited"
-                            bind:value={shopItemForm.maxPerUser}
-                        />
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-ds-text-secondary"
-                            >Regions</label
-                        >
-                        <div class="flex flex-wrap gap-3">
-                            {#each AVAILABLE_REGIONS as region}
-                                <label class="flex items-center gap-1.5 text-sm text-ds-text-primary cursor-pointer">
-                                    <Checkbox
-                                        checked={shopItemForm.regions.includes(region)}
-                                        onchange={(e) => {
-                                            if ((e.target as HTMLInputElement).checked) {
-                                                shopItemForm.regions = [...shopItemForm.regions, region];
-                                            } else {
-                                                shopItemForm.regions = shopItemForm.regions.filter(r => r !== region);
-                                            }
-                                        }}
-                                    />
-                                    {region}
-                                </label>
-                            {/each}
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-ds-text-secondary" for="item-image"
-                            >Image URL</label
-                        >
-                        <TextField
-                            id="item-image"
-                            placeholder="https://..."
-                            bind:value={shopItemForm.imageUrl}
-                        />
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-ds-text-secondary" for="item-description"
-                            >Description</label
-                        >
-                        <TextField
-                            multiline
-                            id="item-description"
-                            rows={2}
-                            placeholder="Item description..."
-                            bind:value={shopItemForm.description}
-                        />
-                    </div>
-                </div>
-
-                <div class="flex flex-wrap gap-3 items-center">
-                    <Button
-                        variant="approve"
-                        onclick={saveShopItem}
-                        disabled={shopItemSaving || !shopItemForm.name || !shopItemForm.cost || !shopItemForm.shopId}
-                    >
-                        {shopItemSaving
-                            ? 'Saving...'
-                            : editingItemId
-                              ? 'Update Item'
-                              : 'Create Item'}
-                    </Button>
-                    {#if editingItemId}
-                        <Button
-                            variant="default"
-                            onclick={resetItemForm}
-                        >
-                            Cancel Edit
-                        </Button>
-                    {/if}
-                    {#if shopItemError}
-                        <span class="text-ds-red text-sm">{shopItemError}</span>
-                    {/if}
-                    {#if shopItemSuccess}
-                        <span class="text-ds-green text-sm">{shopItemSuccess}</span>
-                    {/if}
-                </div>
-            </Card>
+            {#if !editingItemId}
+                <Card class="p-6 space-y-6">
+                    <h3 class="text-lg font-semibold">Create New Item</h3>
+                    {@render itemFormFields('item')}
+                </Card>
+            {/if}
 
             {#if shopItems.length === 0}
                 <div class="py-12 text-center text-ds-text-secondary">
@@ -941,6 +939,12 @@
                 <div class="grid gap-4">
                     {#each shopItems as item (item.itemId)}
                         <Card class="p-6 space-y-4">
+                            {#if editingItemId === item.itemId}
+                                <div class="space-y-4 border-l-4 border-ds-accent pl-4">
+                                    <h3 class="text-lg font-semibold">Editing: {item.name}</h3>
+                                    {@render itemFormFields(`edit-${item.itemId}`)}
+                                </div>
+                            {:else}
                             <div
                                 class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"
                             >
@@ -1164,6 +1168,7 @@
                                         </p>
                                     {/if}
                                 </div>
+                            {/if}
                             {/if}
                         </Card>
                     {/each}
