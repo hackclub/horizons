@@ -17,6 +17,7 @@
 	let error = $state<string | null>(null);
 	let userRole = $state<string | null>(null);
 	let selectedEventFilter = $state<string>('all');
+	let selectedFunnelEvent = $state<string>('all');
 	let unmatchedOriginCountries = $state<string[]>([]);
 	let unmatchedEventCountries = $state<string[]>([]);
 
@@ -135,7 +136,14 @@
 		if (!funnelEl || !stats) return;
 		funnelEl.innerHTML = '';
 
-		const funnel = stats.funnel;
+		// "all" uses the global aggregate; otherwise use the per-event slice (or
+		// empty zeros if the event has no pinners yet).
+		const perEvent = stats.funnel.perEvent ?? [];
+		const eventEntry =
+			selectedFunnelEvent !== 'all'
+				? perEvent.find((e) => e.slug === selectedFunnelEvent)
+				: undefined;
+		const funnel = eventEntry ?? stats.funnel;
 		const total = funnel.totalUsers || 1;
 
 		const stages = [
@@ -779,8 +787,18 @@
 		if (stats) tick().then(() => renderSignupMap());
 	});
 
+	// Re-render only the funnel when its event filter changes.
+	$effect(() => {
+		selectedFunnelEvent;
+		if (stats) tick().then(() => renderFunnel());
+	});
+
 	const eventFilterOptions = $derived(
 		stats ? stats.signups.perEvent.map((e) => e.title) : [],
+	);
+
+	const funnelEventOptions = $derived(
+		stats ? (stats.funnel.perEvent ?? []).map((e) => ({ slug: e.slug, title: e.title })) : [],
 	);
 </script>
 
@@ -845,7 +863,20 @@
 			{#if homeTab === 'users'}
 			<!-- 1. User Funnel -->
 			<section>
-				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">User Funnel</h2>
+				<div class="mb-3 flex items-center justify-between gap-2">
+					<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary">User Funnel</h2>
+					{#if funnelEventOptions.length > 0}
+						<select
+							bind:value={selectedFunnelEvent}
+							class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+						>
+							<option value="all">All events</option>
+							{#each funnelEventOptions as event}
+								<option value={event.slug}>{event.title}</option>
+							{/each}
+						</select>
+					{/if}
+				</div>
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 					<div bind:this={funnelEl} style="height: 420px;"></div>
 				</div>

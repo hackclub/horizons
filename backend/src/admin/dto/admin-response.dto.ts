@@ -663,6 +663,44 @@ export class RecalculateAllResponse {
 
 // --- Stats Dashboard DTOs ---
 
+class StatsFunnelEventEntry {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  totalUsers: number;
+
+  @ApiProperty()
+  hasHackatime: number;
+
+  @ApiProperty()
+  createdProject: number;
+
+  @ApiProperty()
+  project10PlusHours: number;
+
+  @ApiProperty()
+  atLeast1Submission: number;
+
+  @ApiProperty()
+  atLeast1ApprovedHour: number;
+
+  @ApiProperty()
+  approved10Plus: number;
+
+  @ApiProperty()
+  approved30Plus: number;
+
+  @ApiProperty()
+  approved60Plus: number;
+}
+
 class StatsFunnel {
   @ApiProperty()
   totalUsers: number;
@@ -690,6 +728,9 @@ class StatsFunnel {
 
   @ApiProperty()
   approved60Plus: number;
+
+  @ApiProperty({ type: [StatsFunnelEventEntry] })
+  perEvent: StatsFunnelEventEntry[];
 }
 
 class StatsUserGrowth {
