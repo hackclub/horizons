@@ -2,9 +2,10 @@
 	import type { components } from '$lib/api';
 	type ScopedUser = components['schemas']['ScopedUserResponse'];
 	import HoursBreakdown from './HoursBreakdown.svelte';
+	import { Skeleton } from '$lib/components';
 
 	interface Props {
-		user: ScopedUser;
+		user?: ScopedUser;
 		repoUrl: string | null;
 		playableUrl: string | null;
 		readmeUrl: string | null;
@@ -14,6 +15,7 @@
 		joeFraudPassed?: boolean | null;
 		joeTrustScore?: number | null;
 		onHoursChange?: (hours: number) => void;
+		loading?: boolean;
 	}
 
 	let {
@@ -27,6 +29,7 @@
 		joeFraudPassed = null,
 		joeTrustScore = null,
 		onHoursChange,
+		loading = false,
 	}: Props = $props();
 
 	const fraudBadge = $derived(
@@ -39,7 +42,7 @@
 
 	// Build Slack DM link from user's Slack ID
 	const slackDmUrl = $derived(
-		user.slackUserId ? `https://hackclub.slack.com/team/${user.slackUserId}` : null,
+		user?.slackUserId ? `https://hackclub.slack.com/team/${user.slackUserId}` : null,
 	);
 
 	// Build README URL from repo — default to repo/blob/main/README.md
@@ -53,19 +56,19 @@
 	);
 
 	const hackatimeStartDateLabel = $derived(
-		(user as any).hackatimeStartDate
+		(user as any)?.hackatimeStartDate
 			? new Date((user as any).hackatimeStartDate).toISOString().split('T')[0]
 			: null,
 	);
 
 	const displayLabel = $derived(
-		user.displayName ?? (user.slackUserId ? `@${user.slackUserId}` : 'Anonymous'),
+		user?.displayName ?? (user?.slackUserId ? `@${user.slackUserId}` : 'Anonymous'),
 	);
 
 	let slackIdCopied = $state(false);
 	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 	async function copySlackId() {
-		if (!user.slackUserId) return;
+		if (!user?.slackUserId) return;
 		try {
 			await navigator.clipboard.writeText(user.slackUserId);
 			slackIdCopied = true;
@@ -77,6 +80,23 @@
 	}
 </script>
 
+{#if loading || !user}
+	<div class="p-4 flex flex-col gap-3">
+		<Skeleton class="h-6 w-1/2" />
+		<div class="flex gap-2">
+			<Skeleton class="h-5 w-24 rounded-full" />
+			<Skeleton class="h-5 w-16 rounded-full" />
+		</div>
+		<Skeleton class="h-3 w-3/4" />
+		<div class="grid grid-cols-2 gap-2">
+			<Skeleton class="h-8" />
+			<Skeleton class="h-8" />
+			<Skeleton class="h-8" />
+			<Skeleton class="h-8" />
+		</div>
+		<Skeleton class="h-20 w-full" />
+	</div>
+{:else}
 <div class="p-4">
 	<div class="flex items-center gap-2 mb-0.5">
 		<span class="text-[18px] font-bold font-[Space_Mono,monospace]">{displayLabel}</span>
@@ -204,3 +224,4 @@
 		</div>
 	{/if}
 </div>
+{/if}
