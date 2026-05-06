@@ -633,6 +633,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getTransactionLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/reviewer-leaderboard": {
         parameters: {
             query?: never;
@@ -1332,14 +1348,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/shop/{slug}/items": {
+    "/api/shop/items": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["ShopController_getItems"];
+        get: operations["ShopController_getAllPublicItems"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1348,14 +1364,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/shop/{slug}/items/{id}": {
+    "/api/shop/items/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["ShopController_getItem"];
+        get: operations["ShopController_getItemById"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2578,6 +2594,47 @@ export interface components {
             dauTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
             qualification: components["schemas"]["EventStatsQualification"];
         };
+        LedgerEntryUserSummary: {
+            userId: number;
+            email: string;
+            firstName: string;
+            lastName: string;
+        };
+        LedgerEntryItemSummary: {
+            itemId: number;
+            name: string;
+        };
+        LedgerEntryEventSummary: {
+            eventId: number;
+            slug: string;
+            title: string;
+        };
+        LedgerEntryResponse: {
+            transactionId: number;
+            /** @enum {string} */
+            kind: "ShopItem" | "EventRsvp" | "EventTicket";
+            itemDescription: string;
+            cost: number;
+            isFulfilled: boolean;
+            /** Format: date-time */
+            fulfilledAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            user: components["schemas"]["LedgerEntryUserSummary"];
+            item: components["schemas"]["LedgerEntryItemSummary"] | null;
+            event: components["schemas"]["LedgerEntryEventSummary"] | null;
+        };
+        LedgerSummaryResponse: {
+            totalCount: number;
+            totalSpent: number;
+            shopCount: number;
+            rsvpCount: number;
+            ticketCount: number;
+        };
+        LedgerResponse: {
+            entries: components["schemas"]["LedgerEntryResponse"][];
+            summary: components["schemas"]["LedgerSummaryResponse"];
+        };
         ReviewerLeaderboardEntry: {
             reviewerId: string;
             firstName: string | null;
@@ -3037,6 +3094,7 @@ export interface components {
         ShopItemResponse: {
             itemId: number;
             shopId: number;
+            shopSlug: string;
             name: string;
             description: string | null;
             imageUrl: string | null;
@@ -3126,6 +3184,7 @@ export interface components {
             maxPerUser?: number;
         };
         UpdateItemDto: {
+            shopId?: number;
             name?: string;
             description?: string;
             imageUrl?: string;
@@ -4432,6 +4491,30 @@ export interface operations {
             };
         };
     };
+    AdminController_getTransactionLedger: {
+        parameters: {
+            query?: {
+                kind?: "ShopItem" | "EventRsvp" | "EventTicket";
+                userId?: number;
+                fulfilled?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerResponse"];
+                };
+            };
+        };
+    };
     AdminController_getReviewerLeaderboard: {
         parameters: {
             query?: never;
@@ -5441,13 +5524,11 @@ export interface operations {
             };
         };
     };
-    ShopController_getItems: {
+    ShopController_getAllPublicItems: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                slug: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5462,12 +5543,11 @@ export interface operations {
             };
         };
     };
-    ShopController_getItem: {
+    ShopController_getItemById: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                slug: string;
                 id: number;
             };
             cookie?: never;

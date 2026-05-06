@@ -32,6 +32,7 @@
     const AVAILABLE_REGIONS = ['International', 'North America'];
 
     let shopItemForm = $state<{
+        shopId: number | null;
         name: string;
         description: string;
         imageUrl: string;
@@ -39,6 +40,7 @@
         regions: string[];
         maxPerUser: string;
     }>({
+        shopId: null,
         name: '',
         description: '',
         imageUrl: '',
@@ -251,7 +253,7 @@
                     body: payload
                 });
                 if (error) {
-                    shopFormError = (error as any)?.message ?? 'Failed to save shop';
+                    shopFormError = (error as any)?.message ?? 'Failed to save category';
                     return;
                 }
             } else {
@@ -259,16 +261,16 @@
                     body: payload
                 });
                 if (error) {
-                    shopFormError = (error as any)?.message ?? 'Failed to save shop';
+                    shopFormError = (error as any)?.message ?? 'Failed to save category';
                     return;
                 }
             }
 
-            shopFormSuccess = editingShopId ? 'Shop updated successfully' : 'Shop created successfully';
+            shopFormSuccess = editingShopId ? 'Category updated successfully' : 'Category created successfully';
             resetShopForm();
             await loadShops();
         } catch (err) {
-            shopFormError = err instanceof Error ? err.message : 'Failed to save shop';
+            shopFormError = err instanceof Error ? err.message : 'Failed to save category';
         } finally {
             shopFormSaving = false;
         }
@@ -277,7 +279,7 @@
     async function deleteShop(shopId: number) {
         const confirmDelete =
             typeof window !== 'undefined'
-                ? window.confirm('Delete this shop and ALL its items? This cannot be undone.')
+                ? window.confirm('Delete this category and ALL its items? This cannot be undone.')
                 : true;
         if (!confirmDelete) return;
 
@@ -306,6 +308,7 @@
 
     function resetItemForm() {
         shopItemForm = {
+            shopId: selectedShopId,
             name: '',
             description: '',
             imageUrl: '',
@@ -321,6 +324,7 @@
     function startEditItem(item: ShopItem) {
         editingItemId = item.itemId;
         shopItemForm = {
+            shopId: item.shopId,
             name: item.name,
             description: item.description || '',
             imageUrl: item.imageUrl || '',
@@ -337,6 +341,13 @@
         shopItemError = '';
         shopItemSuccess = '';
 
+        const formShopId = shopItemForm.shopId;
+        if (!formShopId) {
+            shopItemError = 'Please select a category';
+            shopItemSaving = false;
+            return;
+        }
+
         const payload = {
             name: shopItemForm.name,
             description: shopItemForm.description || undefined,
@@ -350,16 +361,15 @@
             if (editingItemId) {
                 const { error } = await api.PUT('/api/shop/admin/items/{id}', {
                     params: { path: { id: editingItemId } },
-                    body: payload
+                    body: { ...payload, shopId: formShopId }
                 });
                 if (error) {
                     shopItemError = (error as any)?.message ?? 'Failed to save item';
                     return;
                 }
             } else {
-                if (!selectedShopId) return;
                 const { error } = await api.POST('/api/shop/admin/shops/{shopId}/items', {
-                    params: { path: { shopId: selectedShopId } },
+                    params: { path: { shopId: formShopId } },
                     body: payload
                 });
                 if (error) {
@@ -369,8 +379,14 @@
             }
 
             shopItemSuccess = editingItemId ? 'Item updated successfully' : 'Item created successfully';
+            // If the item went into a different category, switch the view to it so the user sees the result.
+            if (formShopId !== selectedShopId) {
+                selectedShopId = formShopId;
+                await Promise.all([loadShopItems(), loadShopTransactions()]);
+            } else {
+                await loadShopItems();
+            }
             resetItemForm();
-            await loadShopItems();
         } catch (err) {
             shopItemError = err instanceof Error ? err.message : 'Failed to save item';
         } finally {
@@ -597,8 +613,23 @@
         }
     }
 
-    onMount(() => {
-        loadShopData();
+    onMount(async () => {
+        await loadShopData();
+        // Make category creation discoverable: open the manager automatically when there are none.
+        if (shops.length === 0) {
+            showShopManager = true;
+        }
+        // Default the form's category to the currently-selected one.
+        if (selectedShopId && !shopItemForm.shopId) {
+            shopItemForm.shopId = selectedShopId;
+        }
+    });
+
+    $effect(() => {
+        // Keep the new-item form's category in sync with the page-level selection until the user changes it.
+        if (!editingItemId && selectedShopId && !shopItemForm.shopId) {
+            shopItemForm.shopId = selectedShopId;
+        }
     });
 </script>
 
@@ -628,7 +659,7 @@
                 variant={showShopManager ? 'ghost' : 'default'}
                 onclick={() => (showShopManager = !showShopManager)}
             >
-                Manage Shops
+                {shops.length === 0 ? '+ New Category' : 'Manage Categories'}
             </Button>
         </div>
     </div>
@@ -636,14 +667,14 @@
     {#if showShopManager}
         <Card class="p-6 space-y-6">
             <h3 class="text-lg font-semibold">
-                {editingShopId ? 'Edit Shop' : 'Create New Shop'}
+                {editingShopId ? 'Edit Category' : 'Create New Category'}
             </h3>
             <div class="grid gap-4 md:grid-cols-2">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-ds-text-secondary" for="shop-slug">Slug *</label>
                     <TextField
                         id="shop-slug"
-                        placeholder="my-shop"
+                        placeholder="my-category"
                         bind:value={shopForm.slug}
                     />
                 </div>
@@ -653,7 +684,7 @@
                     >
                     <TextField
                         id="shop-description"
-                        placeholder="Shop description..."
+                        placeholder="Category description..."
                         bind:value={shopForm.description}
                     />
                 </div>
@@ -675,7 +706,7 @@
                     onclick={saveShop}
                     disabled={shopFormSaving || !shopForm.slug}
                 >
-                    {shopFormSaving ? 'Saving...' : editingShopId ? 'Update Shop' : 'Create Shop'}
+                    {shopFormSaving ? 'Saving...' : editingShopId ? 'Update Category' : 'Create Category'}
                 </Button>
                 {#if editingShopId}
                     <Button
@@ -740,11 +771,11 @@
 
     {#if !selectedShopId && shops.length === 0}
         <div class="py-12 text-center text-ds-text-secondary">
-            No shops yet. Create one using "Manage Shops" above.
+            No categories yet. Create one using "Manage Categories" above.
         </div>
     {:else if !selectedShopId}
         <div class="py-12 text-center text-ds-text-secondary">
-            Select a shop above to manage its items and transactions.
+            Select a category above to manage its items and transactions.
         </div>
     {:else}
         <div class="flex gap-2 items-center">
@@ -770,6 +801,27 @@
                 </h3>
 
                 <div class="grid gap-4 md:grid-cols-2">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-ds-text-secondary" for="item-category"
+                            >Category *</label
+                        >
+                        <Select
+                            id="item-category"
+                            value={shopItemForm.shopId}
+                            onchange={(e) => {
+                                const val = parseInt((e.target as HTMLSelectElement).value, 10);
+                                shopItemForm.shopId = isNaN(val) ? null : val;
+                            }}
+                        >
+                            {#if shops.length === 0}
+                                <option value={null}>No categories — create one first</option>
+                            {:else}
+                                {#each shops as shop (shop.shopId)}
+                                    <option value={shop.shopId}>{shop.slug}</option>
+                                {/each}
+                            {/if}
+                        </Select>
+                    </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-ds-text-secondary" for="item-name"
                             >Name *</label
@@ -856,7 +908,7 @@
                     <Button
                         variant="approve"
                         onclick={saveShopItem}
-                        disabled={shopItemSaving || !shopItemForm.name || !shopItemForm.cost}
+                        disabled={shopItemSaving || !shopItemForm.name || !shopItemForm.cost || !shopItemForm.shopId}
                     >
                         {shopItemSaving
                             ? 'Saving...'

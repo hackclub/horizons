@@ -8,6 +8,7 @@
 
 	interface ShopItem {
 		itemId: number;
+		shopSlug: string;
 		name: string;
 		description: string | null;
 		imageUrl: string | null;
@@ -17,7 +18,6 @@
 		variants: { variantId: number; name: string; cost: number }[];
 	}
 
-	const slug = $derived(page.params.slug ?? '');
 	const itemId = $derived(Number(page.params.itemId));
 
 	let item = $state<ShopItem | null>(null);
@@ -29,11 +29,10 @@
 	let navigating = $state(false);
 
 	onMount(async () => {
-
 		try {
 			const [itemRes, balanceRes] = await Promise.all([
-				api.GET('/api/shop/{slug}/items/{id}', {
-					params: { path: { slug, id: itemId } }
+				api.GET('/api/shop/items/{id}', {
+					params: { path: { id: itemId } }
 				}),
 				api.GET('/api/shop/auth/balance')
 			]);
@@ -59,51 +58,22 @@
 
 	async function navigateTo(href: string) {
 		navigating = true;
-		await new Promise(resolve => setTimeout(resolve, EXIT_DURATION + 350));
+		await new Promise((resolve) => setTimeout(resolve, EXIT_DURATION + 350));
 		goto(href);
 	}
 
 	function goBack() {
-		navigateTo(`/app/shop/${slug}?back`);
+		navigateTo('/app/shop?back');
 	}
-
-	// async function handlePurchase() {
-	// 	if (!item || purchasing) return;
-	// 	purchasing = true;
-	// 	purchaseError = null;
-	//
-	// 	try {
-	// 		const body: { itemId: number; variantId?: number } = { itemId: item.itemId };
-	// 		if (selectedVariantId !== null) {
-	// 			body.variantId = selectedVariantId;
-	// 		}
-	//
-	// 		const { error: apiError } = await api.POST('/api/shop/auth/purchase', { body });
-	//
-	// 		if (apiError) {
-	// 			purchaseError = 'Purchase failed';
-	// 		} else {
-	// 			purchaseSuccess = true;
-	// 			const balanceRes = await api.GET('/api/shop/auth/balance');
-	// 			if (!balanceRes.error) {
-	// 				balance = (balanceRes.data as unknown as { balance: number })?.balance ?? null;
-	// 			}
-	// 		}
-	// 	} catch {
-	// 		purchaseError = 'Purchase failed';
-	// 	} finally {
-	// 		purchasing = false;
-	// 	}
-	// }
 
 	function calcDays(hours: number): number {
 		const fullWeeks = Math.floor(hours / 27);
 		const rem = hours % 27;
 
 		const extra = rem <= 0 ? 0
-			: rem <= 3  ? 1
-			: rem <= 6  ? 2
-			: rem <= 9  ? 3
+			: rem <= 3 ? 1
+			: rem <= 6 ? 2
+			: rem <= 9 ? 3
 			: rem <= 12 ? 4
 			: rem <= 15 ? 5
 			: rem <= 21 ? 6
@@ -145,8 +115,17 @@
 			{:else if item}
 				<div class="flex flex-col gap-6 items-start w-[447px]">
 					<div class="flex flex-col gap-2 text-black">
+						{#if item.shopSlug}
+							<span
+								class="font-bricolage text-xs font-bold px-2 py-0.5 rounded-full border-2 border-black w-fit bg-[#f3e8d8] capitalize"
+							>
+								{item.shopSlug}
+							</span>
+						{/if}
 						<p class="font-cook text-[36px] leading-normal m-0">{item.name}</p>
-							<p class="font-bricolage text-[18px] text-black/60 leading-normal m-0">{item.cost}h · approx. {calcDays(item.cost)} days of coding</p>
+						<p class="font-bricolage text-[18px] text-black/60 leading-normal m-0">
+							{item.cost}h · approx. {calcDays(item.cost)} days of coding
+						</p>
 						{#if item.regions.length > 0}
 							<div class="flex flex-wrap gap-1.5">
 								{#each item.regions as region}
