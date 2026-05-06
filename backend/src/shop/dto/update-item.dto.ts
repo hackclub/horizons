@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsNumber,
@@ -10,6 +11,12 @@ import {
 
 
 export class UpdateItemDto {
+  @ApiPropertyOptional({ type: Number, minimum: 1 })
+  @IsInt()
+  @IsOptional()
+  @Min(1)
+  shopId?: number;
+
   @IsString()
   @IsOptional()
   @MaxLength(100)

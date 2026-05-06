@@ -68,34 +68,71 @@ export class ShopService {
 
   // ── Items ──
 
-  async getItems(shopId: number) {
-    return this.prisma.shopItem.findMany({
-      where: { shopId },
+  private toItemResponse<T extends { shop?: { slug: string } | null }>(
+    item: T,
+  ): Omit<T, 'shop'> & { shopSlug: string } {
+    const { shop, ...rest } = item;
+    return { ...rest, shopSlug: shop?.slug ?? '' };
+  }
+
+  async getAllPublicItems() {
+    const items = await this.prisma.shopItem.findMany({
+      where: {
+        shop: { isActive: true, isPublic: true },
+      },
       orderBy: [{ isActive: 'desc' }, { cost: 'asc' }],
       include: {
+        shop: { select: { slug: true } },
         variants: {
+          where: { isActive: true },
           orderBy: { cost: 'asc' },
         },
       },
+    });
+    return items.map((i) => this.toItemResponse(i));
+  }
+
+  async getPublicItem(itemId: number) {
+    const item = await this.prisma.shopItem.findUnique({
+      where: { itemId },
+      include: {
+        shop: { select: { slug: true, isActive: true, isPublic: true } },
+        variants: {
+          where: { isActive: true },
+          orderBy: { cost: 'asc' },
+        },
+      },
+    });
+
+    if (!item || !item.shop.isActive || !item.shop.isPublic) {
+      throw new NotFoundException('Item not found');
+    }
+
+    return this.toItemResponse({
+      ...item,
+      shop: { slug: item.shop.slug },
     });
   }
 
   async getAllItems(shopId: number) {
-    return this.prisma.shopItem.findMany({
+    const items = await this.prisma.shopItem.findMany({
       where: { shopId },
       orderBy: { updatedAt: 'desc' },
       include: {
+        shop: { select: { slug: true } },
         variants: {
           orderBy: { cost: 'asc' },
         },
       },
     });
+    return items.map((i) => this.toItemResponse(i));
   }
 
   async getItem(itemId: number) {
     const item = await this.prisma.shopItem.findUnique({
       where: { itemId },
       include: {
+        shop: { select: { slug: true } },
         variants: {
           where: { isActive: true },
           orderBy: { cost: 'asc' },
@@ -107,7 +144,7 @@ export class ShopService {
       throw new NotFoundException('Item not found');
     }
 
-    return item;
+    return this.toItemResponse(item);
   }
 
   async createItem(shopId: number, createItemDto: CreateItemDto) {
@@ -115,7 +152,7 @@ export class ShopService {
     if (!shop) {
       throw new NotFoundException('Shop not found');
     }
-    return this.prisma.shopItem.create({
+    const item = await this.prisma.shopItem.create({
       data: {
         shopId,
         name: createItemDto.name,
@@ -125,9 +162,11 @@ export class ShopService {
         regions: createItemDto.regions ?? [],
       },
       include: {
+        shop: { select: { slug: true } },
         variants: true,
       },
     });
+    return this.toItemResponse(item);
   }
 
   async updateItem(itemId: number, updateItemDto: UpdateItemDto) {
@@ -139,13 +178,15 @@ export class ShopService {
       throw new NotFoundException('Item not found');
     }
 
-    return this.prisma.shopItem.update({
+    const updated = await this.prisma.shopItem.update({
       where: { itemId },
       data: updateItemDto,
       include: {
+        shop: { select: { slug: true } },
         variants: true,
       },
     });
+    return this.toItemResponse(updated);
   }
 
   async deleteItem(itemId: number) {
