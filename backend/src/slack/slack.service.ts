@@ -142,10 +142,10 @@ export class SlackService {
     }
   }
 
-  async getUsername(slackUserId: string): Promise<string | null> {
-    if (!this.botToken || !slackUserId) {
-      return null;
-    }
+  private async fetchUsernameFromSlack(
+    slackUserId: string,
+  ): Promise<string | null> {
+    if (!this.botToken) return null;
 
     try {
       const response = await fetch(
@@ -173,19 +173,81 @@ export class SlackService {
     }
   }
 
+  async getUsername(slackUserId: string): Promise<string | null> {
+    if (!slackUserId) return null;
+
+    const cached = await this.prisma.user.findUnique({
+      where: { slackUserId },
+      select: { slackUsername: true },
+    });
+
+    if (cached?.slackUsername) return cached.slackUsername;
+
+    const name = await this.fetchUsernameFromSlack(slackUserId);
+    if (!name) return null;
+
+    if (cached) {
+      await this.prisma.user
+        .update({
+          where: { slackUserId },
+          data: { slackUsername: name },
+        })
+        .catch((err) => {
+          console.error('Failed to cache Slack username:', err);
+        });
+    }
+
+    return name;
+  }
+
   async getUsernames(slackUserIds: string[]): Promise<Map<string, string>> {
-    const results = await Promise.allSettled(
-      slackUserIds.map(async (id) => ({
+    const map = new Map<string, string>();
+    if (slackUserIds.length === 0) return map;
+
+    const cachedUsers = await this.prisma.user.findMany({
+      where: { slackUserId: { in: slackUserIds } },
+      select: { slackUserId: true, slackUsername: true },
+    });
+
+    const inDb = new Set<string>();
+    for (const u of cachedUsers) {
+      if (!u.slackUserId) continue;
+      inDb.add(u.slackUserId);
+      if (u.slackUsername) map.set(u.slackUserId, u.slackUsername);
+    }
+
+    const missing = slackUserIds.filter((id) => !map.has(id));
+    if (missing.length === 0) return map;
+
+    const fetched = await Promise.allSettled(
+      missing.map(async (id) => ({
         id,
-        name: await this.getUsername(id),
+        name: await this.fetchUsernameFromSlack(id),
       })),
     );
-    const map = new Map<string, string>();
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value.name) {
-        map.set(result.value.id, result.value.name);
+
+    const updates: Array<{ id: string; name: string }> = [];
+    for (const result of fetched) {
+      if (result.status !== 'fulfilled' || !result.value.name) continue;
+      map.set(result.value.id, result.value.name);
+      if (inDb.has(result.value.id)) {
+        updates.push({ id: result.value.id, name: result.value.name });
       }
     }
+
+    if (updates.length > 0) {
+      await Promise.allSettled(
+        updates.map((u) =>
+          this.prisma.user.update({
+            where: { slackUserId: u.id },
+            data: { slackUsername: u.name },
+          }),
+        ),
+      ).catch((err) => {
+        console.error('Failed to cache Slack usernames:', err);
+      });
+    }
+
     return map;
   }
 
