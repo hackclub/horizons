@@ -9,6 +9,7 @@ import { SlackService } from '../slack/slack.service';
 import { ManifestService } from '../manifest/manifest.service';
 import { MetricsService } from '../metrics/metrics.service';
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
+import { StreakService } from '../streaks/streak.service';
 import * as Papa from 'papaparse';
 
 const projectAdminInclude = {
@@ -48,6 +49,7 @@ export class AdminService {
     private manifestService: ManifestService,
     private metricsService: MetricsService,
     private fraudReviewService: FraudReviewService,
+    private streakService: StreakService,
   ) {}
 
   async getAllSubmissions() {
@@ -1017,7 +1019,17 @@ export class AdminService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return users;
+    // Apply timezone-aware lazy decay so admins see the same currentStreak
+    // value the user sees on /app — stale (>1 day in user-local time) reads
+    // collapse to 0 without mutating the row.
+    return users.map((u) => ({
+      ...u,
+      currentStreak: this.streakService.applyLazyDecay({
+        currentStreak: u.currentStreak,
+        lastActiveDate: u.lastActiveDate,
+        timezone: u.timezone,
+      }),
+    }));
   }
 
   async getReviewerLeaderboard() {

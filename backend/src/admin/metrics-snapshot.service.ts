@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 import { MetricsService } from '../metrics/metrics.service';
+import { StreakService } from '../streaks/streak.service';
 
 @Injectable()
 export class MetricsSnapshotService implements OnModuleInit {
@@ -10,6 +11,7 @@ export class MetricsSnapshotService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private metricsService: MetricsService,
+    private streakService: StreakService,
   ) {}
 
   async onModuleInit() {
@@ -200,7 +202,9 @@ export class MetricsSnapshotService implements OnModuleInit {
         },
       },
       select: {
+        userId: true,
         hackatimeAccount: true,
+        timezone: true,
         projects: {
           where: { nowHackatimeProjects: { isEmpty: false } },
           select: { nowHackatimeProjects: true },
@@ -210,7 +214,9 @@ export class MetricsSnapshotService implements OnModuleInit {
     });
 
     const userProjectNames = usersWithProjects.map((user) => ({
+      userId: user.userId,
       hackatimeAccount: user.hackatimeAccount!,
+      timezone: user.timezone,
       allowedNames: new Set(
         user.projects.flatMap((p) => p.nowHackatimeProjects),
       ),
@@ -227,51 +233,80 @@ export class MetricsSnapshotService implements OnModuleInit {
     for (let i = 0; i < userProjectNames.length; i += batchSize) {
       const batch = userProjectNames.slice(i, i + batchSize);
       const results = await Promise.allSettled(
-        batch.map(async ({ hackatimeAccount, allowedNames, eventSlug }) => {
-          try {
-            const headers: Record<string, string> = {
-              'Content-Type': 'application/json',
-            };
-            if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+        batch.map(
+          async ({
+            userId,
+            hackatimeAccount,
+            timezone,
+            allowedNames,
+            eventSlug,
+          }) => {
+            try {
+              const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+              };
+              if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
-            const nextDay = new Date(dayStart);
-            nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-            const endDateStr = nextDay.toISOString().split('T')[0];
-            const url = `https://hackatime.hackclub.com/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${dateStr}&end_date=${endDateStr}`;
-            const response = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+              const nextDay = new Date(dayStart);
+              nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+              const endDateStr = nextDay.toISOString().split('T')[0];
+              const url = `https://hackatime.hackclub.com/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${dateStr}&end_date=${endDateStr}`;
+              const response = await fetch(url, {
+                headers,
+                signal: AbortSignal.timeout(10000),
+              });
 
-            if (!response.ok) return { userSeconds: 0, eventSlug };
-            const data = await response.json();
+              if (!response.ok) return { userId, userSeconds: 0, timezone, eventSlug };
+              const data = await response.json();
 
-            // Only sum seconds for Hackatime projects linked to Horizon projects
-            const projects = data?.data?.projects;
-            let userSeconds = 0;
-            if (Array.isArray(projects)) {
-              for (const p of projects) {
-                if (p?.name && allowedNames.has(p.name)) {
-                  userSeconds += typeof p?.total_seconds === 'number' ? p.total_seconds : 0;
+              // Only sum seconds for Hackatime projects linked to Horizon projects
+              const projects = data?.data?.projects;
+              let userSeconds = 0;
+              if (Array.isArray(projects)) {
+                for (const p of projects) {
+                  if (p?.name && allowedNames.has(p.name)) {
+                    userSeconds +=
+                      typeof p?.total_seconds === 'number' ? p.total_seconds : 0;
+                  }
                 }
               }
+              return { userId, userSeconds, timezone, eventSlug };
+            } catch {
+              return { userId, userSeconds: 0, timezone, eventSlug };
             }
-            return { userSeconds, eventSlug };
-          } catch {
-            return { userSeconds: 0, eventSlug };
-          }
-        }),
+          },
+        ),
       );
 
+      // Aggregate metrics + persist per-user daily activity. The latter is
+      // best-effort — a single user's DB failure must not break the batch.
+      const persistTasks: Promise<void>[] = [];
       for (const result of results) {
-        if (result.status === 'fulfilled') {
-          const { userSeconds, eventSlug } = result.value;
-          if (userSeconds > 0) {
-            activeCount++;
-            if (eventSlug) {
-              perEventCounts.set(eventSlug, (perEventCounts.get(eventSlug) ?? 0) + 1);
-            }
+        if (result.status !== 'fulfilled') continue;
+        const { userId, userSeconds, timezone, eventSlug } = result.value;
+        if (userSeconds > 0) {
+          activeCount++;
+          if (eventSlug) {
+            perEventCounts.set(eventSlug, (perEventCounts.get(eventSlug) ?? 0) + 1);
           }
-          totalSeconds += userSeconds;
         }
+        totalSeconds += userSeconds;
+
+        const localDate = this.streakService.localDateForUtcDay(
+          dayStart,
+          timezone,
+        );
+        persistTasks.push(
+          this.streakService
+            .recordDailyActivity(userId, localDate, userSeconds)
+            .catch((err) =>
+              this.logger.warn(
+                `Failed to persist daily activity for user ${userId}: ${err.message}`,
+              ),
+            ),
+        );
       }
+      await Promise.all(persistTasks);
     }
 
     return {

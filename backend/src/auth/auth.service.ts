@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { SlackService } from '../slack/slack.service';
 import { SlackChannelsService } from '../slack-channels/slack-channels.service';
+import { StreakService } from '../streaks/streak.service';
 
 import { createHmac } from 'crypto';
 import * as jose from 'jose';
@@ -112,7 +113,23 @@ export class AuthService {
     private airtableService: AirtableService,
     private slackService: SlackService,
     private slackChannelsService: SlackChannelsService,
+    private streakService: StreakService,
   ) {}
+
+  private syncSlackTimezone(userId: number, slackUserId: string) {
+    this.slackService
+      .getSlackUserTimezone(slackUserId)
+      .then(async (tz) => {
+        if (!tz) return;
+        await this.prisma.user.update({
+          where: { userId },
+          data: { timezone: tz },
+        });
+      })
+      .catch((err) =>
+        console.error(`Failed to sync Slack timezone for user ${userId}:`, err),
+      );
+  }
 
   getAuthUrl(
     email?: string,
@@ -423,6 +440,10 @@ export class AuthService {
           console.error('Error syncing authedWithHCA event to Airtable:', err),
         );
 
+      if (slackUserId) {
+        this.syncSlackTimezone(existingUser.userId, slackUserId);
+      }
+
       return { user: existingUser, isNewUser: true };
     }
 
@@ -488,6 +509,15 @@ export class AuthService {
       });
     }
 
+    const effectiveSlackUserId =
+      (updateData.slackUserId as string | undefined) ?? existingUser.slackUserId;
+    if (
+      effectiveSlackUserId &&
+      (updateData.slackUserId || !existingUser.timezone)
+    ) {
+      this.syncSlackTimezone(existingUser.userId, effectiveSlackUserId);
+    }
+
     return { user: existingUser, isNewUser: false };
   }
 
@@ -524,6 +554,10 @@ export class AuthService {
             state: true,
             country: true,
             zipCode: true,
+            timezone: true,
+            currentStreak: true,
+            longestStreak: true,
+            lastActiveDate: true,
             projects: {
               include: { submissions: true },
             },
@@ -593,7 +627,18 @@ export class AuthService {
       ? await this.slackService.getUsername(user.slackUserId)
       : null;
 
-    return { ...userWithoutAddress, hasAddress, slackDisplayName };
+    const decayedStreak = this.streakService.applyLazyDecay({
+      currentStreak: user.currentStreak ?? 0,
+      lastActiveDate: user.lastActiveDate ?? null,
+      timezone: user.timezone ?? null,
+    });
+
+    return {
+      ...userWithoutAddress,
+      currentStreak: decayedStreak,
+      hasAddress,
+      slackDisplayName,
+    };
   }
 
   async logout(sessionId: string) {

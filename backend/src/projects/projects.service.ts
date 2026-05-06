@@ -15,6 +15,7 @@ import { PosthogService } from '../posthog/posthog.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { FraudReviewService } from '../fraud-review/fraud-review.service';
 import { ManifestService } from '../manifest/manifest.service';
+import { StreakService } from '../streaks/streak.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 
 @Injectable()
@@ -26,6 +27,7 @@ export class ProjectsService {
     private airtableService: AirtableService,
     private fraudReviewService: FraudReviewService,
     private manifestService: ManifestService,
+    private streakService: StreakService,
   ) {}
 
   private excludeAdminFields<T extends Record<string, any>>(
@@ -751,7 +753,14 @@ export class ProjectsService {
         nowHackatimeProjects: true,
         userId: true,
         user: {
-          select: { hackatimeAccount: true, hackatimeStartDate: true },
+          select: {
+            hackatimeAccount: true,
+            hackatimeStartDate: true,
+            timezone: true,
+            currentStreak: true,
+            longestStreak: true,
+            lastActiveDate: true,
+          },
         },
         submissions: {
           orderBy: { createdAt: 'desc' },
@@ -773,6 +782,13 @@ export class ProjectsService {
     const lastSubmittedHours = lastSubmission?.hackatimeHours ?? null;
     const projectNames = project.nowHackatimeProjects ?? [];
 
+    const currentStreak = this.streakService.applyLazyDecay({
+      currentStreak: project.user.currentStreak ?? 0,
+      lastActiveDate: project.user.lastActiveDate ?? null,
+      timezone: project.user.timezone ?? null,
+    });
+    const longestStreak = project.user.longestStreak ?? 0;
+
     // Always calculate live hours from the Hackatime API
     if (!project.user.hackatimeAccount || projectNames.length === 0) {
       return {
@@ -781,6 +797,8 @@ export class ProjectsService {
         currentHackatimeHours: 0,
         hackatimeProjectHours: {},
         lastSubmittedHours,
+        currentStreak,
+        longestStreak,
       };
     }
 
@@ -811,6 +829,8 @@ export class ProjectsService {
       currentHackatimeHours: Math.round((totalSeconds / 3600) * 10) / 10,
       hackatimeProjectHours,
       lastSubmittedHours,
+      currentStreak,
+      longestStreak,
     };
   }
 

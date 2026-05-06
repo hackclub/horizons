@@ -55,6 +55,18 @@ export class AdminLightUserResponse {
   @ApiProperty()
   isSus: boolean;
 
+  @ApiProperty({ type: String, nullable: true })
+  timezone: string | null;
+
+  @ApiProperty()
+  currentStreak: number;
+
+  @ApiProperty()
+  longestStreak: number;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date' })
+  lastActiveDate: Date | null;
+
   @ApiProperty()
   createdAt: Date;
 

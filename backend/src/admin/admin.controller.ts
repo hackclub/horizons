@@ -218,6 +218,22 @@ export class AdminController {
     return { results };
   }
 
+  @Post('streaks/backfill')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiCreatedResponse({ type: BackfillResponse })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days to backfill (default 14, max 30)' })
+  async backfillStreaks(@Query('days') days?: string) {
+    const requested = Math.max(1, Math.min(30, parseInt(days || '14', 10) || 14));
+    const end = new Date();
+    end.setUTCDate(end.getUTCDate() - 1);
+    end.setUTCHours(0, 0, 0, 0);
+    const start = new Date(end);
+    start.setUTCDate(start.getUTCDate() - (requested - 1));
+    const results = await this.metricsSnapshotService.backfill(start, end, false);
+    return { results };
+  }
+
   @Get('events/:slug/stats')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin, Role.EventViewer)
