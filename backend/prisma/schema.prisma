@@ -17,6 +17,7 @@ model User {
   email              String    @unique
   birthday           DateTime? @db.Date
   slackUserId        String?   @unique @map("slack_user_id")
+  slackUsername      String?   @map("slack_username")
   verificationStatus String?   @map("verification_status")
 
   role String @default("user")
