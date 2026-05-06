@@ -285,7 +285,39 @@ export class HackatimeService {
       );
     }
 
-    return res.json();
+    const data = await res.json();
+    return this.stripHackatimePlaceholders(data);
+  }
+
+  // Hackatime emits sentinel project names like `<<LAST_PROJECT>>` that aren't
+  // real projects and shouldn't be selectable by users.
+  private isHackatimePlaceholderName(name: unknown): boolean {
+    return typeof name === 'string' && /^<<.*>>$/.test(name.trim());
+  }
+
+  private stripHackatimePlaceholders(data: any): any {
+    if (Array.isArray(data)) {
+      return data.filter(
+        (project: any) =>
+          !this.isHackatimePlaceholderName(
+            project?.name || project?.projectName || project,
+          ),
+      );
+    }
+
+    if (data?.projects && Array.isArray(data.projects)) {
+      return {
+        ...data,
+        projects: data.projects.filter(
+          (project: any) =>
+            !this.isHackatimePlaceholderName(
+              project?.name || project?.projectName || project,
+            ),
+        ),
+      };
+    }
+
+    return data;
   }
 
   async getUnlinkedHackatimeProjects(userEmail: string): Promise<any> {
