@@ -198,50 +198,49 @@
 			</p>
 		</div>
 
-		<!-- Category filters -->
-		{#if availableCategories.length > 0}
+		<!-- Filters -->
+		{#if availableCategories.length > 0 || availableRegions.length > 0}
 			<div class="flex gap-2 flex-wrap w-full max-w-[932px] items-center">
-				<span class="font-bricolage font-semibold text-sm text-black/60 mr-1">Categories:</span>
-				<button
-					class="category-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
-					class:active={selectedCategories.size === 0}
-					onclick={() => { selectedCategories = new Set(); skipItemAnimation = true; }}
-				>
-					All
-				</button>
-				{#each availableCategories as slug (slug)}
-					{@const active = selectedCategories.has(slug)}
+				{#if availableCategories.length > 0}
+					<span class="font-bricolage font-semibold text-sm text-black/60 mr-1">Categories:</span>
 					<button
-						class="category-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors capitalize"
-						class:active
-						onclick={() => toggleCategory(slug)}
+						class="category-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
+						class:active={selectedCategories.size === 0}
+						onclick={() => { selectedCategories = new Set(); skipItemAnimation = true; }}
 					>
-						{slug}
+						All
 					</button>
-				{/each}
-			</div>
-		{/if}
+					{#each availableCategories as slug (slug)}
+						{@const active = selectedCategories.has(slug)}
+						<button
+							class="category-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors capitalize"
+							class:active
+							onclick={() => toggleCategory(slug)}
+						>
+							{slug}
+						</button>
+					{/each}
+				{/if}
 
-		<!-- Region filter -->
-		{#if availableRegions.length > 0}
-			<div class="flex gap-2 w-full max-w-[932px] items-center">
-				<span class="font-bricolage font-semibold text-sm text-black/60 mr-1">Region:</span>
-				<button
-					class="region-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
-					class:active={selectedRegion === ''}
-					onclick={() => { selectedRegion = ''; skipItemAnimation = true; }}
-				>
-					All
-				</button>
-				{#each availableRegions as region}
+				{#if availableRegions.length > 0}
+					<span class="font-bricolage font-semibold text-sm text-black/60 mx-1">Region:</span>
 					<button
 						class="region-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
-						class:active={selectedRegion === region}
-						onclick={() => { selectedRegion = selectedRegion === region ? '' : region; skipItemAnimation = true; }}
+						class:active={selectedRegion === ''}
+						onclick={() => { selectedRegion = ''; skipItemAnimation = true; }}
 					>
-						{region}
+						All
 					</button>
-				{/each}
+					{#each availableRegions as region}
+						<button
+							class="region-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
+							class:active={selectedRegion === region}
+							onclick={() => { selectedRegion = selectedRegion === region ? '' : region; skipItemAnimation = true; }}
+						>
+							{region}
+						</button>
+					{/each}
+				{/if}
 			</div>
 		{/if}
 
