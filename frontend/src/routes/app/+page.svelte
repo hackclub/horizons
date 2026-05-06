@@ -59,6 +59,8 @@
 
 	let userName = $derived($userStore.userName);
 	let referralCode = $derived($userStore.referralCode);
+	let currentStreak = $derived($userStore.currentStreak);
+	let longestStreak = $derived($userStore.longestStreak);
 	let isAdmin = $derived(
 		$userStore.role === 'admin' ||
 			$userStore.role === 'superadmin' ||
@@ -676,6 +678,12 @@
 			{#if userName}
 				<div class="card user-card">
 					<p class="font-cook text-[24px] font-semibold text-black m-0">{userName}</p>
+					{#if currentStreak > 0}
+						<div class="streak-badge" title={longestStreak > currentStreak ? `Best: ${longestStreak}d` : 'New record!'}>
+							<span class="streak-flame" aria-hidden="true">🔥</span>
+							<span class="font-cook text-[20px] font-semibold text-black leading-none">{currentStreak}d</span>
+						</div>
+					{/if}
 					{#if referralCode}
 						<button
 							class="refer-btn py-2 px-4 border-2 border-black rounded-lg bg-[#ffa936] font-bricolage text-base font-semibold text-black cursor-pointer"
@@ -940,6 +948,22 @@
 		background-color: #f3e8d8;
 		cursor: default;
 		overflow: visible;
+	}
+
+	.streak-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 10px;
+		border: 2px solid black;
+		border-radius: 8px;
+		background-color: #ffd56b;
+		cursor: default;
+	}
+
+	.streak-flame {
+		font-size: 18px;
+		line-height: 1;
 	}
 
 	.refer-btn {
