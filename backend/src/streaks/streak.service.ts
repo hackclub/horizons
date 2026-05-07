@@ -152,4 +152,51 @@ export class StreakService {
     if (user.lastActiveDate.getTime() < yesterday) return 0;
     return user.currentStreak;
   }
+
+  /**
+   * Top users by current streak. Pulls a larger pool than `limit`, applies
+   * read-time decay, drops users without a Slack display name, then ranks.
+   * Excludes flagged accounts so the public leaderboard can't be polluted.
+   */
+  async getLeaderboard(
+    limit: number,
+  ): Promise<
+    Array<{ rank: number; displayName: string; currentStreak: number }>
+  > {
+    const pool = await this.prisma.user.findMany({
+      where: {
+        currentStreak: { gt: 0 },
+        slackUsername: { not: null },
+        isFraud: false,
+        isSus: false,
+      },
+      select: {
+        slackUsername: true,
+        currentStreak: true,
+        lastActiveDate: true,
+        timezone: true,
+      },
+      orderBy: [
+        { currentStreak: 'desc' },
+        { lastActiveDate: 'desc' },
+        { userId: 'asc' },
+      ],
+      take: Math.max(limit * 4, 30),
+    });
+
+    const decayed = pool
+      .map((u) => ({
+        displayName: u.slackUsername!,
+        currentStreak: this.applyLazyDecay({
+          currentStreak: u.currentStreak,
+          lastActiveDate: u.lastActiveDate,
+          timezone: u.timezone,
+        }),
+      }))
+      .filter((u) => u.currentStreak > 0)
+      .sort((a, b) => b.currentStreak - a.currentStreak)
+      .slice(0, limit);
+
+    return decayed.map((u, i) => ({ rank: i + 1, ...u }));
+  }
 }
