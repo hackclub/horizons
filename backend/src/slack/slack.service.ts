@@ -154,7 +154,7 @@ export class SlackService {
     return info?.tz ?? null;
   }
 
-  private async fetchUsernameFromSlack(
+  private async fetchDisplayNameFromSlack(
     slackUserId: string,
   ): Promise<string | null> {
     if (!this.botToken) return null;
@@ -174,18 +174,23 @@ export class SlackService {
       const data = await response.json();
 
       if (!data.ok) {
-        console.error('Failed to fetch Slack username:', data.error);
+        console.error('Failed to fetch Slack display name:', data.error);
         return null;
       }
 
-      return data.user?.name ?? null;
+      return (
+        data.user?.profile?.display_name ||
+        data.user?.profile?.real_name ||
+        data.user?.name ||
+        null
+      );
     } catch (error) {
-      console.error('Error fetching Slack username:', error);
+      console.error('Error fetching Slack display name:', error);
       return null;
     }
   }
 
-  async getUsername(slackUserId: string): Promise<string | null> {
+  async getDisplayName(slackUserId: string): Promise<string | null> {
     if (!slackUserId) return null;
 
     const cached = await this.prisma.user.findUnique({
@@ -195,7 +200,7 @@ export class SlackService {
 
     if (cached?.slackUsername) return cached.slackUsername;
 
-    const name = await this.fetchUsernameFromSlack(slackUserId);
+    const name = await this.fetchDisplayNameFromSlack(slackUserId);
     if (!name) return null;
 
     if (cached) {
@@ -205,14 +210,16 @@ export class SlackService {
           data: { slackUsername: name },
         })
         .catch((err) => {
-          console.error('Failed to cache Slack username:', err);
+          console.error('Failed to cache Slack display name:', err);
         });
     }
 
     return name;
   }
 
-  async getUsernames(slackUserIds: string[]): Promise<Map<string, string>> {
+  async getDisplayNames(
+    slackUserIds: string[],
+  ): Promise<Map<string, string>> {
     const map = new Map<string, string>();
     if (slackUserIds.length === 0) return map;
 
@@ -234,7 +241,7 @@ export class SlackService {
     const fetched = await Promise.allSettled(
       missing.map(async (id) => ({
         id,
-        name: await this.fetchUsernameFromSlack(id),
+        name: await this.fetchDisplayNameFromSlack(id),
       })),
     );
 
@@ -256,7 +263,7 @@ export class SlackService {
           }),
         ),
       ).catch((err) => {
-        console.error('Failed to cache Slack usernames:', err);
+        console.error('Failed to cache Slack display names:', err);
       });
     }
 

@@ -624,7 +624,7 @@ export class AuthService {
     }
 
     const slackDisplayName = user.slackUserId
-      ? await this.slackService.getUsername(user.slackUserId)
+      ? await this.slackService.getDisplayName(user.slackUserId)
       : null;
 
     const decayedStreak = this.streakService.applyLazyDecay({
@@ -698,7 +698,7 @@ export class AuthService {
     const slackIds = users
       .map((u) => u.slackUserId)
       .filter((id): id is string => !!id);
-    const displayNames = await this.slackService.getUsernames(slackIds);
+    const displayNames = await this.slackService.getDisplayNames(slackIds);
 
     return {
       referrals: users.map((u) => ({

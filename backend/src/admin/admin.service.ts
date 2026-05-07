@@ -2265,14 +2265,14 @@ export class AdminService {
     const slackIds = users
       .map((u) => u.slackUserId)
       .filter((id): id is string => !!id);
-    const displayNames = await this.slackService.getUsernames(slackIds);
+    const displayNames = await this.slackService.getDisplayNames(slackIds);
 
     const rows = users.map((user) => ({
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       slackId: user.slackUserId ?? '',
-      username: (user.slackUserId && displayNames.get(user.slackUserId)) || '',
+      displayName: (user.slackUserId && displayNames.get(user.slackUserId)) || '',
       signedUpAt: user.createdAt.toISOString(),
       hackatimeLinkedAt: hackatimeLinkMap.get(user.userId)?.toISOString() ?? '',
       hackatimeProjectLink: unlinkedCounts.get(user.userId) ?? -1,

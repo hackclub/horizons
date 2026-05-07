@@ -952,7 +952,7 @@ export class ReviewerService {
   }
 
   /**
-   * Batch-fetch Slack usernames for any user with a slackUserId.
+   * Batch-fetch Slack display names for any user with a slackUserId.
    * Returns an empty map if no users have a slackUserId.
    */
   private async fetchDisplayNamesFor(
@@ -966,7 +966,7 @@ export class ReviewerService {
       ),
     ];
     if (ids.length === 0) return new Map();
-    return this.slackService.getUsernames(ids);
+    return this.slackService.getDisplayNames(ids);
   }
 
   /**
