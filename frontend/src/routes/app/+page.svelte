@@ -2,6 +2,7 @@
 	import CircleIn from '$lib/components/anim/CircleIn.svelte';
 	import TextWave from '$lib/components/TextWave.svelte';
 	import CommunityEventsCard from '$lib/components/cards/CommunityEventsCard.svelte';
+	import StreaksLeaderboardCard from '$lib/components/cards/StreaksLeaderboardCard.svelte';
 	import LiveHuddleCard from '$lib/components/cards/LiveHuddleCard.svelte';
 	import ProjectsCard from '$lib/components/cards/ProjectsCard.svelte';
 	import GuidesCard from '$lib/components/cards/GuidesCard.svelte';
@@ -38,12 +39,45 @@
 	// Temporarily hide the community events card; flip to false to restore it.
 	const HIDE_COMMUNITY_EVENTS = false;
 
-	// Column index constants — when CE card is hidden, all columns to its right shift left by 1.
-	const COL_LEFT = HIDE_COMMUNITY_EVENTS ? 0 : 1;
-	const COL_PINNED_EVENT = HIDE_COMMUNITY_EVENTS ? 1 : 2;
-	const COL_MIDDLE = HIDE_COMMUNITY_EVENTS ? 2 : 3;
-	const COL_FAQ = HIDE_COMMUNITY_EVENTS ? 3 : 4;
-	const COL_ADMIN = HIDE_COMMUNITY_EVENTS ? 4 : 5;
+	// CE and the streaks leaderboard alternate sides — deterministic, not
+	// random: each /app mount flips the previous mount's choice via
+	// localStorage, so a fresh load (or a return to /app via client-side
+	// navigation) always shows the opposite layout from last time.
+	const CARD_ORDER_KEY = 'home-card-order';
+	function pickCardOrder(): 'left' | 'right' {
+		if (typeof window === 'undefined') return 'left';
+		try {
+			const last = localStorage.getItem(CARD_ORDER_KEY);
+			const next: 'left' | 'right' = last === 'left' ? 'right' : 'left';
+			localStorage.setItem(CARD_ORDER_KEY, next);
+			return next;
+		} catch {
+			return 'left';
+		}
+	}
+	const leaderboardOnRight = !HIDE_COMMUNITY_EVENTS && pickCardOrder() === 'right';
+
+	// Column index constants — when CE is hidden, all columns to its right shift
+	// left by 1. When CE is shown, the leaderboard sits either to the left of CE
+	// (col 0) or to the right (col 1) depending on the per-session pick.
+	const COL_LEADERBOARD = HIDE_COMMUNITY_EVENTS ? 0 : leaderboardOnRight ? 1 : 0;
+	const COL_CE = leaderboardOnRight ? 0 : 1;
+	const COL_LEFT = HIDE_COMMUNITY_EVENTS ? 1 : 2;
+	const COL_PINNED_EVENT = HIDE_COMMUNITY_EVENTS ? 2 : 3;
+	const COL_MIDDLE = HIDE_COMMUNITY_EVENTS ? 3 : 4;
+	const COL_FAQ = HIDE_COMMUNITY_EVENTS ? 4 : 5;
+	const COL_ADMIN = HIDE_COMMUNITY_EVENTS ? 5 : 6;
+
+	// Pre-compute the cards-row's resting horizontal offset for the default
+	// selected column (col 1) so the very first paint is already shifted —
+	// otherwise the row paints at translate(0) and visibly slides ~435 px
+	// during the fly-in. Refined by the $effect below once layout is real.
+	const COL_WIDTH = 471;
+	const COL_GAP = 24;
+	const PEEK_AMOUNT = 60;
+	const initialCardsRowTx = HIDE_COMMUNITY_EVENTS
+		? 0
+		: -(COL_WIDTH + COL_GAP - PEEK_AMOUNT);
 
 	const cardDescriptions: Record<string, string> = {
 		[`${COL_LEFT}-0`]: 'Create projects, track your progress, and submit them for review!',
@@ -54,7 +88,7 @@
 		[`${COL_FAQ}-0`]: 'Got questions? Find answers here.',
 	};
 	if (!HIDE_COMMUNITY_EVENTS) {
-		cardDescriptions['0-0'] = 'See what\'s coming up in the community!';
+		cardDescriptions[`${COL_CE}-0`] = 'See what\'s coming up in the community!';
 	}
 
 	let userName = $derived($userStore.userName);
@@ -244,6 +278,7 @@
 
 	const hrefs: string[][] = HIDE_COMMUNITY_EVENTS
 		? [
+			[''],
 			['/app/projects?back', 'https://guides.horizons.hackclub.com'],
 			['/app/events'],
 			['https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476', '/app/shop?back'],
@@ -251,7 +286,8 @@
 			['/admin'],
 		]
 		: [
-			['/app/community'],
+			leaderboardOnRight ? ['/app/community'] : [''],
+			leaderboardOnRight ? [''] : ['/app/community'],
 			['/app/projects?back', 'https://guides.horizons.hackclub.com'],
 			['/app/events'],
 			['https://hackclub.enterprise.slack.com/archives/C0AGKQ6K476', '/app/shop?back'],
@@ -348,38 +384,42 @@
 				return;
 			}
 			// Left/right falls through — the grid moves columns, and the
-			// `nav.col !== 0` $effect resets huddleNavSelected when we actually
-			// leave column 0. Pressing left while already at col 0 keeps the
-			// huddle selected (nothing to the left).
+			// `nav.col !== COL_CE` $effect resets huddleNavSelected when we
+			// actually leave the CE column.
 		}
 
 		const colBefore = nav.col;
 		nav.handleKeydown(e);
 
-		// Coming back to column 0 from a different column with a live huddle —
+		// Coming back to the CE column from a different column with a live huddle —
 		// land on the huddle card first instead of the events card.
-		if (colBefore !== 0 && nav.col === 0 && showHuddleCard) {
+		if (colBefore !== COL_CE && nav.col === COL_CE && showHuddleCard) {
 			huddleNavSelected = true;
 		}
 	}
 
-	// If the user navigates away from column 0 (via grid), drop huddle focus.
+	// If the user navigates away from the CE column (via grid), drop huddle focus.
 	$effect(() => {
-		if (nav.col !== 0) huddleNavSelected = false;
+		if (nav.col !== COL_CE) huddleNavSelected = false;
 	});
 
 	const nav = createGridNav({
 		columns: () => {
-			const base = HIDE_COMMUNITY_EVENTS ? [2, 1, 2, 1] : [1, 2, 1, 2, 1];
+			// First slot is the streaks leaderboard (passive display column).
+			const base = HIDE_COMMUNITY_EVENTS ? [1, 2, 1, 2, 1] : [1, 1, 2, 1, 2, 1];
 			return isAdmin ? [...base, 1] : base;
 		},
 		onSelect: (col, row) => {
 			if (isDisabled(col, row)) {
 				triggerShake(col, row);
-			} else if (!HIDE_COMMUNITY_EVENTS && col === 0 && ceFocusedEventId) {
+			} else if (col === COL_LEADERBOARD) {
+				// Passive display — no action on Enter.
+				return;
+			} else if (!HIDE_COMMUNITY_EVENTS && col === COL_CE && ceFocusedEventId) {
 				navigateTo(`/app/community?event=${encodeURIComponent(ceFocusedEventId)}`);
 			} else {
 				const href = hrefs[col][row];
+				if (!href) return;
 				if (/^https?:\/\//.test(href)) {
 					window.open(href, '_blank', 'noopener,noreferrer');
 				} else {
@@ -389,10 +429,20 @@
 		},
 	});
 
+	// Default selection: whichever card occupies the second slot (col 1) — the
+	// "CE spot". Depending on the per-session swap, this is either CE or the
+	// leaderboard, with the col-0 card peeking from behind it on the left.
+	// When CE is hidden entirely, fall back to the left column's first row.
+	nav.col = HIDE_COMMUNITY_EVENTS ? COL_LEFT : 1;
+
 	// Refs for scroll targets (index = nav column)
 	let scrollContainer = $state<HTMLElement | null>(null);
 	let cardsRow = $state<HTMLElement | null>(null);
-	let cardRefs = $state<(HTMLElement | null)[]>([null, null, null, null, null, null]);
+	let cardRefs = $state<(HTMLElement | null)[]>([null, null, null, null, null, null, null]);
+
+	// First time we position the row, skip the CSS transition so it doesn't
+	// visibly slide horizontally during the fly-in animation.
+	let cardsRowPositioned = false;
 
 	// Slide cards row so selected card is visible with a peek of the next card.
 	// Use offsetLeft (layout position, unaffected by transform) to avoid mid-transition jitter.
@@ -423,6 +473,10 @@
 			// and a peek of the previous card by offsetting to the right.
 			const peekAmount = 60;
 			const isFirst = nav.col === 0;
+			// Col 1 is the "CE spot" — sit it near the left edge with a sliver
+			// of the col-0 card peeking from behind it. Used when CE is shown
+			// (col 1 is either CE or the leaderboard, depending on the swap).
+			const isCeSpot = !HIDE_COMMUNITY_EVENTS && nav.col === 1;
 			const colCount = isAdmin ? COL_ADMIN + 1 : COL_FAQ + 1;
 			const isLast = nav.col === colCount - 1;
 
@@ -433,13 +487,25 @@
 			} else if (isLast) {
 				// Last card: align to right edge
 				target = maxShift;
+			} else if (isCeSpot) {
+				target = elLeft - peekAmount;
 			} else {
 				// Middle cards: center but offset left to peek the next card
 				target = elLeft - (containerWidth - elWidth) / 2 + peekAmount;
 			}
 
 			const clamped = Math.max(0, Math.min(target, maxShift));
-			cardsRow.style.transform = `translateX(${-clamped}px)`;
+			if (!cardsRowPositioned) {
+				cardsRow.style.transition = 'none';
+				cardsRow.style.transform = `translateX(${-clamped}px)`;
+				// Force a reflow so the transition reset takes effect before
+				// we re-enable transitions on the next paint.
+				void cardsRow.offsetHeight;
+				cardsRow.style.transition = '';
+				cardsRowPositioned = true;
+			} else {
+				cardsRow.style.transform = `translateX(${-clamped}px)`;
+			}
 		}
 	});
 </script>
@@ -484,21 +550,30 @@
 
 		<!-- Scrollable Content -->
 		<div class="scroll-wrapper" bind:this={scrollContainer}>
-			<div class="cards-row" bind:this={cardsRow}>
-				<!-- Community Events (preview card, leftmost) -->
-				{#if !HIDE_COMMUNITY_EVENTS}
-					<div class="enter-up shrink-0 ce-column" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay="0ms" style:--exit-right-delay="150ms">
+			<div class="cards-row" bind:this={cardsRow} style:transform="translateX({initialCardsRowTx}px)">
+				{#snippet leaderboardCol()}
+					<div class="enter-up shrink-0 streaks-column" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay={leaderboardOnRight ? "25ms" : "0ms"} style:--exit-right-delay="100ms">
+						<StreaksLeaderboardCard
+							bind:element={cardRefs[COL_LEADERBOARD]}
+							selected={nav.isSelected(COL_LEADERBOARD, 0)}
+							onmouseenter={() => handleCardHover(COL_LEADERBOARD, 0)}
+						/>
+					</div>
+				{/snippet}
+
+				{#snippet ceCol()}
+					<div class="enter-up shrink-0 ce-column" class:exiting={navigating} class:exit-right={exitRight} style:--exit-delay="0ms" style:--enter-delay={leaderboardOnRight ? "0ms" : "25ms"} style:--exit-right-delay="150ms">
 						<div class="ce-events-slot">
 							<CommunityEventsCard
-								bind:element={cardRefs[0]}
+								bind:element={cardRefs[COL_CE]}
 								bind:focusedEventId={ceFocusedEventId}
 								bind:hasLiveEvent={ceHasLiveEvent}
-								selected={nav.isSelected(0, 0) && !huddleNavSelected}
+								selected={nav.isSelected(COL_CE, 0) && !huddleNavSelected}
 								usingKeyboard={nav.usingKeyboard}
 								postOnboarding={postOnboarding}
-								description={cardDescriptions['0-0']}
+								description={cardDescriptions[`${COL_CE}-0`]}
 								debugEvents={debugCommunityEvents}
-								onmouseenter={() => { handleCardHover(0, 0); huddleNavSelected = false; }}
+								onmouseenter={() => { handleCardHover(COL_CE, 0); huddleNavSelected = false; }}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
 								onEventClick={(id) => navigateTo(`/app/community?event=${encodeURIComponent(id)}`)}
 								onReleaseDown={() => { if (showHuddleCard) huddleNavSelected = true; }}
@@ -507,12 +582,22 @@
 						{#if showHuddleCard}
 							<LiveHuddleCard
 								memberCount={effectiveHuddleMembers}
-								selected={nav.isSelected(0, 0) && huddleNavSelected}
+								selected={nav.isSelected(COL_CE, 0) && huddleNavSelected}
 								usingKeyboard={nav.usingKeyboard}
-								onmouseenter={() => { handleCardHover(0, 0); if (!nav.usingKeyboard) huddleNavSelected = true; }}
+								onmouseenter={() => { handleCardHover(COL_CE, 0); if (!nav.usingKeyboard) huddleNavSelected = true; }}
 							/>
 						{/if}
 					</div>
+				{/snippet}
+
+				{#if HIDE_COMMUNITY_EVENTS}
+					{@render leaderboardCol()}
+				{:else if leaderboardOnRight}
+					{@render ceCol()}
+					{@render leaderboardCol()}
+				{:else}
+					{@render leaderboardCol()}
+					{@render ceCol()}
 				{/if}
 
 				<!-- Projects (top) + Events (bottom) -->
@@ -884,6 +969,14 @@
 	}
 
 	/* Card-specific styles */
+	/* Streaks leaderboard — passive display column to the left of CE */
+	.streaks-column {
+		display: flex;
+		flex-direction: column;
+		width: 471px;
+		height: 100%;
+	}
+
 	/* Community-events column with optional LiveHuddleCard underneath */
 	.ce-column {
 		display: flex;

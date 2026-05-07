@@ -1860,6 +1860,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/streaks/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StreakController_getLeaderboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/utils/check-url": {
         parameters: {
             query?: never;
@@ -3515,6 +3531,14 @@ export interface components {
             activeMembers: string[];
             droppedMembers: string[];
             memberCount: number;
+        };
+        StreakLeaderboardEntry: {
+            /** @description Rank starting at 1 */
+            rank: number;
+            /** @description Slack display name for the user */
+            displayName: string;
+            /** @description Current consecutive-day Hackatime streak */
+            currentStreak: number;
         };
         UrlCheckResponse: {
             /** @description Whether the URL is reachable */
@@ -6572,6 +6596,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HuddleStatusResponse"];
+                };
+            };
+        };
+    };
+    StreakController_getLeaderboard: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreakLeaderboardEntry"][];
                 };
             };
         };
