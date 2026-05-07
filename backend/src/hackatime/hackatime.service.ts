@@ -559,26 +559,40 @@ export class HackatimeService {
       user.hackatimeAccessToken,
     );
 
-    await Promise.all(
+    // Per-project try/catch: if Hackatime's dedup endpoint flakes for one
+    // project, don't take down the whole sweep AND don't write 0 — leave the
+    // existing nowHackatimeHours value in place so a transient failure can't
+    // wipe stored hours.
+    const results = await Promise.all(
       user.projects.map(async (project) => {
-        const projectNames = project.nowHackatimeProjects || [];
-        const totalHours = await this.calculateHackatimeHours(
-          projectNames,
-          projectsMap,
-          user.hackatimeAccount,
-          user.hackatimeAccessToken,
-          user.hackatimeStartDate,
-        );
-        await this.prisma.project.update({
-          where: { projectId: project.projectId },
-          data: { nowHackatimeHours: totalHours },
-        });
+        try {
+          const projectNames = project.nowHackatimeProjects || [];
+          const totalHours = await this.calculateHackatimeHours(
+            projectNames,
+            projectsMap,
+            user.hackatimeAccount,
+            user.hackatimeAccessToken,
+            user.hackatimeStartDate,
+          );
+          await this.prisma.project.update({
+            where: { projectId: project.projectId },
+            data: { nowHackatimeHours: totalHours },
+          });
+          return true;
+        } catch (err) {
+          console.error(
+            `recalculateNowHackatimeHours: project ${project.projectId} failed`,
+            err,
+          );
+          return false;
+        }
       }),
     );
 
+    const updatedProjects = results.filter(Boolean).length;
     const totalNowHackatimeHours = await this.getTotalNowHackatimeHours(userId);
 
-    return { updatedProjects: user.projects.length, totalNowHackatimeHours };
+    return { updatedProjects, totalNowHackatimeHours };
   }
 
   private async fetchHackatimeProjectsData(accessToken: string) {
@@ -722,14 +736,26 @@ export class HackatimeService {
         },
       });
 
-      if (!response.ok) return 0;
+      if (!response.ok) {
+        throw new Error(
+          `Hackatime dedup stats returned ${response.status} for ${hackatimeAccount}`,
+        );
+      }
 
       const responseData = await response.json();
-      const totalSeconds = responseData?.data?.total_seconds;
-      return typeof totalSeconds === 'number' ? totalSeconds : 0;
+      // With `total_seconds=true`, Hackatime returns `{ total_seconds: <n> }`
+      // at the top level — NOT under `data`. Reading the wrong path here
+      // silently returned 0 and zeroed users' nowHackatimeHours on refresh.
+      const totalSeconds = responseData?.total_seconds;
+      if (typeof totalSeconds !== 'number') {
+        throw new Error(
+          `Hackatime dedup response missing total_seconds: ${JSON.stringify(responseData).slice(0, 200)}`,
+        );
+      }
+      return totalSeconds;
     } catch (error) {
       console.error('Error fetching hackatime stats:', error);
-      return 0;
+      throw error;
     }
   }
 
