@@ -1004,6 +1004,17 @@ class StatsDau {
   perEvent: StatsDauEventEntry[];
 }
 
+class StatsProjectsHackatime {
+  @ApiProperty()
+  total: number;
+
+  @ApiProperty()
+  withHackatime: number;
+
+  @ApiProperty()
+  withoutHackatime: number;
+}
+
 export class AdminStatsResponse {
   @ApiProperty({ type: StatsFunnel })
   funnel: StatsFunnel;
@@ -1028,6 +1039,9 @@ export class AdminStatsResponse {
 
   @ApiProperty({ type: StatsDau })
   dau: StatsDau;
+
+  @ApiProperty({ type: StatsProjectsHackatime })
+  projects: StatsProjectsHackatime;
 }
 
 class ImportCsvError {

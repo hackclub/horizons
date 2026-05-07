@@ -5,14 +5,17 @@
 	import { Button } from '$lib/components';
 	import { theme } from '$lib/themeStore';
 	import * as echarts from 'echarts';
+	import StatCard from '../review/stats/StatCard.svelte';
 
 	let worldMapRegistered = false;
 
 	type Stats = components['schemas']['AdminStatsResponse'];
+	type ReviewStats = components['schemas']['ReviewStatsResponse'];
 	type DataPoint = { date: string; value: number };
 	type EChart = echarts.ECharts;
 
 	let stats = $state<Stats | null>(null);
+	let reviewStats = $state<ReviewStats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let userRole = $state<string | null>(null);
@@ -20,6 +23,7 @@
 	let selectedFunnelEvent = $state<string>('all');
 	let unmatchedOriginCountries = $state<string[]>([]);
 	let unmatchedEventCountries = $state<string[]>([]);
+	let hoursDistMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
 
 	const validCountryNames = new Set<string>();
 
@@ -36,8 +40,9 @@
 	let signupQualificationEl = $state<HTMLDivElement | null>(null);
 	let signupQualificationMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
 	let utmEl = $state<HTMLDivElement | null>(null);
+	let hoursDistributionEl = $state<HTMLDivElement | null>(null);
 
-	let homeTab = $state<'users' | 'dau' | 'signups'>('users');
+	let homeTab = $state<'users' | 'dau' | 'signups' | 'projects' | 'hours'>('users');
 
 	onMount(async () => {
 		const { data: me } = await api.GET('/api/user/auth/me');
@@ -94,9 +99,13 @@
 		loading = true;
 		error = null;
 		try {
-			const { data, error: fetchErr } = await api.GET('/api/admin/stats');
-			if (fetchErr) throw new Error('Failed to fetch stats');
-			stats = data ?? null;
+			const [statsRes, reviewRes] = await Promise.all([
+				api.GET('/api/admin/stats'),
+				api.GET('/api/reviewer/stats'),
+			]);
+			if (statsRes.error) throw new Error('Failed to fetch stats');
+			stats = statsRes.data ?? null;
+			reviewStats = reviewRes.data ?? null;
 			loading = false;
 			await tick();
 			renderAll();
@@ -105,6 +114,63 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	function formatTotal(value: number): string {
+		return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+	}
+
+	function renderHoursDistribution() {
+		const chart = initChart(hoursDistributionEl);
+		if (!chart || !reviewStats) return;
+
+		const data = reviewStats.hoursDistribution[hoursDistMode];
+		const axisName =
+			hoursDistMode === 'approved' ? 'approved hours' : 'tracked hours';
+		const barColor =
+			hoursDistMode === 'approved'
+				? '#16a34a'
+				: hoursDistMode === 'shipped'
+					? '#f97316'
+					: '#3b82f6';
+
+		chart.setOption({
+			backgroundColor: bgColor(),
+			grid: { left: 45, right: 12, top: 16, bottom: 32 },
+			xAxis: {
+				type: 'category',
+				data: data.map((d) => d.bucket),
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				axisLine: { lineStyle: { color: gridColor() } },
+				axisTick: { show: false },
+				name: axisName,
+				nameLocation: 'middle',
+				nameGap: 26,
+				nameTextStyle: { color: dimColor(), fontSize: 10 },
+			},
+			yAxis: {
+				type: 'value',
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				splitLine: { lineStyle: { color: gridColor(), type: 'dashed' } },
+				axisLine: { show: false },
+				min: 0,
+			},
+			tooltip: {
+				trigger: 'axis',
+				formatter: (params: any) => {
+					const p = params[0];
+					return `${p.axisValue}h<br/><b>${p.value}</b> projects`;
+				},
+			},
+			series: [
+				{
+					type: 'bar',
+					data: data.map((d) => d.count),
+					itemStyle: { color: barColor },
+					barWidth: '70%',
+				},
+			],
+		});
 	}
 
 	function initChart(el: HTMLDivElement | null): EChart | null {
@@ -130,6 +196,7 @@
 		renderSignupQualificationChart();
 		renderSignupMap();
 		renderUtmChart();
+		renderHoursDistribution();
 	}
 
 	function renderFunnel() {
@@ -781,6 +848,12 @@
 		if (stats) tick().then(() => renderAll());
 	});
 
+	// Re-render only the hours distribution chart when its mode changes.
+	$effect(() => {
+		hoursDistMode;
+		if (reviewStats) tick().then(() => renderHoursDistribution());
+	});
+
 	// Re-render the map when the event filter changes (cheap — only the map).
 	$effect(() => {
 		selectedEventFilter;
@@ -795,6 +868,13 @@
 
 	const eventFilterOptions = $derived(
 		stats ? stats.signups.perEvent.map((e) => e.title) : [],
+	);
+
+	// Backend exposes a fresh `stats.projects` field with hackatime-link counts.
+	// Cast via `any` so this still typechecks before `pnpm --filter admin generate:api`
+	// regenerates the schema.
+	const projectCounts = $derived<{ total: number; withHackatime: number; withoutHackatime: number } | null>(
+		stats ? ((stats as any).projects ?? null) : null,
 	);
 
 	const funnelEventOptions = $derived(
@@ -857,6 +937,18 @@
 						? 'border-ds-accent text-ds-accent'
 						: 'border-transparent text-ds-text-secondary hover:text-ds-text'}"
 					onclick={() => (homeTab = 'signups')}>Signups</button
+				>
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {homeTab === 'projects'
+						? 'border-ds-accent text-ds-accent'
+						: 'border-transparent text-ds-text-secondary hover:text-ds-text'}"
+					onclick={() => (homeTab = 'projects')}>Projects</button
+				>
+				<button
+					class="px-4 py-2 text-[12px] font-medium cursor-pointer transition-all duration-150 border-b-2 {homeTab === 'hours'
+						? 'border-ds-accent text-ds-accent'
+						: 'border-transparent text-ds-text-secondary hover:text-ds-text'}"
+					onclick={() => (homeTab = 'hours')}>Hours</button
 				>
 			</div>
 
@@ -1074,6 +1166,86 @@
 				</div>
 			</section>
 
+			<!-- Projects tab -->
+			{/if}
+
+			{#if homeTab === 'projects'}
+			<section>
+				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Hackatime Linkage</h2>
+				{#if projectCounts}
+				<div class="grid gap-3 sm:grid-cols-3">
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Total projects</p>
+						<p class="text-2xl font-bold text-ds-text">{formatCount(projectCounts!.total)}</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">With Hackatime linked</p>
+						<p class="text-2xl font-bold text-green-600">{formatCount(projectCounts!.withHackatime)}</p>
+						<p class="text-[10px] text-ds-text-secondary">
+							{projectCounts!.total > 0
+								? `${((projectCounts!.withHackatime / projectCounts!.total) * 100).toFixed(1)}% of all projects`
+								: '—'}
+						</p>
+					</div>
+					<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Without Hackatime</p>
+						<p class="text-2xl font-bold text-red-500">{formatCount(projectCounts!.withoutHackatime)}</p>
+						<p class="text-[10px] text-ds-text-secondary">
+							{projectCounts!.total > 0
+								? `${((projectCounts!.withoutHackatime / projectCounts!.total) * 100).toFixed(1)}% of all projects`
+								: '—'}
+						</p>
+					</div>
+				</div>
+				{:else}
+					<div class="rounded-lg border border-ds-border bg-ds-surface p-6 text-center text-ds-text-secondary text-sm">
+						Project counts unavailable. Regenerate the API schema after the backend deploy (<code>pnpm --filter admin generate:api</code>).
+					</div>
+				{/if}
+			</section>
+			{/if}
+
+			{#if homeTab === 'hours'}
+			<section>
+				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Hours</h2>
+				{#if reviewStats}
+					<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+						<StatCard label="Tracked Hours" value={formatTotal(reviewStats.hours.trackedHours)} {loading} />
+						<StatCard label="Unshipped Hours" value={formatTotal(reviewStats.hours.unshippedHours)} {loading} />
+						<StatCard label="Shipped Hours" value={formatTotal(reviewStats.hours.shippedHours)} {loading} />
+						<StatCard label="Hours in Review" value={formatTotal(reviewStats.hours.hoursInReview)} {loading} />
+						<StatCard
+							label="Approved Hours"
+							value={formatTotal(reviewStats.hours.approvedHours)}
+							sublabel={`${formatTotal(reviewStats.hours.weightedGrants)} weighted grants`}
+							{loading}
+						/>
+						<StatCard label="Rejected Hours" value={formatTotal(reviewStats.hours.rejectedHours)} {loading} />
+					</div>
+
+					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
+						<div class="mb-2 flex items-center justify-between gap-2">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Project distribution by hours</p>
+							<select
+								bind:value={hoursDistMode}
+								class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+							>
+								<option value="unshipped">Unshipped (incl. pending/approved)</option>
+								<option value="shipped">Shipped but pending (incl. approved)</option>
+								<option value="approved">Approved hours</option>
+							</select>
+						</div>
+						<div bind:this={hoursDistributionEl} style="height: 220px;"></div>
+					</div>
+				{:else}
+					<div class="rounded-lg border border-ds-border bg-ds-surface p-6 text-center text-ds-text-secondary text-sm">
+						No review-stats data available.
+					</div>
+				{/if}
+			</section>
+			{/if}
+
+			{#if homeTab === 'signups'}
 			<!-- 7. UTM Sources -->
 			<section>
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">Referral Sources (UTM)</h2>

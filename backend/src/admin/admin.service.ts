@@ -423,6 +423,7 @@ export class AdminService {
       signups,
       utm,
       historical,
+      projects,
     ] = await Promise.all([
       this.computeFunnel(),
       this.computeUserGrowth(thirtyDaysAgo, sevenDaysAgo),
@@ -431,6 +432,7 @@ export class AdminService {
       this.computeSignups(),
       this.computeUtm(),
       this.metricsService.computeHistorical(thirtyDaysAgo),
+      this.computeProjectHackatimeCounts(),
     ]);
 
     // The latest historical DAU snapshot is yesterday (cron runs at midnight
@@ -458,7 +460,23 @@ export class AdminService {
       perEvent: dauPerEvent,
     };
 
-    return { funnel, userGrowth, reviewStats, reviewProjects, signups, utm, historical, dau };
+    return { funnel, userGrowth, reviewStats, reviewProjects, signups, utm, historical, dau, projects };
+  }
+
+  private async computeProjectHackatimeCounts() {
+    // Project.nowHackatimeProjects is a String[]; "linked" means it has at
+    // least one element.
+    const [total, withHackatime] = await Promise.all([
+      this.prisma.project.count(),
+      this.prisma.project.count({
+        where: { nowHackatimeProjects: { isEmpty: false } },
+      }),
+    ]);
+    return {
+      total,
+      withHackatime,
+      withoutHackatime: total - withHackatime,
+    };
   }
 
   private async computeDauPerEvent() {
