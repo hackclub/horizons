@@ -200,7 +200,11 @@
 						<div class="flex flex-col gap-1 z-1 w-full">
 							<p class="font-cook font-semibold text-black m-0 leading-[1.1] transition-[font-size_0.3s_ease] text-[28px] sm:text-[40px]" style={!isMobile && selected ? 'font-size: 64px;' : ''}>{project.projectTitle}</p>
 							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style={!isMobile && selected ? 'font-size: 32px;' : ''}>{project.description ?? ''}</p>
-							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style={!isMobile && selected ? 'font-size: 32px;' : ''}>{project.nowHackatimeHours ?? 0} hrs tracked</p>
+							{#if (project.nowHackatimeHours ?? 0) === 0}
+								<p class="link-hackatime-blink font-bricolage font-semibold m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style="color: #fc5b3c;{!isMobile && selected ? ' font-size: 32px;' : ''}">Not linked to hackatime</p>
+							{:else}
+								<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style={!isMobile && selected ? 'font-size: 32px;' : ''}>{project.nowHackatimeHours} hrs tracked</p>
+							{/if}
 						</div>
 
 						<div
@@ -320,5 +324,13 @@
 	.fade-wrap.exiting {
 		opacity: 0;
 		transition: opacity 250ms ease;
+	}
+
+	.link-hackatime-blink {
+		animation: text-blink 1.5s ease-in-out infinite;
+	}
+	@keyframes text-blink {
+		0%, 100% { opacity: 1; }
+		50%      { opacity: 0.4; }
 	}
 </style>

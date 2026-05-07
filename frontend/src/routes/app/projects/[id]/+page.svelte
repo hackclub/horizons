@@ -68,6 +68,11 @@
 	let isApproved = $derived(latestSubmission?.approvalStatus === 'approved');
 	let isRejected = $derived(latestSubmission?.approvalStatus === 'rejected');
 
+	// True once we know there are no Hackatime projects linked yet.
+	let needsHackatime = $derived(
+		hackatimeInfo !== null && hackatimeInfo.hackatimeProjects.length === 0,
+	);
+
 	// Hackatime derived
 	let currentHours = $derived(hackatimeInfo?.currentHackatimeHours ?? 0);
 	// Show approved hours (set by reviewer) when approved, otherwise show the original submitted hours
@@ -96,8 +101,12 @@
 	}
 
 	const nav = createGridNav({
-		columns: () => [1, 1],
+		columns: () => (needsHackatime ? [1] : [1, 1]),
 		onSelect: (col) => {
+			if (needsHackatime) {
+				navigateTo(`/app/projects/${projectId}/hackatime`);
+				return;
+			}
 			if (col === 0) navigateTo(`/app/projects/${projectId}/edit`);
 			else navigateTo(`/app/projects/${projectId}/ship/presubmit`);
 		},
@@ -121,7 +130,7 @@
 			return;
 		}
 		if (feedbackOpen) return;
-		if (!isPending) nav.handleKeydown(e);
+		if (needsHackatime || !isPending) nav.handleKeydown(e);
 	}
 </script>
 
@@ -179,22 +188,28 @@
 				<!-- Hackatime Hours & Linked Projects -->
 				{#if hackatimeInfo}
 					<div class="flex items-center gap-2">
-						<p class="font-bricolage text-[22px] font-semibold text-black/60 m-0">
-							tracked {currentHours} hrs{submittedHours !== null ? ` · ${hoursLabel} ${submittedHours} hrs` : ''}
-						</p>
-						<button
-							type="button"
-							aria-label="Refresh tracked hours"
-							title="Refresh tracked hours"
-							class="refresh-hours"
-							class:spinning={refreshingHours}
-							onclick={refreshTrackedHours}
-						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-								<path d="M21 12a9 9 0 1 1-3-6.7"/>
-								<path d="M21 3v6h-6"/>
-							</svg>
-						</button>
+						{#if needsHackatime}
+							<p class="font-bricolage text-[22px] font-semibold m-0" style="color: #fc5b3c;">
+								Not linked to hackatime
+							</p>
+						{:else}
+							<p class="font-bricolage text-[22px] font-semibold text-black/60 m-0">
+								tracked {currentHours} hrs{submittedHours !== null ? ` · ${hoursLabel} ${submittedHours} hrs` : ''}
+							</p>
+							<button
+								type="button"
+								aria-label="Refresh tracked hours"
+								title="Refresh tracked hours"
+								class="refresh-hours"
+								class:spinning={refreshingHours}
+								onclick={refreshTrackedHours}
+							>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+									<path d="M21 12a9 9 0 1 1-3-6.7"/>
+									<path d="M21 3v6h-6"/>
+								</svg>
+							</button>
+						{/if}
 					</div>
 					{#if hackatimeInfo.hackatimeProjects.length > 0}
 						<div class="flex flex-wrap gap-1">
@@ -308,28 +323,45 @@
 			{/if}
 
 			<div class="flex flex-col sm:flex-row gap-2.5 w-full justify-center">
-				<button
-					class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
-					class:selected={nav.usingKeyboard && nav.isSelected(0, 0)}
-					class:keyboard={nav.usingKeyboard}
-					class:pending={isPending}
-					onclick={() => navigateTo(`/app/projects/${projectId}/edit`)}
-					onmouseenter={() => nav.select(0, 0)}
-					disabled={isPending}
-				>
-					EDIT PROJECT
-				</button>
-				<button
-					class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
-					class:selected={nav.usingKeyboard && nav.isSelected(1, 0)}
-					class:keyboard={nav.usingKeyboard}
-					class:pending={isPending}
-					onclick={() => navigateTo(`/app/projects/${projectId}/ship/presubmit`)}
-					onmouseenter={() => nav.select(1, 0)}
-					disabled={isPending}
-				>
-					{hasSubmission ? 'RE-SHIP' : 'SHIP'}
-				</button>
+				{#if needsHackatime}
+					<div class="flex flex-col items-center gap-2 w-full">
+						<button
+							class="action-btn link-hackatime w-full sm:w-143 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+							class:selected={nav.usingKeyboard && nav.isSelected(0, 0)}
+							class:keyboard={nav.usingKeyboard}
+							onclick={() => navigateTo(`/app/projects/${projectId}/hackatime`)}
+							onmouseenter={() => nav.select(0, 0)}
+						>
+							LINK HACKATIME PROJECTS
+						</button>
+						<p class="font-bricolage text-sm sm:text-base text-black/60 m-0 text-center max-w-143">
+							To start tracking your hours for your project, link your project to hackatime! (<a href="https://hackatime.hackclub.com/my/wakatime_setup" target="_blank" rel="noopener noreferrer" class="underline transition-colors hover:text-black">Make sure to set up hackatime!</a> We can't accept untracked hours)
+						</p>
+					</div>
+				{:else}
+					<button
+						class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+						class:selected={nav.usingKeyboard && nav.isSelected(0, 0)}
+						class:keyboard={nav.usingKeyboard}
+						class:pending={isPending}
+						onclick={() => navigateTo(`/app/projects/${projectId}/edit`)}
+						onmouseenter={() => nav.select(0, 0)}
+						disabled={isPending}
+					>
+						EDIT PROJECT
+					</button>
+					<button
+						class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+						class:selected={nav.usingKeyboard && nav.isSelected(1, 0)}
+						class:keyboard={nav.usingKeyboard}
+						class:pending={isPending}
+						onclick={() => navigateTo(`/app/projects/${projectId}/ship/presubmit`)}
+						onmouseenter={() => nav.select(1, 0)}
+						disabled={isPending}
+					>
+						{hasSubmission ? 'RE-SHIP' : 'SHIP'}
+					</button>
+				{/if}
 			</div>
 		</div>
 		</div>
@@ -433,6 +465,17 @@
 			background-color: #ffa936;
 			transform: scale(var(--juice-scale));
 		}
+	}
+
+	.action-btn.link-hackatime,
+	.action-btn.link-hackatime.selected,
+	.action-btn.link-hackatime:hover {
+		animation: white-blink 1.5s ease-in-out infinite;
+		background-color: #fdd9a8;
+	}
+	@keyframes white-blink {
+		0%, 100% { background-color: #fdd9a8; }
+		50%      { background-color: #fba74d; }
 	}
 
 	.refresh-hours {
