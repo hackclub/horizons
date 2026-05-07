@@ -320,6 +320,51 @@ export class HackatimeService {
     return data;
   }
 
+  /**
+   * Fetch a Hackatime account's project names (already stripped of placeholder
+   * sentinels). Used by the CSV export, which needs raw counts across many
+   * users without paying for per-user email/db lookups. Returns null if the
+   * Hackatime API call fails so the caller can distinguish unknown from zero.
+   */
+  async fetchHackatimeProjectNames(
+    accessToken: string,
+  ): Promise<string[] | null> {
+    const startDate = new Date(
+      process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
+    )
+      .toISOString()
+      .split('T')[0];
+
+    let res: globalThis.Response;
+    try {
+      res = await fetch(
+        `${this.HACKATIME_BASE_URL}/api/v1/authenticated/projects?start_date=${startDate}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+    } catch {
+      return null;
+    }
+    if (!res.ok) return null;
+    const data = await res.json();
+    const stripped = this.stripHackatimePlaceholders(data);
+    const list = Array.isArray(stripped)
+      ? stripped
+      : Array.isArray(stripped?.projects)
+        ? stripped.projects
+        : [];
+    return list
+      .map((p: any) =>
+        typeof p === 'string' ? p : p?.name || p?.projectName || null,
+      )
+      .filter((name: unknown): name is string => typeof name === 'string');
+  }
+
   async getUnlinkedHackatimeProjects(userEmail: string): Promise<any> {
     const allProjects = await this.getAllHackatimeProjects(userEmail);
 
