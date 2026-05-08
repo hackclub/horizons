@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
 
 	// How often to auto-poll the fraud review platform and refresh the queue (ms)
 	const FRAUD_POLL_INTERVAL_MS = 5 * 60 * 1000;
@@ -192,11 +190,6 @@
 		}
 	}
 
-	function selectFromGallery(index: number) {
-		if (index < 0 || index >= queue.length) return;
-		goto(`${base}/review/${queue[index].projectId}`);
-	}
-
 	function returnToGallery() {
 		galleryMode = true;
 		currentSubmission = null;
@@ -249,7 +242,7 @@
 			<p>No pending submissions to review.</p>
 		</div>
 	{:else if galleryMode}
-		<ProjectGallery items={queue} onSelect={selectFromGallery} onRefresh={refreshQueue} refreshing={queueRefreshing} loading={queueLoading} />
+		<ProjectGallery items={queue} onRefresh={refreshQueue} refreshing={queueRefreshing} loading={queueLoading} />
 	{:else}
 		<TopBar
 			{currentIndex}
