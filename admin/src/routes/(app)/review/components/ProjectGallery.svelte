@@ -9,13 +9,12 @@
 
 	interface Props {
 		items: QueueItem[];
-		onSelect: (index: number) => void;
 		onRefresh: () => void;
 		refreshing?: boolean;
 		loading?: boolean;
 	}
 
-	let { items, onSelect, onRefresh, refreshing = false, loading = false }: Props = $props();
+	let { items, onRefresh, refreshing = false, loading = false }: Props = $props();
 
 	const PROJECT_TYPES = [
 		'windows_playable',
@@ -102,9 +101,8 @@
 
 	let filteredItems = $derived(
 		items
-			.map((item, index) => ({ item, index }))
 			.filter(
-				({ item }) =>
+				(item) =>
 					!myReviewedSubmissionIds.has(item.submissionId) &&
 					!isActivelyClaimedByOther(item) &&
 					matchesFilters(
@@ -117,16 +115,16 @@
 				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
 					// Submissions without recorded hours sink to the bottom regardless of direction
 					// so reviewers always see real values first.
-					const aH = a.item.hackatimeHours;
-					const bH = b.item.hackatimeHours;
+					const aH = a.hackatimeHours;
+					const bH = b.hackatimeHours;
 					if (aH == null && bH == null) return 0;
 					if (aH == null) return 1;
 					if (bH == null) return -1;
 					return sortOrder === 'most-hours' ? bH - aH : aH - bH;
 				}
 				// createdAt is the submission timestamp, so this sorts by wait time, not project age.
-				const aT = new Date(a.item.createdAt).getTime();
-				const bT = new Date(b.item.createdAt).getTime();
+				const aT = new Date(a.createdAt).getTime();
+				const bT = new Date(b.createdAt).getTime();
 				return sortOrder === 'longest-wait' ? aT - bT : bT - aT;
 			}),
 	);
@@ -342,14 +340,14 @@
 						</div>
 					{/each}
 				{:else}
-				{#each filteredItems as { item, index } (item.submissionId)}
+				{#each filteredItems as item (item.submissionId)}
 					{@const activeOtherClaim =
 						item.claim && !item.claim.isMine && !item.claim.isStale
 							? item.claim
 							: null}
-					<button
-						class="flex flex-col gap-1.5 p-5 bg-rv-surface border rounded-[10px] cursor-pointer transition-all duration-150 text-left font-inherit color-inherit hover:bg-rv-surface2 {activeOtherClaim ? 'border-yellow-500/50 hover:border-yellow-500' : 'border-rv-border hover:border-rv-accent'}"
-						onclick={() => onSelect(index)}
+					<a
+						href="{base}/review/{item.project.projectId}"
+						class="flex flex-col gap-1.5 p-5 bg-rv-surface border rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit color-inherit hover:bg-rv-surface2 {activeOtherClaim ? 'border-yellow-500/50 hover:border-yellow-500' : 'border-rv-border hover:border-rv-accent'}"
 						title={activeOtherClaim ? `Currently being reviewed by ${activeOtherClaim.firstName} ${activeOtherClaim.lastName}` : undefined}
 					>
 						<p class="text-[15px] font-semibold text-rv-text m-0">{item.project.projectTitle}</p>
@@ -387,7 +385,7 @@
 								</span>
 							{/if}
 						</div>
-					</button>
+					</a>
 				{:else}
 					<p class="col-span-full text-center text-rv-dim py-6 text-sm">No projects match your filters.</p>
 				{/each}
