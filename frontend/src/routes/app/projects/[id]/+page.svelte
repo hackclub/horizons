@@ -8,7 +8,7 @@
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { createGridNav } from '$lib/nav/wasd.svelte';
-	import { projectDetailStore, fetchProjectDetail, preloadEditData } from '$lib/store/projectDetailCache';
+	import { projectDetailStore, fetchProjectDetail, preloadEditData, invalidateAllProjectCaches } from '$lib/store/projectDetailCache';
 	import type { components } from '$lib/api';
 	import { api } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
@@ -92,6 +92,7 @@
 		refreshingHours = true;
 		try {
 			await api.POST('/api/hackatime/hours/recalculate');
+			invalidateAllProjectCaches();
 			await fetchProjectDetail(projectId, true);
 		} catch {
 			// Silently fail — the existing hours stay shown.
