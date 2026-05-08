@@ -11,7 +11,7 @@ A small slice of project data is exposed unauthenticated for sharing via permali
 | Project title, type, description | Yes | Author-curated content |
 | Screenshot, playable, repo, README, journal URLs | Yes | |
 | `createdAt`, `updatedAt` | Yes | |
-| Author first name + last name | Yes | No userId, no email, no Slack ID |
+| Author Slack display name | Yes | Resolved server-side from Slack; no real first/last name, userId, email, or raw Slack ID |
 | All submission state | **No** | No approval status, no review hours, no timeline |
 | `approvedHours`, `nowHackatimeHours`, hours justification | **No** | Review/work state |
 | Admin/fraud fields | **No** | Same exclusions as user-facing |
@@ -178,7 +178,7 @@ const projectAdminInclude = {
 |------|--------|------|----------|-------|
 | Own profile (name, email) | — | Yes | — | — |
 | Own address | — | `hasAddress` only | — | — |
-| Other user's name | First/last only, on shipped projects | No | Yes | Yes |
+| Other user's name | Slack display name only, on shipped projects | No | Yes | Yes |
 | Other user's email | No | No | No | Yes |
 | Other user's age | No | No | Yes (computed) | Yes (raw birthday) |
 | Other user's address | No | No | No | Yes |
