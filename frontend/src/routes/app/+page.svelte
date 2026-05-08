@@ -122,11 +122,80 @@
 	type DebugProgressState = 'qualified' | 'ship' | 'pending-met' | 'approved-majority' | 'default';
 	type DebugHuddleState = '' | 'off' | '1' | '4' | '12';
 	type DebugCommunityState = '' | 'none' | 'live' | 'upcoming' | 'mixed';
+	type DebugStreakState = '' | 'none' | 'building' | 'record' | 'behind';
 	const debugMode = $derived(page.url.searchParams.has('debug'));
 	let debugEventSlug = $state<string>('');
 	let debugProgressState = $state<DebugProgressState | ''>('');
 	let debugHuddleState = $state<DebugHuddleState>('');
 	let debugCommunityState = $state<DebugCommunityState>('');
+	let debugStreakState = $state<DebugStreakState>('');
+
+	// Effective streak values — debug overrides take precedence over the user store.
+	// Each preset locks both current + longest to exercise the title/style branches.
+	const streakDebugPair = $derived.by<{ current: number; longest: number } | null>(() => {
+		switch (debugStreakState) {
+			case 'none':     return { current: 0,  longest: 0 };
+			case 'building': return { current: 3,  longest: 3 };
+			case 'record':   return { current: 12, longest: 5 };
+			case 'behind':   return { current: 4,  longest: 21 };
+			default:         return null;
+		}
+	});
+	const effectiveCurrentStreak = $derived(streakDebugPair?.current ?? currentStreak);
+	const effectiveLongestStreak = $derived(streakDebugPair?.longest ?? longestStreak);
+
+	// Debug panel drag — persists across reloads via localStorage. Position is stored
+	// as top/left in CSS pixels relative to the viewport. Default (null) keeps the
+	// panel anchored bottom-right.
+	const DEBUG_PANEL_POS_KEY = 'debug-panel-pos';
+	let debugPanelPos = $state<{ x: number; y: number } | null>(null);
+	let debugPanelEl = $state<HTMLElement | null>(null);
+	let dragOffset = { x: 0, y: 0 };
+	let dragging = $state(false);
+
+	onMount(() => {
+		try {
+			const raw = localStorage.getItem(DEBUG_PANEL_POS_KEY);
+			if (raw) debugPanelPos = JSON.parse(raw);
+		} catch {}
+	});
+
+	function clampPos(x: number, y: number) {
+		const w = debugPanelEl?.offsetWidth ?? 320;
+		const h = debugPanelEl?.offsetHeight ?? 200;
+		return {
+			x: Math.max(0, Math.min(window.innerWidth - w, x)),
+			y: Math.max(0, Math.min(window.innerHeight - h, y)),
+		};
+	}
+
+	function startDrag(e: PointerEvent) {
+		if (!debugPanelEl) return;
+		const rect = debugPanelEl.getBoundingClientRect();
+		dragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+		dragging = true;
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		e.preventDefault();
+	}
+
+	function onDrag(e: PointerEvent) {
+		if (!dragging) return;
+		debugPanelPos = clampPos(e.clientX - dragOffset.x, e.clientY - dragOffset.y);
+	}
+
+	function endDrag(e: PointerEvent) {
+		if (!dragging) return;
+		dragging = false;
+		(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+		if (debugPanelPos) {
+			try { localStorage.setItem(DEBUG_PANEL_POS_KEY, JSON.stringify(debugPanelPos)); } catch {}
+		}
+	}
+
+	function resetDebugPanelPos() {
+		debugPanelPos = null;
+		try { localStorage.removeItem(DEBUG_PANEL_POS_KEY); } catch {}
+	}
 
 	// Effective huddle values — debug overrides take precedence over live API values.
 	const effectiveHuddleActive = $derived(
@@ -763,12 +832,10 @@
 			{#if userName}
 				<div class="card user-card">
 					<p class="font-cook text-[24px] font-semibold text-black m-0">{userName}</p>
-					{#if currentStreak > 0}
-						<div class="streak-badge" title={longestStreak > currentStreak ? `Best: ${longestStreak}d` : 'New record!'}>
-							<span class="streak-flame" aria-hidden="true">🔥</span>
-							<span class="font-cook text-[20px] font-semibold text-black leading-none">{currentStreak}d</span>
-						</div>
-					{/if}
+					<div class="streak-badge" class:streak-badge-empty={effectiveCurrentStreak === 0} title={effectiveLongestStreak > effectiveCurrentStreak ? `Best: ${effectiveLongestStreak}d` : effectiveCurrentStreak > 0 ? 'New record!' : 'Start your streak!'}>
+						<span class="streak-flame" aria-hidden="true">🔥</span>
+						<span class="font-cook text-[20px] font-semibold text-black leading-none">{effectiveCurrentStreak}d</span>
+					</div>
 					{#if referralCode}
 						<button
 							class="refer-btn py-2 px-4 border-2 border-black rounded-lg bg-[#ffa936] font-bricolage text-base font-semibold text-black cursor-pointer"
@@ -791,8 +858,29 @@
 </div>
 
 {#if debugMode}
-	<div class="debug-panel">
-		<div class="debug-title">DEBUG · /app?debug</div>
+	<div
+		class="debug-panel"
+		class:debug-panel-dragging={dragging}
+		class:debug-panel-positioned={debugPanelPos !== null}
+		bind:this={debugPanelEl}
+		style:left={debugPanelPos ? `${debugPanelPos.x}px` : null}
+		style:top={debugPanelPos ? `${debugPanelPos.y}px` : null}
+	>
+		<div
+			class="debug-title"
+			role="button"
+			tabindex="0"
+			aria-label="Drag debug panel"
+			onpointerdown={startDrag}
+			onpointermove={onDrag}
+			onpointerup={endDrag}
+			onpointercancel={endDrag}
+			ondblclick={resetDebugPanelPos}
+			title="Drag to move · double-click to reset position"
+		>
+			<span>DEBUG · /app?debug</span>
+			<span class="debug-drag-hint">⠿</span>
+		</div>
 
 		<div class="debug-section">
 			<label class="debug-label" for="debug-event">Event</label>
@@ -838,6 +926,17 @@
 			</div>
 		</div>
 
+		<div class="debug-section">
+			<div class="debug-label">Streak</div>
+			<div class="debug-buttons">
+				<button class:active={debugStreakState === ''} onclick={() => (debugStreakState = '')}>actual</button>
+				<button class:active={debugStreakState === 'none'} onclick={() => (debugStreakState = 'none')}>0d (empty)</button>
+				<button class:active={debugStreakState === 'building'} onclick={() => (debugStreakState = 'building')}>3d (new record)</button>
+				<button class:active={debugStreakState === 'record'} onclick={() => (debugStreakState = 'record')}>12d (new record over 5)</button>
+				<button class:active={debugStreakState === 'behind'} onclick={() => (debugStreakState = 'behind')}>4d (best 21d)</button>
+			</div>
+		</div>
+
 		<div class="debug-section debug-readout">
 			<div>target: {eventColumnTarget}h</div>
 			<div>completed: {eventColumnValues.completed.toFixed(1)}h</div>
@@ -845,6 +944,7 @@
 			<div>pending: {eventColumnValues.pending.toFixed(1)}h</div>
 			<div>huddle: {effectiveHuddleActive ? `${effectiveHuddleMembers} member${effectiveHuddleMembers === 1 ? '' : 's'}` : 'inactive'} {debugHuddleState ? '(debug)' : ''}</div>
 			<div>ce live event: {ceHasLiveEvent ? 'yes' : 'no'} · huddle card: {showHuddleCard ? 'shown' : 'hidden'}</div>
+			<div>streak: {effectiveCurrentStreak}d (best {effectiveLongestStreak}d) {debugStreakState ? '(debug)' : ''}</div>
 			<div class="debug-swatch-row">primary: <span class="swatch" style="background: {eventColumnConfig?.colors?.primary};"></span><span>{eventColumnConfig?.colors?.primary}</span></div>
 			<div class="debug-swatch-row">card bg: <span class="swatch" style="background: {eventColumnConfig?.eventCard?.bgColor};"></span><span>{eventColumnConfig?.eventCard?.bgColor}</span></div>
 		</div>
@@ -1054,6 +1154,20 @@
 		cursor: default;
 	}
 
+	.streak-badge-empty {
+		background-color: #d9d2c5;
+		border-color: rgba(0, 0, 0, 0.4);
+	}
+
+	.streak-badge-empty :global(span) {
+		color: rgba(0, 0, 0, 0.45);
+	}
+
+	.streak-badge-empty .streak-flame {
+		filter: grayscale(1);
+		opacity: 0.5;
+	}
+
 	.streak-flame {
 		font-size: 18px;
 		line-height: 1;
@@ -1220,10 +1334,41 @@
 		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 	}
 
+	/* When dragged, top/left take over — clear bottom/right so the inline styles win. */
+	.debug-panel-positioned {
+		top: auto;
+		bottom: auto;
+		left: auto;
+		right: auto;
+	}
+
+	.debug-panel-dragging {
+		user-select: none;
+		cursor: grabbing;
+		box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+	}
+
 	.debug-title {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
 		font-weight: 700;
 		letter-spacing: 0.06em;
 		color: #ffa936;
+		cursor: grab;
+		touch-action: none;
+		user-select: none;
+	}
+
+	.debug-title:active {
+		cursor: grabbing;
+	}
+
+	.debug-drag-hint {
+		font-size: 14px;
+		opacity: 0.55;
+		letter-spacing: -2px;
 	}
 
 	.debug-section {
