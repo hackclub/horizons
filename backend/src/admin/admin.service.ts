@@ -8,6 +8,9 @@ import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
 import { ManifestService } from '../manifest/manifest.service';
 import { MetricsService } from '../metrics/metrics.service';
+import { FraudReviewService } from '../fraud-review/fraud-review.service';
+import { StreakService } from '../streaks/streak.service';
+import { HackatimeService } from '../hackatime/hackatime.service';
 import * as Papa from 'papaparse';
 
 const projectAdminInclude = {
@@ -25,6 +28,7 @@ const projectAdminInclude = {
       country: true,
       zipCode: true,
       hackatimeAccount: true,
+      hackatimeAccessToken: true,
       hackatimeStartDate: true,
       referralCode: true,
       referredByUserId: true,
@@ -46,6 +50,9 @@ export class AdminService {
     private slackService: SlackService,
     private manifestService: ManifestService,
     private metricsService: MetricsService,
+    private fraudReviewService: FraudReviewService,
+    private streakService: StreakService,
+    private hackatimeService: HackatimeService,
   ) {}
 
   async getAllSubmissions() {
@@ -306,18 +313,7 @@ export class AdminService {
       throw new NotFoundException('Project not found');
     }
 
-    const baseUrl =
-      process.env.HACKATIME_ADMIN_API_URL ||
-      'https://hackatime.hackclub.com/api/admin/v1';
-    const apiKey = process.env.HACKATIME_API_KEY;
-
-    const cache = new Map<string, Map<string, number>>();
-    const result = await this.recalculateProjectInternal(project, {
-      strict,
-      cache,
-      baseUrl,
-      apiKey,
-    });
+    const result = await this.recalculateProjectInternal(project, { strict });
 
     if (!result?.project) {
       throw new BadRequestException('Unable to recalculate project hours');
@@ -331,12 +327,6 @@ export class AdminService {
       include: projectAdminInclude,
     });
 
-    const cache = new Map<string, Map<string, number>>();
-    const baseUrl =
-      process.env.HACKATIME_ADMIN_API_URL ||
-      'https://hackatime.hackclub.com/api/admin/v1';
-    const apiKey = process.env.HACKATIME_API_KEY;
-
     const updated: Array<{ projectId: number; nowHackatimeHours: number }> = [];
     const skipped: Array<{ projectId: number; reason: string }> = [];
     const errors: Array<{ projectId: number; message: string }> = [];
@@ -345,9 +335,6 @@ export class AdminService {
       try {
         const result = await this.recalculateProjectInternal(project, {
           strict: false,
-          cache,
-          baseUrl,
-          apiKey,
         });
 
         if (result?.project) {
@@ -436,6 +423,7 @@ export class AdminService {
       signups,
       utm,
       historical,
+      projects,
     ] = await Promise.all([
       this.computeFunnel(),
       this.computeUserGrowth(thirtyDaysAgo, sevenDaysAgo),
@@ -444,6 +432,7 @@ export class AdminService {
       this.computeSignups(),
       this.computeUtm(),
       this.metricsService.computeHistorical(thirtyDaysAgo),
+      this.computeProjectHackatimeCounts(),
     ]);
 
     // The latest historical DAU snapshot is yesterday (cron runs at midnight
@@ -471,7 +460,23 @@ export class AdminService {
       perEvent: dauPerEvent,
     };
 
-    return { funnel, userGrowth, reviewStats, reviewProjects, signups, utm, historical, dau };
+    return { funnel, userGrowth, reviewStats, reviewProjects, signups, utm, historical, dau, projects };
+  }
+
+  private async computeProjectHackatimeCounts() {
+    // Project.nowHackatimeProjects is a String[]; "linked" means it has at
+    // least one element.
+    const [total, withHackatime] = await Promise.all([
+      this.prisma.project.count(),
+      this.prisma.project.count({
+        where: { nowHackatimeProjects: { isEmpty: false } },
+      }),
+    ]);
+    return {
+      total,
+      withHackatime,
+      withoutHackatime: total - withHackatime,
+    };
   }
 
   private async computeDauPerEvent() {
@@ -528,6 +533,7 @@ export class AdminService {
       approved10Plus,
       approved30Plus,
       approved60Plus,
+      perEvent,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { hackatimeAccount: { not: null } } }),
@@ -544,6 +550,7 @@ export class AdminService {
       this.countUsersWithApprovedHoursGte(10),
       this.countUsersWithApprovedHoursGte(30),
       this.countUsersWithApprovedHoursGte(60),
+      this.computeFunnelPerEvent(),
     ]);
 
     return {
@@ -556,7 +563,90 @@ export class AdminService {
       approved10Plus,
       approved30Plus,
       approved60Plus,
+      perEvent,
     };
+  }
+
+  private async computeFunnelPerEvent() {
+    // Same nine-stage funnel as `computeFunnel`, but scoped to the users who
+    // pinned each event. Done in one query so the page doesn't need N round
+    // trips when more events are added.
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        event_id: number;
+        title: string;
+        slug: string;
+        total_users: bigint;
+        has_hackatime: bigint;
+        created_project: bigint;
+        project_10_plus_hours: bigint;
+        at_least_1_submission: bigint;
+        at_least_1_approved_hour: bigint;
+        approved_10_plus: bigint;
+        approved_30_plus: bigint;
+        approved_60_plus: bigint;
+      }>
+    >`
+      WITH user_metrics AS (
+        SELECT
+          u.user_id,
+          (u.hackatime_account IS NOT NULL) AS has_hackatime,
+          EXISTS (
+            SELECT 1 FROM projects p WHERE p.user_id = u.user_id
+          ) AS has_project,
+          EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.user_id = u.user_id AND p.now_hackatime_hours >= 10
+          ) AS project_10h,
+          EXISTS (
+            SELECT 1 FROM projects p
+            INNER JOIN submissions s ON s.project_id = p.project_id
+            WHERE p.user_id = u.user_id
+          ) AS has_submission,
+          EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.user_id = u.user_id AND p.approved_hours >= 1
+          ) AS has_1h_approved,
+          COALESCE(
+            (SELECT SUM(p.approved_hours) FROM projects p WHERE p.user_id = u.user_id),
+            0
+          ) AS approved_total
+        FROM users u
+      )
+      SELECT
+        e.event_id,
+        e.title,
+        e.slug,
+        COUNT(*) AS total_users,
+        COUNT(*) FILTER (WHERE um.has_hackatime) AS has_hackatime,
+        COUNT(*) FILTER (WHERE um.has_project) AS created_project,
+        COUNT(*) FILTER (WHERE um.project_10h) AS project_10_plus_hours,
+        COUNT(*) FILTER (WHERE um.has_submission) AS at_least_1_submission,
+        COUNT(*) FILTER (WHERE um.has_1h_approved) AS at_least_1_approved_hour,
+        COUNT(*) FILTER (WHERE um.approved_total >= 10) AS approved_10_plus,
+        COUNT(*) FILTER (WHERE um.approved_total >= 30) AS approved_30_plus,
+        COUNT(*) FILTER (WHERE um.approved_total >= 60) AS approved_60_plus
+      FROM pinned_events pe
+      INNER JOIN events e ON e.event_id = pe.event_id
+      INNER JOIN user_metrics um ON um.user_id = pe.user_id
+      GROUP BY e.event_id, e.title, e.slug
+      ORDER BY total_users DESC
+    `;
+
+    return rows.map((r) => ({
+      eventId: r.event_id,
+      title: r.title,
+      slug: r.slug,
+      totalUsers: Number(r.total_users),
+      hasHackatime: Number(r.has_hackatime),
+      createdProject: Number(r.created_project),
+      project10PlusHours: Number(r.project_10_plus_hours),
+      atLeast1Submission: Number(r.at_least_1_submission),
+      atLeast1ApprovedHour: Number(r.at_least_1_approved_hour),
+      approved10Plus: Number(r.approved_10_plus),
+      approved30Plus: Number(r.approved_30_plus),
+      approved60Plus: Number(r.approved_60_plus),
+    }));
   }
 
   private async countUsersWithApprovedHoursGte(threshold: number): Promise<number> {
@@ -1015,7 +1105,17 @@ export class AdminService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return users;
+    // Apply timezone-aware lazy decay so admins see the same currentStreak
+    // value the user sees on /app — stale (>1 day in user-local time) reads
+    // collapse to 0 without mutating the row.
+    return users.map((u) => ({
+      ...u,
+      currentStreak: this.streakService.applyLazyDecay({
+        currentStreak: u.currentStreak,
+        lastActiveDate: u.lastActiveDate,
+        timezone: u.timezone,
+      }),
+    }));
   }
 
   async getReviewerLeaderboard() {
@@ -1226,20 +1326,12 @@ export class AdminService {
       include: projectAdminInclude,
     });
 
-    const baseUrl =
-      process.env.HACKATIME_ADMIN_API_URL ||
-      'https://hackatime.hackclub.com/api/admin/v1';
-    const apiKey = process.env.HACKATIME_API_KEY;
-    const cache = new Map<string, Map<string, number>>();
     let recalculatedProjects = 0;
 
     for (const project of projects) {
       try {
         const result = await this.recalculateProjectInternal(project, {
           strict: false,
-          cache,
-          baseUrl,
-          apiKey,
         });
         if (result?.project) recalculatedProjects++;
       } catch {
@@ -1280,17 +1372,13 @@ export class AdminService {
         lastName: string | null;
         email: string;
         hackatimeAccount: string | null;
+        hackatimeAccessToken: string | null;
         hackatimeStartDate?: Date | null;
       };
     },
-    options: {
-      strict: boolean;
-      cache: Map<string, Map<string, number>>;
-      baseUrl: string;
-      apiKey?: string;
-    },
+    options: { strict: boolean },
   ) {
-    const { strict, cache, baseUrl, apiKey } = options;
+    const { strict } = options;
 
     if (!project.user?.hackatimeAccount) {
       if (strict) {
@@ -1299,6 +1387,21 @@ export class AdminService {
       return {
         skipped: true as const,
         reason: 'missing_hackatime_account' as const,
+      };
+    }
+
+    if (!project.user.hackatimeAccessToken) {
+      // Legacy users from before OAuth was required have an account but no
+      // token; the dedup endpoint can't authorize without one. Skip with a
+      // clear reason rather than failing the whole sweep.
+      if (strict) {
+        throw new BadRequestException(
+          'User has no Hackatime access token; ask them to relink Hackatime',
+        );
+      }
+      return {
+        skipped: true as const,
+        reason: 'missing_hackatime_access_token' as const,
       };
     }
 
@@ -1314,26 +1417,9 @@ export class AdminService {
       return { project: updated };
     }
 
-    const cacheKey = project.user.hackatimeAccount;
-    let projectsMap = cache.get(cacheKey);
-
-    if (!projectsMap) {
-      const data = await this.fetchHackatimeProjectsData(
-        cacheKey,
-        baseUrl,
-        apiKey,
-      );
-      projectsMap = data.projectsMap;
-      cache.set(cacheKey, projectsMap);
-    }
-
-    const recalculatedHours = await this.calculateHackatimeHours(
+    const recalculatedHours = await this.hackatimeService.calculateProjectHours(
+      project.user,
       hackatimeProjects,
-      projectsMap,
-      project.user.hackatimeAccount,
-      baseUrl,
-      apiKey,
-      project.user.hackatimeStartDate,
     );
 
     const updatedProject = await this.prisma.project.update({
@@ -1455,43 +1541,6 @@ export class AdminService {
     }
 
     return durationsMap;
-  }
-
-  private async calculateHackatimeHours(
-    projectNames: string[],
-    projectsMap: Map<string, number>,
-    hackatimeAccount?: string,
-    baseUrl?: string,
-    apiKey?: string,
-    userStartDate?: Date | null,
-  ) {
-    if (hackatimeAccount && baseUrl) {
-      const cutoffDate =
-        userStartDate ??
-        new Date(process.env.HACKATIME_CUTOFF_DATE || '2025-10-10T00:00:00Z');
-      const filteredDurations =
-        await this.fetchHackatimeProjectDurationsAfterDate(
-          hackatimeAccount,
-          projectNames,
-          baseUrl,
-          apiKey,
-          cutoffDate,
-        );
-
-      let totalSeconds = 0;
-      for (const name of projectNames) {
-        totalSeconds += filteredDurations.get(name) || 0;
-      }
-
-      return Math.round((totalSeconds / 3600) * 10) / 10;
-    }
-
-    let totalSeconds = 0;
-    for (const name of projectNames) {
-      totalSeconds += projectsMap.get(name) || 0;
-    }
-
-    return Math.round((totalSeconds / 3600) * 10) / 10;
   }
 
   async getGlobalSettings() {
@@ -2138,11 +2187,11 @@ export class AdminService {
         lastName: true,
         slackUserId: true,
         hackatimeAccount: true,
+        hackatimeAccessToken: true,
         createdAt: true,
         projects: {
-          select: { createdAt: true },
+          select: { createdAt: true, nowHackatimeProjects: true },
           orderBy: { createdAt: 'asc' },
-          take: 1,
         },
         pinnedEvent: {
           select: {
@@ -2152,6 +2201,42 @@ export class AdminService {
         },
       },
     });
+
+    // Count of Hackatime projects a user has that aren't linked to any of
+    // their Horizons projects. -1 means no Hackatime account (or fetch
+    // failed — treated the same so the CSV consumer can spot-check).
+    // Run in chunks to bound concurrent outbound Hackatime requests.
+    const HACKATIME_CONCURRENCY = 10;
+    const unlinkedCounts = new Map<number, number>();
+    for (let i = 0; i < users.length; i += HACKATIME_CONCURRENCY) {
+      const chunk = users.slice(i, i + HACKATIME_CONCURRENCY);
+      await Promise.all(
+        chunk.map(async (user) => {
+          if (!user.hackatimeAccount || !user.hackatimeAccessToken) {
+            unlinkedCounts.set(user.userId, -1);
+            return;
+          }
+          const names = await this.hackatimeService.fetchHackatimeProjectNames(
+            user.hackatimeAccessToken,
+          );
+          if (!names) {
+            unlinkedCounts.set(user.userId, -1);
+            return;
+          }
+          const linked = new Set<string>();
+          for (const project of user.projects) {
+            for (const name of project.nowHackatimeProjects ?? []) {
+              linked.add(name);
+            }
+          }
+          let unlinked = 0;
+          for (const name of names) {
+            if (!linked.has(name)) unlinked++;
+          }
+          unlinkedCounts.set(user.userId, unlinked);
+        }),
+      );
+    }
 
     // Get first submission per user via a single query
     const firstSubmissions = await this.prisma.$queryRaw<
@@ -2180,16 +2265,17 @@ export class AdminService {
     const slackIds = users
       .map((u) => u.slackUserId)
       .filter((id): id is string => !!id);
-    const displayNames = await this.slackService.getUsernames(slackIds);
+    const displayNames = await this.slackService.getDisplayNames(slackIds);
 
     const rows = users.map((user) => ({
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       slackId: user.slackUserId ?? '',
-      username: (user.slackUserId && displayNames.get(user.slackUserId)) || '',
+      displayName: (user.slackUserId && displayNames.get(user.slackUserId)) || '',
       signedUpAt: user.createdAt.toISOString(),
       hackatimeLinkedAt: hackatimeLinkMap.get(user.userId)?.toISOString() ?? '',
+      hackatimeProjectLink: unlinkedCounts.get(user.userId) ?? -1,
       firstProjectAt:
         user.projects[0]?.createdAt?.toISOString() ?? '',
       firstSubmissionAt:
@@ -2199,5 +2285,227 @@ export class AdminService {
     }));
 
     return Papa.unparse(rows);
+  }
+
+  /**
+   * Admin fraud queue: every project that's been (or could have been) submitted
+   * to Joe, grouped by whether fraud review is still pending. Wait times are
+   * computed against the latest submission so resubmissions reset the clock.
+   */
+  async getFraudQueue() {
+    const projects = await this.prisma.project.findMany({
+      where: {
+        // Only projects that have at least one submission — pre-submission drafts
+        // never enter the fraud queue.
+        submissions: { some: {} },
+      },
+      include: {
+        user: {
+          select: {
+            userId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            slackUserId: true,
+            isFraud: true,
+            isSus: true,
+          },
+        },
+        submissions: {
+          orderBy: { createdAt: 'desc' },
+          select: { submissionId: true, createdAt: true, approvalStatus: true },
+        },
+      },
+    });
+
+    // For "Not submitted" projects (no joeProjectId, no decision yet), pull the
+    // most recent fraud_enqueue_failed audit entry for the latest submission so
+    // we can surface why Joe didn't accept it.
+    const notSubmittedSubmissionIds = projects
+      .filter((p) => p.joeProjectId === null && p.joeFraudPassed === null)
+      .map((p) => p.submissions[0]?.submissionId)
+      .filter((id): id is number => typeof id === 'number');
+
+    const failureLogs = notSubmittedSubmissionIds.length
+      ? await this.prisma.submissionAuditLog.findMany({
+          where: {
+            submissionId: { in: notSubmittedSubmissionIds },
+            action: 'fraud_enqueue_failed',
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { submissionId: true, changes: true, createdAt: true },
+        })
+      : [];
+
+    const failureBySubmission = new Map<number, string>();
+    for (const log of failureLogs) {
+      if (failureBySubmission.has(log.submissionId)) continue;
+      const error = (log.changes as { error?: unknown } | null)?.error;
+      if (typeof error === 'string' && error.length > 0) {
+        failureBySubmission.set(log.submissionId, error);
+      }
+    }
+
+    const now = Date.now();
+    const shaped = projects.map((p) => {
+      const latest = p.submissions[0] ?? null;
+      const submissionStart = latest
+        ? latest.createdAt.getTime()
+        : p.createdAt.getTime();
+
+      let fraudQueueWaitMs: number | null = null;
+      if (p.joeFraudPassed === null) {
+        fraudQueueWaitMs = now - submissionStart;
+      } else if (p.joeFraudReviewedAt) {
+        fraudQueueWaitMs = Math.max(
+          0,
+          p.joeFraudReviewedAt.getTime() - submissionStart,
+        );
+      }
+
+      return {
+        projectId: p.projectId,
+        projectTitle: p.projectTitle,
+        projectType: p.projectType,
+        repoUrl: p.repoUrl,
+        playableUrl: p.playableUrl,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        latestSubmissionCreatedAt: latest?.createdAt ?? null,
+        submissionCount: p.submissions.length,
+        latestSubmissionStatus: latest?.approvalStatus ?? null,
+        joeProjectId: p.joeProjectId,
+        joeFraudPassed: p.joeFraudPassed,
+        joeFraudReviewedAt: p.joeFraudReviewedAt,
+        joeTrustScore: p.joeTrustScore,
+        joeJustification: p.joeJustification,
+        joeOutcomeStatus: p.joeOutcomeStatus,
+        joeOutcomeReason: p.joeOutcomeReason,
+        joeOutcomeRecordedAt: p.joeOutcomeRecordedAt,
+        fraudQueueWaitMs,
+        overallWaitMs: now - p.createdAt.getTime(),
+        notSubmittedReason:
+          p.joeProjectId === null && p.joeFraudPassed === null && latest
+            ? (failureBySubmission.get(latest.submissionId) ?? null)
+            : null,
+        user: p.user,
+      };
+    });
+
+    const inQueue = shaped
+      .filter((p) => p.joeFraudPassed === null)
+      .sort((a, b) => (b.fraudQueueWaitMs ?? 0) - (a.fraudQueueWaitMs ?? 0));
+    const notInQueue = shaped
+      .filter((p) => p.joeFraudPassed !== null)
+      .sort((a, b) => {
+        const aT = a.joeFraudReviewedAt?.getTime() ?? 0;
+        const bT = b.joeFraudReviewedAt?.getTime() ?? 0;
+        return bT - aT;
+      });
+
+    const passedCount = shaped.filter((p) => p.joeFraudPassed === true).length;
+    const failedCount = shaped.filter((p) => p.joeFraudPassed === false).length;
+    const notSubmittedCount = shaped.filter(
+      (p) => p.joeProjectId === null && p.joeFraudPassed === null,
+    ).length;
+
+    const resolvedWaits = shaped
+      .filter((p) => p.joeFraudPassed !== null && p.fraudQueueWaitMs !== null)
+      .map((p) => p.fraudQueueWaitMs as number);
+    const avgResolvedFraudWaitMs = resolvedWaits.length
+      ? resolvedWaits.reduce((s, n) => s + n, 0) / resolvedWaits.length
+      : null;
+    const medianResolvedFraudWaitMs = (() => {
+      if (!resolvedWaits.length) return null;
+      const sorted = [...resolvedWaits].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+    })();
+
+    const longestPendingFraudWaitMs = inQueue.length
+      ? (inQueue[0].fraudQueueWaitMs ?? null)
+      : null;
+
+    const trustScores = shaped
+      .map((p) => p.joeTrustScore)
+      .filter((s): s is number => s !== null);
+    const avgTrustScore = trustScores.length
+      ? trustScores.reduce((s, n) => s + n, 0) / trustScores.length
+      : null;
+
+    return {
+      stats: {
+        enabled: this.fraudReviewService.isEnabled(),
+        totalProjects: shaped.length,
+        pendingCount: inQueue.length,
+        passedCount,
+        failedCount,
+        notSubmittedCount,
+        avgResolvedFraudWaitMs,
+        medianResolvedFraudWaitMs,
+        longestPendingFraudWaitMs,
+        avgTrustScore,
+      },
+      inQueue,
+      notInQueue,
+    };
+  }
+
+  async getTransactionLedger(filters: {
+    kind?: 'ShopItem' | 'EventRsvp' | 'EventTicket';
+    userId?: number;
+    fulfilled?: boolean;
+    limit?: number;
+  }) {
+    const where: any = {};
+    if (filters.kind) where.kind = filters.kind;
+    if (filters.userId) where.userId = filters.userId;
+    if (filters.fulfilled !== undefined) where.isFulfilled = filters.fulfilled;
+
+    const entries = await this.prisma.transaction.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            userId: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        item: { select: { itemId: true, name: true } },
+        event: { select: { eventId: true, slug: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: filters.limit ?? 500,
+    });
+
+    const allTotals = await this.prisma.transaction.groupBy({
+      by: ['kind'],
+      _count: { _all: true },
+      _sum: { cost: true },
+    });
+
+    const summary = {
+      totalCount: 0,
+      totalSpent: 0,
+      shopCount: 0,
+      rsvpCount: 0,
+      ticketCount: 0,
+    };
+    for (const row of allTotals) {
+      const count = row._count._all;
+      const spent = row._sum.cost ?? 0;
+      summary.totalCount += count;
+      summary.totalSpent += spent;
+      if (row.kind === 'ShopItem') summary.shopCount = count;
+      else if (row.kind === 'EventRsvp') summary.rsvpCount = count;
+      else if (row.kind === 'EventTicket') summary.ticketCount = count;
+    }
+    summary.totalSpent = Math.round(summary.totalSpent * 10) / 10;
+
+    return { entries, summary };
   }
 }

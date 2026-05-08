@@ -238,22 +238,18 @@
 </svelte:head>
 
 <div class="font-[Inter,sans-serif] bg-rv-bg text-rv-text h-screen flex flex-col overflow-hidden">
-	{#if queueLoading}
-		<div class="flex flex-col items-center justify-center h-screen gap-2 font-[Inter,sans-serif] text-rv-dim bg-rv-bg">
-			<p>Loading review queue...</p>
-		</div>
-	{:else if queueError}
+	{#if queueError}
 		<div class="flex flex-col items-center justify-center h-screen gap-2 font-[Inter,sans-serif] text-rv-red bg-rv-bg">
 			<p>Failed to load review queue</p>
 			<p class="text-xs text-rv-dim max-w-[400px] text-center">{queueError}</p>
 			<button class="mt-3 bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit" onclick={() => loadQueue()}>Retry</button>
 		</div>
-	{:else if queueLength === 0}
+	{:else if !queueLoading && queueLength === 0}
 		<div class="flex flex-col items-center justify-center h-screen gap-2 font-[Inter,sans-serif] text-rv-dim bg-rv-bg">
 			<p>No pending submissions to review.</p>
 		</div>
 	{:else if galleryMode}
-		<ProjectGallery items={queue} onSelect={selectFromGallery} onRefresh={refreshQueue} refreshing={queueRefreshing} />
+		<ProjectGallery items={queue} onSelect={selectFromGallery} onRefresh={refreshQueue} refreshing={queueRefreshing} loading={queueLoading} />
 	{:else}
 		<TopBar
 			{currentIndex}

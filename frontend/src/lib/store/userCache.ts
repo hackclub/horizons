@@ -5,10 +5,19 @@ interface UserCache {
 	userName: string;
 	referralCode: string;
 	role: string;
+	currentStreak: number;
+	longestStreak: number;
 	loaded: boolean;
 }
 
-const store = writable<UserCache>({ userName: '', referralCode: '', role: '', loaded: false });
+const store = writable<UserCache>({
+	userName: '',
+	referralCode: '',
+	role: '',
+	currentStreak: 0,
+	longestStreak: 0,
+	loaded: false,
+});
 
 let fetchPromise: Promise<void> | null = null;
 
@@ -34,6 +43,8 @@ export const userStore = {
 					userName: slackDisplayName || 'you',
 					referralCode: referralRes.data?.referralCode ?? '',
 					role: (userRes.data?.role as string) ?? '',
+					currentStreak: (userRes.data?.currentStreak as number) ?? 0,
+					longestStreak: (userRes.data?.longestStreak as number) ?? 0,
 					loaded: true,
 				});
 			})();

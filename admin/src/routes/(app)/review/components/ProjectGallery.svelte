@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
-	import { timeAgo } from '../utils';
+	import { timeAgo, waitingFor } from '../utils';
+	import { Skeleton } from '$lib/components';
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type PastReview = components['schemas']['PastReviewEntry'];
 
@@ -11,9 +12,10 @@
 		onSelect: (index: number) => void;
 		onRefresh: () => void;
 		refreshing?: boolean;
+		loading?: boolean;
 	}
 
-	let { items, onSelect, onRefresh, refreshing = false }: Props = $props();
+	let { items, onSelect, onRefresh, refreshing = false, loading = false }: Props = $props();
 
 	const PROJECT_TYPES = [
 		'windows_playable',
@@ -27,20 +29,27 @@
 
 	let selectedTypes = $state<Set<string>>(new Set());
 	let searchQuery = $state('');
-	let shipSortOrder = $state<'newest' | 'oldest'>('newest');
+	// Default to longest wait so reviewers triage the most-stale submissions first.
+	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
+	let sortOrder = $state<SortOrder>('longest-wait');
 	let fraudFilter = $state<'all' | 'reviewed' | 'unreviewed'>('all');
 
 	let pastReviews = $state<PastReview[]>([]);
 	let currentReviewerId = $state<number | null>(null);
 	let pastLoading = $state(true);
+	let isAdmin = $state(false);
 
 	onMount(async () => {
 		try {
-			const { data } = await api.GET('/api/reviewer/past-reviews');
-			if (data) {
-				pastReviews = data.reviews;
-				currentReviewerId = data.currentReviewerId;
+			const [{ data: pastData }, { data: meData }] = await Promise.all([
+				api.GET('/api/reviewer/past-reviews'),
+				api.GET('/api/user/auth/me'),
+			]);
+			if (pastData) {
+				pastReviews = pastData.reviews;
+				currentReviewerId = pastData.currentReviewerId;
 			}
+			isAdmin = meData?.role === 'admin' || meData?.role === 'superadmin';
 		} finally {
 			pastLoading = false;
 		}
@@ -71,16 +80,16 @@
 		return u.displayName ?? (u.slackUserId ? `@${u.slackUserId}` : 'Anonymous');
 	}
 
-	// Projects this reviewer has already voted on (any submission). Hide them
-	// from the pending queue so reviewers don't re-encounter resubmissions of
-	// projects they've already finalized.
-	let myReviewedProjectIds = $derived(
+	// Submissions this reviewer has already voted on. Hide them from the
+	// pending queue so reviewers don't re-encounter the same submission, but
+	// new resubmissions for the same project still appear.
+	let myReviewedSubmissionIds = $derived(
 		currentReviewerId === null
 			? new Set<number>()
 			: new Set(
 					pastReviews
 						.filter((r) => r.reviewerId === String(currentReviewerId))
-						.map((r) => r.projectId),
+						.map((r) => r.submissionId),
 				),
 	);
 
@@ -96,7 +105,7 @@
 			.map((item, index) => ({ item, index }))
 			.filter(
 				({ item }) =>
-					!myReviewedProjectIds.has(item.project.projectId) &&
+					!myReviewedSubmissionIds.has(item.submissionId) &&
 					!isActivelyClaimedByOther(item) &&
 					matchesFilters(
 						item.project.projectTitle,
@@ -105,9 +114,20 @@
 					) && matchesFraudFilter(item.project.joeFraudPassed),
 			)
 			.sort((a, b) => {
+				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
+					// Submissions without recorded hours sink to the bottom regardless of direction
+					// so reviewers always see real values first.
+					const aH = a.item.hackatimeHours;
+					const bH = b.item.hackatimeHours;
+					if (aH == null && bH == null) return 0;
+					if (aH == null) return 1;
+					if (bH == null) return -1;
+					return sortOrder === 'most-hours' ? bH - aH : aH - bH;
+				}
+				// createdAt is the submission timestamp, so this sorts by wait time, not project age.
 				const aT = new Date(a.item.createdAt).getTime();
 				const bT = new Date(b.item.createdAt).getTime();
-				return shipSortOrder === 'newest' ? bT - aT : aT - bT;
+				return sortOrder === 'longest-wait' ? aT - bT : bT - aT;
 			}),
 	);
 
@@ -182,19 +202,39 @@
 			.replace(/\b\w/g, (char) => char.toUpperCase());
 	}
 
+	// Tint the "waiting" pill warmer as the wait grows so stale submissions stand out at a glance.
+	function waitingPillClass(dateStr: string): string {
+		const hours = (Date.now() - new Date(dateStr).getTime()) / 3_600_000;
+		if (hours >= 72) return 'bg-red-500/15 text-red-500 border-red-500/40';
+		if (hours >= 24) return 'bg-orange-500/15 text-orange-500 border-orange-500/40';
+		return 'bg-rv-tag-bg text-rv-dim border-rv-border';
+	}
+
 </script>
 
 <div class="flex flex-col h-screen overflow-hidden">
 	<div class="flex items-center justify-between px-6 py-4 bg-rv-surface border-b border-rv-border shrink-0">
 		<div class="font-[Space_Mono,monospace] font-bold text-[18px] text-rv-accent">HORIZONS <span class="text-rv-text font-normal text-[13px] ml-2">Project Review</span></div>
 		<div class="flex items-center gap-3">
-			<p class="text-[13px] text-rv-dim m-0">{filteredItems.length} of {items.length} projects</p>
+			{#if loading}
+				<Skeleton class="h-4 w-32" />
+			{:else}
+				<p class="text-[13px] text-rv-dim m-0">{filteredItems.length} of {items.length} projects</p>
+			{/if}
 			<a
 				href="/admin/review/stats"
 				class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit no-underline inline-block cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text"
 			>
 				Stats
 			</a>
+			{#if isAdmin}
+				<a
+					href="/admin/review/fraud-queue"
+					class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit no-underline inline-block cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text"
+				>
+					Fraud Queue
+				</a>
+			{/if}
 			<button
 				class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text disabled:opacity-40 disabled:cursor-not-allowed"
 				onclick={onRefresh}
@@ -234,21 +274,38 @@
 	<div class="overflow-y-auto flex-1">
 		<section class="px-6 pt-6 pb-2">
 			<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold mb-3">
-				Pending Queue <span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
+				Pending Queue
+				{#if loading}
+					<span class="ml-1 inline-block align-middle"><Skeleton class="h-3 w-8 inline-block" /></span>
+				{:else}
+					<span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
+				{/if}
 			</h2>
 			<div class="flex flex-wrap gap-2 items-center mb-3">
-				<span class="text-[11px] text-rv-dim">Ship time</span>
+				<span class="text-[11px] text-rv-dim">Sort</span>
 				<button
-					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {shipSortOrder === 'newest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
-					onclick={() => (shipSortOrder = 'newest')}
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'longest-wait' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (sortOrder = 'longest-wait')}
 				>
-					Newest
+					Longest wait
 				</button>
 				<button
-					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {shipSortOrder === 'oldest' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
-					onclick={() => (shipSortOrder = 'oldest')}
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'shortest-wait' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (sortOrder = 'shortest-wait')}
 				>
-					Oldest
+					Shortest wait
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'most-hours' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (sortOrder = 'most-hours')}
+				>
+					Most hours
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'least-hours' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (sortOrder = 'least-hours')}
+				>
+					Least hours
 				</button>
 
 				<span class="text-[11px] text-rv-dim ml-3">Fraud</span>
@@ -272,6 +329,19 @@
 				</button>
 			</div>
 			<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
+				{#if loading}
+					{#each Array(12) as _}
+						<div class="flex flex-col gap-2 p-5 bg-rv-surface border border-rv-border rounded-[10px]">
+							<Skeleton class="h-4 w-3/4" />
+							<Skeleton class="h-3 w-1/2" />
+							<div class="flex items-center gap-1.5 flex-wrap mt-1">
+								<Skeleton class="h-5 w-20 rounded-xl" />
+								<Skeleton class="h-5 w-12 rounded-xl" />
+								<Skeleton class="h-5 w-24 rounded-xl" />
+							</div>
+						</div>
+					{/each}
+				{:else}
 				{#each filteredItems as { item, index } (item.submissionId)}
 					{@const activeOtherClaim =
 						item.claim && !item.claim.isMine && !item.claim.isStale
@@ -288,6 +358,24 @@
 						</p>
 						<div class="flex items-center gap-1.5 flex-wrap mt-1">
 							<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
+							{#if item.hackatimeHours != null}
+								<span
+									class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border bg-rv-tag-bg text-rv-dim border-rv-border font-[Space_Mono,monospace]"
+									title="Hackatime hours submitted for this project"
+								>
+									{item.hackatimeHours.toFixed(1)}h
+								</span>
+							{/if}
+							<span
+								class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border {waitingPillClass(item.createdAt)}"
+								title="Submitted {new Date(item.createdAt).toLocaleString()}"
+							>
+								<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<circle cx="12" cy="12" r="10" />
+									<polyline points="12 6 12 12 16 14" />
+								</svg>
+								Waiting {waitingFor(item.createdAt)}
+							</span>
 							{#if activeOtherClaim}
 								<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-yellow-500/15 text-yellow-600 border border-yellow-500/40">
 									<span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
@@ -303,6 +391,7 @@
 				{:else}
 					<p class="col-span-full text-center text-rv-dim py-6 text-sm">No projects match your filters.</p>
 				{/each}
+				{/if}
 			</div>
 		</section>
 

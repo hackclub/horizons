@@ -11,6 +11,8 @@
     let usersLoading = $state(false);
     let usersLoaded = $state(false);
     let userSearch = $state('');
+    type SortMode = 'recent' | 'streak-desc' | 'streak-asc' | 'longest-desc';
+    let sortMode = $state<SortMode>('recent');
 
     // Slack editing state
     let slackEditingUserId = $state<number | null>(null);
@@ -231,14 +233,23 @@
     }
 
     let filteredUsers = $derived(() => {
-        if (!userSearch.trim()) return users;
         const query = userSearch.toLowerCase().trim();
-        return users.filter((user) => {
-            const name = fullName(user).toLowerCase();
-            const email = user.email.toLowerCase();
-            const slack = (user.slackUserId ?? '').toLowerCase();
-            return name.includes(query) || email.includes(query) || slack.includes(query);
-        });
+        const base = !query
+            ? users
+            : users.filter((user) => {
+                  const name = fullName(user).toLowerCase();
+                  const email = user.email.toLowerCase();
+                  const slack = (user.slackUserId ?? '').toLowerCase();
+                  return name.includes(query) || email.includes(query) || slack.includes(query);
+              });
+        if (sortMode === 'recent') return base;
+        const sorted = [...base];
+        const cur = (u: AdminUserResponse) => (u as any).currentStreak ?? 0;
+        const best = (u: AdminUserResponse) => (u as any).longestStreak ?? 0;
+        if (sortMode === 'streak-desc') sorted.sort((a, b) => cur(b) - cur(a));
+        else if (sortMode === 'streak-asc') sorted.sort((a, b) => cur(a) - cur(b));
+        else if (sortMode === 'longest-desc') sorted.sort((a, b) => best(b) - best(a));
+        return sorted;
     });
 
     onMount(() => {
@@ -255,6 +266,15 @@
                 placeholder="Search users..."
                 bind:value={userSearch}
             />
+            <select
+                class="rounded-md border border-ds-border bg-ds-surface px-3 py-2 text-sm"
+                bind:value={sortMode}
+            >
+                <option value="recent">Sort: Most recent</option>
+                <option value="streak-desc">Sort: Highest streak</option>
+                <option value="streak-asc">Sort: Lowest streak</option>
+                <option value="longest-desc">Sort: Longest-ever streak</option>
+            </select>
             <Button variant="default" onclick={loadUsers}>
                 Refresh
             </Button>
@@ -309,6 +329,17 @@
                                     class="rounded-full border border-ds-border px-3 py-1"
                                 >
                                     Projects: {user.projects.length}
+                                </span>
+                                <span
+                                    class="rounded-full border border-ds-border px-3 py-1"
+                                    title={(user as any).lastActiveDate
+                                        ? `Last active: ${formatDate((user as any).lastActiveDate)}${(user as any).timezone ? ` (${(user as any).timezone})` : ''}`
+                                        : 'No activity yet'}
+                                >
+                                    🔥 {(user as any).currentStreak ?? 0}d
+                                    {#if ((user as any).longestStreak ?? 0) > 0}
+                                        <span class="text-ds-text-placeholder">· best {(user as any).longestStreak}d</span>
+                                    {/if}
                                 </span>
                             </div>
                         </div>

@@ -54,6 +54,9 @@ export class ShopItemResponse {
   shopId: number;
 
   @ApiProperty()
+  shopSlug: string;
+
+  @ApiProperty()
   name: string;
 
   @ApiProperty({ type: String, nullable: true })

@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { FraudReviewService } from '../fraud-review/fraud-review.service';
 
 /**
  * Shared computation of review-related metrics. Both AdminService (full
@@ -10,10 +9,7 @@ import { FraudReviewService } from '../fraud-review/fraud-review.service';
  */
 @Injectable()
 export class MetricsService {
-  constructor(
-    private prisma: PrismaService,
-    private fraudReviewService: FraudReviewService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   /**
    * Project-level hours: tracked / unshipped / shipped / in-review / approved / rejected, plus weighted grants.
@@ -333,13 +329,10 @@ export class MetricsService {
    * "This week" counts use a 7-day window ending at `asOf` (or now).
    */
   async computeReviewProjects(asOf?: Date) {
-    // Sync fraud decisions from Joe before counting so stats reflect current
-    // state rather than the last 5-minute poll tick. Skip for historical
-    // snapshots (asOf set) since those don't need a live sync.
-    if (!asOf && this.fraudReviewService.isEnabled()) {
-      await this.fraudReviewService.pollPendingProjects();
-    }
-
+    // Stats reflect data as of the last 5-minute background poll rather than
+    // syncing inline — pollPendingProjects round-trips Joe + walks all
+    // pending projects, which would otherwise add ~10s to every stats load.
+    // Reviewers can force-sync via the gallery's "Refresh Queue" button.
     const reference = asOf ?? new Date();
     const sevenDaysBefore = new Date(reference);
     sevenDaysBefore.setUTCDate(sevenDaysBefore.getUTCDate() - 7);
@@ -645,6 +638,45 @@ export class MetricsService {
     for (const d of rawDaily.reviews_completed) {
       reviewSum += d.value;
       result.reviewsCompleted.push({ date: d.date, value: reviewSum });
+    }
+
+    // Rebuild projectsFraudChecked from `joeFraudReviewedAt` instead of the
+    // `review_projects` snapshot. Pre-cutover snapshots stored a queue-gauge
+    // value under the same key, which made the chart line look flat or
+    // jumpy rather than a clean YTD cumulative like the other series.
+    if (result.projectsShipped.length > 0) {
+      const incrementRows = await this.prisma.$queryRaw<
+        Array<{ day: string; count: bigint }>
+      >`
+        SELECT to_char(date_trunc('day', joe_fraud_reviewed_at), 'YYYY-MM-DD') AS day,
+               COUNT(*)::bigint AS count
+        FROM projects
+        WHERE joe_fraud_passed = true AND joe_fraud_reviewed_at IS NOT NULL
+        GROUP BY day
+        ORDER BY day ASC
+      `;
+
+      let running = 0;
+      const cumulativeByDay: Array<{ day: string; value: number }> = [];
+      for (const r of incrementRows) {
+        running += Number(r.count);
+        cumulativeByDay.push({ day: r.day, value: running });
+      }
+
+      // Two-pointer walk: cumulativeByDay is sorted ascending and so is
+      // projectsShipped. For each shipped date, advance the cumulative
+      // pointer to the latest entry on or before that date.
+      const fraudCheckedSeries: Array<{ date: string; value: number }> = [];
+      let cIdx = 0;
+      let cValue = 0;
+      for (const { date } of result.projectsShipped) {
+        while (cIdx < cumulativeByDay.length && cumulativeByDay[cIdx].day <= date) {
+          cValue = cumulativeByDay[cIdx].value;
+          cIdx++;
+        }
+        fraudCheckedSeries.push({ date, value: cValue });
+      }
+      result.projectsFraudChecked = fraudCheckedSeries;
     }
 
     return result;

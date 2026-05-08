@@ -11,6 +11,7 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { debugLog } from '../utils/debug-log';
+import { BalanceService } from '../balance/balance.service';
 
 @Injectable()
 export class ShopService {
@@ -18,6 +19,7 @@ export class ShopService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private mailService: MailService,
+    private balanceService: BalanceService,
   ) {}
 
   // ── Shop CRUD ──
@@ -66,34 +68,71 @@ export class ShopService {
 
   // ── Items ──
 
-  async getItems(shopId: number) {
-    return this.prisma.shopItem.findMany({
-      where: { shopId },
+  private toItemResponse<T extends { shop?: { slug: string } | null }>(
+    item: T,
+  ): Omit<T, 'shop'> & { shopSlug: string } {
+    const { shop, ...rest } = item;
+    return { ...rest, shopSlug: shop?.slug ?? '' };
+  }
+
+  async getAllPublicItems() {
+    const items = await this.prisma.shopItem.findMany({
+      where: {
+        shop: { isActive: true, isPublic: true },
+      },
       orderBy: [{ isActive: 'desc' }, { cost: 'asc' }],
       include: {
+        shop: { select: { slug: true } },
         variants: {
+          where: { isActive: true },
           orderBy: { cost: 'asc' },
         },
       },
+    });
+    return items.map((i) => this.toItemResponse(i));
+  }
+
+  async getPublicItem(itemId: number) {
+    const item = await this.prisma.shopItem.findUnique({
+      where: { itemId },
+      include: {
+        shop: { select: { slug: true, isActive: true, isPublic: true } },
+        variants: {
+          where: { isActive: true },
+          orderBy: { cost: 'asc' },
+        },
+      },
+    });
+
+    if (!item || !item.shop.isActive || !item.shop.isPublic) {
+      throw new NotFoundException('Item not found');
+    }
+
+    return this.toItemResponse({
+      ...item,
+      shop: { slug: item.shop.slug },
     });
   }
 
   async getAllItems(shopId: number) {
-    return this.prisma.shopItem.findMany({
+    const items = await this.prisma.shopItem.findMany({
       where: { shopId },
       orderBy: { updatedAt: 'desc' },
       include: {
+        shop: { select: { slug: true } },
         variants: {
           orderBy: { cost: 'asc' },
         },
       },
     });
+    return items.map((i) => this.toItemResponse(i));
   }
 
   async getItem(itemId: number) {
     const item = await this.prisma.shopItem.findUnique({
       where: { itemId },
       include: {
+        shop: { select: { slug: true } },
         variants: {
           where: { isActive: true },
           orderBy: { cost: 'asc' },
@@ -105,7 +144,7 @@ export class ShopService {
       throw new NotFoundException('Item not found');
     }
 
-    return item;
+    return this.toItemResponse(item);
   }
 
   async createItem(shopId: number, createItemDto: CreateItemDto) {
@@ -113,7 +152,7 @@ export class ShopService {
     if (!shop) {
       throw new NotFoundException('Shop not found');
     }
-    return this.prisma.shopItem.create({
+    const item = await this.prisma.shopItem.create({
       data: {
         shopId,
         name: createItemDto.name,
@@ -123,9 +162,11 @@ export class ShopService {
         regions: createItemDto.regions ?? [],
       },
       include: {
+        shop: { select: { slug: true } },
         variants: true,
       },
     });
+    return this.toItemResponse(item);
   }
 
   async updateItem(itemId: number, updateItemDto: UpdateItemDto) {
@@ -137,13 +178,15 @@ export class ShopService {
       throw new NotFoundException('Item not found');
     }
 
-    return this.prisma.shopItem.update({
+    const updated = await this.prisma.shopItem.update({
       where: { itemId },
       data: updateItemDto,
       include: {
+        shop: { select: { slug: true } },
         variants: true,
       },
     });
+    return this.toItemResponse(updated);
   }
 
   async deleteItem(itemId: number) {
@@ -215,25 +258,7 @@ export class ShopService {
   }
 
   async getUserBalance(userId: number) {
-    const totalApprovedHours = await this.prisma.project.aggregate({
-      where: { userId },
-      _sum: { approvedHours: true },
-    });
-
-    const totalSpent = await this.prisma.transaction.aggregate({
-      where: { userId },
-      _sum: { cost: true },
-    });
-
-    const approved = totalApprovedHours._sum.approvedHours ?? 0;
-    const spent = totalSpent._sum.cost ?? 0;
-    const balance = Math.round((approved - spent) * 10) / 10;
-
-    return {
-      totalApprovedHours: approved,
-      totalSpent: spent,
-      balance,
-    };
+    return this.balanceService.getUserBalance(userId);
   }
 
   async purchaseItem(userId: number, itemId: number, variantId?: number) {
@@ -241,79 +266,7 @@ export class ShopService {
       `[Shop Purchase] Starting purchase for userId: ${userId}, itemId: ${itemId}, variantId: ${variantId || 'none'}`,
     );
 
-    const user = await this.prisma.user.findUnique({
-      where: { userId },
-      select: { email: true },
-    });
-
-    if (!user || !user.email) {
-      console.error(
-        `[Shop Purchase] User email not found for userId: ${userId}`,
-      );
-      throw new BadRequestException('User email not found');
-    }
-
-    debugLog(
-      `[Shop Purchase] Checking verification status for user: ${userId}, email: ${user.email}`,
-    );
-    const externalApiBaseUrl = this.configService.get<string>(
-      'EXTERNAL_VERIFICATION_API_URL',
-      'https://identity.hackclub.com/api/external',
-    );
-    const checkUrl = `${externalApiBaseUrl}/check?email=${encodeURIComponent(user.email)}`;
-    console.log(`[Shop Purchase] Verification API URL: ${checkUrl}`);
-
-    try {
-      const verificationResponse = await fetch(checkUrl);
-      console.log(
-        `[Shop Purchase] Verification API response status: ${verificationResponse.status}`,
-      );
-
-      if (!verificationResponse.ok) {
-        const errorText = await verificationResponse
-          .text()
-          .catch(() => 'Unable to read response');
-        console.error(
-          `[Shop Purchase] Verification API returned non-OK status: ${verificationResponse.status}, response: ${errorText}`,
-        );
-        throw new BadRequestException(
-          'Failed to verify eligibility. Please try again later.',
-        );
-      }
-
-      const verificationData = await verificationResponse.json();
-      console.log(
-        `[Shop Purchase] Verification API response data:`,
-        JSON.stringify(verificationData),
-      );
-
-      if (verificationData.result !== 'verified_eligible') {
-        debugLog(
-          `[Shop Purchase] User ${userId} (${user.email}) is not verified_eligible. Result: ${verificationData.result}`,
-        );
-        throw new BadRequestException(
-          'You must be verified eligible to purchase items from the shop',
-        );
-      }
-
-      debugLog(
-        `[Shop Purchase] User ${userId} (${user.email}) verification check passed`,
-      );
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        console.log(
-          `[Shop Purchase] Verification check failed for user ${userId}: ${error.message}`,
-        );
-        throw error;
-      }
-      console.error(
-        `[Shop Purchase] Error checking verification status for user ${userId}:`,
-        error,
-      );
-      throw new BadRequestException(
-        'Failed to verify eligibility. Please try again later.',
-      );
-    }
+    await this.balanceService.verifyEligibility(userId, 'Shop Purchase');
 
     const item = await this.prisma.shopItem.findUnique({
       where: { itemId },
@@ -389,6 +342,7 @@ export class ShopService {
     const transaction = await this.prisma.transaction.create({
       data: {
         userId,
+        kind: 'ShopItem',
         itemId,
         variantId: variant?.variantId || null,
         itemDescription: description,
@@ -566,7 +520,9 @@ export class ShopService {
 
   async getAllTransactions(shopId?: number) {
     return this.prisma.transaction.findMany({
-      where: shopId ? { item: { shopId } } : undefined,
+      where: shopId
+        ? { kind: 'ShopItem', item: { shopId } }
+        : { kind: 'ShopItem' },
       include: {
         user: {
           select: {
@@ -617,9 +573,10 @@ export class ShopService {
       where: { transactionId },
     });
 
+    const baseName = transaction.item?.name ?? transaction.itemDescription;
     const itemName = transaction.variant
-      ? `${transaction.item.name} (${transaction.variant.name})`
-      : transaction.item.name;
+      ? `${baseName} (${transaction.variant.name})`
+      : baseName;
 
     debugLog(
       `[Refund] Transaction ${transactionId} refunded: ${transaction.cost} hours returned to user ${transaction.user.email} for "${itemName}"`,
@@ -682,9 +639,10 @@ export class ShopService {
       },
     });
 
+    const baseName = transaction.item?.name ?? transaction.itemDescription;
     const itemName = transaction.variant
-      ? `${transaction.item.name} (${transaction.variant.name})`
-      : transaction.item.name;
+      ? `${baseName} (${transaction.variant.name})`
+      : baseName;
 
     debugLog(
       `[Fulfillment] Transaction ${transactionId} marked as fulfilled for user ${transaction.user.email} - "${itemName}"`,
@@ -757,9 +715,10 @@ export class ShopService {
       },
     });
 
+    const baseName = transaction.item?.name ?? transaction.itemDescription;
     const itemName = transaction.variant
-      ? `${transaction.item.name} (${transaction.variant.name})`
-      : transaction.item.name;
+      ? `${baseName} (${transaction.variant.name})`
+      : baseName;
 
     debugLog(
       `[Unfulfill] Transaction ${transactionId} marked as unfulfilled for user ${transaction.user.email} - "${itemName}"`,

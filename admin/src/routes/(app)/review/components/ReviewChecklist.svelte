@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { api } from '$lib/api';
+	import { Skeleton } from '$lib/components';
 
 	interface Props {
 		submissionId: number;
 		checkedItems: number[];
+		loading?: boolean;
 	}
 
-	let { submissionId, checkedItems = $bindable([]) }: Props = $props();
+	let { submissionId, checkedItems = $bindable([]), loading = false }: Props = $props();
 
 	const CHECKLIST_ITEMS = [
 		'README exists with setup/run instructions',
@@ -55,18 +57,27 @@
 		</span>
 	</div>
 
-	{#each CHECKLIST_ITEMS as item, index}
-		<button
-			class="flex items-start gap-2 py-1.25 cursor-pointer select-none bg-transparent border-none w-full text-left font-[inherit] hover:opacity-85"
-			onclick={() => toggleItem(index)}
-		>
-			<input
-				type="checkbox"
-				checked={checkedItems.includes(index)}
-				tabindex={-1}
-				class="appearance-none w-4 h-4 border-[1.5px] border-rv-border rounded-[3px] bg-rv-bg cursor-pointer shrink-0 mt-px relative transition-all duration-150 pointer-events-none checked:bg-rv-green checked:border-rv-green checked:after:content-['✓'] checked:after:absolute checked:after:-top-px checked:after:left-0.5 checked:after:text-[11px] checked:after:text-white checked:after:font-bold"
-			/>
-			<label class="text-[13px] cursor-pointer leading-[1.4] {checkedItems.includes(index) ? 'text-rv-dim line-through' : 'text-rv-text'}">{item}</label>
-		</button>
-	{/each}
+	{#if loading}
+		{#each CHECKLIST_ITEMS as _}
+			<div class="flex items-start gap-2 py-1.25">
+				<Skeleton class="h-4 w-4 shrink-0 mt-px" />
+				<Skeleton class="h-3 flex-1 mt-1" />
+			</div>
+		{/each}
+	{:else}
+		{#each CHECKLIST_ITEMS as item, index}
+			<button
+				class="flex items-start gap-2 py-1.25 cursor-pointer select-none bg-transparent border-none w-full text-left font-[inherit] hover:opacity-85"
+				onclick={() => toggleItem(index)}
+			>
+				<input
+					type="checkbox"
+					checked={checkedItems.includes(index)}
+					tabindex={-1}
+					class="appearance-none w-4 h-4 border-[1.5px] border-rv-border rounded-[3px] bg-rv-bg cursor-pointer shrink-0 mt-px relative transition-all duration-150 pointer-events-none checked:bg-rv-green checked:border-rv-green checked:after:content-['✓'] checked:after:absolute checked:after:-top-px checked:after:left-0.5 checked:after:text-[11px] checked:after:text-white checked:after:font-bold"
+				/>
+				<label class="text-[13px] cursor-pointer leading-[1.4] {checkedItems.includes(index) ? 'text-rv-dim line-through' : 'text-rv-text'}">{item}</label>
+			</button>
+		{/each}
+	{/if}
 </div>

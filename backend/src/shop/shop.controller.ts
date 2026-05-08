@@ -10,7 +10,6 @@ import {
   UseGuards,
   Req,
   ParseIntPipe,
-  NotFoundException,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiCreatedResponse, ApiQuery } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -53,27 +52,16 @@ export class ShopController {
     return this.shopService.getPublicShops();
   }
 
-  @Get(':slug/items')
+  @Get('items')
   @ApiOkResponse({ type: [ShopItemResponse] })
-  async getItems(@Param('slug') slug: string) {
-    const shop = await this.shopService.getShopBySlug(slug);
-    if (!shop.isActive || !shop.isPublic) {
-      throw new NotFoundException('Shop not found');
-    }
-    return this.shopService.getItems(shop.shopId);
+  async getAllPublicItems() {
+    return this.shopService.getAllPublicItems();
   }
 
-  @Get(':slug/items/:id')
+  @Get('items/:id')
   @ApiOkResponse({ type: ShopItemResponse })
-  async getItem(
-    @Param('slug') slug: string,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
-    const shop = await this.shopService.getShopBySlug(slug);
-    if (!shop.isActive || !shop.isPublic) {
-      throw new NotFoundException('Shop not found');
-    }
-    return this.shopService.getItem(id);
+  async getItemById(@Param('id', ParseIntPipe) id: number) {
+    return this.shopService.getPublicItem(id);
   }
 }
 

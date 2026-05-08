@@ -55,6 +55,18 @@ export class AdminLightUserResponse {
   @ApiProperty()
   isSus: boolean;
 
+  @ApiProperty({ type: String, nullable: true })
+  timezone: string | null;
+
+  @ApiProperty()
+  currentStreak: number;
+
+  @ApiProperty()
+  longestStreak: number;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date' })
+  lastActiveDate: Date | null;
+
   @ApiProperty()
   createdAt: Date;
 
@@ -651,6 +663,44 @@ export class RecalculateAllResponse {
 
 // --- Stats Dashboard DTOs ---
 
+class StatsFunnelEventEntry {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  totalUsers: number;
+
+  @ApiProperty()
+  hasHackatime: number;
+
+  @ApiProperty()
+  createdProject: number;
+
+  @ApiProperty()
+  project10PlusHours: number;
+
+  @ApiProperty()
+  atLeast1Submission: number;
+
+  @ApiProperty()
+  atLeast1ApprovedHour: number;
+
+  @ApiProperty()
+  approved10Plus: number;
+
+  @ApiProperty()
+  approved30Plus: number;
+
+  @ApiProperty()
+  approved60Plus: number;
+}
+
 class StatsFunnel {
   @ApiProperty()
   totalUsers: number;
@@ -678,6 +728,9 @@ class StatsFunnel {
 
   @ApiProperty()
   approved60Plus: number;
+
+  @ApiProperty({ type: [StatsFunnelEventEntry] })
+  perEvent: StatsFunnelEventEntry[];
 }
 
 class StatsUserGrowth {
@@ -951,6 +1004,17 @@ class StatsDau {
   perEvent: StatsDauEventEntry[];
 }
 
+class StatsProjectsHackatime {
+  @ApiProperty()
+  total: number;
+
+  @ApiProperty()
+  withHackatime: number;
+
+  @ApiProperty()
+  withoutHackatime: number;
+}
+
 export class AdminStatsResponse {
   @ApiProperty({ type: StatsFunnel })
   funnel: StatsFunnel;
@@ -975,6 +1039,9 @@ export class AdminStatsResponse {
 
   @ApiProperty({ type: StatsDau })
   dau: StatsDau;
+
+  @ApiProperty({ type: StatsProjectsHackatime })
+  projects: StatsProjectsHackatime;
 }
 
 class ImportCsvError {
@@ -1121,4 +1188,236 @@ export class EventStatsResponse {
 
   @ApiProperty({ type: EventStatsQualification })
   qualification: EventStatsQualification;
+}
+
+class FraudQueueProjectUserResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty({ type: String, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastName: string | null;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  slackUserId: string | null;
+
+  @ApiProperty()
+  isFraud: boolean;
+
+  @ApiProperty()
+  isSus: boolean;
+}
+
+export class FraudQueueProjectResponse {
+  @ApiProperty()
+  projectId: number;
+
+  @ApiProperty()
+  projectTitle: string;
+
+  @ApiProperty()
+  projectType: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  repoUrl: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  playableUrl: string | null;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  latestSubmissionCreatedAt: Date | null;
+
+  @ApiProperty()
+  submissionCount: number;
+
+  @ApiProperty({ type: String, nullable: true })
+  latestSubmissionStatus: string | null;
+
+  // Joe fields ----
+  @ApiProperty({ type: String, nullable: true })
+  joeProjectId: string | null;
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  joeFraudPassed: boolean | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  joeFraudReviewedAt: Date | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  joeTrustScore: number | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  joeJustification: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  joeOutcomeStatus: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  joeOutcomeReason: string | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  joeOutcomeRecordedAt: Date | null;
+
+  // ms waiting on Joe specifically — for pending: now - latestSubmissionCreatedAt; for resolved: joeFraudReviewedAt - latestSubmissionCreatedAt.
+  @ApiProperty({ type: Number, nullable: true })
+  fraudQueueWaitMs: number | null;
+
+  // ms since project was first created.
+  @ApiProperty()
+  overallWaitMs: number;
+
+  // For "Not submitted" projects: the most recent fraud_enqueue_failed reason
+  // (HTTP status + body, or thrown error message). Null when the project did
+  // reach Joe, or when no failure has been logged yet.
+  @ApiProperty({ type: String, nullable: true })
+  notSubmittedReason: string | null;
+
+  @ApiProperty({ type: FraudQueueProjectUserResponse })
+  user: FraudQueueProjectUserResponse;
+}
+
+export class FraudQueueStatsResponse {
+  @ApiProperty()
+  enabled: boolean;
+
+  @ApiProperty()
+  totalProjects: number;
+
+  @ApiProperty()
+  pendingCount: number;
+
+  @ApiProperty()
+  passedCount: number;
+
+  @ApiProperty()
+  failedCount: number;
+
+  @ApiProperty()
+  notSubmittedCount: number;
+
+  @ApiProperty({ type: Number, nullable: true })
+  avgResolvedFraudWaitMs: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  medianResolvedFraudWaitMs: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  longestPendingFraudWaitMs: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  avgTrustScore: number | null;
+}
+
+export class FraudQueueResponse {
+  @ApiProperty({ type: FraudQueueStatsResponse })
+  stats: FraudQueueStatsResponse;
+
+  @ApiProperty({ type: [FraudQueueProjectResponse] })
+  inQueue: FraudQueueProjectResponse[];
+
+  @ApiProperty({ type: [FraudQueueProjectResponse] })
+  notInQueue: FraudQueueProjectResponse[];
+}
+
+export class LedgerEntryUserSummary {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+}
+
+export class LedgerEntryItemSummary {
+  @ApiProperty()
+  itemId: number;
+
+  @ApiProperty()
+  name: string;
+}
+
+export class LedgerEntryEventSummary {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  title: string;
+}
+
+export class LedgerEntryResponse {
+  @ApiProperty()
+  transactionId: number;
+
+  @ApiProperty({
+    enum: ['ShopItem', 'EventRsvp', 'EventTicket'],
+  })
+  kind: 'ShopItem' | 'EventRsvp' | 'EventTicket';
+
+  @ApiProperty()
+  itemDescription: string;
+
+  @ApiProperty()
+  cost: number;
+
+  @ApiProperty()
+  isFulfilled: boolean;
+
+  @ApiProperty({ type: Date, nullable: true })
+  fulfilledAt: Date | null;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty({ type: LedgerEntryUserSummary })
+  user: LedgerEntryUserSummary;
+
+  @ApiProperty({ type: LedgerEntryItemSummary, nullable: true })
+  item: LedgerEntryItemSummary | null;
+
+  @ApiProperty({ type: LedgerEntryEventSummary, nullable: true })
+  event: LedgerEntryEventSummary | null;
+}
+
+export class LedgerSummaryResponse {
+  @ApiProperty()
+  totalCount: number;
+
+  @ApiProperty()
+  totalSpent: number;
+
+  @ApiProperty()
+  shopCount: number;
+
+  @ApiProperty()
+  rsvpCount: number;
+
+  @ApiProperty()
+  ticketCount: number;
+}
+
+export class LedgerResponse {
+  @ApiProperty({ type: [LedgerEntryResponse] })
+  entries: LedgerEntryResponse[];
+
+  @ApiProperty({ type: LedgerSummaryResponse })
+  summary: LedgerSummaryResponse;
 }

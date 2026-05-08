@@ -31,6 +31,18 @@ export class EventResponse {
   @ApiProperty()
   hourCost: number;
 
+  @ApiProperty({ type: Number, nullable: true })
+  rsvpCost: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  ticketCost: number | null;
+
+  @ApiProperty()
+  rsvpEnabled: boolean;
+
+  @ApiProperty()
+  ticketEnabled: boolean;
+
   @ApiProperty()
   isActive: boolean;
 
@@ -100,4 +112,55 @@ export class PinnedEventResponse {
 export class RemovedEventResponse {
   @ApiProperty()
   removed: boolean;
+}
+
+export class TicketStatusResponse {
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty({ type: Number, nullable: true })
+  rsvpCost: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  ticketCost: number | null;
+
+  @ApiProperty()
+  hasRsvp: boolean;
+
+  @ApiProperty()
+  hasTicket: boolean;
+
+  @ApiProperty()
+  balance: number;
+}
+
+export class TicketTransactionResponse {
+  @ApiProperty()
+  transactionId: number;
+
+  @ApiProperty()
+  newBalance: number;
+}
+
+export class AttendeeResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+
+  @ApiProperty({ type: Date, nullable: true })
+  rsvpAt: Date | null;
+
+  @ApiProperty({ type: Date, nullable: true })
+  ticketAt: Date | null;
+
+  @ApiProperty()
+  totalSpent: number;
 }

@@ -28,4 +28,15 @@ export class HackatimeProjectsInfoResponse {
     nullable: true,
   })
   lastSubmittedHours: number | null;
+
+  @ApiProperty({
+    description:
+      'Consecutive days the user has logged >=1 hour on linked Hackatime projects, with timezone-aware lazy decay applied',
+  })
+  currentStreak: number;
+
+  @ApiProperty({
+    description: 'Longest streak ever achieved by the user',
+  })
+  longestStreak: number;
 }

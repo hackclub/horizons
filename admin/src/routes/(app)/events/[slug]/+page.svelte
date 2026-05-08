@@ -28,6 +28,10 @@
 			startDate: string;
 			endDate: string;
 			hourCost: number;
+			rsvpCost: number | null;
+			ticketCost: number | null;
+			rsvpEnabled: boolean;
+			ticketEnabled: boolean;
 			isActive: boolean;
 		};
 		pinnedCount: number;
@@ -76,8 +80,25 @@
 		startDate: '',
 		endDate: '',
 		hourCost: '',
+		rsvpCost: '',
+		ticketCost: '',
+		rsvpEnabled: false,
+		ticketEnabled: false,
 		isActive: true,
 	});
+
+	interface AttendeeRow {
+		userId: number;
+		email: string;
+		firstName: string;
+		lastName: string;
+		rsvpAt: string | null;
+		ticketAt: string | null;
+		totalSpent: number;
+	}
+	let attendees = $state<AttendeeRow[]>([]);
+	let attendeesLoading = $state(false);
+	let attendeesError = $state<string | null>(null);
 
 	let pinnedChartEl = $state<HTMLDivElement | null>(null);
 	let dauChartEl = $state<HTMLDivElement | null>(null);
@@ -85,8 +106,24 @@
 	let qualificationMode = $state<QualificationMode>('approved');
 
 	onMount(async () => {
-		await Promise.all([loadStats(), loadEventConfigs()]);
+		await Promise.all([loadStats(), loadEventConfigs(), loadAttendees()]);
 	});
+
+	async function loadAttendees() {
+		attendeesLoading = true;
+		attendeesError = null;
+		try {
+			const resp = await fetch(`/api/events/admin/${slug}/attendees`, {
+				credentials: 'include',
+			});
+			if (!resp.ok) throw new Error('Failed to load attendees');
+			attendees = await resp.json();
+		} catch (err) {
+			attendeesError = err instanceof Error ? err.message : 'Failed to load';
+		} finally {
+			attendeesLoading = false;
+		}
+	}
 
 	onDestroy(() => {
 		charts.forEach((c) => c.dispose());
@@ -129,6 +166,10 @@
 			startDate: e.startDate ? new Date(e.startDate).toISOString().slice(0, 10) : '',
 			endDate: e.endDate ? new Date(e.endDate).toISOString().slice(0, 10) : '',
 			hourCost: String(e.hourCost),
+			rsvpCost: e.rsvpCost === null || e.rsvpCost === undefined ? '' : String(e.rsvpCost),
+			ticketCost: e.ticketCost === null || e.ticketCost === undefined ? '' : String(e.ticketCost),
+			rsvpEnabled: !!e.rsvpEnabled,
+			ticketEnabled: !!e.ticketEnabled,
 			isActive: e.isActive,
 		};
 	}
@@ -137,23 +178,30 @@
 		if (!stats) return;
 		saving = true;
 		try {
+			const body = {
+				title: editForm.title,
+				description: editForm.description || undefined,
+				imageUrl: editForm.imageUrl || undefined,
+				location: editForm.location || undefined,
+				country: editForm.country || undefined,
+				startDate: editForm.startDate || undefined,
+				endDate: editForm.endDate || undefined,
+				hourCost: parseFloat(editForm.hourCost),
+				rsvpCost: editForm.rsvpCost === '' ? null : parseFloat(editForm.rsvpCost),
+				ticketCost: editForm.ticketCost === '' ? null : parseFloat(editForm.ticketCost),
+				rsvpEnabled: editForm.rsvpCost === '' ? false : editForm.rsvpEnabled,
+				ticketEnabled: editForm.ticketCost === '' ? false : editForm.ticketEnabled,
+				isActive: editForm.isActive,
+			};
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const { error: err } = await api.PUT('/api/events/admin/{slug}', {
 				params: { path: { slug: stats.event.slug } },
-				body: {
-					title: editForm.title,
-					description: editForm.description || undefined,
-					imageUrl: editForm.imageUrl || undefined,
-					location: editForm.location || undefined,
-					country: editForm.country || undefined,
-					startDate: editForm.startDate || undefined,
-					endDate: editForm.endDate || undefined,
-					hourCost: parseFloat(editForm.hourCost),
-					isActive: editForm.isActive,
-				},
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				body: body as any,
 			});
 			if (!err) {
 				editing = false;
-				await loadStats();
+				await Promise.all([loadStats(), loadAttendees()]);
 			}
 		} finally {
 			saving = false;
@@ -409,6 +457,46 @@
 				{/if}
 			</div>
 
+			<!-- Attendees -->
+			<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+				<div class="mb-3 flex items-center justify-between">
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Attendees ({attendees.length})</p>
+					<Button onclick={loadAttendees} disabled={attendeesLoading}>
+						{attendeesLoading ? 'Refreshing…' : 'Refresh'}
+					</Button>
+				</div>
+				{#if attendeesError}
+					<p class="text-sm text-ds-red">{attendeesError}</p>
+				{:else if attendees.length === 0}
+					<p class="text-sm text-ds-text-secondary">No RSVPs or tickets yet.</p>
+				{:else}
+					<div class="overflow-x-auto">
+						<table class="w-full text-sm">
+							<thead>
+								<tr class="border-b border-ds-border text-left text-[11px] uppercase tracking-wide text-ds-text-secondary">
+									<th class="py-2 pr-4 font-semibold">Name</th>
+									<th class="py-2 pr-4 font-semibold">Email</th>
+									<th class="py-2 pr-4 font-semibold">RSVP at</th>
+									<th class="py-2 pr-4 font-semibold">Ticket at</th>
+									<th class="py-2 pr-4 font-semibold text-right">Spent</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each attendees as a (a.userId)}
+									<tr class="border-b border-ds-border/60">
+										<td class="py-2 pr-4 text-ds-text">{a.firstName} {a.lastName}</td>
+										<td class="py-2 pr-4 text-ds-text-secondary">{a.email}</td>
+										<td class="py-2 pr-4 text-ds-text-secondary">{a.rsvpAt ? formatDate(a.rsvpAt) : '—'}</td>
+										<td class="py-2 pr-4 text-ds-text-secondary">{a.ticketAt ? formatDate(a.ticketAt) : '—'}</td>
+										<td class="py-2 pr-4 text-right text-ds-text">{a.totalSpent}h</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
+			</div>
+
 			<!-- Edit form -->
 			{#if editing}
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-6 shadow-[var(--color-ds-shadow)] space-y-4">
@@ -439,8 +527,24 @@
 							<TextField id="edit-end" type="date" bind:value={editForm.endDate} />
 						</div>
 						<div class="space-y-1">
-							<label class="text-sm font-medium text-ds-text-secondary" for="edit-cost">Hour Cost</label>
+							<label class="text-sm font-medium text-ds-text-secondary" for="edit-cost">Hour Goal</label>
 							<TextField id="edit-cost" type="number" bind:value={editForm.hourCost} />
+						</div>
+						<div class="space-y-1">
+							<label class="text-sm font-medium text-ds-text-secondary" for="edit-rsvp-cost">RSVP Cost (hours)</label>
+							<TextField id="edit-rsvp-cost" type="number" placeholder="Leave blank for free / no RSVP flow" bind:value={editForm.rsvpCost} />
+							<label class="flex items-center gap-2 pt-1 text-xs text-ds-text-secondary" class:opacity-50={editForm.rsvpCost === ''}>
+								<Checkbox bind:checked={editForm.rsvpEnabled} disabled={editForm.rsvpCost === ''} />
+								RSVPs open for purchase
+							</label>
+						</div>
+						<div class="space-y-1">
+							<label class="text-sm font-medium text-ds-text-secondary" for="edit-ticket-cost">Full Ticket Cost (hours)</label>
+							<TextField id="edit-ticket-cost" type="number" placeholder="Leave blank for RSVP-only" bind:value={editForm.ticketCost} />
+							<label class="flex items-center gap-2 pt-1 text-xs text-ds-text-secondary" class:opacity-50={editForm.ticketCost === ''}>
+								<Checkbox bind:checked={editForm.ticketEnabled} disabled={editForm.ticketCost === ''} />
+								Tickets open for purchase
+							</label>
 						</div>
 						<div class="flex items-center gap-2 pt-6">
 							<Checkbox id="edit-active" bind:checked={editForm.isActive} />

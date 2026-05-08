@@ -51,6 +51,8 @@ import {
   EventStatsResponse,
   ImportCsvResponse,
   ProjectOwnerHackatimeProjectsResponse,
+  FraudQueueResponse,
+  LedgerResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -182,6 +184,14 @@ export class AdminController {
     return this.adminService.getTotals();
   }
 
+  @Get('fraud-queue')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: FraudQueueResponse })
+  async getFraudQueue() {
+    return this.adminService.getFraudQueue();
+  }
+
   @Get('stats')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin, Role.EventViewer)
@@ -208,6 +218,22 @@ export class AdminController {
     return { results };
   }
 
+  @Post('streaks/backfill')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiCreatedResponse({ type: BackfillResponse })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days to backfill (default 14, max 30)' })
+  async backfillStreaks(@Query('days') days?: string) {
+    const requested = Math.max(1, Math.min(30, parseInt(days || '14', 10) || 14));
+    const end = new Date();
+    end.setUTCDate(end.getUTCDate() - 1);
+    end.setUTCHours(0, 0, 0, 0);
+    const start = new Date(end);
+    start.setUTCDate(start.getUTCDate() - (requested - 1));
+    const results = await this.metricsSnapshotService.backfill(start, end, false);
+    return { results };
+  }
+
   @Get('events/:slug/stats')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin, Role.EventViewer)
@@ -216,6 +242,33 @@ export class AdminController {
     const stats = await this.adminService.getEventStats(slug);
     if (!stats) throw new NotFoundException('Event not found');
     return stats;
+  }
+
+  @Get('transactions')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiQuery({ name: 'kind', required: false, enum: ['ShopItem', 'EventRsvp', 'EventTicket'] })
+  @ApiQuery({ name: 'userId', required: false, type: Number })
+  @ApiQuery({ name: 'fulfilled', required: false, type: Boolean })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiOkResponse({ type: LedgerResponse })
+  async getTransactionLedger(
+    @Query('kind') kind?: 'ShopItem' | 'EventRsvp' | 'EventTicket',
+    @Query('userId') userId?: string,
+    @Query('fulfilled') fulfilled?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getTransactionLedger({
+      kind,
+      userId: userId ? parseInt(userId, 10) : undefined,
+      fulfilled:
+        fulfilled === 'true'
+          ? true
+          : fulfilled === 'false'
+            ? false
+            : undefined,
+      limit: limit ? Math.min(parseInt(limit, 10), 2000) : undefined,
+    });
   }
 
   @Get('reviewer-leaderboard')

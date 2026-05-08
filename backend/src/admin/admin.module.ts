@@ -6,9 +6,19 @@ import { PrismaService } from '../prisma.service';
 import { SlackModule } from '../slack/slack.module';
 import { ManifestModule } from '../manifest/manifest.module';
 import { MetricsModule } from '../metrics/metrics.module';
+import { FraudReviewModule } from '../fraud-review/fraud-review.module';
+import { StreakModule } from '../streaks/streak.module';
+import { HackatimeModule } from '../hackatime/hackatime.module';
 
 @Module({
-  imports: [SlackModule, ManifestModule, MetricsModule],
+  imports: [
+    SlackModule,
+    ManifestModule,
+    MetricsModule,
+    FraudReviewModule,
+    StreakModule,
+    HackatimeModule,
+  ],
   controllers: [AdminController],
   providers: [AdminService, MetricsSnapshotService, PrismaService],
 })

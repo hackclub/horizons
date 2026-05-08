@@ -104,7 +104,12 @@ export class SlackService {
 
   async getSlackUserInfo(
     slackUserId: string,
-  ): Promise<{ displayName: string; email: string | null } | null> {
+  ): Promise<{
+    displayName: string;
+    email: string | null;
+    tz: string | null;
+    tzLabel: string | null;
+  } | null> {
     if (!this.botToken || !slackUserId) {
       return null;
     }
@@ -135,6 +140,8 @@ export class SlackService {
           data.user?.name ||
           'Unknown',
         email: data.user?.profile?.email || null,
+        tz: typeof data.user?.tz === 'string' ? data.user.tz : null,
+        tzLabel: typeof data.user?.tz_label === 'string' ? data.user.tz_label : null,
       };
     } catch (error) {
       console.error('Error fetching Slack user info:', error);
@@ -142,10 +149,15 @@ export class SlackService {
     }
   }
 
-  async getUsername(slackUserId: string): Promise<string | null> {
-    if (!this.botToken || !slackUserId) {
-      return null;
-    }
+  async getSlackUserTimezone(slackUserId: string): Promise<string | null> {
+    const info = await this.getSlackUserInfo(slackUserId);
+    return info?.tz ?? null;
+  }
+
+  private async fetchDisplayNameFromSlack(
+    slackUserId: string,
+  ): Promise<string | null> {
+    if (!this.botToken) return null;
 
     try {
       const response = await fetch(
@@ -162,30 +174,122 @@ export class SlackService {
       const data = await response.json();
 
       if (!data.ok) {
-        console.error('Failed to fetch Slack username:', data.error);
+        console.error('Failed to fetch Slack display name:', data.error);
         return null;
       }
 
-      return data.user?.name ?? null;
+      return (
+        data.user?.profile?.display_name ||
+        data.user?.profile?.real_name ||
+        data.user?.name ||
+        null
+      );
     } catch (error) {
-      console.error('Error fetching Slack username:', error);
+      console.error('Error fetching Slack display name:', error);
       return null;
     }
   }
 
-  async getUsernames(slackUserIds: string[]): Promise<Map<string, string>> {
-    const results = await Promise.allSettled(
-      slackUserIds.map(async (id) => ({
+  /**
+   * Force-refresh the cached Slack display name for a user, bypassing the
+   * cache. Used on login so a user's current Slack profile name is reflected
+   * in admin/reviewer views without waiting for the cached entry to expire.
+   */
+  async refreshDisplayName(slackUserId: string): Promise<string | null> {
+    if (!slackUserId) return null;
+
+    const name = await this.fetchDisplayNameFromSlack(slackUserId);
+    if (!name) return null;
+
+    await this.prisma.user
+      .update({
+        where: { slackUserId },
+        data: { slackUsername: name },
+      })
+      .catch((err) => {
+        console.error('Failed to refresh Slack display name:', err);
+      });
+
+    return name;
+  }
+
+  async getDisplayName(slackUserId: string): Promise<string | null> {
+    if (!slackUserId) return null;
+
+    const cached = await this.prisma.user.findUnique({
+      where: { slackUserId },
+      select: { slackUsername: true },
+    });
+
+    if (cached?.slackUsername) return cached.slackUsername;
+
+    const name = await this.fetchDisplayNameFromSlack(slackUserId);
+    if (!name) return null;
+
+    if (cached) {
+      await this.prisma.user
+        .update({
+          where: { slackUserId },
+          data: { slackUsername: name },
+        })
+        .catch((err) => {
+          console.error('Failed to cache Slack display name:', err);
+        });
+    }
+
+    return name;
+  }
+
+  async getDisplayNames(
+    slackUserIds: string[],
+  ): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    if (slackUserIds.length === 0) return map;
+
+    const cachedUsers = await this.prisma.user.findMany({
+      where: { slackUserId: { in: slackUserIds } },
+      select: { slackUserId: true, slackUsername: true },
+    });
+
+    const inDb = new Set<string>();
+    for (const u of cachedUsers) {
+      if (!u.slackUserId) continue;
+      inDb.add(u.slackUserId);
+      if (u.slackUsername) map.set(u.slackUserId, u.slackUsername);
+    }
+
+    const missing = slackUserIds.filter((id) => !map.has(id));
+    if (missing.length === 0) return map;
+
+    const fetched = await Promise.allSettled(
+      missing.map(async (id) => ({
         id,
-        name: await this.getUsername(id),
+        name: await this.fetchDisplayNameFromSlack(id),
       })),
     );
-    const map = new Map<string, string>();
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value.name) {
-        map.set(result.value.id, result.value.name);
+
+    const updates: Array<{ id: string; name: string }> = [];
+    for (const result of fetched) {
+      if (result.status !== 'fulfilled' || !result.value.name) continue;
+      map.set(result.value.id, result.value.name);
+      if (inDb.has(result.value.id)) {
+        updates.push({ id: result.value.id, name: result.value.name });
       }
     }
+
+    if (updates.length > 0) {
+      await Promise.allSettled(
+        updates.map((u) =>
+          this.prisma.user.update({
+            where: { slackUserId: u.id },
+            data: { slackUsername: u.name },
+          }),
+        ),
+      ).catch((err) => {
+        console.error('Failed to cache Slack display names:', err);
+      });
+    }
+
     return map;
   }
 
@@ -456,7 +560,11 @@ export class SlackService {
       return { success: false, error: 'User has no linked Slack account' };
     }
 
-    const projectUrl = `${process.env.FRONTEND_URL || 'https://horizons.hackclub.com'}/app/projects/${data.projectId}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://horizons.hackclub.com';
+    const baseUrl = /^https?:\/\//.test(frontendUrl)
+      ? frontendUrl
+      : `https://${frontendUrl}`;
+    const projectUrl = `${baseUrl}/app/projects/${data.projectId}`;
 
     const blocks: SlackMessageBlock[] = [
       {

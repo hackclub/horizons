@@ -82,31 +82,40 @@ export class FraudReviewService {
   async submitProject(payload: SubmitProjectPayload): Promise<string | null> {
     if (!this.enabled) return null;
 
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/events/${this.eventId}/projects`,
-        {
-          method: 'POST',
-          headers: this.authHeaders(),
-          body: JSON.stringify(payload),
-        },
-      );
+    const response = await fetch(
+      `${this.baseUrl}/events/${this.eventId}/projects`,
+      {
+        method: 'POST',
+        headers: this.authHeaders(),
+        body: JSON.stringify(payload),
+      },
+    );
 
-      const data = (await response.json()) as { id?: string };
+    const data = (await response.json()) as { id?: string };
 
-      if (!response.ok && response.status !== 200) {
-        this.logger.error(
-          `Fraud review submit failed (${response.status}): ${JSON.stringify(data)}`,
-        );
-        return null;
-      }
-
-      // 201 = created, 200 = already exists (deduplicated by organizerPlatformId)
-      return data.id ?? null;
-    } catch (error) {
-      this.logger.error('Fraud review submit request threw', error);
-      return null;
+    if (!response.ok && response.status !== 200) {
+      const body = JSON.stringify(data);
+      this.logger.error(`Fraud review submit failed (${response.status}): ${body}`);
+      // Throw so submitAndPersist's catch records a fraud_enqueue_failed audit
+      // entry with the upstream reason. Returning null here would silently drop
+      // the project into "Not submitted" state with no recorded explanation.
+      throw new Error(`Joe ${response.status}: ${body}`);
     }
+
+    // 201 = created, 200 = already exists (deduplicated by organizerPlatformId).
+    // Joe must echo back the id in either case; a 2xx without an id is a
+    // protocol-level failure. Throw so submitAndPersist records an audit entry
+    // — otherwise the project stays joeProjectId=null with no recorded reason
+    // and the poll tick re-attempts forever in silence.
+    if (!data.id) {
+      const body = JSON.stringify(data);
+      this.logger.error(
+        `Fraud review accepted (${response.status}) but response had no id: ${body}`,
+      );
+      throw new Error(`Joe ${response.status} ok but no id: ${body}`);
+    }
+
+    return data.id;
   }
 
   /**
@@ -279,12 +288,16 @@ export class FraudReviewService {
     const tickStartedAt = Date.now();
     this.logger.log('poll tick start');
 
-    // Step 1: submit any projects that never got sent to fraud review
+    // Step 1: submit any projects that never got sent to fraud review.
+    // Don't gate on the latest submission still being pending — even when a
+    // reviewer rejected before Joe could weigh in, we want Joe's verdict
+    // recorded against the project so a future resubmission can use the
+    // reuseFraud / preDeterminedFraud paths instead of starting from scratch.
     const unsubmittedProjects = await this.prisma.project.findMany({
       where: {
         joeProjectId: null,
         joeFraudPassed: null,
-        submissions: { some: { approvalStatus: 'pending' } },
+        submissions: { some: {} },
       },
       select: { projectId: true },
     });

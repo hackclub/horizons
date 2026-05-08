@@ -569,6 +569,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/fraud-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getFraudQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats": {
         parameters: {
             query?: never;
@@ -601,6 +617,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/streaks/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_backfillStreaks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/events/{slug}/stats": {
         parameters: {
             query?: never;
@@ -609,6 +641,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AdminController_getEventStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getTransactionLedger"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1316,14 +1364,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/shop/{slug}/items": {
+    "/api/shop/items": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["ShopController_getItems"];
+        get: operations["ShopController_getAllPublicItems"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1332,14 +1380,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/shop/{slug}/items/{id}": {
+    "/api/shop/items/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["ShopController_getItem"];
+        get: operations["ShopController_getItemById"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1588,6 +1636,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/events/admin/{slug}/attendees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsAdminController_getAttendees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events/auth/pinned-event": {
         parameters: {
             query?: never;
@@ -1599,6 +1663,54 @@ export interface paths {
         put?: never;
         post: operations["EventsAuthController_setPinnedEvent"];
         delete: operations["EventsAuthController_removePinnedEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/auth/{slug}/ticket-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsAuthController_getTicketStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/auth/{slug}/rsvp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsAuthController_rsvpToEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/auth/{slug}/ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsAuthController_upgradeToTicket"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1748,6 +1860,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/streaks/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StreakController_getLeaderboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/utils/check-url": {
         parameters: {
             query?: never;
@@ -1789,6 +1917,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["GitHubController_getReadme"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/referral": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a user's referral code and referral count by Slack ID */
+        get: operations["IntegrationsController_getReferral"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1984,6 +2129,10 @@ export interface components {
             };
             /** @description Hours tallied at the time of the last submission; null if never submitted */
             lastSubmittedHours?: number | null;
+            /** @description Consecutive days the user has logged >=1 hour on linked Hackatime projects, with timezone-aware lazy decay applied */
+            currentStreak: number;
+            /** @description Longest streak ever achieved by the user */
+            longestStreak: number;
         };
         DeleteProjectResponse: {
             deleted: boolean;
@@ -2009,6 +2158,11 @@ export interface components {
             referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
+            timezone: string | null;
+            currentStreak: number;
+            longestStreak: number;
+            /** Format: date */
+            lastActiveDate: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2084,6 +2238,11 @@ export interface components {
             referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
+            timezone: string | null;
+            currentStreak: number;
+            longestStreak: number;
+            /** Format: date */
+            lastActiveDate: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2231,6 +2390,11 @@ export interface components {
             referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
+            timezone: string | null;
+            currentStreak: number;
+            longestStreak: number;
+            /** Format: date */
+            lastActiveDate: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2247,6 +2411,61 @@ export interface components {
         };
         AdminMetricsResponse: {
             totals: components["schemas"]["MetricsTotals"];
+        };
+        FraudQueueStatsResponse: {
+            enabled: boolean;
+            totalProjects: number;
+            pendingCount: number;
+            passedCount: number;
+            failedCount: number;
+            notSubmittedCount: number;
+            avgResolvedFraudWaitMs: number | null;
+            medianResolvedFraudWaitMs: number | null;
+            longestPendingFraudWaitMs: number | null;
+            avgTrustScore: number | null;
+        };
+        FraudQueueProjectUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+            slackUserId: string | null;
+            isFraud: boolean;
+            isSus: boolean;
+        };
+        FraudQueueProjectResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            repoUrl: string | null;
+            playableUrl: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            latestSubmissionCreatedAt: string | null;
+            submissionCount: number;
+            latestSubmissionStatus: string | null;
+            joeProjectId: string | null;
+            joeFraudPassed: boolean | null;
+            /** Format: date-time */
+            joeFraudReviewedAt: string | null;
+            joeTrustScore: number | null;
+            joeJustification: string | null;
+            joeOutcomeStatus: string | null;
+            joeOutcomeReason: string | null;
+            /** Format: date-time */
+            joeOutcomeRecordedAt: string | null;
+            fraudQueueWaitMs: number | null;
+            overallWaitMs: number;
+            notSubmittedReason: string | null;
+            user: components["schemas"]["FraudQueueProjectUserResponse"];
+        };
+        FraudQueueResponse: {
+            stats: components["schemas"]["FraudQueueStatsResponse"];
+            inQueue: components["schemas"]["FraudQueueProjectResponse"][];
+            notInQueue: components["schemas"]["FraudQueueProjectResponse"][];
         };
         StatsFunnel: {
             totalUsers: number;
@@ -2425,6 +2644,47 @@ export interface components {
             pinnedTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
             dauTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
             qualification: components["schemas"]["EventStatsQualification"];
+        };
+        LedgerEntryUserSummary: {
+            userId: number;
+            email: string;
+            firstName: string;
+            lastName: string;
+        };
+        LedgerEntryItemSummary: {
+            itemId: number;
+            name: string;
+        };
+        LedgerEntryEventSummary: {
+            eventId: number;
+            slug: string;
+            title: string;
+        };
+        LedgerEntryResponse: {
+            transactionId: number;
+            /** @enum {string} */
+            kind: "ShopItem" | "EventRsvp" | "EventTicket";
+            itemDescription: string;
+            cost: number;
+            isFulfilled: boolean;
+            /** Format: date-time */
+            fulfilledAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            user: components["schemas"]["LedgerEntryUserSummary"];
+            item: components["schemas"]["LedgerEntryItemSummary"] | null;
+            event: components["schemas"]["LedgerEntryEventSummary"] | null;
+        };
+        LedgerSummaryResponse: {
+            totalCount: number;
+            totalSpent: number;
+            shopCount: number;
+            rsvpCount: number;
+            ticketCount: number;
+        };
+        LedgerResponse: {
+            entries: components["schemas"]["LedgerEntryResponse"][];
+            summary: components["schemas"]["LedgerSummaryResponse"];
         };
         ReviewerLeaderboardEntry: {
             reviewerId: string;
@@ -2885,6 +3145,7 @@ export interface components {
         ShopItemResponse: {
             itemId: number;
             shopId: number;
+            shopSlug: string;
             name: string;
             description: string | null;
             imageUrl: string | null;
@@ -2974,6 +3235,7 @@ export interface components {
             maxPerUser?: number;
         };
         UpdateItemDto: {
+            shopId?: number;
             name?: string;
             description?: string;
             imageUrl?: string;
@@ -3045,6 +3307,10 @@ export interface components {
             /** Format: date-time */
             endDate: string | null;
             hourCost: number;
+            rsvpCost: number | null;
+            ticketCost: number | null;
+            rsvpEnabled: boolean;
+            ticketEnabled: boolean;
             isActive: boolean;
             /** Format: date-time */
             createdAt: string;
@@ -3064,6 +3330,10 @@ export interface components {
             startDate: string;
             endDate: string;
             hourCost: number;
+            rsvpCost?: number;
+            ticketCost?: number;
+            rsvpEnabled?: boolean;
+            ticketEnabled?: boolean;
             isActive?: boolean;
         };
         EventResponse: {
@@ -3079,6 +3349,10 @@ export interface components {
             /** Format: date-time */
             endDate: string | null;
             hourCost: number;
+            rsvpCost: number | null;
+            ticketCost: number | null;
+            rsvpEnabled: boolean;
+            ticketEnabled: boolean;
             isActive: boolean;
             /** Format: date-time */
             createdAt: string;
@@ -3095,11 +3369,26 @@ export interface components {
             startDate?: string;
             endDate?: string;
             hourCost?: number;
+            rsvpCost?: number | null;
+            ticketCost?: number | null;
+            rsvpEnabled?: boolean;
+            ticketEnabled?: boolean;
             isActive?: boolean;
         };
         DeleteEventResponse: {
             deleted: boolean;
             slug: string;
+        };
+        AttendeeResponse: {
+            userId: number;
+            email: string;
+            firstName: string;
+            lastName: string;
+            /** Format: date-time */
+            rsvpAt: string | null;
+            /** Format: date-time */
+            ticketAt: string | null;
+            totalSpent: number;
         };
         PinnedEventDetailResponse: {
             eventId: number;
@@ -3123,6 +3412,18 @@ export interface components {
         };
         RemovedEventResponse: {
             removed: boolean;
+        };
+        TicketStatusResponse: {
+            slug: string;
+            rsvpCost: number | null;
+            ticketCost: number | null;
+            hasRsvp: boolean;
+            hasTicket: boolean;
+            balance: number;
+        };
+        TicketTransactionResponse: {
+            transactionId: number;
+            newBalance: number;
         };
         CommunityEventResponse: {
             communityEventId: string;
@@ -3231,6 +3532,14 @@ export interface components {
             droppedMembers: string[];
             memberCount: number;
         };
+        StreakLeaderboardEntry: {
+            /** @description Rank starting at 1 */
+            rank: number;
+            /** @description Slack display name for the user */
+            displayName: string;
+            /** @description Current consecutive-day Hackatime streak */
+            currentStreak: number;
+        };
         UrlCheckResponse: {
             /** @description Whether the URL is reachable */
             ok: boolean;
@@ -3271,6 +3580,12 @@ export interface components {
         };
         ReadmeResponse: {
             content?: string | null;
+        };
+        ReferralResponse: {
+            /** @description The user's referral code */
+            referralCode: string | null;
+            /** @description Number of users this user has referred */
+            referralCount: number;
         };
     };
     responses: never;
@@ -4153,6 +4468,25 @@ export interface operations {
             };
         };
     };
+    AdminController_getFraudQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FraudQueueResponse"];
+                };
+            };
+        };
+    };
     AdminController_getStats: {
         parameters: {
             query?: never;
@@ -4195,6 +4529,28 @@ export interface operations {
             };
         };
     };
+    AdminController_backfillStreaks: {
+        parameters: {
+            query?: {
+                /** @description Days to backfill (default 14, max 30) */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackfillResponse"];
+                };
+            };
+        };
+    };
     AdminController_getEventStats: {
         parameters: {
             query?: never;
@@ -4212,6 +4568,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventStatsResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getTransactionLedger: {
+        parameters: {
+            query?: {
+                kind?: "ShopItem" | "EventRsvp" | "EventTicket";
+                userId?: number;
+                fulfilled?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerResponse"];
                 };
             };
         };
@@ -5225,13 +5605,11 @@ export interface operations {
             };
         };
     };
-    ShopController_getItems: {
+    ShopController_getAllPublicItems: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                slug: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5246,12 +5624,11 @@ export interface operations {
             };
         };
     };
-    ShopController_getItem: {
+    ShopController_getItemById: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -5830,6 +6207,27 @@ export interface operations {
             };
         };
     };
+    EventsAdminController_getAttendees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendeeResponse"][];
+                };
+            };
+        };
+    };
     EventsAuthController_getPinnedEvent: {
         parameters: {
             query?: never;
@@ -5883,6 +6281,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RemovedEventResponse"];
+                };
+            };
+        };
+    };
+    EventsAuthController_getTicketStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketStatusResponse"];
+                };
+            };
+        };
+    };
+    EventsAuthController_rsvpToEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketTransactionResponse"];
+                };
+            };
+        };
+    };
+    EventsAuthController_upgradeToTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketTransactionResponse"];
                 };
             };
         };
@@ -6139,6 +6600,27 @@ export interface operations {
             };
         };
     };
+    StreakController_getLeaderboard: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreakLeaderboardEntry"][];
+                };
+            };
+        };
+    };
     UrlCheckController_checkUrl: {
         parameters: {
             query: {
@@ -6202,6 +6684,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadmeResponse"];
+                };
+            };
+        };
+    };
+    IntegrationsController_getReferral: {
+        parameters: {
+            query: {
+                /** @description Slack user ID (e.g. U0123ABC) */
+                slackId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralResponse"];
                 };
             };
         };
