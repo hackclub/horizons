@@ -30,6 +30,7 @@ import {
   ProjectMessageResponse,
   DeleteProjectResponse,
   HackatimeProjectsInfoResponse,
+  PublicProjectResponse,
   ShipAlertsResponse,
 } from './response';
 
@@ -37,20 +38,24 @@ import {
 @Controller('api/projects')
 @Public()
 export class ProjectsController {
-  // @Get('approved')
-  // @ApiOperation({ summary: 'Get all approved projects' })
-  // @ApiOkResponse({ type: [ProjectResponse], description: 'List of approved projects' })
-  // async getApprovedProjects() {
-  //   return this.projectsService.getApprovedProjects();
-  // }
-  // @Get('leaderboard')
-  // @ApiOperation({ summary: 'Get leaderboard' })
-  // @ApiQuery({ name: 'sortBy', required: false, enum: ['hours', 'approved'], description: 'Sort leaderboard by hours or approved hours' })
-  // @ApiOkResponse({ type: [LeaderboardEntry], description: 'Top 10 leaderboard entries' })
-  // async getLeaderboard(@Query('sortBy') sortBy?: string) {
-  //   const sortType = sortBy === 'approved' ? 'approved' : 'hours';
-  //   return this.projectsService.getLeaderboard(sortType);
-  // }
+  constructor(private projectsService: ProjectsService) {}
+
+  // NOTE: This route is intentionally registered AFTER ProjectsAuthController
+  // (see projects.module.ts) so that `/api/projects/auth` and
+  // `/api/projects/auth/:id` resolve to the auth controller first. Otherwise
+  // Express would match `:id` against the literal "auth" segment.
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Public, read-only view of a shipped project',
+  })
+  @ApiParam({ name: 'id', description: 'Project ID', type: Number })
+  @ApiOkResponse({
+    type: PublicProjectResponse,
+    description: 'Public project details',
+  })
+  async getPublicProject(@Param('id', ParseIntPipe) id: number) {
+    return this.projectsService.getPublicProject(id);
+  }
 }
 
 @ApiTags('Projects (Auth)')

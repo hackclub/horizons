@@ -255,6 +255,52 @@ export class ProjectsService {
     return this.scopeProjectForUser(project);
   }
 
+  /**
+   * Public, read-only view of a project for sharing. Returns only fields the
+   * owner has authored (title, description, links, screenshot) plus the
+   * author's name. Drafts (no submissions) and fraud-flagged projects are
+   * hidden as 404 to avoid promoting either to the public.
+   */
+  async getPublicProject(projectId: number) {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: {
+        projectId: true,
+        projectTitle: true,
+        projectType: true,
+        description: true,
+        screenshotUrl: true,
+        playableUrl: true,
+        repoUrl: true,
+        readmeUrl: true,
+        journalUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        joeFraudPassed: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+        _count: {
+          select: { submissions: true },
+        },
+      },
+    });
+
+    if (
+      !project ||
+      project._count.submissions === 0 ||
+      project.joeFraudPassed === false
+    ) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const { joeFraudPassed: _f, _count: _c, ...publicFields } = project;
+    return publicFields;
+  }
+
   async createSubmission(
     createSubmissionDto: CreateSubmissionDto,
     userId: number,

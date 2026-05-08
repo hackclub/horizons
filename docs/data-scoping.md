@@ -2,6 +2,22 @@
 
 Each role sees a different slice of the data. This document covers what's visible, what's hidden, and how the backend enforces it.
 
+## Public (no auth)
+
+A small slice of project data is exposed unauthenticated for sharing via permalinks. Only projects that have been shipped (≥ 1 submission) and have not been flagged as fraud (`joeFraudPassed === false` is hidden) are visible. See `getPublicProject()` in `backend/src/projects/projects.service.ts`.
+
+| Data | Visible | Notes |
+|------|---------|-------|
+| Project title, type, description | Yes | Author-curated content |
+| Screenshot, playable, repo, README, journal URLs | Yes | |
+| `createdAt`, `updatedAt` | Yes | |
+| Author first name + last name | Yes | No userId, no email, no Slack ID |
+| All submission state | **No** | No approval status, no review hours, no timeline |
+| `approvedHours`, `nowHackatimeHours`, hours justification | **No** | Review/work state |
+| Admin/fraud fields | **No** | Same exclusions as user-facing |
+
+Drafts (no submissions) and fraud-flagged projects return 404, identically — so a public viewer cannot distinguish "not yet shipped" from "fraud rejected".
+
 ## Users
 
 Users can only see **their own data**. All project/submission endpoints check `userId === requestingUserId` and throw `ForbiddenException` on mismatch. There are no endpoints for browsing other users' data.
@@ -158,20 +174,21 @@ const projectAdminInclude = {
 
 ## Summary Table
 
-| Data | User | Reviewer | Admin |
-|------|------|----------|-------|
-| Own profile (name, email) | Yes | — | — |
-| Own address | `hasAddress` only | — | — |
-| Other user's name | No | Yes | Yes |
-| Other user's email | No | No | Yes |
-| Other user's age | No | Yes (computed) | Yes (raw birthday) |
-| Other user's address | No | No | Yes |
-| Fraud/sus flags | No | No | Yes |
-| Admin comments | No | Read/write | Read/write |
-| Hours justification | No | Read/write | Read/write |
-| Audit logs | No | No | Yes |
-| Own projects/submissions | Yes | — | — |
-| All projects/submissions | No | Queue only | Yes |
+| Data | Public | User | Reviewer | Admin |
+|------|--------|------|----------|-------|
+| Own profile (name, email) | — | Yes | — | — |
+| Own address | — | `hasAddress` only | — | — |
+| Other user's name | First/last only, on shipped projects | No | Yes | Yes |
+| Other user's email | No | No | No | Yes |
+| Other user's age | No | No | Yes (computed) | Yes (raw birthday) |
+| Other user's address | No | No | No | Yes |
+| Fraud/sus flags | No | No | No | Yes |
+| Admin comments | No | No | Read/write | Read/write |
+| Hours justification | No | No | Read/write | Read/write |
+| Audit logs | No | No | No | Yes |
+| Own projects/submissions | — | Yes | — | — |
+| Other projects (shipped, not fraud) | Title/desc/links/screenshot only | No | Queue only | Yes |
+| All projects/submissions | No | No | Queue only | Yes |
 
 ## Guidelines for New Endpoints
 

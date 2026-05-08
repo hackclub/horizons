@@ -44,6 +44,11 @@
 		// Subscribe to store updates
 		unsubscribe = projectDetailStore.subscribe(state => {
 			detailState = state;
+			// If the caller doesn't own this project, the authed endpoints return
+			// 403. Redirect them to the public view so a shared link still works.
+			if (state.error === 'forbidden') {
+				goto(`/projects/${projectId}`, { replaceState: true });
+			}
 		});
 
 		// Fetch project details on mount or ID change

@@ -287,6 +287,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/streaks/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StreakController_getLeaderboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/auth": {
         parameters: {
             query?: never;
@@ -386,6 +402,210 @@ export interface paths {
         get: operations["ProjectsAuthController_getHackatimeProjects"];
         /** Update linked Hackatime projects */
         put: operations["ProjectsAuthController_updateHackatimeProjects"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public, read-only view of a shipped project */
+        get: operations["ProjectsController_getPublicProject"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Hackatime OAuth URL to link account */
+        get: operations["HackatimeController_getLinkUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle Hackatime OAuth callback */
+        get: operations["HackatimeController_handleCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/unlink": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unlink Hackatime account */
+        post: operations["HackatimeController_unlinkAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/projects/unlinked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get unlinked Hackatime projects for current user */
+        get: operations["HackatimeController_getUnlinkedProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/projects/linked/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get linked Hackatime projects for a specific project */
+        get: operations["HackatimeController_getLinkedProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/projects/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get all Hackatime projects for current user */
+        get: operations["HackatimeController_getAllProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/hours/total": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get total Hackatime hours since now for current user */
+        get: operations["HackatimeController_getTotalNowHackatimeHours"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/hours/approved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get total approved hours for current user */
+        get: operations["HackatimeController_getTotalApprovedHours"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/active-coders-today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get count of distinct users with project activity today */
+        get: operations["HackatimeController_getActiveCodersToday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/hours/recalculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recalculate Hackatime hours for current user */
+        post: operations["HackatimeController_recalculateNowHackatimeHours"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hackatime/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check Hackatime account status for current user */
+        get: operations["HackatimeController_checkHackatimeAccount"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1129,193 +1349,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/hackatime/link": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Hackatime OAuth URL to link account */
-        get: operations["HackatimeController_getLinkUrl"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/callback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Handle Hackatime OAuth callback */
-        get: operations["HackatimeController_handleCallback"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/unlink": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Unlink Hackatime account */
-        post: operations["HackatimeController_unlinkAccount"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/projects/unlinked": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get unlinked Hackatime projects for current user */
-        get: operations["HackatimeController_getUnlinkedProjects"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/projects/linked/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get linked Hackatime projects for a specific project */
-        get: operations["HackatimeController_getLinkedProjects"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/projects/all": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all Hackatime projects for current user */
-        get: operations["HackatimeController_getAllProjects"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/hours/total": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get total Hackatime hours since now for current user */
-        get: operations["HackatimeController_getTotalNowHackatimeHours"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/hours/approved": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get total approved hours for current user */
-        get: operations["HackatimeController_getTotalApprovedHours"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/active-coders-today": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get count of distinct users with project activity today */
-        get: operations["HackatimeController_getActiveCodersToday"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/hours/recalculate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Recalculate Hackatime hours for current user */
-        post: operations["HackatimeController_recalculateNowHackatimeHours"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/hackatime/account": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Check Hackatime account status for current user */
-        get: operations["HackatimeController_checkHackatimeAccount"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/healthcheck": {
         parameters: {
             query?: never;
@@ -1860,22 +1893,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/streaks/leaderboard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["StreakController_getLeaderboard"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/utils/check-url": {
         parameters: {
             query?: never;
@@ -1991,6 +2008,14 @@ export interface components {
         };
         ReferralsResponse: {
             referrals: components["schemas"]["ReferralUserResponse"][];
+        };
+        StreakLeaderboardEntry: {
+            /** @description Rank starting at 1 */
+            rank: number;
+            /** @description Slack display name for the user */
+            displayName: string;
+            /** @description Current consecutive-day Hackatime streak */
+            currentStreak: number;
         };
         CreateProjectDto: {
             /** @description Project title */
@@ -2137,6 +2162,85 @@ export interface components {
         DeleteProjectResponse: {
             deleted: boolean;
             projectId: number;
+        };
+        PublicProjectAuthor: {
+            /** @description Author first name */
+            firstName?: string;
+            /** @description Author last name */
+            lastName?: string;
+        };
+        PublicProjectResponse: {
+            /** @description Project ID */
+            projectId: number;
+            /** @description Project title */
+            projectTitle: string;
+            /** @description Project type */
+            projectType: string;
+            /** @description Project description */
+            description?: string;
+            /** @description Screenshot URL */
+            screenshotUrl?: string;
+            /** @description Playable / demo URL */
+            playableUrl?: string;
+            /** @description Repository URL */
+            repoUrl?: string;
+            /** @description README URL */
+            readmeUrl?: string;
+            /** @description Journal URL */
+            journalUrl?: string;
+            /** @description Creation timestamp */
+            createdAt: string;
+            /** @description Last update timestamp */
+            updatedAt: string;
+            /** @description Project author */
+            user: components["schemas"]["PublicProjectAuthor"];
+        };
+        HackatimeLinkUrlResponse: {
+            /** @description Hackatime OAuth authorization URL */
+            url: string;
+        };
+        HackatimeUnlinkResponse: {
+            message: string;
+        };
+        HackatimeProjectResponse: {
+            /** @description Project ID */
+            id: number;
+            /** @description Project name */
+            name: string;
+            /** @description Total seconds logged */
+            total_seconds?: number;
+        };
+        HackatimeProjectsResponse: {
+            /** @description List of Hackatime projects */
+            projects: components["schemas"]["HackatimeProjectResponse"][];
+        };
+        TotalNowHackatimeHoursResponse: {
+            /** @description Total Hackatime hours since now */
+            totalNowHackatimeHours: number;
+        };
+        TotalApprovedHoursResponse: {
+            /** @description Total approved hours */
+            totalApprovedHours: number;
+        };
+        ActiveCodersTodayResponse: {
+            /** @description Distinct users with project activity since start of today (UTC) */
+            count: number;
+        };
+        RecalculateHoursResponse: {
+            /** @description Whether recalculation was successful */
+            success: boolean;
+            /** @description Response message */
+            message?: string;
+        };
+        HackatimeAccountStatusResponse: {
+            /** @description User email */
+            email: string;
+            /** @description Whether a Hackatime account is linked */
+            hasHackatimeAccount: boolean;
+            /** @description Hackatime account ID */
+            hackatimeAccountId?: string | null;
+            /** @description Whether the stored access token is valid */
+            tokenValid: boolean;
         };
         AdminSubmissionProjectUserResponse: {
             userId: number;
@@ -2467,6 +2571,20 @@ export interface components {
             inQueue: components["schemas"]["FraudQueueProjectResponse"][];
             notInQueue: components["schemas"]["FraudQueueProjectResponse"][];
         };
+        StatsFunnelEventEntry: {
+            eventId: number;
+            title: string;
+            slug: string;
+            totalUsers: number;
+            hasHackatime: number;
+            createdProject: number;
+            project10PlusHours: number;
+            atLeast1Submission: number;
+            atLeast1ApprovedHour: number;
+            approved10Plus: number;
+            approved30Plus: number;
+            approved60Plus: number;
+        };
         StatsFunnel: {
             totalUsers: number;
             hasHackatime: number;
@@ -2477,6 +2595,7 @@ export interface components {
             approved10Plus: number;
             approved30Plus: number;
             approved60Plus: number;
+            perEvent: components["schemas"]["StatsFunnelEventEntry"][];
         };
         StatsUserGrowth: {
             totalUsers: number;
@@ -2591,6 +2710,11 @@ export interface components {
             growthPercent7: number;
             perEvent: components["schemas"]["StatsDauEventEntry"][];
         };
+        StatsProjectsHackatime: {
+            total: number;
+            withHackatime: number;
+            withoutHackatime: number;
+        };
         AdminStatsResponse: {
             funnel: components["schemas"]["StatsFunnel"];
             userGrowth: components["schemas"]["StatsUserGrowth"];
@@ -2600,6 +2724,7 @@ export interface components {
             utm: components["schemas"]["StatsUtm"];
             historical: components["schemas"]["StatsHistorical"];
             dau: components["schemas"]["StatsDau"];
+            projects: components["schemas"]["StatsProjectsHackatime"];
         };
         BackfillEntry: {
             date: string;
@@ -3073,53 +3198,6 @@ export interface components {
         SaveChecklistDto: {
             checkedItems: number[];
         };
-        HackatimeLinkUrlResponse: {
-            /** @description Hackatime OAuth authorization URL */
-            url: string;
-        };
-        HackatimeUnlinkResponse: {
-            message: string;
-        };
-        HackatimeProjectResponse: {
-            /** @description Project ID */
-            id: number;
-            /** @description Project name */
-            name: string;
-            /** @description Total seconds logged */
-            total_seconds?: number;
-        };
-        HackatimeProjectsResponse: {
-            /** @description List of Hackatime projects */
-            projects: components["schemas"]["HackatimeProjectResponse"][];
-        };
-        TotalNowHackatimeHoursResponse: {
-            /** @description Total Hackatime hours since now */
-            totalNowHackatimeHours: number;
-        };
-        TotalApprovedHoursResponse: {
-            /** @description Total approved hours */
-            totalApprovedHours: number;
-        };
-        ActiveCodersTodayResponse: {
-            /** @description Distinct users with project activity since start of today (UTC) */
-            count: number;
-        };
-        RecalculateHoursResponse: {
-            /** @description Whether recalculation was successful */
-            success: boolean;
-            /** @description Response message */
-            message?: string;
-        };
-        HackatimeAccountStatusResponse: {
-            /** @description User email */
-            email: string;
-            /** @description Whether a Hackatime account is linked */
-            hasHackatimeAccount: boolean;
-            /** @description Hackatime account ID */
-            hackatimeAccountId?: string | null;
-            /** @description Whether the stored access token is valid */
-            tokenValid: boolean;
-        };
         ShopResponse: {
             shopId: number;
             slug: string;
@@ -3531,14 +3609,6 @@ export interface components {
             activeMembers: string[];
             droppedMembers: string[];
             memberCount: number;
-        };
-        StreakLeaderboardEntry: {
-            /** @description Rank starting at 1 */
-            rank: number;
-            /** @description Slack display name for the user */
-            displayName: string;
-            /** @description Current consecutive-day Hackatime streak */
-            currentStreak: number;
         };
         UrlCheckResponse: {
             /** @description Whether the URL is reachable */
@@ -3954,6 +4024,27 @@ export interface operations {
             };
         };
     };
+    StreakController_getLeaderboard: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreakLeaderboardEntry"][];
+                };
+            };
+        };
+    };
     ProjectsAuthController_getUserProjects: {
         parameters: {
             query?: never;
@@ -4197,6 +4288,258 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectMessageResponse"];
+                };
+            };
+        };
+    };
+    ProjectsController_getPublicProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public project details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProjectResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_getLinkUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HackatimeLinkUrlResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_handleCallback: {
+        parameters: {
+            query: {
+                code: string;
+                state: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HackatimeController_unlinkAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HackatimeUnlinkResponse"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HackatimeUnlinkResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_getUnlinkedProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of unlinked Hackatime projects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HackatimeProjectsResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_getLinkedProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of linked Hackatime projects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HackatimeProjectsResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_getAllProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of all Hackatime projects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HackatimeProjectsResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_getTotalNowHackatimeHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Total Hackatime hours */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotalNowHackatimeHoursResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_getTotalApprovedHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Total approved hours */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotalApprovedHoursResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_getActiveCodersToday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active coders today */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveCodersTodayResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_recalculateNowHackatimeHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Hours recalculated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecalculateHoursResponse"];
+                };
+            };
+        };
+    };
+    HackatimeController_checkHackatimeAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Hackatime account status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HackatimeAccountStatusResponse"];
                 };
             };
         };
@@ -5323,235 +5666,6 @@ export interface operations {
             };
         };
     };
-    HackatimeController_getLinkUrl: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HackatimeLinkUrlResponse"];
-                };
-            };
-        };
-    };
-    HackatimeController_handleCallback: {
-        parameters: {
-            query: {
-                code: string;
-                state: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    HackatimeController_unlinkAccount: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HackatimeUnlinkResponse"];
-                };
-            };
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HackatimeUnlinkResponse"];
-                };
-            };
-        };
-    };
-    HackatimeController_getUnlinkedProjects: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of unlinked Hackatime projects */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HackatimeProjectsResponse"];
-                };
-            };
-        };
-    };
-    HackatimeController_getLinkedProjects: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Project ID */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of linked Hackatime projects */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HackatimeProjectsResponse"];
-                };
-            };
-        };
-    };
-    HackatimeController_getAllProjects: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of all Hackatime projects */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HackatimeProjectsResponse"];
-                };
-            };
-        };
-    };
-    HackatimeController_getTotalNowHackatimeHours: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Total Hackatime hours */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TotalNowHackatimeHoursResponse"];
-                };
-            };
-        };
-    };
-    HackatimeController_getTotalApprovedHours: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Total approved hours */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TotalApprovedHoursResponse"];
-                };
-            };
-        };
-    };
-    HackatimeController_getActiveCodersToday: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Active coders today */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActiveCodersTodayResponse"];
-                };
-            };
-        };
-    };
-    HackatimeController_recalculateNowHackatimeHours: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Hours recalculated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RecalculateHoursResponse"];
-                };
-            };
-        };
-    };
-    HackatimeController_checkHackatimeAccount: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Hackatime account status */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HackatimeAccountStatusResponse"];
-                };
-            };
-        };
-    };
     HealthController_healthCheck: {
         parameters: {
             query?: never;
@@ -6596,27 +6710,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HuddleStatusResponse"];
-                };
-            };
-        };
-    };
-    StreakController_getLeaderboard: {
-        parameters: {
-            query?: {
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StreakLeaderboardEntry"][];
                 };
             };
         };

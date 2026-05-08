@@ -21,7 +21,9 @@ import { HackatimeModule } from '../hackatime/hackatime.module';
     StreakModule,
     HackatimeModule,
   ],
-  controllers: [ProjectsController, ProjectsAuthController],
+  // ProjectsAuthController must come first so that literal paths like
+  // `/api/projects/auth` win over the public `:id` route in ProjectsController.
+  controllers: [ProjectsAuthController, ProjectsController],
   providers: [ProjectsService, PrismaService, RedisService, PosthogService],
 })
 export class ProjectsModule {}

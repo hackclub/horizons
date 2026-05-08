@@ -78,6 +78,10 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 
 		if (projectRes.data) {
 			project = projectRes.data as ProjectResponse;
+		} else if (projectRes.response?.status === 403) {
+			// Caller doesn't own this project — surface as a sentinel so the
+			// /app/projects/[id] page can redirect to the public view.
+			error = 'forbidden';
 		} else {
 			error = 'Failed to load project';
 		}

@@ -49,6 +49,52 @@ export class ProjectUserResponse {
   lastName: string;
 }
 
+export class PublicProjectAuthor {
+  @ApiPropertyOptional({ description: 'Author first name' })
+  firstName: string | null;
+
+  @ApiPropertyOptional({ description: 'Author last name' })
+  lastName: string | null;
+}
+
+export class PublicProjectResponse {
+  @ApiProperty({ description: 'Project ID' })
+  projectId: number;
+
+  @ApiProperty({ description: 'Project title' })
+  projectTitle: string;
+
+  @ApiProperty({ description: 'Project type' })
+  projectType: string;
+
+  @ApiPropertyOptional({ description: 'Project description' })
+  description: string | null;
+
+  @ApiPropertyOptional({ description: 'Screenshot URL' })
+  screenshotUrl: string | null;
+
+  @ApiPropertyOptional({ description: 'Playable / demo URL' })
+  playableUrl: string | null;
+
+  @ApiPropertyOptional({ description: 'Repository URL' })
+  repoUrl: string | null;
+
+  @ApiPropertyOptional({ description: 'README URL' })
+  readmeUrl: string | null;
+
+  @ApiPropertyOptional({ description: 'Journal URL' })
+  journalUrl: string | null;
+
+  @ApiProperty({ description: 'Creation timestamp' })
+  createdAt: string;
+
+  @ApiProperty({ description: 'Last update timestamp' })
+  updatedAt: string;
+
+  @ApiProperty({ description: 'Project author', type: PublicProjectAuthor })
+  user: PublicProjectAuthor;
+}
+
 export class ShipAlertsResponse {
   @ApiProperty({
     description:
