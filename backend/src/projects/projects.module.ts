@@ -12,6 +12,7 @@ import { FraudReviewModule } from '../fraud-review/fraud-review.module';
 import { ManifestModule } from '../manifest/manifest.module';
 import { StreakModule } from '../streaks/streak.module';
 import { HackatimeModule } from '../hackatime/hackatime.module';
+import { SlackModule } from '../slack/slack.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HackatimeModule } from '../hackatime/hackatime.module';
     ManifestModule,
     StreakModule,
     HackatimeModule,
+    SlackModule,
   ],
   // ProjectsAuthController must come first so that literal paths like
   // `/api/projects/auth` win over the public `:id` route in ProjectsController.

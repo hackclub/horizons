@@ -2164,10 +2164,8 @@ export interface components {
             projectId: number;
         };
         PublicProjectAuthor: {
-            /** @description Author first name */
-            firstName?: string;
-            /** @description Author last name */
-            lastName?: string;
+            /** @description Author Slack display name (or null if unavailable) */
+            displayName?: string;
         };
         PublicProjectResponse: {
             /** @description Project ID */

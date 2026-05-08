@@ -81,11 +81,7 @@
 		return PROJECT_TYPE_LABELS[type] ?? type.replace(/_/g, ' ');
 	}
 
-	let authorName = $derived(
-		project
-			? [project.user.firstName, project.user.lastName].filter(Boolean).join(' ').trim()
-			: '',
-	);
+	let authorName = $derived(project?.user.displayName ?? '');
 
 	let pageTitle = $derived(project ? `${project.projectTitle} — Horizons` : 'Project — Horizons');
 	let metaDescription = $derived(project?.description ?? '');

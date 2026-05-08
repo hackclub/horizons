@@ -17,6 +17,7 @@ import { FraudReviewService } from '../fraud-review/fraud-review.service';
 import { ManifestService } from '../manifest/manifest.service';
 import { StreakService } from '../streaks/streak.service';
 import { HackatimeService } from '../hackatime/hackatime.service';
+import { SlackService } from '../slack/slack.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 
 @Injectable()
@@ -30,6 +31,7 @@ export class ProjectsService {
     private manifestService: ManifestService,
     private streakService: StreakService,
     private hackatimeService: HackatimeService,
+    private slackService: SlackService,
   ) {}
 
   private excludeAdminFields<T extends Record<string, any>>(
@@ -279,8 +281,7 @@ export class ProjectsService {
         joeFraudPassed: true,
         user: {
           select: {
-            firstName: true,
-            lastName: true,
+            slackUserId: true,
           },
         },
         _count: {
@@ -297,8 +298,22 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    const { joeFraudPassed: _f, _count: _c, ...publicFields } = project;
-    return publicFields;
+    // Resolve only the Slack display name (no real first/last name leaks).
+    let displayName: string | null = null;
+    if (project.user.slackUserId) {
+      const map = await this.slackService.getDisplayNames([
+        project.user.slackUserId,
+      ]);
+      displayName = map.get(project.user.slackUserId) ?? null;
+    }
+
+    const {
+      joeFraudPassed: _f,
+      _count: _c,
+      user: _u,
+      ...publicFields
+    } = project;
+    return { ...publicFields, user: { displayName } };
   }
 
   async createSubmission(

@@ -50,11 +50,10 @@ export class ProjectUserResponse {
 }
 
 export class PublicProjectAuthor {
-  @ApiPropertyOptional({ description: 'Author first name' })
-  firstName: string | null;
-
-  @ApiPropertyOptional({ description: 'Author last name' })
-  lastName: string | null;
+  @ApiPropertyOptional({
+    description: 'Author Slack display name (or null if unavailable)',
+  })
+  displayName: string | null;
 }
 
 export class PublicProjectResponse {
