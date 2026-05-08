@@ -182,11 +182,14 @@
 		}
 		initialEventApplied = true;
 	});
+
+	let windowWidth = $state(0);
+	let isMobile = $derived(windowWidth > 0 && windowWidth < 640);
 </script>
 
-<svelte:window onkeydown={nav.handleKeydown} />
+<svelte:window onkeydown={nav.handleKeydown} bind:innerWidth={windowWidth} />
 
-<div class="page-wrap">
+<div class="page-wrap sm:overflow-hidden">
 	<div class="page-content">
 		<!-- Back button (in flow) -->
 		<button
@@ -410,7 +413,6 @@
 	.page-wrap {
 		position: absolute;
 		inset: 0;
-		overflow: hidden;
 	}
 
 	.page-content {
