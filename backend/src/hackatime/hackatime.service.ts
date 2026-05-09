@@ -715,6 +715,11 @@ export class HackatimeService {
       });
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new UnauthorizedException(
+            'Hackatime denied access to your stats. Enable "Public Stats Lookup" in your Hackatime settings, or re-link your Hackatime account.',
+          );
+        }
         throw new Error(
           `Hackatime dedup stats returned ${response.status} for ${hackatimeAccount}`,
         );
