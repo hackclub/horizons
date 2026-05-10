@@ -2186,8 +2186,6 @@ export class AdminService {
         firstName: true,
         lastName: true,
         slackUserId: true,
-        hackatimeAccount: true,
-        hackatimeAccessToken: true,
         createdAt: true,
         projects: {
           select: { createdAt: true, nowHackatimeProjects: true },
@@ -2201,42 +2199,6 @@ export class AdminService {
         },
       },
     });
-
-    // Count of Hackatime projects a user has that aren't linked to any of
-    // their Horizons projects. -1 means no Hackatime account (or fetch
-    // failed — treated the same so the CSV consumer can spot-check).
-    // Run in chunks to bound concurrent outbound Hackatime requests.
-    const HACKATIME_CONCURRENCY = 10;
-    const unlinkedCounts = new Map<number, number>();
-    for (let i = 0; i < users.length; i += HACKATIME_CONCURRENCY) {
-      const chunk = users.slice(i, i + HACKATIME_CONCURRENCY);
-      await Promise.all(
-        chunk.map(async (user) => {
-          if (!user.hackatimeAccount || !user.hackatimeAccessToken) {
-            unlinkedCounts.set(user.userId, -1);
-            return;
-          }
-          const names = await this.hackatimeService.fetchHackatimeProjectNames(
-            user.hackatimeAccessToken,
-          );
-          if (!names) {
-            unlinkedCounts.set(user.userId, -1);
-            return;
-          }
-          const linked = new Set<string>();
-          for (const project of user.projects) {
-            for (const name of project.nowHackatimeProjects ?? []) {
-              linked.add(name);
-            }
-          }
-          let unlinked = 0;
-          for (const name of names) {
-            if (!linked.has(name)) unlinked++;
-          }
-          unlinkedCounts.set(user.userId, unlinked);
-        }),
-      );
-    }
 
     // Get first submission per user via a single query
     const firstSubmissions = await this.prisma.$queryRaw<
@@ -2344,7 +2306,9 @@ export class AdminService {
       displayName: (user.slackUserId && displayNames.get(user.slackUserId)) || '',
       signedUpAt: user.createdAt.toISOString(),
       hackatimeLinkedAt: hackatimeLinkMap.get(user.userId)?.toISOString() ?? '',
-      hackatimeProjectLink: unlinkedCounts.get(user.userId) ?? -1,
+      hackatimeProjectLink: user.projects.filter(
+        (p) => !p.nowHackatimeProjects?.length,
+      ).length,
       firstProjectAt:
         user.projects[0]?.createdAt?.toISOString() ?? '',
       firstSubmissionAt:
