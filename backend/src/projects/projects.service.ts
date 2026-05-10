@@ -149,6 +149,8 @@ export class ProjectsService {
           description: createProjectDto.projectDescription,
           readmeUrl: createProjectDto.readmeUrl,
           repoUrl: createProjectDto.repoUrl,
+          playableUrl: createProjectDto.playableUrl,
+          screenshotUrl: createProjectDto.screenshotUrl,
         },
         include: {
           user: {
