@@ -141,17 +141,22 @@
 		}
 	});
 
-	// Fetch all project details (force refresh for up-to-date review statuses)
+	// Prefetch each project's submission status to populate the pill on each
+	// card. We only need this once per mount and only want submissionStatusMap
+	// to be updated — passing updateStore=false avoids clobbering the global
+	// detail store (which would cause /app/projects/[id] to flash the wrong
+	// project). Force-refresh + auto-rerun on every projects change is what
+	// produced the request storm.
+	const prefetched = new Set<number>();
 	$effect(() => {
-		if (projects.length > 0) {
-			projects.forEach((project, index) => {
-				setTimeout(() => {
-					if (project.projectId) {
-						fetchProjectDetail(String(project.projectId), true).catch(() => {});
-					}
-				}, index * 200);
-			});
-		}
+		if (projects.length === 0) return;
+		projects.forEach((project, index) => {
+			if (!project.projectId || prefetched.has(project.projectId)) return;
+			prefetched.add(project.projectId);
+			setTimeout(() => {
+				fetchProjectDetail(String(project.projectId), false, false).catch(() => {});
+			}, index * 200);
+		});
 	});
 </script>
 

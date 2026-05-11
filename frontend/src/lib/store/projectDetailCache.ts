@@ -43,25 +43,54 @@ export const projectDetailStore: Writable<{
 	error: null,
 });
 
-export async function fetchProjectDetail(id: string, forceRefresh = false) {
+// Tracks which project the global store currently represents so that stale
+// responses (e.g. a fetch started for project A that resolves after the user
+// navigated to project B) can't overwrite the active project, and so cache
+// misses across project IDs clear the store synchronously instead of flashing
+// the previous project's data.
+let activeProjectId: string | null = null;
+
+export async function fetchProjectDetail(
+	id: string,
+	forceRefresh = false,
+	updateStore = true,
+) {
 	const cacheKey = `project-${id}`;
 	const cached = detailCache.get(cacheKey);
 	const now = Date.now();
 
 	// Return cached data if still valid
 	if (!forceRefresh && cached && now - cached.timestamp < CACHE_DURATION) {
-		projectDetailStore.set({
-			project: cached.project,
-			submission: cached.submission,
-			hackatimeInfo: cached.hackatimeInfo,
-			loading: false,
-			error: null,
-		});
+		if (updateStore) {
+			activeProjectId = id;
+			projectDetailStore.set({
+				project: cached.project,
+				submission: cached.submission,
+				hackatimeInfo: cached.hackatimeInfo,
+				loading: false,
+				error: null,
+			});
+		}
 		return { project: cached.project, submission: cached.submission, hackatimeInfo: cached.hackatimeInfo };
 	}
 
 	try {
-		projectDetailStore.update(s => ({ ...s, loading: true, error: null }));
+		if (updateStore) {
+			if (activeProjectId !== id) {
+				// Switching to a different project — clear stale data so the
+				// previous project doesn't flash before loading state renders.
+				activeProjectId = id;
+				projectDetailStore.set({
+					project: null,
+					submission: null,
+					hackatimeInfo: null,
+					loading: true,
+					error: null,
+				});
+			} else {
+				projectDetailStore.update(s => ({ ...s, loading: true, error: null }));
+			}
+		}
 
 		const [projectRes, submissionsRes, hackatimeRes] = await Promise.all([
 			api.GET('/api/projects/auth/{id}', {
@@ -120,13 +149,18 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 		};
 		detailCache.set(cacheKey, cacheEntry);
 
-		projectDetailStore.set({
-			project,
-			submission,
-			hackatimeInfo,
-			loading: false,
-			error: null,
-		});
+		// Only write to the global store if (a) the caller wants it and (b) this
+		// response is still for the active project. Background prefetches from
+		// the list page and stale responses must not clobber the detail page.
+		if (updateStore && activeProjectId === id) {
+			projectDetailStore.set({
+				project,
+				submission,
+				hackatimeInfo,
+				loading: false,
+				error: null,
+			});
+		}
 
 		// Update submission status map for project list pills
 		submissionStatusMap.update(m => ({
@@ -147,13 +181,15 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 		return { project, submission, hackatimeInfo };
 	} catch (err) {
 		const errorMsg = err instanceof Error ? err.message : 'Failed to load project details';
-		projectDetailStore.set({
-			project: null,
-			submission: null,
-			hackatimeInfo: null,
-			loading: false,
-			error: errorMsg,
-		});
+		if (updateStore && activeProjectId === id) {
+			projectDetailStore.set({
+				project: null,
+				submission: null,
+				hackatimeInfo: null,
+				loading: false,
+				error: errorMsg,
+			});
+		}
 		throw err;
 	}
 }
