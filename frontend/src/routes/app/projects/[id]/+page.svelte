@@ -9,6 +9,7 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { createGridNav } from '$lib/nav/wasd.svelte';
 	import { projectDetailStore, fetchProjectDetail, preloadEditData, invalidateAllProjectCaches } from '$lib/store/projectDetailCache';
+	import { fetchProjects } from '$lib/store/projectCache';
 	import type { components } from '$lib/api';
 	import { api } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
@@ -98,7 +99,12 @@
 		try {
 			await api.POST('/api/hackatime/hours/recalculate');
 			invalidateAllProjectCaches();
-			await fetchProjectDetail(projectId, true);
+			// Refetch detail (live hours) and the projects list (DB hours) in
+			// parallel so /app and /app/projects don't lag behind on next visit.
+			await Promise.all([
+				fetchProjectDetail(projectId, true),
+				fetchProjects(true),
+			]);
 		} catch {
 			// Silently fail — the existing hours stay shown.
 		} finally {

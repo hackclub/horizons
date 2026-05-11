@@ -1,5 +1,9 @@
 import { writable, type Writable } from 'svelte/store';
 import { api, type components } from '$lib/api';
+import {
+	invalidateCache as invalidateProjectsListCache,
+	patchProjectInCache,
+} from './projectCache';
 
 type ProjectResponse = components['schemas']['ProjectResponse'];
 
@@ -129,6 +133,16 @@ export async function fetchProjectDetail(id: string, forceRefresh = false) {
 			...m,
 			[id]: submission?.approvalStatus ?? 'unsubmitted',
 		}));
+
+		// Propagate the live-computed hours back into the projects list cache so
+		// /app and /app/projects (which read `nowHackatimeHours` from the cached
+		// list) display the same number the detail page just rendered, even if
+		// the list cache is still inside its TTL window.
+		if (hackatimeInfo) {
+			patchProjectInCache(Number(id), {
+				nowHackatimeHours: hackatimeInfo.currentHackatimeHours,
+			});
+		}
 
 		return { project, submission, hackatimeInfo };
 	} catch (err) {
@@ -307,6 +321,10 @@ export function invalidateProjectCaches(id: string) {
 		const { [id]: _, ...rest } = m;
 		return rest;
 	});
+	// Mutations that change a single project's hours (submit, link, edit) also
+	// invalidate the projects list so /app and /app/projects refetch with the
+	// new `nowHackatimeHours` next time they mount.
+	invalidateProjectsListCache();
 }
 
 // Invalidate all caches (call after significant changes)
@@ -314,4 +332,7 @@ export function invalidateAllProjectCaches() {
 	detailCache.clear();
 	editDataCache.clear();
 	submissionStatusMap.set({});
+	// The /app/projects list cache also holds stale `nowHackatimeHours`; clear
+	// it so the next visit refetches with the freshly recalculated values.
+	invalidateProjectsListCache();
 }

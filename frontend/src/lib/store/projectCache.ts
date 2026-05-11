@@ -79,3 +79,46 @@ export function preloadProjects() {
 export function invalidateCache() {
 	cache.clear();
 }
+
+// Patch a single project's fields in both the live store and the cached entry.
+// Used to propagate fresher values (e.g. live-computed Hackatime hours from
+// the detail page) so they survive a subsequent cache-hit on `fetchProjects`.
+export function patchProjectInCache(
+	projectId: number,
+	patch: Partial<ProjectResponse>,
+) {
+	const cacheKey = 'user-projects';
+	const cached = cache.get(cacheKey);
+	if (cached) {
+		let changed = false;
+		const data = cached.data.map(p => {
+			if (p.projectId === projectId) {
+				for (const key of Object.keys(patch) as (keyof ProjectResponse)[]) {
+					if (p[key] !== patch[key]) {
+						changed = true;
+						break;
+					}
+				}
+				return { ...p, ...patch };
+			}
+			return p;
+		});
+		if (changed) cache.set(cacheKey, { ...cached, data });
+	}
+	projectsStore.update(s => {
+		let changed = false;
+		const projects = s.projects.map(p => {
+			if (p.projectId === projectId) {
+				for (const key of Object.keys(patch) as (keyof ProjectResponse)[]) {
+					if (p[key] !== patch[key]) {
+						changed = true;
+						break;
+					}
+				}
+				return { ...p, ...patch };
+			}
+			return p;
+		});
+		return changed ? { ...s, projects } : s;
+	});
+}
