@@ -1,6 +1,9 @@
 import { writable } from 'svelte/store';
 import { api } from '$lib/api';
 
+const STREAK_REFRESH_KEY = 'streak:last-refresh';
+const STREAK_REFRESH_COOLDOWN_MS = 30 * 60 * 1000;
+
 interface UserCache {
 	userName: string;
 	referralCode: string;
@@ -54,11 +57,18 @@ export const userStore = {
 	},
 	// Triggers a server-side refresh against Hackatime for today's UTC bucket,
 	// then patches the cached streak so the dashboard reflects in-progress
-	// coding without a full page reload. Rate-limited server-side; safe to
-	// fire-and-forget on every dashboard mount.
+	// coding without a full page reload. Gated client-side to once per 30 min
+	// so SPA re-mounts and multi-tab opens don't fan out into duplicate POSTs;
+	// server-side also enforces a 30-min cooldown as defense in depth.
 	async refreshStreak() {
+		try {
+			const last = Number(localStorage.getItem(STREAK_REFRESH_KEY)) || 0;
+			if (Date.now() - last < STREAK_REFRESH_COOLDOWN_MS) return;
+		} catch { /* localStorage unavailable — fall through to fetch */ }
+
 		const res = await api.POST('/api/streaks/refresh', {});
 		if (res.data) {
+			try { localStorage.setItem(STREAK_REFRESH_KEY, String(Date.now())); } catch { /* ignore */ }
 			store.update((s) => ({
 				...s,
 				currentStreak: res.data!.currentStreak,
