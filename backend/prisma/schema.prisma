@@ -67,6 +67,7 @@ model User {
   claimedSubmissions Submission[]        @relation("SubmissionClaimedBy")
   dailyActivity      UserDailyActivity[]
 
+  @@index([currentStreak(sort: Desc), lastActiveDate(sort: Desc), userId], name: "users_streak_leaderboard_idx")
   @@map("users")
 }
 

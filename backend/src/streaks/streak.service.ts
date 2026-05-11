@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const QUALIFY_SECONDS = 3600;
-const REFRESH_COOLDOWN_MS = 60 * 1000;
+const REFRESH_COOLDOWN_MS = 30 * 60 * 1000;
 
 @Injectable()
 export class StreakService {
@@ -38,23 +38,25 @@ export class StreakService {
   }
 
   /**
-   * Idempotent. Upserts the activity row, then recomputes streak when the
-   * day qualifies (>= 1 hour).
+   * Idempotent. Skips entirely for non-qualifying days because nothing reads
+   * non-qualified UserDailyActivity rows (walkConsecutiveDaysEndingAt filters
+   * by qualified=true), and writing them generates dead-tuple churn that
+   * triggers autovacuum on a hot read table. Side benefit: a previously
+   * qualifying day can no longer be silently downgraded by a later sync that
+   * reports lower seconds.
    */
   async recordDailyActivity(
     userId: number,
     localDate: Date,
     seconds: number,
   ): Promise<void> {
-    const qualified = seconds >= QUALIFY_SECONDS;
+    if (seconds < QUALIFY_SECONDS) return;
     await this.prisma.userDailyActivity.upsert({
       where: { userId_localDate: { userId, localDate } },
-      create: { userId, localDate, seconds, qualified },
-      update: { seconds, qualified },
+      create: { userId, localDate, seconds, qualified: true },
+      update: { seconds, qualified: true },
     });
-    if (qualified) {
-      await this.recomputeStreak(userId, localDate);
-    }
+    await this.recomputeStreak(userId, localDate);
   }
 
   /**
@@ -160,39 +162,74 @@ export class StreakService {
    * Per-user on-demand refresh. Fetches today's UTC Hackatime activity for
    * the caller, sums seconds on their linked Hackatime projects, and
    * upserts a UserDailyActivity row so the streak reflects in-progress
-   * coding without waiting for the next daily cron. Rate-limited per user
-   * to keep load on the Hackatime API bounded; rate-limited calls return
-   * the cached streak unchanged.
+   * coding without waiting for the next daily cron.
+   *
+   * Two short-circuits keep cost flat:
+   *   - If today's local bucket already qualified, the streak number can't
+   *     change until tomorrow's local midnight — return cached, skip the
+   *     Hackatime call and all writes.
+   *   - Otherwise enforce a 30-min per-user cooldown (per process). The
+   *     qualifying boundary is 1h of activity, so 30-min spacing catches
+   *     the crossover with comfortable headroom.
    */
   async refreshUserActivity(
     userId: number,
   ): Promise<{ currentStreak: number; longestStreak: number; refreshed: boolean }> {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: {
+        timezone: true,
+        lastActiveDate: true,
+        currentStreak: true,
+        longestStreak: true,
+      },
+    });
+    if (!user) return { currentStreak: 0, longestStreak: 0, refreshed: false };
+
+    const todayUtcStart = new Date();
+    todayUtcStart.setUTCHours(0, 0, 0, 0);
+    const todayLocal = this.localDateForUtcDay(todayUtcStart, user.timezone);
+    const alreadyCountedToday =
+      user.lastActiveDate?.getTime() === todayLocal.getTime();
+
     const now = Date.now();
     const last = this.lastRefreshAt.get(userId) ?? 0;
     const cooledDown = now - last >= REFRESH_COOLDOWN_MS;
 
-    if (cooledDown) {
+    let refreshed = false;
+    if (!alreadyCountedToday && cooledDown) {
       this.lastRefreshAt.set(userId, now);
+      refreshed = true;
       try {
         await this.fetchAndRecordToday(userId);
       } catch (err) {
-        this.logger.warn(
-          `Refresh failed for user ${userId}: ${err?.message ?? err}`,
-        );
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Refresh failed for user ${userId}: ${msg}`);
       }
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { userId },
-      select: { currentStreak: true, longestStreak: true, lastActiveDate: true },
-    });
+    if (refreshed) {
+      const updated = await this.prisma.user.findUnique({
+        where: { userId },
+        select: { currentStreak: true, longestStreak: true, lastActiveDate: true },
+      });
+      return {
+        currentStreak: this.applyLazyDecay({
+          currentStreak: updated?.currentStreak ?? 0,
+          lastActiveDate: updated?.lastActiveDate ?? null,
+        }),
+        longestStreak: updated?.longestStreak ?? 0,
+        refreshed: true,
+      };
+    }
+
     return {
       currentStreak: this.applyLazyDecay({
-        currentStreak: user?.currentStreak ?? 0,
-        lastActiveDate: user?.lastActiveDate ?? null,
+        currentStreak: user.currentStreak,
+        lastActiveDate: user.lastActiveDate,
       }),
-      longestStreak: user?.longestStreak ?? 0,
-      refreshed: cooledDown,
+      longestStreak: user.longestStreak,
+      refreshed: false,
     };
   }
 
