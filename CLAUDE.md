@@ -30,7 +30,7 @@ The backend is organized into NestJS feature modules under `backend/src/`:
 - `github/` — Repo info and README fetching with token pooling (reviewer/admin only)
 - `events/` — Event CRUD and pinning
 - `uploads/` — Image upload to Hack Club CDN
-- `mail/` — Email queue service (currently disabled, logs only)
+- `loops/` — Loops transactional email client (replaces archived `mail/` module; see `backend/archive/mail/`)
 - `slack/` — Slack DM notifications (internal service, no controller)
 - `airtable/` — Airtable record sync for users and approved projects (internal service)
 - `health/` — Health check endpoint

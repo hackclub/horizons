@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { SlackService } from '../slack/slack.service';
 import { ManifestService } from '../manifest/manifest.service';
+import { LoopsService } from '../loops/loops.service';
 import { ReviewSubmissionDto } from '../reviewer/dto/review-submission.dto';
 import { AUDIT_ACTIONS } from './audit-actions';
 
@@ -102,8 +103,8 @@ function buildFullJustification(
  * Owns the reconciliation between the reviewer gate (Submission.reviewPassed) and
  * the fraud gate (Project.joeFraudPassed). Submission.approvalStatus stays `pending`
  * until both gates resolve, at which point this service transitions it to the final
- * outcome and fires all downstream side effects (Airtable sync, Slack, project data
- * copy; email is pending the new emailing module — see sendNotifications).
+ * outcome and fires all downstream side effects (Airtable sync, Slack, email via
+ * Loops, project data copy).
  */
 @Injectable()
 export class SubmissionApprovalService {
@@ -112,6 +113,7 @@ export class SubmissionApprovalService {
     private airtableService: AirtableService,
     private slackService: SlackService,
     private manifestService: ManifestService,
+    private loopsService: LoopsService,
   ) {}
 
   /**
@@ -325,12 +327,13 @@ export class SubmissionApprovalService {
     fraudRaw: boolean | null,
   ): Promise<void> {
     // CAS: only the first caller wins the pending → terminal transition.
+    const finalizedAt = new Date();
     const result = await this.prisma.submission.updateMany({
       where: { submissionId: submission.submissionId, approvalStatus: 'pending' },
       data: {
         approvalStatus: newStatus,
         silentReject: isSilent,
-        finalizedAt: new Date(),
+        finalizedAt,
       },
     });
     if (result.count === 0) return;
@@ -357,40 +360,43 @@ export class SubmissionApprovalService {
     });
 
     if (newStatus === 'approved') {
-      await this.fireApprovalSideEffects(submission);
+      await this.fireApprovalSideEffects(submission, finalizedAt);
     } else if (!isSilent) {
-      await this.fireRejectionSideEffects(submission);
+      await this.fireRejectionSideEffects(submission, finalizedAt);
     }
   }
 
-  private async fireApprovalSideEffects(submission: {
-    submissionId: number;
-    projectId: number;
-    hackatimeHours: number | null;
-    createdAt: Date;
-    playableUrl: string | null;
-    repoUrl: string | null;
-    screenshotUrl: string | null;
-    description: string | null;
-    approvedHours: number | null;
-    hoursJustification: string | null;
-    reviewerAnalysis: string | null;
-    reviewedBy: string | null;
-    pendingSendEmail: boolean;
-    project: {
-      projectTitle: string;
+  private async fireApprovalSideEffects(
+    submission: {
+      submissionId: number;
       projectId: number;
+      hackatimeHours: number | null;
+      createdAt: Date;
       playableUrl: string | null;
       repoUrl: string | null;
       screenshotUrl: string | null;
       description: string | null;
-      joeProjectId: string | null;
-      joeFraudPassed: boolean | null;
-      joeFraudReviewedAt: Date | null;
-      nowHackatimeProjects: string[];
-      user: { email: string; slackUserId: string | null };
-    };
-  }): Promise<void> {
+      approvedHours: number | null;
+      hoursJustification: string | null;
+      reviewerAnalysis: string | null;
+      reviewedBy: string | null;
+      pendingSendEmail: boolean;
+      project: {
+        projectTitle: string;
+        projectId: number;
+        playableUrl: string | null;
+        repoUrl: string | null;
+        screenshotUrl: string | null;
+        description: string | null;
+        joeProjectId: string | null;
+        joeFraudPassed: boolean | null;
+        joeFraudReviewedAt: Date | null;
+        nowHackatimeProjects: string[];
+        user: { email: string; slackUserId: string | null };
+      };
+    },
+    finalizedAt: Date,
+  ): Promise<void> {
     // Rebuild the full justification from the persisted reviewer analysis +
     // current project / reviewer state. This defers to finalization time so
     // that fraud review info (populated after reviewer acted) is included.
@@ -425,24 +431,30 @@ export class SubmissionApprovalService {
       approvedHours: submission.approvedHours ?? undefined,
       feedback: submission.hoursJustification,
       sendEmail: submission.pendingSendEmail,
+      finalizedAt,
     });
   }
 
-  private async fireRejectionSideEffects(submission: {
-    approvedHours: number | null;
-    hoursJustification: string | null;
-    pendingSendEmail: boolean;
-    project: {
-      projectTitle: string;
-      projectId: number;
-      user: { email: string };
-    };
-  }): Promise<void> {
+  private async fireRejectionSideEffects(
+    submission: {
+      submissionId: number;
+      approvedHours: number | null;
+      hoursJustification: string | null;
+      pendingSendEmail: boolean;
+      project: {
+        projectTitle: string;
+        projectId: number;
+        user: { email: string };
+      };
+    },
+    finalizedAt: Date,
+  ): Promise<void> {
     await this.sendNotifications(submission, {
       approved: false,
       approvedHours: submission.approvedHours ?? undefined,
       feedback: submission.hoursJustification,
       sendEmail: submission.pendingSendEmail,
+      finalizedAt,
     });
   }
 
@@ -645,6 +657,7 @@ export class SubmissionApprovalService {
 
   private async sendNotifications(
     submission: {
+      submissionId: number;
       project: {
         projectTitle: string;
         projectId: number;
@@ -657,14 +670,29 @@ export class SubmissionApprovalService {
       approvedHours?: number;
       feedback: string | null;
       sendEmail: boolean;
+      finalizedAt: Date;
     },
   ): Promise<void> {
     if (payload.sendEmail) {
-      // TODO(emailing): wire up the new emailing module here to send the
-      // reviewer's decision (approval/denial + feedback + approved hours) to
-      // submission.project.user.email. The previous MailService implementation
-      // has been archived at backend/archive/mail/ and was a no-op even before
-      // archival — see archive/README.md for the templates and prior shape.
+      // Dedupe inside Loops' 24h window if this finalization is re-fired
+      // outside the CAS (e.g. a manual admin retrigger on the same row).
+      const idempotencyKey = `submission-review-${submission.submissionId}-${payload.finalizedAt.toISOString()}`;
+      const result = await this.loopsService.sendSubmissionReviewEmail(
+        submission.project.user.email,
+        {
+          projectTitle: submission.project.projectTitle,
+          projectId: submission.project.projectId,
+          approved: payload.approved,
+          approvedHours: payload.approvedHours,
+          feedback: payload.feedback,
+        },
+        { idempotencyKey },
+      );
+      if (!result.success) {
+        console.error(
+          `Loops email failed (status ${result.status}): ${result.message}`,
+        );
+      }
     }
 
     try {

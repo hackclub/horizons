@@ -23,6 +23,7 @@ import { GitHubModule } from './github/github.module';
 import { ManifestModule } from './manifest/manifest.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { StreakModule } from './streaks/streak.module';
+import { LoopsModule } from './loops/loops.module';
 import { AuthGuard } from './auth/auth.guard';
 import { PrismaService } from './prisma.service';
 
@@ -56,6 +57,7 @@ import { PrismaService } from './prisma.service';
     ManifestModule,
     IntegrationsModule,
     StreakModule,
+    LoopsModule,
   ],
   providers: [
     PrismaService,

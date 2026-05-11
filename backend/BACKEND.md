@@ -451,6 +451,7 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 | **Hackatime** | Time tracking OAuth + hours API | `HACKATIME_CLIENT_ID`, `HACKATIME_CLIENT_SECRET`, `HACKATIME_API_KEY` |
 | **Airtable** | Record sync for users and approved projects | `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID` |
 | **Slack** | DM notifications to students | `SLACK_BOT_TOKEN` |
+| **Loops** | Transactional emails (submission reviewed) | `LOOPS_API_KEY`, `LOOPS_TID_SUBMISSION_APPROVED`, `LOOPS_TID_SUBMISSION_DENIED` |
 | **GitHub** | Repo info and README for reviewers | `GITHUB_TOKENS` (comma-separated pool) |
 | **Hack Club CDN** | Image uploads | `HC_CDN_API_KEY` |
 | **PostHog** | Analytics | `POSTHOG_API_KEY` |
