@@ -1,8 +1,5 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { MailService } from '../mail/mail.service';
-import { randomBytes } from 'crypto';
-import { debugLog } from '../utils/debug-log';
 
 @Injectable()
 export class UserService {
@@ -11,79 +8,11 @@ export class UserService {
   private readonly EMAIL_TABLE_ID = 'tblFDNhax22eAjSB3';
   private readonly AIRTABLE_API_KEY = process.env.USER_SERVICE_AIRTABLE_API_KEY;
 
-  constructor(
-    private prisma: PrismaService,
-    private mailService: MailService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   private isValidEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
-  }
-
-  private async generateUniqueToken(): Promise<string> {
-    let token: string;
-    let exists = true;
-
-    while (exists) {
-      token = randomBytes(32).toString('hex');
-      const existingToken = await this.prisma.stickerToken.findUnique({
-        where: { token },
-      });
-      exists = !!existingToken;
-    }
-
-    return token;
-  }
-
-  private async sendRsvpEmailInBackground(
-    email: string,
-    rafflePosition: number,
-  ): Promise<void> {
-    try {
-      debugLog(`=== SENDING EMAIL IN BACKGROUND ===`);
-      debugLog(`Email: ${email}, RafflePosition received: ${rafflePosition}`);
-
-      let stickerToken: string | null = null;
-
-      if (rafflePosition <= 5000) {
-        const existingToken = await this.prisma.stickerToken.findFirst({
-          where: { email },
-        });
-
-        if (!existingToken) {
-          const token = await this.generateUniqueToken();
-          await this.prisma.stickerToken.create({
-            data: {
-              email,
-              token,
-              rsvpNumber: rafflePosition,
-            },
-          });
-          stickerToken = token;
-        } else {
-          stickerToken = existingToken.token;
-        }
-      }
-
-      debugLog(`Calling mail service directly with:`, {
-        email,
-        rsvpNumber: rafflePosition,
-        rafflePosition,
-        stickerToken,
-      });
-
-      await this.mailService.sendRsvpEmail(
-        email,
-        rafflePosition,
-        rafflePosition,
-        stickerToken,
-      );
-
-      console.log('Successfully sent RSVP confirmation email in background');
-    } catch (error) {
-      console.error('Error in background email send:', error);
-    }
   }
 
   async createInitialRsvp(email: string, clientIP: string): Promise<void> {

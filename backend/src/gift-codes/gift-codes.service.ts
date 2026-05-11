@@ -1,15 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { MailService } from '../mail/mail.service';
 import { SendGiftCodesDto } from './dto/send-gift-codes.dto';
 import { randomBytes } from 'crypto';
 
 @Injectable()
 export class GiftCodesService {
-  constructor(
-    private prisma: PrismaService,
-    private mailService: MailService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   private generateCode(): string {
     return randomBytes(8).toString('hex').toUpperCase();
@@ -32,7 +28,7 @@ export class GiftCodesService {
           select: { firstName: true, lastName: true },
         });
 
-        const giftCode = await this.prisma.giftCode.create({
+        await this.prisma.giftCode.create({
           data: {
             code,
             email,
@@ -42,26 +38,6 @@ export class GiftCodesService {
             imageUrl: dto.imageUrl,
             filloutUrl: dto.filloutUrl,
           },
-        });
-
-        const filloutUrlWithParams = this.buildFilloutUrl(
-          dto.filloutUrl,
-          user?.firstName || '',
-          user?.lastName || '',
-          email,
-          code,
-        );
-
-        await this.mailService.sendGiftCodeEmail(email, {
-          firstName: user?.firstName || 'Friend',
-          itemDescription: dto.itemDescription,
-          imageUrl: dto.imageUrl,
-          claimUrl: filloutUrlWithParams,
-        });
-
-        await this.prisma.giftCode.update({
-          where: { id: giftCode.id },
-          data: { emailSentAt: new Date() },
         });
 
         results.push({ email, code, success: true });
@@ -81,21 +57,6 @@ export class GiftCodesService {
       failed: results.filter((r) => !r.success).length,
       results,
     };
-  }
-
-  private buildFilloutUrl(
-    baseUrl: string,
-    firstName: string,
-    lastName: string,
-    email: string,
-    lfdRec: string,
-  ): string {
-    const url = new URL(baseUrl);
-    url.searchParams.set('first_name', firstName);
-    url.searchParams.set('last_name', lastName);
-    url.searchParams.set('email', email);
-    url.searchParams.set('lfd_rec', lfdRec);
-    return url.toString();
   }
 
   async getGiftCodeByCode(code: string) {

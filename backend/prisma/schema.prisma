@@ -195,6 +195,9 @@ model UserSession {
   @@map("user_sessions")
 }
 
+/// @deprecated Belongs to the archived mail module (see backend/archive/mail/).
+/// No code currently writes or reads this table. Kept until the new emailing
+/// module either reuses it or supplies a replacement; drop via migration then.
 model EmailJob {
   id             String    @id @default(uuid())
   recipientEmail String
@@ -367,6 +370,9 @@ model GiftCode {
   filloutUrl      String    @map("fillout_url")
   isClaimed       Boolean   @default(false) @map("is_claimed")
   claimedAt       DateTime? @map("claimed_at")
+  /// @deprecated Written by the archived mail module (see backend/archive/mail/).
+  /// No code currently writes this; the new emailing module should populate it
+  /// or supply a replacement timestamp. Drop via migration once decided.
   emailSentAt     DateTime? @map("email_sent_at")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")

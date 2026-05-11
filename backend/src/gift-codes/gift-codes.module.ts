@@ -5,10 +5,9 @@ import {
   GiftCodesAdminController,
 } from './gift-codes.controller';
 import { PrismaService } from '../prisma.service';
-import { MailModule } from '../mail/mail.module';
 
 @Module({
-  imports: [MailModule],
+  imports: [],
   controllers: [GiftCodesController, GiftCodesAdminController],
   providers: [GiftCodesService, PrismaService],
 })

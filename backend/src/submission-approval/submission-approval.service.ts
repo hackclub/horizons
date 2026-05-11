@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
-import { MailService } from '../mail/mail.service';
 import { SlackService } from '../slack/slack.service';
 import { ManifestService } from '../manifest/manifest.service';
 import { ReviewSubmissionDto } from '../reviewer/dto/review-submission.dto';
@@ -103,15 +102,14 @@ function buildFullJustification(
  * Owns the reconciliation between the reviewer gate (Submission.reviewPassed) and
  * the fraud gate (Project.joeFraudPassed). Submission.approvalStatus stays `pending`
  * until both gates resolve, at which point this service transitions it to the final
- * outcome and fires all downstream side effects (Airtable sync, Slack, email, project
- * data copy).
+ * outcome and fires all downstream side effects (Airtable sync, Slack, project data
+ * copy; email is pending the new emailing module — see sendNotifications).
  */
 @Injectable()
 export class SubmissionApprovalService {
   constructor(
     private prisma: PrismaService,
     private airtableService: AirtableService,
-    private mailService: MailService,
     private slackService: SlackService,
     private manifestService: ManifestService,
   ) {}
@@ -662,20 +660,11 @@ export class SubmissionApprovalService {
     },
   ): Promise<void> {
     if (payload.sendEmail) {
-      try {
-        await this.mailService.sendSubmissionReviewEmail(
-          submission.project.user.email,
-          {
-            projectTitle: submission.project.projectTitle,
-            projectId: submission.project.projectId,
-            approved: payload.approved,
-            approvedHours: payload.approvedHours,
-            feedback: payload.feedback,
-          },
-        );
-      } catch (error) {
-        console.error('Email notification failed:', error);
-      }
+      // TODO(emailing): wire up the new emailing module here to send the
+      // reviewer's decision (approval/denial + feedback + approved hours) to
+      // submission.project.user.email. The previous MailService implementation
+      // has been archived at backend/archive/mail/ and was a no-op even before
+      // archival — see archive/README.md for the templates and prior shape.
     }
 
     try {

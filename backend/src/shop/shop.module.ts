@@ -7,11 +7,10 @@ import {
   ShopAdminController,
 } from './shop.controller';
 import { PrismaService } from '../prisma.service';
-import { MailModule } from '../mail/mail.module';
 import { BalanceModule } from '../balance/balance.module';
 
 @Module({
-  imports: [ConfigModule, MailModule, BalanceModule],
+  imports: [ConfigModule, BalanceModule],
   controllers: [ShopController, ShopAuthController, ShopAdminController],
   providers: [ShopService, PrismaService],
 })
