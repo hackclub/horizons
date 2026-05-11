@@ -2,7 +2,7 @@
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api, type components } from '$lib/api';
-	import { Button, TextField } from '$lib/components';
+	import { TextField } from '$lib/components';
 
 	type CommunityEventResponse = components['schemas']['CommunityEventResponse'];
 
@@ -10,16 +10,14 @@
 	let events = $state<CommunityEventResponse[]>([]);
 	let search = $state('');
 
-	const HIDE_AFTER_MS = 48 * 60 * 60 * 1000;
-
-	let visibleEvents = $derived(
-		events.filter((e) => new Date(e.end).getTime() >= Date.now() - HIDE_AFTER_MS),
+	let sortedEvents = $derived(
+		[...events].sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime()),
 	);
 
 	let filteredEvents = $derived(
 		search.trim()
-			? visibleEvents.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()))
-			: visibleEvents,
+			? sortedEvents.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()))
+			: sortedEvents,
 	);
 
 	onMount(async () => {
@@ -51,13 +49,13 @@
 <div class="p-6">
 	<div class="mx-auto max-w-3xl space-y-4">
 		<div class="flex items-center justify-between gap-4">
-			<h1 class="text-2xl font-semibold text-ds-text">Community Events</h1>
+			<h1 class="text-2xl font-semibold text-ds-text">All Community Events</h1>
 			<div class="flex items-center gap-2">
 				<a
-					href="{base}/community-events/all"
+					href="{base}/community-events"
 					class="rounded-lg border border-ds-border bg-ds-surface px-3 py-1.5 text-sm font-medium text-ds-text shadow-[var(--color-ds-shadow)] hover:border-ds-text-secondary"
 				>
-					View All
+					&larr; Back
 				</a>
 				<a
 					href="{base}/community-events/new"
@@ -87,6 +85,9 @@
 									<span class="text-base font-semibold text-ds-text">{event.name}</span>
 									{#if !event.isActive}
 										<span class="rounded bg-red-600/20 px-1.5 py-0.5 text-xs text-red-700 dark:text-red-300">Inactive</span>
+									{/if}
+									{#if new Date(event.end).getTime() < Date.now()}
+										<span class="rounded bg-ds-surface px-1.5 py-0.5 text-xs text-ds-text-secondary">Ended</span>
 									{/if}
 								</div>
 								<p class="text-xs text-ds-text-secondary">
