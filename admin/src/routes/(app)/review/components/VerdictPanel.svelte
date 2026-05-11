@@ -54,11 +54,11 @@
 	let approveComment = $state('');
 	let approvedHours = $state(hackatimeHours ?? 0);
 	let reviewerManuallyEditedHours = $state(false);
-	let sendEmail = $state(false);
+	let sendEmail = $state(true);
 
 	// Changes needed form fields
 	let changesComment = $state('');
-	let rejectSendEmail = $state(false);
+	let rejectSendEmail = $state(true);
 
 	// On a reship, surface the implied delta. Hours already credited =
 	// (prior Horizons approved) + (sum of hoursShipped for non-Horizons YSWS
@@ -91,9 +91,9 @@
 			? priorApprovedHours ?? hackatimeHours ?? 0
 			: hackatimeHours ?? 0;
 		reviewerManuallyEditedHours = reviewerApproved;
-		sendEmail = false;
+		sendEmail = true;
 		changesComment = reviewerApproved ? '' : priorUserFeedback ?? '';
-		rejectSendEmail = false;
+		rejectSendEmail = true;
 		justSubmitted = false;
 	});
 
