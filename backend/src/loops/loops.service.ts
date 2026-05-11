@@ -143,22 +143,8 @@ export class LoopsService {
       ? this.tidSubmissionApproved
       : this.tidSubmissionDenied;
 
-    // In dev (no API key) sendTransactional handles the log fallback below;
-    // missing template ids only matter when we'd actually call Loops.
-    if (this.isEnabled() && !transactionalId) {
-      return {
-        success: false,
-        status: 0,
-        message: `Loops template id missing (${
-          data.approved
-            ? 'LOOPS_TID_SUBMISSION_APPROVED'
-            : 'LOOPS_TID_SUBMISSION_DENIED'
-        })`,
-      };
-    }
-
     const frontendUrl =
-      process.env.FRONTEND_URL || 'https://midnight.hackclub.com';
+      process.env.FRONTEND_URL || 'https://horizons.hackclub.com';
     const projectUrl = `${frontendUrl}/app/projects/${data.projectId}`;
 
     const dataVariables: TransactionalVariables = {
@@ -169,6 +155,23 @@ export class LoopsService {
     };
     if (data.approved && data.approvedHours !== undefined) {
       dataVariables.approvedHours = data.approvedHours;
+    }
+
+    // In dev (no API key) sendTransactional handles the log fallback below;
+    // missing template ids only matter when we'd actually call Loops.
+    if (this.isEnabled() && !transactionalId) {
+      const envVar = data.approved
+        ? 'LOOPS_TID_SUBMISSION_APPROVED'
+        : 'LOOPS_TID_SUBMISSION_DENIED';
+      console.warn(
+        `[Loops] Skipping submission review email — ${envVar} not set`,
+        { email, dataVariables, idempotencyKey: options?.idempotencyKey },
+      );
+      return {
+        success: false,
+        status: 0,
+        message: `Loops template id missing (${envVar})`,
+      };
     }
 
     return this.sendTransactional({
