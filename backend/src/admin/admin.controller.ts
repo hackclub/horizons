@@ -23,6 +23,7 @@ import { ApiOkResponse, ApiCreatedResponse, ApiConsumes, ApiProduces } from '@ne
 import { Request, Response } from 'express';
 import { AdminService } from './admin.service';
 import { MetricsSnapshotService } from './metrics-snapshot.service';
+import { StreakService } from '../streaks/streak.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -48,6 +49,7 @@ import {
   UpdateUserResponse,
   AdminStatsResponse,
   BackfillResponse,
+  StreakBackfillResponse,
   EventStatsResponse,
   ImportCsvResponse,
   ProjectOwnerHackatimeProjectsResponse,
@@ -70,6 +72,7 @@ export class AdminController {
   constructor(
     private adminService: AdminService,
     private metricsSnapshotService: MetricsSnapshotService,
+    private streakService: StreakService,
   ) {}
 
   @Get('submissions')
@@ -221,17 +224,15 @@ export class AdminController {
   @Post('streaks/backfill')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @ApiCreatedResponse({ type: BackfillResponse })
-  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days to backfill (default 14, max 30)' })
-  async backfillStreaks(@Query('days') days?: string) {
-    const requested = Math.max(1, Math.min(30, parseInt(days || '14', 10) || 14));
-    const end = new Date();
-    end.setUTCDate(end.getUTCDate() - 1);
-    end.setUTCHours(0, 0, 0, 0);
-    const start = new Date(end);
-    start.setUTCDate(start.getUTCDate() - (requested - 1));
-    const results = await this.metricsSnapshotService.backfill(start, end, false);
-    return { results };
+  @ApiCreatedResponse({ type: StreakBackfillResponse })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days to backfill (default 14, max 365)' })
+  async backfillStreaks(@Query('days') days?: string): Promise<StreakBackfillResponse> {
+    const requested = Math.max(1, Math.min(365, parseInt(days || '14', 10) || 14));
+    const start = new Date();
+    start.setUTCDate(start.getUTCDate() - requested);
+    start.setUTCHours(0, 0, 0, 0);
+    const fromYmd = start.toISOString().slice(0, 10);
+    return this.streakService.backfillAllUsers(fromYmd);
   }
 
   @Get('events/:slug/stats')

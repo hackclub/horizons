@@ -1112,6 +1112,7 @@ export class AdminService {
       currentStreak: this.streakService.applyLazyDecay({
         currentStreak: u.currentStreak,
         lastActiveDate: u.lastActiveDate,
+        timezone: u.timezone,
       }),
     }));
   }

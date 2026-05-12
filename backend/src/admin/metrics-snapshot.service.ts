@@ -2,7 +2,6 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 import { MetricsService } from '../metrics/metrics.service';
-import { StreakService } from '../streaks/streak.service';
 
 @Injectable()
 export class MetricsSnapshotService implements OnModuleInit {
@@ -11,7 +10,6 @@ export class MetricsSnapshotService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private metricsService: MetricsService,
-    private streakService: StreakService,
   ) {}
 
   async onModuleInit() {
@@ -278,12 +276,12 @@ export class MetricsSnapshotService implements OnModuleInit {
         ),
       );
 
-      // Aggregate metrics + persist per-user daily activity. The latter is
-      // best-effort — a single user's DB failure must not break the batch.
-      const persistTasks: Promise<void>[] = [];
+      // Aggregate DAU metrics only. Per-user daily activity is owned by
+      // StreakCronService (hourly spans-based pipeline) — writing here too
+      // would race against it and re-introduce the UTC-bucketing mismatch.
       for (const result of results) {
         if (result.status !== 'fulfilled') continue;
-        const { userId, userSeconds, timezone, eventSlug } = result.value;
+        const { userSeconds, eventSlug } = result.value;
         if (userSeconds > 0) {
           activeCount++;
           if (eventSlug) {
@@ -291,22 +289,7 @@ export class MetricsSnapshotService implements OnModuleInit {
           }
         }
         totalSeconds += userSeconds;
-
-        const localDate = this.streakService.localDateForUtcDay(
-          dayStart,
-          timezone,
-        );
-        persistTasks.push(
-          this.streakService
-            .recordDailyActivity(userId, localDate, userSeconds)
-            .catch((err) =>
-              this.logger.warn(
-                `Failed to persist daily activity for user ${userId}: ${err.message}`,
-              ),
-            ),
-        );
       }
-      await Promise.all(persistTasks);
     }
 
     return {

@@ -832,6 +832,7 @@ export class ProjectsService {
     const currentStreak = this.streakService.applyLazyDecay({
       currentStreak: project.user.currentStreak ?? 0,
       lastActiveDate: project.user.lastActiveDate ?? null,
+      timezone: project.user.timezone ?? null,
     });
     const longestStreak = project.user.longestStreak ?? 0;
 
