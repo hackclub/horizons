@@ -192,17 +192,27 @@ export async function fetchSpans(opts: {
   }
   const raw = (data as { spans?: unknown })?.spans;
   if (!Array.isArray(raw)) return [];
-  return raw
-    .filter(
-      (s): s is Span =>
-        s != null &&
-        typeof (s as Span).start === 'number' &&
-        typeof (s as Span).end === 'number' &&
-        (s as Span).end > (s as Span).start,
-    )
-    .map((s) => ({
-      start: s.start,
-      end: s.end,
-      project: typeof s.project === 'string' ? s.project : undefined,
-    }));
+  // The live Hackatime API returns `{start_time, end_time, duration}` per
+  // span, despite the OpenAPI spec describing `{start, end, project}`. Be
+  // permissive and accept either, prefering `*_time` since that's what real
+  // responses use. Project is absent on real responses — server-side
+  // filter_by_project does the project-name selection for us.
+  const out: Span[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const r = item as Record<string, unknown>;
+    const start = typeof r.start_time === 'number' ? r.start_time
+      : typeof r.start === 'number' ? r.start
+      : null;
+    const end = typeof r.end_time === 'number' ? r.end_time
+      : typeof r.end === 'number' ? r.end
+      : null;
+    if (start == null || end == null || end <= start) continue;
+    out.push({
+      start,
+      end,
+      project: typeof r.project === 'string' ? r.project : undefined,
+    });
+  }
+  return out;
 }
