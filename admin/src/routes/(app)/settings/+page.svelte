@@ -149,7 +149,9 @@
                 params: { query: { days: parseInt(streaksBackfillDays) || 14 } },
             });
             if (error) { streaksBackfillError = 'Streaks backfill failed'; return; }
-            streaksBackfillMessage = `Backfilled streaks for ${data?.results?.length ?? 0} days.`;
+            const users = data?.usersProcessed ?? 0;
+            const days = data?.totalDaysWritten ?? 0;
+            streaksBackfillMessage = `Backfilled ${days} qualifying days across ${users} users.`;
         } catch (err) {
             streaksBackfillError = err instanceof Error ? err.message : 'Streaks backfill failed';
         } finally {

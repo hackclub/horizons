@@ -643,6 +643,7 @@ export class AuthService {
     const decayedStreak = this.streakService.applyLazyDecay({
       currentStreak: user.currentStreak ?? 0,
       lastActiveDate: user.lastActiveDate ?? null,
+      timezone: user.timezone ?? null,
     });
 
     return {

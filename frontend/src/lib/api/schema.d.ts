@@ -2669,6 +2669,17 @@ export interface components {
         BackfillResponse: {
             results: components["schemas"]["BackfillEntry"][];
         };
+        StreakBackfillEntry: {
+            userId: number;
+            daysWritten: number;
+            error?: string;
+        };
+        StreakBackfillResponse: {
+            fromDate: string;
+            usersProcessed: number;
+            totalDaysWritten: number;
+            results: components["schemas"]["StreakBackfillEntry"][];
+        };
         EventStatsEventDetail: {
             eventId: number;
             slug: string;
@@ -4734,7 +4745,7 @@ export interface operations {
     AdminController_backfillStreaks: {
         parameters: {
             query?: {
-                /** @description Days to backfill (default 14, max 30) */
+                /** @description Days to backfill (default 14, max 365) */
                 days?: number;
             };
             header?: never;
@@ -4748,7 +4759,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BackfillResponse"];
+                    "application/json": components["schemas"]["StreakBackfillResponse"];
                 };
             };
         };

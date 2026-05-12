@@ -1102,6 +1102,31 @@ export class BackfillResponse {
   results: BackfillEntry[];
 }
 
+class StreakBackfillEntry {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  daysWritten: number;
+
+  @ApiPropertyOptional()
+  error?: string;
+}
+
+export class StreakBackfillResponse {
+  @ApiProperty()
+  fromDate: string;
+
+  @ApiProperty()
+  usersProcessed: number;
+
+  @ApiProperty()
+  totalDaysWritten: number;
+
+  @ApiProperty({ type: [StreakBackfillEntry] })
+  results: StreakBackfillEntry[];
+}
+
 // --- Event Stats DTOs ---
 
 class EventStatsEventDetail {
