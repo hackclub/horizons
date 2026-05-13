@@ -11,10 +11,13 @@
 		// Called when the reviewer chooses to take over the claim. The parent
 		// is responsible for actually firing the force-claim request.
 		onTakeover: () => void;
+		// Called when the reviewer chooses to look without disrupting the
+		// active claim — the parent should put the page into a read-only mode.
+		onReadOnly: () => void;
 		taking?: boolean;
 	}
 
-	let { claim, onCancel, onTakeover, taking = false }: Props = $props();
+	let { claim, onCancel, onTakeover, onReadOnly, taking = false }: Props = $props();
 
 	let initials = $derived(
 		`${claim.firstName.charAt(0)}${claim.lastName.charAt(0)}`.toUpperCase(),
@@ -45,17 +48,24 @@
 		</div>
 
 		<p class="text-[13px] text-rv-dim mb-5 leading-relaxed">
-			Continuing will take over the review and end their session for this project.
-			Coordinate with them first to avoid duplicate work.
+			Take Over ends their session for this project — coordinate first to avoid duplicate work.
+			View Read-Only lets you take a pass without disrupting their review.
 		</p>
 
-		<div class="flex gap-2 justify-end">
+		<div class="flex gap-2 justify-end flex-wrap">
 			<button
 				class="px-4 py-2 rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
 				onclick={onCancel}
 				disabled={taking}
 			>
 				Back to Queue
+			</button>
+			<button
+				class="px-4 py-2 rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border bg-rv-surface2 text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
+				onclick={onReadOnly}
+				disabled={taking}
+			>
+				View Read-Only
 			</button>
 			<button
 				class="px-4 py-2 rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-red bg-rv-red text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"

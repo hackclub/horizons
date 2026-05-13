@@ -121,6 +121,12 @@
 	const claimManager = createClaimManager();
 	let conflictClaim = $state<ClaimInfo | null>(null);
 	let takingOver = $state(false);
+	// Set when the reviewer chose to view a claimed submission without taking
+	// over. We don't hold a claim, can't submit a verdict, and notes/checklist
+	// can't be edited — but the project is fully visible so reviewers can take
+	// a pass without disrupting whoever is actively reviewing.
+	let readOnlyMode = $state(false);
+	let readOnlyClaim = $state<ClaimInfo | null>(null);
 
 	// Center tabs
 	const centerTabs: Tab[] = [
@@ -246,10 +252,25 @@
 		takingOver = true;
 		try {
 			const ok = await claimManager.takeover(currentSubmission.submissionId);
-			if (ok) conflictClaim = null;
+			if (ok) {
+				conflictClaim = null;
+				// Successful takeover means the previous holder lost their claim;
+				// we own it now and edits are safe again.
+				readOnlyMode = false;
+				readOnlyClaim = null;
+			}
 		} finally {
 			takingOver = false;
 		}
+	}
+
+	function viewReadOnly() {
+		// Stash who's actively reviewing for the banner, then close the modal.
+		// We deliberately don't claim or heartbeat — let the active reviewer
+		// keep their session intact while we read along.
+		readOnlyClaim = conflictClaim;
+		readOnlyMode = true;
+		conflictClaim = null;
 	}
 
 	function dismissClaimConflict() {
@@ -300,6 +321,10 @@
 		readmeMarkdown = '';
 		manifestLookup = null;
 		hackatimeProjectHours = null;
+		// Read-only mode is per-submission — switching submissions resets it
+		// (attachClaim below decides whether to surface a fresh conflict).
+		readOnlyMode = false;
+		readOnlyClaim = null;
 
 		try {
 			const { data, error } = await api.GET('/api/reviewer/submissions/{id}', {
@@ -494,6 +519,26 @@
 			<button class="mt-3 bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit hover:border-rv-accent" onclick={goBack}>← Back to Gallery</button>
 		</div>
 	{:else}
+		{#if readOnlyMode}
+			<div class="flex items-center justify-between gap-3 px-5 py-2 bg-yellow-500/15 border-b border-yellow-500/40 text-yellow-700 dark:text-yellow-400 text-[12px] shrink-0">
+				<span>
+					<strong class="font-semibold">Read-only:</strong>
+					{#if readOnlyClaim}
+						{readOnlyClaim.firstName} {readOnlyClaim.lastName} is reviewing this project — you can look but can't edit notes, checklist, or submit a verdict.
+					{:else}
+						You can look but can't edit notes, checklist, or submit a verdict.
+					{/if}
+				</span>
+				{#if readOnlyClaim}
+					<button
+						class="px-3 py-1 rounded-md text-[11px] font-semibold border border-yellow-500/60 bg-yellow-500/20 hover:bg-yellow-500/30 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+						onclick={() => { conflictClaim = readOnlyClaim; }}
+					>
+						Take Over
+					</button>
+				{/if}
+			</div>
+		{/if}
 		<TopBar
 			{currentIndex}
 			totalCount={queueLength}
@@ -529,6 +574,7 @@
 					targetId={currentSubmission?.project.projectId ?? 0}
 					bind:content={projectNote}
 					loading={submissionLoading}
+					readOnly={readOnlyMode}
 				/>
 
 				<hr class="border-none border-t border-rv-border m-0" />
@@ -539,6 +585,7 @@
 					targetId={currentSubmission?.project.user.userId ?? 0}
 					bind:content={userNote}
 					loading={submissionLoading}
+					readOnly={readOnlyMode}
 				/>
 
 				<hr class="border-none border-t border-rv-border m-0" />
@@ -620,6 +667,7 @@
 										.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 									return priorApproved[0]?.approvedHours ?? null;
 								})()}
+								readOnly={readOnlyMode}
 								onReviewComplete={handleReviewComplete}
 							/>
 						</div>
@@ -640,6 +688,7 @@
 					submissionId={currentSubmission?.submissionId ?? 0}
 					bind:checkedItems
 					loading={submissionLoading}
+					readOnly={readOnlyMode}
 				/>
 			</div>
 		</div>
@@ -651,6 +700,7 @@
 			taking={takingOver}
 			onCancel={dismissClaimConflict}
 			onTakeover={takeOverClaim}
+			onReadOnly={viewReadOnly}
 		/>
 	{/if}
 

@@ -21,6 +21,7 @@
 		/** Sum of hoursShipped from non-Horizons Manifest entries — already
 		 *  credited elsewhere, so subtracted from the delta sent to Airtable. */
 		priorYswsHoursShipped?: number;
+		readOnly?: boolean;
 		onReviewComplete: (approved: boolean) => void;
 	}
 
@@ -37,6 +38,7 @@
 		hasPriorYswsSubmission = false,
 		priorReshipApprovedHours = null,
 		priorYswsHoursShipped = 0,
+		readOnly = false,
 		onReviewComplete,
 	}: Props = $props();
 
@@ -304,14 +306,14 @@
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={saveDraft}
-					disabled={submitting || savingDraft}
+					disabled={submitting || savingDraft || readOnly}
 				>
 					{savingDraft ? 'Saving...' : 'Save Draft'}
 				</button>
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-green text-white border-rv-green disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitApproval}
-					disabled={submitting || savingDraft || justSubmitted}
+					disabled={submitting || savingDraft || justSubmitted || readOnly}
 				>
 					{submitting ? 'Submitting...' : justSubmitted ? 'Submitted' : 'Submit Approval'}
 				</button>
@@ -350,14 +352,14 @@
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={saveDraft}
-					disabled={submitting || savingDraft}
+					disabled={submitting || savingDraft || readOnly}
 				>
 					{savingDraft ? 'Saving...' : 'Save Draft'}
 				</button>
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-red text-white border-rv-red disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitChangesNeeded}
-					disabled={submitting || savingDraft || justSubmitted}
+					disabled={submitting || savingDraft || justSubmitted || readOnly}
 				>
 					{submitting ? 'Submitting...' : justSubmitted ? 'Submitted' : 'Request Changes'}
 				</button>

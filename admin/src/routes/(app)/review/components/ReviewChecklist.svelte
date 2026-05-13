@@ -6,9 +6,15 @@
 		submissionId: number;
 		checkedItems: number[];
 		loading?: boolean;
+		readOnly?: boolean;
 	}
 
-	let { submissionId, checkedItems = $bindable([]), loading = false }: Props = $props();
+	let {
+		submissionId,
+		checkedItems = $bindable([]),
+		loading = false,
+		readOnly = false,
+	}: Props = $props();
 
 	const CHECKLIST_ITEMS = [
 		'README exists with setup/run instructions',
@@ -24,6 +30,7 @@
 	let saveError = $state<string | null>(null);
 
 	function toggleItem(index: number) {
+		if (readOnly) return;
 		if (checkedItems.includes(index)) {
 			checkedItems = checkedItems.filter((i) => i !== index);
 		} else {
@@ -67,8 +74,9 @@
 	{:else}
 		{#each CHECKLIST_ITEMS as item, index}
 			<button
-				class="flex items-start gap-2 py-1.25 cursor-pointer select-none bg-transparent border-none w-full text-left font-[inherit] hover:opacity-85"
+				class="flex items-start gap-2 py-1.25 select-none bg-transparent border-none w-full text-left font-[inherit] {readOnly ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:opacity-85'}"
 				onclick={() => toggleItem(index)}
+				disabled={readOnly}
 			>
 				<input
 					type="checkbox"

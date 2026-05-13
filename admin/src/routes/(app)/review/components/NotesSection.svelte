@@ -8,6 +8,7 @@
 		targetId: number;
 		content: string;
 		loading?: boolean;
+		readOnly?: boolean;
 	}
 
 	let {
@@ -16,6 +17,7 @@
 		targetId,
 		content = $bindable(''),
 		loading = false,
+		readOnly = false,
 	}: Props = $props();
 
 	let isOpen = $state(false);
@@ -85,7 +87,7 @@
 			{:else if savedFlash}
 				<span class="text-[11px] text-rv-green">Saved</span>
 			{/if}
-			{#if isOpen}
+			{#if isOpen && !readOnly}
 				<button
 					class="bg-rv-surface2 border border-rv-border text-rv-dim px-2.5 py-[3px] rounded text-[11px] font-inherit font-medium cursor-pointer transition-all duration-150 hover:text-rv-text hover:border-rv-accent"
 					onclick={handleSave}
@@ -106,10 +108,12 @@
 	{#if isOpen}
 		<div class="px-4 pb-2.5">
 			<textarea
-				class="w-full bg-rv-bg border border-rv-border rounded-[6px] p-2.5 text-rv-text font-inherit text-[13px] leading-[1.6] resize-y min-h-[80px] focus:outline-none focus:border-rv-accent"
+				class="w-full bg-rv-bg border border-rv-border rounded-[6px] p-2.5 text-rv-text font-inherit text-[13px] leading-[1.6] resize-y min-h-[80px] focus:outline-none focus:border-rv-accent disabled:opacity-70 disabled:cursor-not-allowed"
 				bind:value={content}
 				maxlength={1000}
 				placeholder="Notes about this {targetType}..."
+				readonly={readOnly}
+				disabled={readOnly}
 			></textarea>
 		</div>
 	{/if}
