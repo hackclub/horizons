@@ -55,6 +55,10 @@ model User {
   longestStreak  Int       @default(0) @map("longest_streak")
   lastActiveDate DateTime? @map("last_active_date") @db.Date
 
+  // Stamped once when we send the "you hit 15 approved hours — buy your ticket"
+  // Loops email. Null means the email hasn't been sent; we never re-send.
+  ticketQualifyEmailSentAt DateTime? @map("ticket_qualify_email_sent_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

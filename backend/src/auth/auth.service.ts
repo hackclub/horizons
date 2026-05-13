@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
+import { TicketQualifyEmailService } from '../ticket-qualify-email/ticket-qualify-email.service';
 import { SlackService } from '../slack/slack.service';
 import { SlackChannelsService } from '../slack-channels/slack-channels.service';
 import { StreakService } from '../streaks/streak.service';
@@ -114,6 +115,7 @@ export class AuthService {
     private slackService: SlackService,
     private slackChannelsService: SlackChannelsService,
     private streakService: StreakService,
+    private ticketQualifyEmailService: TicketQualifyEmailService,
   ) {}
 
   private syncSlackTimezone(userId: number, slackUserId: string) {
@@ -297,6 +299,16 @@ export class AuthService {
         expiresAt: new Date(Date.now() + this.SESSION_EXPIRY_MS),
       },
     });
+
+    // Backfill the ticket-qualify email for users who hit 15+ approved hours
+    // before this trigger existed. tryNotify is one-shot per user via the
+    // ticketQualifyEmailSentAt flag, so re-logins after the email has fired
+    // are no-ops.
+    this.ticketQualifyEmailService
+      .tryNotify(user.email)
+      .catch((err) =>
+        console.error('[Auth] ticket-qualify backfill failed:', err),
+      );
 
     return {
       sessionId: session.id,

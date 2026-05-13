@@ -4,6 +4,7 @@ import { AirtableService } from '../airtable/airtable.service';
 import { SlackService } from '../slack/slack.service';
 import { ManifestService } from '../manifest/manifest.service';
 import { LoopsService } from '../loops/loops.service';
+import { TicketQualifyEmailService } from '../ticket-qualify-email/ticket-qualify-email.service';
 import { ReviewSubmissionDto } from '../reviewer/dto/review-submission.dto';
 import { AUDIT_ACTIONS } from './audit-actions';
 
@@ -114,6 +115,7 @@ export class SubmissionApprovalService {
     private slackService: SlackService,
     private manifestService: ManifestService,
     private loopsService: LoopsService,
+    private ticketQualifyEmailService: TicketQualifyEmailService,
   ) {}
 
   /**
@@ -426,11 +428,28 @@ export class SubmissionApprovalService {
       approvedHours: submission.approvedHours ?? undefined,
       hoursJustification: fullJustification,
     });
+    // Run the ticket-qualify check first so we can suppress the
+    // submission-approved email at the moment the user crosses the bar —
+    // sending both would feel like spam. tryNotify is awaited (vs.
+    // fire-and-forget) precisely to gate sendNotifications below.
+    // Slack notifications still go out regardless.
+    let qualifyEmailSent = false;
+    try {
+      qualifyEmailSent = await this.ticketQualifyEmailService.tryNotify(
+        submission.project.user.email,
+      );
+    } catch (err) {
+      console.error(
+        '[SubmissionApproval] ticket-qualify email check failed:',
+        err,
+      );
+    }
+
     await this.sendNotifications(submission, {
       approved: true,
       approvedHours: submission.approvedHours ?? undefined,
       feedback: submission.hoursJustification,
-      sendEmail: submission.pendingSendEmail,
+      sendEmail: submission.pendingSendEmail && !qualifyEmailSent,
       finalizedAt,
     });
   }

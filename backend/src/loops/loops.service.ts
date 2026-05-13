@@ -29,12 +29,15 @@ export class LoopsService {
   private readonly client: LoopsClient | null;
   private readonly tidSubmissionApproved: string;
   private readonly tidSubmissionDenied: string;
+  private readonly tidTicketQualify: string;
 
   constructor() {
     const apiKey = process.env.LOOPS_API_KEY || '';
     this.tidSubmissionApproved =
       process.env.LOOPS_TID_SUBMISSION_APPROVED || '';
     this.tidSubmissionDenied = process.env.LOOPS_TID_SUBMISSION_DENIED || '';
+    this.tidTicketQualify =
+      process.env.LOOPS_TID_TICKET_QUALIFY || 'cmp4d1rsr00jj0j1c17viexa7';
 
     if (!apiKey) {
       console.warn(
@@ -178,6 +181,39 @@ export class LoopsService {
       email,
       transactionalId,
       dataVariables,
+      idempotencyKey: options?.idempotencyKey,
+    });
+  }
+
+  /**
+   * Ticket-qualify nudge — fires once when a user first crosses the approved
+   * hours bar (15h). Template variables: `eventName` (e.g. "Horizons Nexus")
+   * and `rsvpQualificationBar` (the hour threshold, e.g. 15).
+   */
+  async sendTicketQualifyEmail(
+    email: string,
+    data: { eventName: string; rsvpQualificationBar: number },
+    options?: { idempotencyKey?: string },
+  ): Promise<SendTransactionalResult> {
+    if (this.isEnabled() && !this.tidTicketQualify) {
+      console.warn(
+        '[Loops] Skipping ticket-qualify email — LOOPS_TID_TICKET_QUALIFY not set',
+        { email, data, idempotencyKey: options?.idempotencyKey },
+      );
+      return {
+        success: false,
+        status: 0,
+        message: 'Loops template id missing (LOOPS_TID_TICKET_QUALIFY)',
+      };
+    }
+
+    return this.sendTransactional({
+      email,
+      transactionalId: this.tidTicketQualify,
+      dataVariables: {
+        eventName: data.eventName,
+        rsvpQualificationBar: data.rsvpQualificationBar,
+      },
       idempotencyKey: options?.idempotencyKey,
     });
   }
