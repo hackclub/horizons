@@ -188,6 +188,9 @@
 
 	function statusOf(item: NavItem): ItemStatus {
 		if (isPurchased(item.key)) return 'purchased';
+		// Travel Stipends is intentionally disabled — keep it locked regardless
+		// of ticket state until the backend flow is wired up.
+		if (item.key === 'stipends') return 'locked';
 		if (item.prereq && !isPurchased(item.prereq)) return 'locked';
 		if (item.colorKey) {
 			const cost = costFor(item);
@@ -224,6 +227,10 @@
 
 	function subtitleFor(item: NavItem, status: ItemStatus): string | null {
 		if (status === 'purchased') return 'Purchased!';
+		// Travel Stipends is disabled but only shows the placeholder copy once
+		// the ticket has been purchased — before that, fall through to the
+		// natural "Purchase ticket first" prereq nudge.
+		if (item.key === 'stipends' && effectiveHasTicket) return 'Available soon';
 		if (status === 'locked') {
 			if (item.prereq && !isPurchased(item.prereq)) {
 				const prereq = navItems.find((it) => it.key === item.prereq);
