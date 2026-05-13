@@ -39,26 +39,61 @@
 	// projects they've finalized in the same session.
 	let seenProjectIds = $state<Set<number>>(new Set());
 
-	// Next skips ahead past projects this reviewer already voted on AND past
-	// projects another reviewer is actively claiming, so reviewers always land
-	// on something fresh and don't fight over claims. Previous deliberately
-	// allows revisiting a reviewed project (e.g. to double-check or amend a
-	// verdict). Stale claims fall through — the next reviewer takes them over.
+	// Projects this reviewer Skipped this tab session. Persisted in
+	// sessionStorage because this page remounts on each navigation between
+	// projects — without persistence, hitting Skip would bounce between two
+	// projects since each lands on the longest-wait candidate that excludes
+	// only the current one.
+	const SKIP_STORAGE_KEY = 'horizons-review-skipped-projects';
+	let sessionSkippedProjectIds = $state<Set<number>>(new Set());
+
+	function loadSkippedFromStorage(): Set<number> {
+		try {
+			const raw = sessionStorage.getItem(SKIP_STORAGE_KEY);
+			if (!raw) return new Set();
+			const parsed = JSON.parse(raw);
+			if (!Array.isArray(parsed)) return new Set();
+			return new Set(parsed.filter((n): n is number => typeof n === 'number'));
+		} catch {
+			return new Set();
+		}
+	}
+
+	function persistSkipped(set: Set<number>): void {
+		try {
+			sessionStorage.setItem(SKIP_STORAGE_KEY, JSON.stringify([...set]));
+		} catch {
+			// sessionStorage can throw (private mode, quota); the in-memory set
+			// still works for the rest of the page lifecycle.
+		}
+	}
+
+	// Next jumps to the longest-waiting project this reviewer hasn't already
+	// voted on, isn't actively claimed by someone else, and hasn't been
+	// Skipped this session — so reviewers triage the most-stale submissions
+	// instead of getting whichever one happens to be next in queue order.
+	// Previous deliberately allows revisiting a reviewed project (e.g. to
+	// double-check or amend a verdict). Stale claims fall through — the next
+	// reviewer takes them over.
 	function isActivelyClaimedByOther(item: QueueItem): boolean {
 		return !!(item.claim && !item.claim.isMine && !item.claim.isStale);
 	}
 
-	function findNextUnseen(fromIndex: number): number {
-		for (let i = fromIndex + 1; i < queue.length; i++) {
+	// Backend returns queue ordered by submission.createdAt asc, so the first
+	// eligible match in the array is the project that's been waiting longest.
+	function findLongestWaitingIndex(): number {
+		for (let i = 0; i < queue.length; i++) {
 			const item = queue[i];
+			if (item.projectId === projectId) continue;
 			if (seenProjectIds.has(item.projectId)) continue;
+			if (sessionSkippedProjectIds.has(item.projectId)) continue;
 			if (isActivelyClaimedByOther(item)) continue;
 			return i;
 		}
 		return -1;
 	}
 
-	let hasNextUnseen = $derived(findNextUnseen(currentIndex) !== -1);
+	let hasNextProject = $derived(findLongestWaitingIndex() !== -1);
 
 	// Current submission detail + loading
 	let currentSubmission = $state<SubmissionDetail | null>(null);
@@ -96,6 +131,8 @@
 	let activeTab = $state('readme');
 
 	onMount(async () => {
+		sessionSkippedProjectIds = loadSkippedFromStorage();
+
 		// Load queue + past reviews in parallel. Past reviews powers two things:
 		// (1) the seenProjectIds set that drives next/prev skip-already-reviewed,
 		// and (2) the deep-link fallback when a project isn't in the pending queue.
@@ -355,7 +392,16 @@
 	}
 
 	async function navigateNext() {
-		const idx = findNextUnseen(currentIndex);
+		// Mark the current project as skipped before picking the next one;
+		// otherwise the next pick would be the longest-waiter excluding only
+		// the current project, and a second Skip would bounce right back to it.
+		if (currentSubmission) {
+			const next = new Set(sessionSkippedProjectIds);
+			next.add(currentSubmission.project.projectId);
+			sessionSkippedProjectIds = next;
+			persistSkipped(next);
+		}
+		const idx = findLongestWaitingIndex();
 		if (idx !== -1) await navigateTo(idx);
 	}
 
@@ -417,7 +463,7 @@
 			onPrev={navigatePrev}
 			onBackToGallery={goBack}
 			reviewPassed={currentSubmission?.reviewPassed ?? null}
-			nextDisabled={!hasNextUnseen}
+			nextDisabled={!hasNextProject}
 		/>
 
 		<div class="grid grid-cols-[300px_1fr_320px] flex-1 overflow-hidden">
