@@ -281,7 +281,8 @@ export class AirtableService {
       | 'authedWithHCA'
       | 'firstProjectCreated'
       | 'firstSubmit'
-      | 'onboardingCompleted',
+      | 'onboardingCompleted'
+      | 'eventTicketPurchased',
     dateOverride?: string,
   ): Promise<void> {
     if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
@@ -299,6 +300,7 @@ export class AirtableService {
       firstProjectCreated: 'Loops - horizonsFirstProjectCreatedAt',
       firstSubmit: 'Loops - horizonsFirstSubmitAt',
       onboardingCompleted: 'Loops - horizonsOnboardingCompletedAt',
+      eventTicketPurchased: 'Loops - horizonsEventTicketPurchasedAt',
     };
 
     const fieldName = fieldMap[event];

@@ -11,6 +11,7 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { SlackChannelsService } from '../slack-channels/slack-channels.service';
 import { SlackService } from '../slack/slack.service';
 import { BalanceService } from '../balance/balance.service';
+import { AirtableService } from '../airtable/airtable.service';
 
 @Injectable()
 export class EventsService {
@@ -19,6 +20,7 @@ export class EventsService {
     private slackChannelsService: SlackChannelsService,
     private slackService: SlackService,
     private balanceService: BalanceService,
+    private airtableService: AirtableService,
   ) {}
 
   // ── Admin CRUD ──
@@ -274,12 +276,33 @@ export class EventsService {
     this.sendTicketConfirmation(userId, event.title).catch((err) =>
       console.error('[Events] ticket confirmation Slack DM failed:', err),
     );
+    // Stamp the Airtable Loops field so the user is added to the
+    // ticket-purchase email cohort. Lookup email first since syncUserEvent
+    // is keyed on it; failures are non-fatal.
+    void this.syncTicketPurchaseToAirtable(userId);
 
     const newBalance = await this.balanceService.getUserBalance(userId);
     return {
       transactionId: transaction.transactionId,
       newBalance: newBalance.balance,
     };
+  }
+
+  private async syncTicketPurchaseToAirtable(userId: number) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { userId },
+        select: { email: true },
+      });
+      if (!user?.email) return;
+      await this.airtableService.syncUserEvent(
+        user.email,
+        userId,
+        'eventTicketPurchased',
+      );
+    } catch (err) {
+      console.error('[Events] Airtable ticket-purchase sync failed:', err);
+    }
   }
 
   async getEventAttendees(slug: string) {
