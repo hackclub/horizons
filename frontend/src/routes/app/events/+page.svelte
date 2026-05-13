@@ -55,9 +55,15 @@
 	let approvedHours = $state(0);
 	let purchasing = $state<ItemKey | null>(null);
 	let purchaseError = $state<string | null>(null);
-	// First Enter / click arms the confirm prompt; the second commits the purchase.
-	// Cleared whenever the focused item changes (see effect below).
-	let confirmingKey = $state<ItemKey | null>(null);
+
+	// Confirmation modal — activated when the user picks "Buy Ticket". The user
+	// must type REQUIRED_PHRASE verbatim before the Purchase button enables.
+	const REQUIRED_PHRASE =
+		'I understand that by purchasing an RSVP I must complete the requirements for an invite by the event date to receive prizes for my logged hours and to be allowed entry, regardless of my travel arrangements.';
+	let showConfirmModal = $state(false);
+	let confirmText = $state('');
+	const phraseMatches = $derived(confirmText.trim() === REQUIRED_PHRASE);
+	let confirmInputEl = $state<HTMLTextAreaElement | null>(null);
 
 	// --- DEBUG: ?debug enables overlay to preview each event + each state ---
 	type DebugApprovedState = '' | 'none' | '15' | '30' | '60';
@@ -218,7 +224,6 @@
 
 	function subtitleFor(item: NavItem, status: ItemStatus): string | null {
 		if (status === 'purchased') return 'Purchased!';
-		if (confirmingKey === item.key) return 'Confirm?';
 		if (status === 'locked') {
 			if (item.prereq && !isPurchased(item.prereq)) {
 				const prereq = navItems.find((it) => it.key === item.prereq);
@@ -265,28 +270,35 @@
 			return;
 		}
 		if (item.key === 'ticket') {
-			// Two-step commit: first activation arms the confirm prompt, second commits.
-			// Leave confirmingKey set through the in-flight purchase so the label
-			// stays steady (the finally in purchase() clears it).
-			if (confirmingKey === item.key) {
-				void purchase(item.key);
-			} else {
-				confirmingKey = item.key;
-			}
+			openConfirmModal();
 			return;
 		}
 		// Travel Stipends has no backend flow yet — shake until it does.
 		triggerShake(item.key);
 	}
 
-	async function purchase(key: 'ticket') {
+	function openConfirmModal() {
+		confirmText = '';
+		showConfirmModal = true;
+		// Focus the textarea on next tick so the user can start typing immediately.
+		requestAnimationFrame(() => confirmInputEl?.focus());
+	}
+
+	function closeConfirmModal() {
+		if (purchasing) return;
+		showConfirmModal = false;
+		confirmText = '';
+	}
+
+	async function purchase() {
 		if (debugMode) {
 			// Debug mode just flips local state so the visual flow can be exercised
 			// without hitting the backend.
 			hasTicket = true;
+			showConfirmModal = false;
 			return;
 		}
-		purchasing = key;
+		purchasing = 'ticket';
 		purchaseError = null;
 		try {
 			const res = await api.POST('/api/events/auth/{slug}/ticket' as any, {
@@ -300,7 +312,7 @@
 					? errBody!.message!.join(' ')
 					: errBody?.message;
 				purchaseError = msg ?? `Purchase failed (${status ?? 'network error'})`;
-				triggerShake(key);
+				triggerShake('ticket');
 				return;
 			}
 			// Apply the success result from the POST response immediately. The POST
@@ -315,14 +327,16 @@
 			await hydrateTicketStatus(pinnedSlug);
 			if (!hasTicket) {
 				purchaseError = 'Purchase did not persist — please try again.';
-				triggerShake(key);
+				triggerShake('ticket');
+			} else {
+				showConfirmModal = false;
+				confirmText = '';
 			}
 		} catch (err) {
 			purchaseError = err instanceof Error ? err.message : 'Purchase failed';
-			triggerShake(key);
+			triggerShake('ticket');
 		} finally {
 			purchasing = null;
-			confirmingKey = null;
 		}
 	}
 
@@ -344,17 +358,27 @@
 		if (firstActionable >= 0) nav.selectedIndex = firstActionable;
 	});
 
-	// Whenever focus shifts to a different item, drop any in-flight confirm.
-	let lastSelectedIndex = -1;
-	$effect(() => {
-		const idx = nav.selectedIndex;
-		if (idx !== lastSelectedIndex) {
-			if (confirmingKey && navItems[idx]?.key !== confirmingKey) {
-				confirmingKey = null;
+	// Suspend the page's keyboard nav while the confirm modal is open. Escape
+	// closes the modal; Enter inside the textarea inserts a newline normally,
+	// but Cmd/Ctrl+Enter submits when the phrase matches.
+	function handleWindowKeydown(e: KeyboardEvent) {
+		if (showConfirmModal) {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				closeConfirmModal();
+			} else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && phraseMatches && !purchasing) {
+				e.preventDefault();
+				void purchase();
 			}
-			lastSelectedIndex = idx;
+			return;
 		}
-	});
+		nav.handleKeydown(e);
+	}
+
+	function handleWindowWheel(e: WheelEvent) {
+		if (showConfirmModal) return;
+		nav.handleWheel(e);
+	}
 
 	function actionLabelFor(item: NavItem, status: ItemStatus): string | null {
 		if (item.key === 'change') return 'TO CHANGE';
@@ -362,13 +386,12 @@
 		if (status !== 'available') return null;
 		if (purchasing === item.key) return 'PURCHASING...';
 		const cost = costFor(item);
-		const verb = confirmingKey === item.key ? 'TO CONFIRM' : 'TO PURCHASE';
 		const noun = cost === 1 ? 'HOUR' : 'HOURS';
-		return cost !== null ? `${verb} (${cost} ${noun})` : verb;
+		return cost !== null ? `TO PURCHASE (${cost} ${noun})` : 'TO PURCHASE';
 	}
 </script>
 
-<svelte:window onkeydown={nav.handleKeydown} onwheel={nav.handleWheel} />
+<svelte:window onkeydown={handleWindowKeydown} onwheel={handleWindowWheel} />
 
 <div class="relative size-full overflow-hidden">
 	{#if heroImage}
@@ -508,6 +531,71 @@
 			>
 				×
 			</button>
+		</div>
+	{/if}
+
+	{#if showConfirmModal}
+		<div class="fixed inset-0 z-50 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+			<button
+				type="button"
+				class="absolute inset-0 bg-black/50 cursor-default"
+				aria-label="Cancel ticket purchase"
+				onclick={closeConfirmModal}
+			></button>
+			<div class="relative max-w-xl w-full max-h-[85vh] bg-[#f3e8d8] border-4 border-black rounded-[20px] p-6 shadow-[4px_4px_0px_0px_black] flex flex-col gap-3 overflow-y-auto">
+				<p id="confirm-title" class="font-cook text-[28px] font-semibold text-black m-0">CONFIRM TICKET PURCHASE</p>
+
+				<p class="font-bricolage text-[16px] text-black m-0">
+					Please read the following rules and certify below:
+				</p>
+				<ul class="list-disc pl-6 flex flex-col gap-2">
+					<li class="font-bricolage text-[15px] text-black m-0 leading-snug">
+						I understand that by purchasing an RSVP, if I do not complete the requirements for an invite (30 approved hours) by the event date, I will not be able to participate further in Horizons and use my hours to redeem prizes.
+					</li>
+					<li class="font-bricolage text-[15px] text-black m-0 leading-snug">
+						I understand that I will not be allowed in to the event if I do not complete the requirements for an invite even if I already paid for a flight &amp; show up.
+					</li>
+				</ul>
+
+				<p class="font-bricolage text-[16px] text-black m-0">
+					Please type the following:
+				</p>
+				<blockquote class="font-bricolage text-[15px] text-black m-0 leading-snug italic bg-black/10 border-2 border-black rounded-lg p-3 select-none">
+					{REQUIRED_PHRASE}
+				</blockquote>
+
+				<textarea
+					bind:this={confirmInputEl}
+					bind:value={confirmText}
+					class="font-bricolage text-[15px] text-black w-full bg-white border-2 border-black rounded-lg p-3 resize-none outline-none transition-[border-color,box-shadow] duration-150 shadow-[3px_3px_0px_0px_black]"
+					class:matches={phraseMatches}
+					placeholder="Type the phrase above…"
+					rows="4"
+					disabled={!!purchasing}
+					spellcheck="false"
+					autocomplete="off"
+				></textarea>
+
+				<div class="flex flex-col-reverse sm:flex-row gap-2.5 justify-end mt-1">
+					<button
+						type="button"
+						class="action-btn cancel py-2 px-5 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black"
+						onclick={closeConfirmModal}
+						disabled={!!purchasing}
+					>
+						CANCEL
+					</button>
+					<button
+						type="button"
+						class="action-btn purchase py-2 px-5 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black"
+						class:disabled={!phraseMatches || !!purchasing}
+						onclick={() => purchase()}
+						disabled={!phraseMatches || !!purchasing}
+					>
+						{purchasing ? 'PURCHASING…' : `PURCHASE${effectiveTicketCost !== null ? ` (${effectiveTicketCost}h)` : ''}`}
+					</button>
+				</div>
+			</div>
 		</div>
 	{/if}
 
@@ -877,6 +965,38 @@
 		color: black;
 		cursor: pointer;
 		padding: 0;
+	}
+
+	/* Match .action-btn pattern from /app/projects/[id] using the global juice
+	   variables (--juice-scale, --juice-easing, etc.) so modal buttons feel
+	   native to the rest of the app. Purchase stays orange when enabled,
+	   cancel stays cream — only Purchase shifts color on hover. */
+	.action-btn {
+		background-color: #f3e8d8;
+		cursor: pointer;
+		transition:
+			background-color var(--selected-duration) ease,
+			transform var(--juice-duration) var(--juice-easing);
+	}
+	.action-btn.purchase {
+		background-color: #ffa936;
+	}
+	.action-btn.purchase.disabled {
+		background-color: rgba(204, 204, 204, 0.6);
+		cursor: not-allowed;
+	}
+	.action-btn:disabled {
+		cursor: not-allowed;
+	}
+	@media (hover: hover) {
+		.action-btn:not(:disabled):hover {
+			transform: scale(var(--juice-scale));
+		}
+	}
+
+	textarea.matches:focus {
+		border-color: #ffa936;
+		box-shadow: 3px 3px 0px 0px #ffa936;
 	}
 
 	/* Debug overlay (?debug) */
