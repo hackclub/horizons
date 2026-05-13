@@ -99,6 +99,31 @@
 	let attendees = $state<AttendeeRow[]>([]);
 	let attendeesLoading = $state(false);
 	let attendeesError = $state<string | null>(null);
+	let exporting = $state(false);
+
+	async function exportCsv() {
+		if (!slug) return;
+		exporting = true;
+		try {
+			const resp = await fetch(`/api/admin/events/${slug}/export.csv`, {
+				credentials: 'include',
+			});
+			if (!resp.ok) throw new Error('Export failed');
+			const blob = await resp.blob();
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `horizons-event-${slug}.csv`;
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+			URL.revokeObjectURL(url);
+		} catch (err) {
+			console.error(err);
+		} finally {
+			exporting = false;
+		}
+	}
 
 	let pinnedChartEl = $state<HTMLDivElement | null>(null);
 	let dauChartEl = $state<HTMLDivElement | null>(null);
@@ -390,9 +415,14 @@
 						{formatDate(stats.event.startDate)} — {formatDate(stats.event.endDate)} &middot; {stats.event.hourCost}h goal
 					</p>
 				</div>
-				<Button onclick={() => (editing = !editing)}>
-					{editing ? 'Cancel' : 'Edit Event'}
-				</Button>
+				<div class="flex items-center gap-2">
+					<Button onclick={exportCsv} disabled={exporting}>
+						{exporting ? 'Exporting…' : 'Export CSV'}
+					</Button>
+					<Button onclick={() => (editing = !editing)}>
+						{editing ? 'Cancel' : 'Edit Event'}
+					</Button>
+				</div>
 			</div>
 
 			{#if stats.event.description}

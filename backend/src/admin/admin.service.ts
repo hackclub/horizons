@@ -2324,6 +2324,158 @@ export class AdminService {
   }
 
   /**
+   * Per-event CSV export — restricted to users who have pinned the given event
+   * as their target. Hour buckets mirror the global export (see exportCsv) so
+   * totals reconcile with the dashboard.
+   */
+  async exportEventCsv(slug: string): Promise<string> {
+    const event = await this.prisma.event.findUnique({
+      where: { slug },
+      select: { eventId: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+
+    const pins = await this.prisma.pinnedEvent.findMany({
+      where: { eventId: event.eventId },
+      select: {
+        user: {
+          select: {
+            userId: true,
+            firstName: true,
+            lastName: true,
+            slackUserId: true,
+            country: true,
+            createdAt: true,
+            projects: {
+              select: { nowHackatimeProjects: true },
+            },
+          },
+        },
+      },
+    });
+
+    const userIds = pins.map((p) => p.user.userId);
+    if (userIds.length === 0) {
+      return Papa.unparse([], {
+        columns: [
+          'Slack ID',
+          'Display Name',
+          'Signed up date',
+          'Approved hours',
+          'Hours in review',
+          'Un-submitted hours',
+          'Submitted hours',
+          'Tracked hours',
+          '# of projects without hackatime linked',
+          'Country',
+        ],
+      });
+    }
+
+    // Per-user hour buckets:
+    //   approvedHours      — approved_hours from the latest approved submission per
+    //                        fraud-passed project.
+    //   hoursInReview      — now_hackatime_hours for projects whose latest submission
+    //                        is still pending review.
+    //   unsubmittedHours   — now_hackatime_hours for projects that have never been
+    //                        submitted for review.
+    //   submittedHours     — now_hackatime_hours for projects with ≥1 submission of
+    //                        any status (assumes the user will keep iterating until
+    //                        approval). Overlaps with approved/in-review by design.
+    const [approvedHoursRows, hoursInReviewRows, unsubmittedHoursRows, submittedHoursRows, trackedHoursRows] =
+      await Promise.all([
+        this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
+          SELECT p.user_id, COALESCE(SUM(s.approved_hours), 0) AS hours
+          FROM submissions s
+          JOIN projects p ON p.project_id = s.project_id
+          WHERE p.user_id = ANY(${userIds}::int[])
+            AND s.approval_status = 'approved'
+            AND p.joe_fraud_passed = true
+            AND s.created_at = (
+              SELECT MAX(s2.created_at) FROM submissions s2
+              WHERE s2.project_id = p.project_id
+                AND s2.approval_status = 'approved'
+            )
+          GROUP BY p.user_id
+        `,
+        this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
+          SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
+          FROM projects p
+          WHERE p.user_id = ANY(${userIds}::int[])
+            AND EXISTS (
+              SELECT 1 FROM submissions s
+              WHERE s.project_id = p.project_id
+                AND s.approval_status = 'pending'
+                AND s.review_passed IS NULL
+                AND s.created_at = (
+                  SELECT MAX(s2.created_at) FROM submissions s2
+                  WHERE s2.project_id = p.project_id
+                )
+            )
+          GROUP BY p.user_id
+        `,
+        this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
+          SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
+          FROM projects p
+          WHERE p.user_id = ANY(${userIds}::int[])
+            AND NOT EXISTS (
+              SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
+            )
+          GROUP BY p.user_id
+        `,
+        this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
+          SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
+          FROM projects p
+          WHERE p.user_id = ANY(${userIds}::int[])
+            AND EXISTS (
+              SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
+            )
+          GROUP BY p.user_id
+        `,
+        this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
+          SELECT user_id, COALESCE(SUM(now_hackatime_hours), 0) AS hours
+          FROM projects
+          WHERE user_id = ANY(${userIds}::int[])
+          GROUP BY user_id
+        `,
+      ]);
+
+    const approvedHoursMap = new Map(approvedHoursRows.map((r) => [r.user_id, Number(r.hours)]));
+    const hoursInReviewMap = new Map(hoursInReviewRows.map((r) => [r.user_id, Number(r.hours)]));
+    const unsubmittedHoursMap = new Map(unsubmittedHoursRows.map((r) => [r.user_id, Number(r.hours)]));
+    const submittedHoursMap = new Map(submittedHoursRows.map((r) => [r.user_id, Number(r.hours)]));
+    const trackedHoursMap = new Map(trackedHoursRows.map((r) => [r.user_id, Number(r.hours)]));
+
+    const slackIds = pins
+      .map((p) => p.user.slackUserId)
+      .filter((id): id is string => !!id);
+    const displayNames = await this.slackService.getDisplayNames(slackIds);
+
+    const rows = pins.map(({ user }) => {
+      const slackDisplay =
+        (user.slackUserId && displayNames.get(user.slackUserId)) ||
+        `${user.firstName} ${user.lastName}`.trim();
+      const projectsMissingHackatime = user.projects.filter(
+        (p) => !p.nowHackatimeProjects?.length,
+      ).length;
+      return {
+        'Slack ID': user.slackUserId ?? '',
+        'Display Name': slackDisplay,
+        'Signed up date': user.createdAt.toISOString(),
+        'Approved hours': approvedHoursMap.get(user.userId) ?? 0,
+        'Hours in review': hoursInReviewMap.get(user.userId) ?? 0,
+        'Un-submitted hours': unsubmittedHoursMap.get(user.userId) ?? 0,
+        'Submitted hours': submittedHoursMap.get(user.userId) ?? 0,
+        'Tracked hours': trackedHoursMap.get(user.userId) ?? 0,
+        '# of projects without hackatime linked': projectsMissingHackatime,
+        Country: user.country ?? '',
+      };
+    });
+
+    return Papa.unparse(rows);
+  }
+
+  /**
    * Admin fraud queue: every project that's been (or could have been) submitted
    * to Joe, grouped by whether fraud review is still pending. Wait times are
    * computed against the latest submission so resubmissions reset the clock.

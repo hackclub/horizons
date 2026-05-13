@@ -245,6 +245,20 @@ export class AdminController {
     return stats;
   }
 
+  @Get('events/:slug/export.csv')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin, Role.EventViewer)
+  @Header('Content-Type', 'text/csv')
+  @ApiProduces('text/csv')
+  async exportEventCsv(@Param('slug') slug: string, @Res() res: Response) {
+    const csv = await this.adminService.exportEventCsv(slug);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="horizons-event-${slug}.csv"`,
+    );
+    res.send(csv);
+  }
+
   @Get('transactions')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
