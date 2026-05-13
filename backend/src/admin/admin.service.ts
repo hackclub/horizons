@@ -2223,31 +2223,36 @@ export class AdminService {
       hackatimeLinks.map((r) => [r.userId, r.usedAt]),
     );
 
-    // Per-user hours buckets, mirroring the global definitions in
-    // MetricsService.computeReviewHours so the CSV totals reconcile with the
-    // dashboard:
-    //   totalHours      — sum of every project's nowHackatimeHours
-    //   unshippedHours  — projects with no submissions
-    //   hoursInReview   — latest submission is pending and reviewer hasn't decided
-    //   hoursShipped    — sum of approvedHours from the latest approved submission
-    //                     per fraud-passed project
+    // Per-user hour buckets — same definitions as exportEventCsv and
+    // MetricsService.computeReviewHours so totals reconcile with the dashboard:
+    //   approvedHours      — approved_hours from the latest approved submission
+    //                        per fraud-passed project.
+    //   hoursInReview      — now_hackatime_hours for projects whose latest
+    //                        submission is still pending review.
+    //   unsubmittedHours   — now_hackatime_hours for projects that have never
+    //                        been submitted for review.
+    //   submittedHours     — now_hackatime_hours for projects with ≥1 submission
+    //                        of any status (overlaps with approved/in-review by
+    //                        design — assumes the user keeps iterating).
+    //   trackedHours       — sum of every project's now_hackatime_hours.
     const [
-      totalHoursRows,
-      unshippedHoursRows,
+      approvedHoursRows,
       hoursInReviewRows,
-      shippedHoursRows,
+      unsubmittedHoursRows,
+      submittedHoursRows,
+      trackedHoursRows,
     ] = await Promise.all([
       this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
-        SELECT user_id, COALESCE(SUM(now_hackatime_hours), 0) AS hours
-        FROM projects
-        GROUP BY user_id
-      `,
-      this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
-        SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
-        FROM projects p
-        WHERE NOT EXISTS (
-          SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
-        )
+        SELECT p.user_id, COALESCE(SUM(s.approved_hours), 0) AS hours
+        FROM submissions s
+        JOIN projects p ON p.project_id = s.project_id
+        WHERE s.approval_status = 'approved'
+          AND p.joe_fraud_passed = true
+          AND s.created_at = (
+            SELECT MAX(s2.created_at) FROM submissions s2
+            WHERE s2.project_id = p.project_id
+              AND s2.approval_status = 'approved'
+          )
         GROUP BY p.user_id
       `,
       this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
@@ -2266,30 +2271,41 @@ export class AdminService {
         GROUP BY p.user_id
       `,
       this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
-        SELECT p.user_id, COALESCE(SUM(s.approved_hours), 0) AS hours
-        FROM submissions s
-        JOIN projects p ON p.project_id = s.project_id
-        WHERE s.approval_status = 'approved'
-          AND p.joe_fraud_passed = true
-          AND s.created_at = (
-            SELECT MAX(s2.created_at) FROM submissions s2
-            WHERE s2.project_id = p.project_id
-              AND s2.approval_status = 'approved'
-          )
+        SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
+        FROM projects p
+        WHERE NOT EXISTS (
+          SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
+        )
         GROUP BY p.user_id
       `,
+      this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
+        SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
+        FROM projects p
+        WHERE EXISTS (
+          SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
+        )
+        GROUP BY p.user_id
+      `,
+      this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
+        SELECT user_id, COALESCE(SUM(now_hackatime_hours), 0) AS hours
+        FROM projects
+        GROUP BY user_id
+      `,
     ]);
-    const totalHoursMap = new Map(
-      totalHoursRows.map((r) => [r.user_id, Number(r.hours)]),
-    );
-    const unshippedHoursMap = new Map(
-      unshippedHoursRows.map((r) => [r.user_id, Number(r.hours)]),
+    const approvedHoursMap = new Map(
+      approvedHoursRows.map((r) => [r.user_id, Number(r.hours)]),
     );
     const hoursInReviewMap = new Map(
       hoursInReviewRows.map((r) => [r.user_id, Number(r.hours)]),
     );
-    const shippedHoursMap = new Map(
-      shippedHoursRows.map((r) => [r.user_id, Number(r.hours)]),
+    const unsubmittedHoursMap = new Map(
+      unsubmittedHoursRows.map((r) => [r.user_id, Number(r.hours)]),
+    );
+    const submittedHoursMap = new Map(
+      submittedHoursRows.map((r) => [r.user_id, Number(r.hours)]),
+    );
+    const trackedHoursMap = new Map(
+      trackedHoursRows.map((r) => [r.user_id, Number(r.hours)]),
     );
 
     const slackIds = users
@@ -2312,10 +2328,11 @@ export class AdminService {
         user.projects[0]?.createdAt?.toISOString() ?? '',
       firstSubmissionAt:
         submissionMap.get(user.userId)?.toISOString() ?? '',
-      hoursShipped: shippedHoursMap.get(user.userId) ?? 0,
+      approvedHours: approvedHoursMap.get(user.userId) ?? 0,
       hoursInReview: hoursInReviewMap.get(user.userId) ?? 0,
-      unshippedHours: unshippedHoursMap.get(user.userId) ?? 0,
-      totalHours: totalHoursMap.get(user.userId) ?? 0,
+      unsubmittedHours: unsubmittedHoursMap.get(user.userId) ?? 0,
+      submittedHours: submittedHoursMap.get(user.userId) ?? 0,
+      trackedHours: trackedHoursMap.get(user.userId) ?? 0,
       pinnedEvent: user.pinnedEvent?.event?.title ?? '',
       pinnedEventAt: user.pinnedEvent?.createdAt?.toISOString() ?? '',
     }));
