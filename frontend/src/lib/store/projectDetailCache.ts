@@ -357,6 +357,19 @@ export function invalidateProjectCaches(id: string) {
 		const { [id]: _, ...rest } = m;
 		return rest;
 	});
+	// If the global store still represents this project, reset it so the
+	// detail page can't flash stale data (e.g. "Not linked to hackatime"
+	// right after the user linked a project) before the refetch lands.
+	if (activeProjectId === id) {
+		activeProjectId = null;
+		projectDetailStore.set({
+			project: null,
+			submission: null,
+			hackatimeInfo: null,
+			loading: true,
+			error: null,
+		});
+	}
 	// Mutations that change a single project's hours (submit, link, edit) also
 	// invalidate the projects list so /app and /app/projects refetch with the
 	// new `nowHackatimeHours` next time they mount.
@@ -368,6 +381,16 @@ export function invalidateAllProjectCaches() {
 	detailCache.clear();
 	editDataCache.clear();
 	submissionStatusMap.set({});
+	if (activeProjectId !== null) {
+		activeProjectId = null;
+		projectDetailStore.set({
+			project: null,
+			submission: null,
+			hackatimeInfo: null,
+			loading: true,
+			error: null,
+		});
+	}
 	// The /app/projects list cache also holds stale `nowHackatimeHours`; clear
 	// it so the next visit refetches with the freshly recalculated values.
 	invalidateProjectsListCache();
