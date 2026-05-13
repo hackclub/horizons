@@ -3441,6 +3441,8 @@ export interface components {
             slug: string;
             rsvpCost: number | null;
             ticketCost: number | null;
+            rsvpEnabled: boolean;
+            ticketEnabled: boolean;
             hasRsvp: boolean;
             hasTicket: boolean;
             balance: number;

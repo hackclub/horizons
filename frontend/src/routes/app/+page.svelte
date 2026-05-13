@@ -111,6 +111,16 @@
 	let pinnedEventImageUrl = $state<string | null>(null);
 	let eventHourCosts = $state<Record<string, number>>({});
 
+	// Ticket-status for the pinned event — drives the buy-rsvp / buy-ticket
+	// indicators in EventColumnCard. Costs stay null until /ticket-status loads
+	// so the indicators don't flash before we know the user's purchase state.
+	let pinnedRsvpCost = $state<number | null>(null);
+	let pinnedTicketCost = $state<number | null>(null);
+	let pinnedRsvpEnabled = $state(false);
+	let pinnedTicketEnabled = $state(false);
+	let pinnedHasRsvp = $state(false);
+	let pinnedHasTicket = $state(false);
+
 	// #horizons huddle state — populated by polling /api/huddles/status. When `huddleActive`
 	// is true, a LiveHuddleCard is rendered beneath the community-events card.
 	const HORIZONS_SLACK_CHANNEL = 'C0AGKQ6K476';
@@ -119,16 +129,25 @@
 	let ceHasLiveEvent = $state(false);
 
 	// --- DEBUG: ?debug enables overlay to preview each event + each progress state ---
-	type DebugProgressState = 'qualified' | 'ship' | 'pending-met' | 'approved-majority' | 'default';
 	type DebugHuddleState = '' | 'off' | '1' | '4' | '12';
 	type DebugCommunityState = '' | 'none' | 'live' | 'upcoming' | 'mixed';
 	type DebugStreakState = '' | 'none' | 'building' | 'record' | 'behind';
+	type DebugBoolState = '' | 'yes' | 'no';
 	const debugMode = $derived(page.url.searchParams.has('debug'));
 	let debugEventSlug = $state<string>('');
-	let debugProgressState = $state<DebugProgressState | ''>('');
 	let debugHuddleState = $state<DebugHuddleState>('');
 	let debugCommunityState = $state<DebugCommunityState>('');
 	let debugStreakState = $state<DebugStreakState>('');
+	let debugRsvpState = $state<DebugBoolState>('');
+	let debugTicketState = $state<DebugBoolState>('');
+	// Sliders that override the live approved/completed/pending hour values for
+	// the event column card. null = use the live value from the API. Toggling
+	// "Custom hours" on hydrates the sliders from the current live values.
+	let debugHoursOverride = $state(false);
+	let debugApproved = $state<number>(0);
+	let debugCompleted = $state<number>(0);
+	let debugPending = $state<number>(0);
+	const HOURS_SLIDER_MAX = 60;
 
 	// Effective streak values — debug overrides take precedence over the user store.
 	// Each preset locks both current + longest to exercise the title/style branches.
@@ -259,17 +278,46 @@
 		debugEventSlug ? (eventsMap[debugEventSlug]?.eventCard?.bgImage ?? null) : pinnedEventImageUrl
 	);
 	const eventColumnTarget = $derived(eventHourCosts[eventColumnSlug] ?? targetHours);
+	// Ticket-status overrides — only the actual pinned event has a fetched status.
+	// In debug mode (different event picked, or no cost data fetched yet) we fall
+	// back to typical 15h/30h costs so the buy-rsvp/buy-ticket indicators stay
+	// reachable from the debug panel.
+	const eventColumnRsvpCost = $derived(
+		debugEventSlug ? 15 : (pinnedRsvpCost ?? (debugMode ? 15 : null))
+	);
+	const eventColumnTicketCost = $derived(
+		debugEventSlug
+			? (eventHourCosts[eventColumnSlug] ?? 30)
+			: (pinnedTicketCost ?? (debugMode ? 30 : null))
+	);
+	// In debug mode we assume both purchase windows are open so the indicators
+	// remain reachable — the toggles in the debug panel still let you flip them.
+	const eventColumnRsvpEnabled = $derived(debugMode ? true : pinnedRsvpEnabled);
+	const eventColumnTicketEnabled = $derived(debugMode ? true : pinnedTicketEnabled);
+	const eventColumnHasRsvp = $derived(
+		debugRsvpState !== ''
+			? debugRsvpState === 'yes'
+			: debugEventSlug
+				? false
+				: pinnedHasRsvp
+	);
+	const eventColumnHasTicket = $derived(
+		debugTicketState !== ''
+			? debugTicketState === 'yes'
+			: debugEventSlug
+				? false
+				: pinnedHasTicket
+	);
 	const eventColumnValues = $derived.by(() => {
-		const t = eventColumnTarget;
-		switch (debugProgressState) {
-			case 'qualified':         return { completed: t,        approved: t,        pending: 0 };
-			case 'ship':              return { completed: t,        approved: 0,        pending: 0 };
-			case 'pending-met':       return { completed: t,        approved: t / 2,    pending: t / 2 };
-			case 'approved-majority': return { completed: t * 0.7,  approved: t * 0.55, pending: 0 };
-			case 'default':           return { completed: t * 0.7,  approved: t * 0.1,  pending: 0 };
-			// Live values: treat unapproved completed hours as pending until per-event ship lookup is wired.
-			default:                  return { completed: completedHours, approved: approvedHours, pending: Math.max(0, completedHours - approvedHours) };
+		if (debugHoursOverride) {
+			return { completed: debugCompleted, approved: debugApproved, pending: debugPending };
 		}
+		// Live values: treat unapproved completed hours as pending until per-event ship lookup is wired.
+		return {
+			completed: completedHours,
+			approved: approvedHours,
+			pending: Math.max(0, completedHours - approvedHours),
+		};
 	});
 
 	// Load cached pinned event instantly
@@ -291,6 +339,29 @@
 		if (approvedRes.data) {
 			approvedHours = Math.round(((approvedRes.data as any).totalApprovedHours ?? 0) * 10) / 10;
 		}
+	}
+
+	async function fetchPinnedTicketStatus(slug: string) {
+		const res = await api
+			.GET('/api/events/auth/{slug}/ticket-status' as any, { params: { path: { slug } } })
+			.catch(() => null);
+		const data = res?.data as
+			| {
+					rsvpCost: number | null;
+					ticketCost: number | null;
+					rsvpEnabled: boolean;
+					ticketEnabled: boolean;
+					hasRsvp: boolean;
+					hasTicket: boolean;
+				}
+			| undefined;
+		if (!data) return;
+		pinnedRsvpCost = data.rsvpCost;
+		pinnedTicketCost = data.ticketCost;
+		pinnedRsvpEnabled = data.rsvpEnabled;
+		pinnedTicketEnabled = data.ticketEnabled;
+		pinnedHasRsvp = data.hasRsvp;
+		pinnedHasTicket = data.hasTicket;
 	}
 
 	async function fetchHuddleStatus() {
@@ -337,6 +408,9 @@
 				targetHours = hourCost;
 				pinnedEventImageUrl = event?.imageUrl ?? null;
 				setCachedPinnedEvent(slug, hourCost);
+				// Fire-and-forget — drives the buy-rsvp/buy-ticket indicators on the
+				// event column card. Failures are non-fatal; indicators just stay off.
+				fetchPinnedTicketStatus(slug).catch(() => {});
 			}
 		}
 		if (eventsRes?.data && Array.isArray(eventsRes.data)) {
@@ -712,6 +786,12 @@
 						completedHours={eventColumnValues.completed}
 						approvedHours={eventColumnValues.approved}
 						pendingHours={eventColumnValues.pending}
+						rsvpCost={eventColumnRsvpCost}
+						ticketCost={eventColumnTicketCost}
+						rsvpEnabled={eventColumnRsvpEnabled}
+						ticketEnabled={eventColumnTicketEnabled}
+						hasRsvp={eventColumnHasRsvp}
+						hasTicket={eventColumnHasTicket}
 						selected={nav.isSelected(COL_PINNED_EVENT, 0)}
 						onmouseenter={() => handleCardHover(COL_PINNED_EVENT, 0)}
 						onclick={(e) => { e.preventDefault(); navigateTo('/app/events'); }}
@@ -898,14 +978,60 @@
 		</div>
 
 		<div class="debug-section">
-			<div class="debug-label">Progress state</div>
-			<div class="debug-buttons">
-				<button class:active={debugProgressState === ''} onclick={() => (debugProgressState = '')}>actual</button>
-				<button class:active={debugProgressState === 'default'} onclick={() => (debugProgressState = 'default')}>default</button>
-				<button class:active={debugProgressState === 'approved-majority'} onclick={() => (debugProgressState = 'approved-majority')}>approved-majority</button>
-				<button class:active={debugProgressState === 'ship'} onclick={() => (debugProgressState = 'ship')}>ship</button>
-				<button class:active={debugProgressState === 'pending-met'} onclick={() => (debugProgressState = 'pending-met')}>pending-met</button>
-				<button class:active={debugProgressState === 'qualified'} onclick={() => (debugProgressState = 'qualified')}>qualified</button>
+			<div class="debug-row">
+				<div class="debug-label">Hours</div>
+				<button
+					class="debug-toggle"
+					class:active={debugHoursOverride}
+					onclick={() => {
+						if (!debugHoursOverride) {
+							// Hydrate sliders from current live values when flipping on.
+							debugApproved = Math.round(approvedHours);
+							debugCompleted = Math.round(completedHours);
+							debugPending = Math.max(0, Math.round(completedHours - approvedHours));
+						}
+						debugHoursOverride = !debugHoursOverride;
+					}}
+				>{debugHoursOverride ? 'custom' : 'actual'}</button>
+			</div>
+			<div class="debug-slider-row" class:debug-slider-disabled={!debugHoursOverride}>
+				<label for="debug-approved" class="debug-slider-label">approved</label>
+				<input
+					id="debug-approved"
+					type="range"
+					min="0"
+					max={HOURS_SLIDER_MAX}
+					step="0.5"
+					disabled={!debugHoursOverride}
+					bind:value={debugApproved}
+				/>
+				<span class="debug-slider-value">{debugApproved}h</span>
+			</div>
+			<div class="debug-slider-row" class:debug-slider-disabled={!debugHoursOverride}>
+				<label for="debug-completed" class="debug-slider-label">completed</label>
+				<input
+					id="debug-completed"
+					type="range"
+					min="0"
+					max={HOURS_SLIDER_MAX}
+					step="0.5"
+					disabled={!debugHoursOverride}
+					bind:value={debugCompleted}
+				/>
+				<span class="debug-slider-value">{debugCompleted}h</span>
+			</div>
+			<div class="debug-slider-row" class:debug-slider-disabled={!debugHoursOverride}>
+				<label for="debug-pending" class="debug-slider-label">pending</label>
+				<input
+					id="debug-pending"
+					type="range"
+					min="0"
+					max={HOURS_SLIDER_MAX}
+					step="0.5"
+					disabled={!debugHoursOverride}
+					bind:value={debugPending}
+				/>
+				<span class="debug-slider-value">{debugPending}h</span>
 			</div>
 		</div>
 
@@ -932,6 +1058,24 @@
 		</div>
 
 		<div class="debug-section">
+			<div class="debug-label">RSVP (event card)</div>
+			<div class="debug-buttons">
+				<button class:active={debugRsvpState === ''} onclick={() => (debugRsvpState = '')}>actual ({eventColumnHasRsvp ? 'yes' : 'no'})</button>
+				<button class:active={debugRsvpState === 'no'} onclick={() => (debugRsvpState = 'no')}>no</button>
+				<button class:active={debugRsvpState === 'yes'} onclick={() => (debugRsvpState = 'yes')}>yes</button>
+			</div>
+		</div>
+
+		<div class="debug-section">
+			<div class="debug-label">Ticket (event card)</div>
+			<div class="debug-buttons">
+				<button class:active={debugTicketState === ''} onclick={() => (debugTicketState = '')}>actual ({eventColumnHasTicket ? 'yes' : 'no'})</button>
+				<button class:active={debugTicketState === 'no'} onclick={() => (debugTicketState = 'no')}>no</button>
+				<button class:active={debugTicketState === 'yes'} onclick={() => (debugTicketState = 'yes')}>yes</button>
+			</div>
+		</div>
+
+		<div class="debug-section">
 			<div class="debug-label">Streak</div>
 			<div class="debug-buttons">
 				<button class:active={debugStreakState === ''} onclick={() => (debugStreakState = '')}>actual</button>
@@ -947,6 +1091,8 @@
 			<div>completed: {eventColumnValues.completed.toFixed(1)}h</div>
 			<div>approved: {eventColumnValues.approved.toFixed(1)}h</div>
 			<div>pending: {eventColumnValues.pending.toFixed(1)}h</div>
+			<div>rsvpCost: {eventColumnRsvpCost ?? '—'}h · ticketCost: {eventColumnTicketCost ?? '—'}h</div>
+			<div>hasRsvp: {eventColumnHasRsvp ? 'yes' : 'no'} · hasTicket: {eventColumnHasTicket ? 'yes' : 'no'} {debugRsvpState || debugTicketState ? '(debug)' : ''}</div>
 			<div>huddle: {effectiveHuddleActive ? `${effectiveHuddleMembers} member${effectiveHuddleMembers === 1 ? '' : 's'}` : 'inactive'} {debugHuddleState ? '(debug)' : ''}</div>
 			<div>ce live event: {ceHasLiveEvent ? 'yes' : 'no'} · huddle card: {showHuddleCard ? 'shown' : 'hidden'}</div>
 			<div>streak: {effectiveCurrentStreak}d (best {effectiveLongestStreak}d) {debugStreakState ? '(debug)' : ''}</div>
@@ -1396,6 +1542,63 @@
 		border-radius: 6px;
 		padding: 6px 8px;
 		font: inherit;
+	}
+
+	.debug-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+	}
+
+	.debug-toggle {
+		background: #2a2a2a;
+		color: #f5f5f5;
+		border: 1px solid #444;
+		border-radius: 6px;
+		padding: 4px 8px;
+		font: inherit;
+		cursor: pointer;
+	}
+
+	.debug-toggle:hover {
+		border-color: #ffa936;
+	}
+
+	.debug-toggle.active {
+		background: #ffa936;
+		color: #1a1a1a;
+		border-color: #ffa936;
+		font-weight: 600;
+	}
+
+	.debug-slider-row {
+		display: grid;
+		grid-template-columns: 70px 1fr 44px;
+		align-items: center;
+		gap: 8px;
+		font-size: 11px;
+		color: #ddd;
+	}
+
+	.debug-slider-row input[type="range"] {
+		width: 100%;
+		accent-color: #ffa936;
+	}
+
+	.debug-slider-label {
+		text-transform: lowercase;
+		color: #aaa;
+	}
+
+	.debug-slider-value {
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+		color: #f5f5f5;
+	}
+
+	.debug-slider-disabled {
+		opacity: 0.45;
 	}
 
 	.debug-buttons {

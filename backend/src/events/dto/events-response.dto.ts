@@ -125,6 +125,12 @@ export class TicketStatusResponse {
   ticketCost: number | null;
 
   @ApiProperty()
+  rsvpEnabled: boolean;
+
+  @ApiProperty()
+  ticketEnabled: boolean;
+
+  @ApiProperty()
   hasRsvp: boolean;
 
   @ApiProperty()

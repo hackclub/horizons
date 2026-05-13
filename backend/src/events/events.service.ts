@@ -197,6 +197,8 @@ export class EventsService {
       slug: event.slug,
       rsvpCost: event.rsvpCost,
       ticketCost: event.ticketCost,
+      rsvpEnabled: event.rsvpEnabled,
+      ticketEnabled: event.ticketEnabled,
       hasRsvp: txns.some((t) => t.kind === 'EventRsvp'),
       hasTicket: txns.some((t) => t.kind === 'EventTicket'),
       balance,
