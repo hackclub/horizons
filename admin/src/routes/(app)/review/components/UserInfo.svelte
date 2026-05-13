@@ -196,7 +196,7 @@
 	</div>
 
 	<HoursBreakdown
-		totalHours={hackatimeHours}
+		submittedHours={hackatimeHours}
 		projects={hackatimeProjects}
 		projectHours={hackatimeProjectHours}
 		{onHoursChange}
