@@ -44,6 +44,28 @@
 
 	let homeTab = $state<'users' | 'dau' | 'signups' | 'projects' | 'hours'>('users');
 
+	type SortMode = 'count' | 'date';
+	let dauSortMode = $state<SortMode>('count');
+	let signupsSortMode = $state<SortMode>('count');
+
+	function sortEventEntries<T extends { count: number; startDate?: string | null }>(
+		entries: T[],
+		mode: SortMode,
+	): T[] {
+		const copy = [...entries];
+		if (mode === 'count') return copy.sort((a, b) => b.count - a.count);
+		// Date mode: ascending by start date. Events without a start date sink
+		// to the bottom.
+		return copy.sort((a, b) => {
+			const aT = a.startDate ? new Date(a.startDate).getTime() : null;
+			const bT = b.startDate ? new Date(b.startDate).getTime() : null;
+			if (aT === null && bT === null) return 0;
+			if (aT === null) return 1;
+			if (bT === null) return -1;
+			return aT - bT;
+		});
+	}
+
 	onMount(async () => {
 		const { data: me } = await api.GET('/api/user/auth/me');
 		userRole = me?.role ?? null;
@@ -84,6 +106,32 @@
 	function formatPercent(value: number) {
 		const sign = value >= 0 ? '+' : '';
 		return `${sign}${value.toFixed(1)}%`;
+	}
+
+	function formatEventDateRange(startIso: string | null | undefined, endIso: string | null | undefined): string {
+		if (!startIso && !endIso) return '';
+		// Backend stores event dates as DATE columns (no timezone). Format in UTC
+		// so a 2026-05-15 stored date doesn't render as May 14 in negative-offset
+		// timezones.
+		const fmt = (iso: string, includeYear: boolean) =>
+			new Date(iso).toLocaleDateString(undefined, {
+				month: 'short',
+				day: 'numeric',
+				year: includeYear ? 'numeric' : undefined,
+				timeZone: 'UTC',
+			});
+		if (startIso && endIso) {
+			const start = new Date(startIso);
+			const end = new Date(endIso);
+			const sameDay =
+				start.getUTCFullYear() === end.getUTCFullYear() &&
+				start.getUTCMonth() === end.getUTCMonth() &&
+				start.getUTCDate() === end.getUTCDate();
+			if (sameDay) return fmt(startIso, true);
+			const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
+			return `${fmt(startIso, !sameYear)} – ${fmt(endIso, true)}`;
+		}
+		return fmt((startIso ?? endIso) as string, true);
 	}
 
 	function isDark() {
@@ -1047,6 +1095,19 @@
 					{/if}
 				</div>
 				{#if stats.dau.perEvent.length > 0}
+					<div class="mb-2 flex items-center justify-between gap-2">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">DAU by Event</p>
+						<div class="inline-flex rounded-md border border-ds-border bg-ds-surface p-0.5 text-[11px]">
+							<button
+								class="rounded px-2 py-1 cursor-pointer transition-colors {dauSortMode === 'count' ? 'bg-ds-accent text-white' : 'text-ds-text-secondary hover:text-ds-text'}"
+								onclick={() => (dauSortMode = 'count')}
+							>Highest</button>
+							<button
+								class="rounded px-2 py-1 cursor-pointer transition-colors {dauSortMode === 'date' ? 'bg-ds-accent text-white' : 'text-ds-text-secondary hover:text-ds-text'}"
+								onclick={() => (dauSortMode = 'date')}
+							>Date</button>
+						</div>
+					</div>
 					<div class="rounded-lg border border-ds-border bg-ds-surface shadow-[var(--color-ds-shadow)] overflow-hidden">
 						<table class="w-full text-sm">
 							<thead>
@@ -1056,10 +1117,17 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each stats.dau.perEvent as event}
+								{#each sortEventEntries(stats.dau.perEvent, dauSortMode) as event}
 									<tr class="border-b border-ds-border last:border-b-0">
-										<td class="px-4 py-2.5 text-ds-text">{event.title}</td>
-										<td class="px-4 py-2.5 text-right font-mono font-bold text-ds-text">{formatCount(event.count)}</td>
+										<td class="px-4 py-2.5 text-ds-text">
+											<div>{event.title}</div>
+											{#if event.startDate || event.endDate}
+												<div class="text-[11px] text-ds-text-secondary">
+													{formatEventDateRange(event.startDate, event.endDate)}
+												</div>
+											{/if}
+										</td>
+										<td class="px-4 py-2.5 text-right font-mono font-bold text-ds-text align-top">{formatCount(event.count)}</td>
 									</tr>
 								{/each}
 							</tbody>
@@ -1089,24 +1157,46 @@
 						</div>
 					</div>
 					{#if stats.signups.perEvent.length > 0}
-						<div class="rounded-lg border border-ds-border bg-ds-surface shadow-[var(--color-ds-shadow)] overflow-hidden">
-							<table class="w-full text-sm">
-								<thead>
-									<tr class="border-b border-ds-border text-ds-text-secondary text-[11px] uppercase tracking-wide">
-										<th class="text-left px-4 py-2.5">Event</th>
-										<th class="text-right px-4 py-2.5 w-24">Signups</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each stats.signups.perEvent as event}
+						<div>
+							<div class="mb-2 flex items-center justify-between gap-2">
+								<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Signups by Event</p>
+								<div class="inline-flex rounded-md border border-ds-border bg-ds-surface p-0.5 text-[11px]">
+									<button
+										class="rounded px-2 py-1 cursor-pointer transition-colors {signupsSortMode === 'count' ? 'bg-ds-accent text-white' : 'text-ds-text-secondary hover:text-ds-text'}"
+										onclick={() => (signupsSortMode = 'count')}
+									>Highest</button>
+									<button
+										class="rounded px-2 py-1 cursor-pointer transition-colors {signupsSortMode === 'date' ? 'bg-ds-accent text-white' : 'text-ds-text-secondary hover:text-ds-text'}"
+										onclick={() => (signupsSortMode = 'date')}
+									>Date</button>
+								</div>
+							</div>
+							<div class="rounded-lg border border-ds-border bg-ds-surface shadow-[var(--color-ds-shadow)] overflow-hidden">
+								<table class="w-full text-sm">
+									<thead>
+										<tr class="border-b border-ds-border text-ds-text-secondary text-[11px] uppercase tracking-wide">
+											<th class="text-left px-4 py-2.5">Event</th>
+											<th class="text-right px-4 py-2.5 w-24">Signups</th>
+										</tr>
+									</thead>
+									<tbody>
+										{#each sortEventEntries(stats.signups.perEvent, signupsSortMode) as event}
 										<tr class="border-b border-ds-border last:border-b-0">
-											<td class="px-4 py-2.5 text-ds-text">{event.title}</td>
-											<td class="px-4 py-2.5 text-right font-mono font-bold text-ds-text">{formatCount(event.count)}</td>
+											<td class="px-4 py-2.5 text-ds-text">
+												<div>{event.title}</div>
+												{#if event.startDate || event.endDate}
+													<div class="text-[11px] text-ds-text-secondary">
+														{formatEventDateRange(event.startDate, event.endDate)}
+													</div>
+												{/if}
+											</td>
+											<td class="px-4 py-2.5 text-right font-mono font-bold text-ds-text align-top">{formatCount(event.count)}</td>
 										</tr>
 									{/each}
 								</tbody>
 							</table>
 						</div>
+					</div>
 					{/if}
 				</div>
 				{#if stats.signups.qualification.length > 0}

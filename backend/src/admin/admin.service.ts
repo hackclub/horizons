@@ -509,7 +509,7 @@ export class AdminService {
 
     const events = await this.prisma.event.findMany({
       where: { slug: { in: [...slugToCount.keys()] } },
-      select: { eventId: true, title: true, slug: true },
+      select: { eventId: true, title: true, slug: true, startDate: true, endDate: true },
     });
 
     return events
@@ -518,6 +518,8 @@ export class AdminService {
         title: e.title,
         slug: e.slug,
         count: slugToCount.get(e.slug) ?? 0,
+        startDate: e.startDate?.toISOString() ?? null,
+        endDate: e.endDate?.toISOString() ?? null,
       }))
       .sort((a, b) => b.count - a.count);
   }
@@ -682,12 +684,19 @@ export class AdminService {
     const total = await this.prisma.user.count();
 
     const perEventResult = await this.prisma.$queryRaw<
-      Array<{ event_id: number; title: string; slug: string; count: bigint }>
+      Array<{
+        event_id: number;
+        title: string;
+        slug: string;
+        count: bigint;
+        start_date: Date | null;
+        end_date: Date | null;
+      }>
     >`
-      SELECT e.event_id, e.title, e.slug, COUNT(pe.id) as count
+      SELECT e.event_id, e.title, e.slug, e.start_date, e.end_date, COUNT(pe.id) as count
       FROM pinned_events pe
       INNER JOIN events e ON e.event_id = pe.event_id
-      GROUP BY e.event_id, e.title, e.slug
+      GROUP BY e.event_id, e.title, e.slug, e.start_date, e.end_date
       ORDER BY count DESC
     `;
 
@@ -806,6 +815,8 @@ export class AdminService {
         title: r.title,
         slug: r.slug,
         count: Number(r.count),
+        startDate: r.start_date ? r.start_date.toISOString() : null,
+        endDate: r.end_date ? r.end_date.toISOString() : null,
       })),
       qualification: qualificationResult.map((r) => ({
         eventId: r.event_id,

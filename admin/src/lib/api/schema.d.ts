@@ -2573,6 +2573,10 @@ export interface components {
             title: string;
             slug: string;
             count: number;
+            /** Format: date-time */
+            startDate: string | null;
+            /** Format: date-time */
+            endDate: string | null;
         };
         StatsSignupQualificationModeCounts: {
             engaged: number;
@@ -2637,6 +2641,10 @@ export interface components {
             title: string;
             slug: string;
             count: number;
+            /** Format: date-time */
+            startDate: string | null;
+            /** Format: date-time */
+            endDate: string | null;
         };
         StatsDau: {
             yesterday: number;
@@ -3445,6 +3453,8 @@ export interface components {
             slug: string;
             rsvpCost: number | null;
             ticketCost: number | null;
+            rsvpEnabled: boolean;
+            ticketEnabled: boolean;
             hasRsvp: boolean;
             hasTicket: boolean;
             balance: number;

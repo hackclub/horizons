@@ -833,6 +833,12 @@ class StatsSignupEventEntry {
 
   @ApiProperty()
   count: number;
+
+  @ApiProperty({ format: 'date-time', nullable: true })
+  startDate: string | null;
+
+  @ApiProperty({ format: 'date-time', nullable: true })
+  endDate: string | null;
 }
 
 class StatsSignupRoute {
@@ -985,6 +991,12 @@ class StatsDauEventEntry {
 
   @ApiProperty()
   count: number;
+
+  @ApiProperty({ format: 'date-time', nullable: true })
+  startDate: string | null;
+
+  @ApiProperty({ format: 'date-time', nullable: true })
+  endDate: string | null;
 }
 
 class StatsDau {
