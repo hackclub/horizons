@@ -1211,8 +1211,8 @@
 				{#if reviewStats}
 					<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
 						<StatCard label="Tracked Hours" value={formatTotal(reviewStats.hours.trackedHours)} {loading} />
-						<StatCard label="Unshipped Hours" value={formatTotal(reviewStats.hours.unshippedHours)} {loading} />
-						<StatCard label="Shipped Hours" value={formatTotal(reviewStats.hours.shippedHours)} {loading} />
+						<StatCard label="Un-submitted Hours" value={formatTotal(reviewStats.hours.unshippedHours)} {loading} />
+						<StatCard label="Submitted Hours" value={formatTotal(reviewStats.hours.shippedHours)} {loading} />
 						<StatCard label="Hours in Review" value={formatTotal(reviewStats.hours.hoursInReview)} {loading} />
 						<StatCard
 							label="Approved Hours"

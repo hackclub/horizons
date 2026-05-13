@@ -705,12 +705,12 @@
 						{loading}
 					/>
 					<StatCard
-						label="Unshipped Hours"
+						label="Un-submitted Hours"
 						value={stats ? formatTotal(stats.hours.unshippedHours) : ''}
 						{loading}
 					/>
 					<StatCard
-						label="Shipped Hours"
+						label="Submitted Hours"
 						value={stats ? formatTotal(stats.hours.shippedHours) : ''}
 						{loading}
 					/>
