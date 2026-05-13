@@ -209,6 +209,11 @@ export class SubmissionDetailResponse {
   @ApiProperty({ type: Boolean, nullable: true })
   reviewPassed: boolean | null;
 
+  // True when fraud failed and the submission was silently rejected
+  // (user-facing responses still see this as 'pending'; reviewers see the truth).
+  @ApiProperty()
+  silentReject: boolean;
+
   @ApiProperty({ type: String, nullable: true, format: 'date-time' })
   finalizedAt: Date | null;
 
@@ -322,6 +327,29 @@ export class PastReviewsResponse {
 
   @ApiProperty({ type: [PastReviewEntry] })
   reviews: PastReviewEntry[];
+}
+
+export class FraudRejectedEntry {
+  @ApiProperty()
+  submissionId: number;
+
+  @ApiProperty()
+  projectId: number;
+
+  @ApiProperty()
+  projectTitle: string;
+
+  @ApiProperty()
+  projectType: string;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  finalizedAt: Date | null;
+
+  @ApiProperty({ format: 'date-time' })
+  createdAt: Date;
+
+  @ApiProperty({ type: ScopedUserResponse })
+  user: ScopedUserResponse;
 }
 
 class LeaderboardEntry {

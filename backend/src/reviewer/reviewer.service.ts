@@ -234,6 +234,7 @@ export class ReviewerService {
       projectId: submission.projectId,
       approvalStatus: submission.approvalStatus,
       reviewPassed: submission.reviewPassed,
+      silentReject: submission.silentReject,
       finalizedAt: submission.finalizedAt,
       reviewedAt: submission.reviewedAt,
       approvedHours: submission.approvedHours,
@@ -822,6 +823,47 @@ export class ReviewerService {
     });
 
     return { currentReviewerId, reviews };
+  }
+
+  /**
+   * Submissions silently rejected by fraud (silentReject=true). User-facing
+   * responses mask these as 'pending' so fraud actors get no feedback —
+   * reviewers see the truth here so they can search for fraud-killed
+   * projects without combing the regular past-reviews list.
+   */
+  async getFraudRejectedSubmissions() {
+    const submissions = await this.prisma.submission.findMany({
+      where: { silentReject: true },
+      orderBy: [{ finalizedAt: 'desc' }, { createdAt: 'desc' }],
+      select: {
+        submissionId: true,
+        projectId: true,
+        createdAt: true,
+        finalizedAt: true,
+        project: {
+          select: {
+            projectId: true,
+            projectTitle: true,
+            projectType: true,
+            user: { select: SCOPED_USER_SELECT },
+          },
+        },
+      },
+    });
+
+    const displayNameMap = await this.fetchDisplayNamesFor(
+      submissions.map((s) => s.project.user),
+    );
+
+    return submissions.map((s) => ({
+      submissionId: s.submissionId,
+      projectId: s.projectId,
+      projectTitle: s.project.projectTitle,
+      projectType: s.project.projectType,
+      finalizedAt: s.finalizedAt,
+      createdAt: s.createdAt,
+      user: this.scopeUserData(s.project.user, displayNameMap),
+    }));
   }
 
   /** Save the adminComment field on a project or user. */

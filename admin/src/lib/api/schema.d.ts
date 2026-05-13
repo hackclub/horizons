@@ -1109,6 +1109,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/fraud-rejected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getFraudRejected"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/queue": {
         parameters: {
             query?: never;
@@ -2975,6 +2991,17 @@ export interface components {
             currentReviewerId: number;
             reviews: components["schemas"]["PastReviewEntry"][];
         };
+        FraudRejectedEntry: {
+            submissionId: number;
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            /** Format: date-time */
+            finalizedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            user: components["schemas"]["ScopedUserResponse"];
+        };
         QueueProjectResponse: {
             projectId: number;
             projectTitle: string;
@@ -3050,6 +3077,7 @@ export interface components {
             projectId: number;
             approvalStatus: string;
             reviewPassed: boolean | null;
+            silentReject: boolean;
             /** Format: date-time */
             finalizedAt: string | null;
             /** Format: date-time */
@@ -5169,6 +5197,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PastReviewsResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_getFraudRejected: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FraudRejectedEntry"][];
                 };
             };
         };

@@ -28,6 +28,7 @@ import {
   ChecklistResponse,
   ReviewStatsResponse,
   PastReviewsResponse,
+  FraudRejectedEntry,
   ManifestLookupResponse,
   ClaimResultResponse,
   HackatimeProjectHours,
@@ -60,6 +61,13 @@ export class ReviewerController {
   @ApiOkResponse({ type: PastReviewsResponse })
   async getPastReviews(@Req() req: Request) {
     return this.reviewerService.getPastReviews(req.user.userId);
+  }
+
+  /** Submissions silently rejected by fraud — surfaced for reviewer search only */
+  @Get('fraud-rejected')
+  @ApiOkResponse({ type: [FraudRejectedEntry] })
+  async getFraudRejected() {
+    return this.reviewerService.getFraudRejectedSubmissions();
   }
 
   /** Get the pending submissions queue with scoped data */

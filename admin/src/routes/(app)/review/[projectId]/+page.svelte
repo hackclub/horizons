@@ -20,6 +20,7 @@
 	import ClaimConflictModal from '../components/ClaimConflictModal.svelte';
 	import { createClaimManager } from '../claimManager';
 	import { api, type components } from '$lib/api';
+	import confetti from 'canvas-confetti';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
@@ -129,6 +130,43 @@
 		{ id: 'verdict', label: 'Verdict' },
 	];
 	let activeTab = $state('readme');
+
+	// Silent-rejection (fraud) celebration: when reviewers land on a project
+	// that fraud silently rejected, confetti + audio + a banner makes it
+	// unmissable so they don't waste time re-reviewing fraud-killed work.
+	let fraudCelebrationFiredFor = $state<number | null>(null);
+	let showFraudBanner = $state(false);
+	let fraudAudio: HTMLAudioElement | null = null;
+
+	$effect(() => {
+		if (!currentSubmission) return;
+		if (!currentSubmission.silentReject) return;
+		if (fraudCelebrationFiredFor === currentSubmission.submissionId) return;
+		fraudCelebrationFiredFor = currentSubmission.submissionId;
+
+		showFraudBanner = true;
+		fraudAudio = new Audio(`${base}/wholikestofraudy.mp3`);
+		// Browsers block autoplay without a recent user gesture; the navigation
+		// click that brought the reviewer here usually counts, but swallow the
+		// rejection either way so the banner/confetti still play.
+		void fraudAudio.play().catch(() => {});
+
+		const burst = () => {
+			confetti({ particleCount: 120, spread: 70, origin: { x: 0.2, y: 0.5 } });
+			confetti({ particleCount: 120, spread: 70, origin: { x: 0.8, y: 0.5 } });
+		};
+		burst();
+		setTimeout(burst, 350);
+		setTimeout(burst, 700);
+		setTimeout(() => { showFraudBanner = false; }, 5000);
+	});
+
+	onDestroy(() => {
+		if (fraudAudio) {
+			fraudAudio.pause();
+			fraudAudio = null;
+		}
+	});
 
 	onMount(async () => {
 		sessionSkippedProjectIds = loadSkippedFromStorage();
@@ -614,5 +652,18 @@
 			onCancel={dismissClaimConflict}
 			onTakeover={takeOverClaim}
 		/>
+	{/if}
+
+	{#if showFraudBanner}
+		<div class="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
+			<div class="px-10 py-7 bg-black/70 rounded-2xl backdrop-blur-sm shadow-2xl animate-pulse">
+				<div
+					class="text-7xl font-extrabold text-center"
+					style="background-image: linear-gradient(90deg, #ff4d4d, #ffae00, #ffe600, #4dff88, #4dd0ff, #b14dff, #ff4dd0); -webkit-background-clip: text; background-clip: text; color: transparent;"
+				>
+					This project is fraud :D
+				</div>
+			</div>
+		</div>
 	{/if}
 </div>

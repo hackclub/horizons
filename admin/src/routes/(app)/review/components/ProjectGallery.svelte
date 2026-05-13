@@ -6,6 +6,7 @@
 	import { Skeleton } from '$lib/components';
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type PastReview = components['schemas']['PastReviewEntry'];
+	type FraudRejected = components['schemas']['FraudRejectedEntry'];
 
 	interface Props {
 		items: QueueItem[];
@@ -34,20 +35,23 @@
 	let fraudFilter = $state<'all' | 'reviewed' | 'unreviewed'>('all');
 
 	let pastReviews = $state<PastReview[]>([]);
+	let fraudRejected = $state<FraudRejected[]>([]);
 	let currentReviewerId = $state<number | null>(null);
 	let pastLoading = $state(true);
 	let isAdmin = $state(false);
 
 	onMount(async () => {
 		try {
-			const [{ data: pastData }, { data: meData }] = await Promise.all([
+			const [{ data: pastData }, { data: meData }, { data: fraudData }] = await Promise.all([
 				api.GET('/api/reviewer/past-reviews'),
 				api.GET('/api/user/auth/me'),
+				api.GET('/api/reviewer/fraud-rejected'),
 			]);
 			if (pastData) {
 				pastReviews = pastData.reviews;
 				currentReviewerId = pastData.currentReviewerId;
 			}
+			if (fraudData) fraudRejected = fraudData;
 			isAdmin = meData?.role === 'admin' || meData?.role === 'superadmin';
 		} finally {
 			pastLoading = false;
@@ -183,6 +187,26 @@
 			),
 		),
 	);
+
+	// Fraud-rejected projects are noisy and irrelevant to day-to-day triage —
+	// only surface them when the reviewer is actively searching, so the
+	// section acts as an opt-in lookup tool rather than queue clutter.
+	// Dedupe by projectId so a project with multiple silent-rejected
+	// resubmissions only takes one card (latest finalize wins).
+	let filteredFraudRejected = $derived.by(() => {
+		if (searchQuery.trim() === '') return [] as FraudRejected[];
+		const matched = fraudRejected.filter((r) =>
+			matchesFilters(r.projectTitle, r.projectType, userLabel(r.user)),
+		);
+		const seen = new Set<number>();
+		const out: FraudRejected[] = [];
+		for (const r of matched) {
+			if (seen.has(r.projectId)) continue;
+			seen.add(r.projectId);
+			out.push(r);
+		}
+		return out;
+	});
 
 	function toggleType(type: string) {
 		const next = new Set(selectedTypes);
@@ -392,6 +416,40 @@
 				{/if}
 			</div>
 		</section>
+
+		{#if searchQuery.trim() !== '' && filteredFraudRejected.length > 0}
+			<hr class="border-none border-t border-rv-border mx-6 my-4" />
+
+			<section class="px-6 py-2">
+				<h2 class="text-[13px] uppercase tracking-wider font-semibold mb-3 text-red-500">
+					Frauded
+					<span class="text-red-500/60 font-normal normal-case ml-1">({filteredFraudRejected.length})</span>
+				</h2>
+				<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
+					{#each filteredFraudRejected as item (item.submissionId)}
+						<a
+							href="{base}/review/{item.projectId}"
+							class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-red-500/40 rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit hover:border-red-500 hover:bg-rv-surface2"
+						>
+							<p class="text-[15px] font-semibold text-rv-text m-0">{item.projectTitle}</p>
+							<p class="text-[13px] text-rv-dim m-0">{userLabel(item.user)}</p>
+							<div class="flex items-center gap-1.5 flex-wrap mt-1">
+								<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.projectType)}</span>
+								<span
+									class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-red-500/15 text-red-500 border border-red-500/40"
+									title="Silently rejected by fraud — user sees this as still pending."
+								>
+									Frauded
+								</span>
+								{#if item.finalizedAt}
+									<span class="text-[11px] text-rv-dim">{timeAgo(item.finalizedAt)}</span>
+								{/if}
+							</div>
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
 
 		<hr class="border-none border-t border-rv-border mx-6 my-4" />
 
