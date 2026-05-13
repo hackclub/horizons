@@ -34,6 +34,7 @@ The backend is organized into NestJS feature modules under `backend/src/`:
 - `slack/` — Slack DM notifications (internal service, no controller)
 - `airtable/` — Airtable record sync for users and approved projects (internal service)
 - `health/` — Health check endpoint
+- `integrations/` — Public-facing endpoints for external tools/dashboards (referral lookups, per-sub-event stats for graphs)
 
 See `backend/BACKEND.md` for full endpoint tables, database schema, and business flow documentation.
 
