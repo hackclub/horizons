@@ -137,30 +137,44 @@
 	];
 	let activeTab = $state('readme');
 
-	// Fraud celebration: fires both for submissions silently rejected by fraud
-	// (silentReject=true) AND for projects Joe has flagged as fraud
-	// (joeFraudPassed=false) where the current submission isn't itself the
-	// silent-reject — so reviewers landing on any fraud-tainted project get
-	// the unmissable confetti + audio + banner and don't waste time reviewing.
+	// Fraud projects (silentReject=true OR Joe-flagged with joeFraudPassed=false)
+	// render a dedicated full-page state instead of the review UI — no point
+	// loading the whole reviewer surface for a project we already know is fraud.
+	// Confetti + audio play once per submission so the verdict is unmissable.
+	let isFraudProject = $derived(
+		!!currentSubmission &&
+			(currentSubmission.silentReject ||
+				currentSubmission.project.joeFraudPassed === false),
+	);
 	let fraudCelebrationFiredFor = $state<number | null>(null);
-	let showFraudBanner = $state(false);
 	let fraudAudio: HTMLAudioElement | null = null;
+	// When autoplay is blocked (no recent user gesture, Safari, etc.) the
+	// fraud page surfaces a "click to hear" button so the reviewer can still
+	// trigger the audio with an explicit click.
+	let fraudAudioBlocked = $state(false);
+
+	function playFraudAudio() {
+		if (!fraudAudio) fraudAudio = new Audio(`${base}/wholikestofraudy.mp3`);
+		void fraudAudio.play().then(
+			() => { fraudAudioBlocked = false; },
+			() => { fraudAudioBlocked = true; },
+		);
+	}
 
 	$effect(() => {
 		if (!currentSubmission) return;
-		const isFraud =
-			currentSubmission.silentReject ||
-			currentSubmission.project.joeFraudPassed === false;
-		if (!isFraud) return;
+		if (!isFraudProject) return;
 		if (fraudCelebrationFiredFor === currentSubmission.submissionId) return;
 		fraudCelebrationFiredFor = currentSubmission.submissionId;
 
-		showFraudBanner = true;
 		fraudAudio = new Audio(`${base}/wholikestofraudy.mp3`);
-		// Browsers block autoplay without a recent user gesture; the navigation
-		// click that brought the reviewer here usually counts, but swallow the
-		// rejection either way so the banner/confetti still play.
-		void fraudAudio.play().catch(() => {});
+		// Browsers block autoplay without a recent user gesture. Try anyway —
+		// the navigation click usually counts — and on failure surface a
+		// "click to hear" button on the fraud page so reviewers can opt in.
+		void fraudAudio.play().then(
+			() => { fraudAudioBlocked = false; },
+			() => { fraudAudioBlocked = true; },
+		);
 
 		const burst = () => {
 			confetti({ particleCount: 120, spread: 70, origin: { x: 0.2, y: 0.5 } });
@@ -169,7 +183,6 @@
 		burst();
 		setTimeout(burst, 350);
 		setTimeout(burst, 700);
-		setTimeout(() => { showFraudBanner = false; }, 5000);
 	});
 
 	onDestroy(() => {
@@ -182,12 +195,17 @@
 	onMount(async () => {
 		sessionSkippedProjectIds = loadSkippedFromStorage();
 
-		// Load queue + past reviews in parallel. Past reviews powers two things:
-		// (1) the seenProjectIds set that drives next/prev skip-already-reviewed,
-		// and (2) the deep-link fallback when a project isn't in the pending queue.
-		const [queueRes, pastRes] = await Promise.all([
+		// Load queue + past reviews + fraud-rejected in parallel. Past reviews
+		// powers two things: (1) the seenProjectIds set that drives next/prev
+		// skip-already-reviewed, and (2) the deep-link fallback when a project
+		// isn't in the pending queue. Fraud-rejected is a separate fallback
+		// because silentReject submissions have no human reviewer and so don't
+		// appear in past-reviews — without it, opening a fraud-killed project
+		// from the gallery shows "not in the review system".
+		const [queueRes, pastRes, fraudRes] = await Promise.all([
 			api.GET('/api/reviewer/queue'),
 			api.GET('/api/reviewer/past-reviews'),
+			api.GET('/api/reviewer/fraud-rejected'),
 		]);
 		queue = queueRes.data ?? [];
 
@@ -224,13 +242,22 @@
 		// Not in pending queue — fall back to past reviews so already-reviewed
 		// projects remain viewable from the gallery.
 		const past = pastRes.data?.reviews.find((r) => r.projectId === projectId);
-		if (!past) {
-			// Render the "not found" view rather than silently bouncing to the
-			// gallery — a quiet redirect looks like a bug to reviewers.
-			submissionLoading = false;
+		if (past) {
+			await loadSubmissionDetail(past.submissionId);
 			return;
 		}
-		await loadSubmissionDetail(past.submissionId);
+
+		// Fraud-killed submissions have no reviewer, so past-reviews misses them.
+		// Pick the newest fraud-rejected submission for this project.
+		const fraud = fraudRes.data?.find((f) => f.projectId === projectId);
+		if (fraud) {
+			await loadSubmissionDetail(fraud.submissionId);
+			return;
+		}
+
+		// Render the "not found" view rather than silently bouncing to the
+		// gallery — a quiet redirect looks like a bug to reviewers.
+		submissionLoading = false;
 	});
 
 	async function selectSubmission(submissionId: number) {
@@ -523,6 +550,27 @@
 			</p>
 			<button class="mt-3 bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit hover:border-rv-accent" onclick={goBack}>← Back to Gallery</button>
 		</div>
+	{:else if isFraudProject}
+		<div class="flex flex-col items-center justify-center h-screen gap-4 text-rv-dim bg-rv-bg px-6">
+			<div
+				class="text-7xl font-extrabold text-center"
+				style="background-image: linear-gradient(90deg, #ff4d4d, #ffae00, #ffe600, #4dff88, #4dd0ff, #b14dff, #ff4dd0); -webkit-background-clip: text; background-clip: text; color: transparent;"
+			>
+				This project is fraud :D
+			</div>
+			<p class="text-[12px] text-rv-dim max-w-105 text-center m-0">
+				Fraud has flagged Project #{projectId} — no review needed. The user sees this submission as still pending so they get no feedback.
+			</p>
+			{#if fraudAudioBlocked}
+				<button
+					class="mt-1 bg-rv-tag-bg border border-rv-accent text-rv-accent px-5 py-2 rounded-md cursor-pointer font-inherit font-semibold hover:bg-rv-accent hover:text-rv-bg"
+					onclick={playFraudAudio}
+				>
+					🔊 Click to hear the verdict
+				</button>
+			{/if}
+			<button class="mt-3 bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit hover:border-rv-accent" onclick={goBack}>← Back to Gallery</button>
+		</div>
 	{:else}
 		{#if readOnlyMode}
 			<div class="flex items-center justify-between gap-3 px-5 py-2 bg-yellow-500/15 border-b border-yellow-500/40 text-yellow-700 dark:text-yellow-400 text-[12px] shrink-0">
@@ -709,16 +757,4 @@
 		/>
 	{/if}
 
-	{#if showFraudBanner}
-		<div class="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
-			<div class="px-10 py-7 bg-black/70 rounded-2xl backdrop-blur-sm shadow-2xl animate-pulse">
-				<div
-					class="text-7xl font-extrabold text-center"
-					style="background-image: linear-gradient(90deg, #ff4d4d, #ffae00, #ffe600, #4dff88, #4dd0ff, #b14dff, #ff4dd0); -webkit-background-clip: text; background-clip: text; color: transparent;"
-				>
-					This project is fraud :D
-				</div>
-			</div>
-		</div>
-	{/if}
 </div>
