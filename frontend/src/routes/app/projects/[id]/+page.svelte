@@ -640,7 +640,7 @@
 		transform: scale(var(--juice-scale));
 	}
 	@media (hover: hover) {
-		.action-btn:not(.pending):not(.keyboard):hover {
+		.action-btn:not(.pending):not(.keyboard):not(.cancel):not(.delete):hover {
 			background-color: #ffa936;
 			transform: scale(var(--juice-scale));
 		}
