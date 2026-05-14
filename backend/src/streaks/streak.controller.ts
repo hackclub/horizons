@@ -4,6 +4,7 @@ import { Request } from 'express';
 import { StreakService } from './streak.service';
 import { StreakLeaderboardEntry } from './dto/streak-leaderboard-response.dto';
 import { StreakRefreshResponse } from './dto/streak-refresh-response.dto';
+import { StreakTodayResponse } from './dto/streak-today-response.dto';
 
 @Controller('api/streaks')
 export class StreakController {
@@ -17,6 +18,12 @@ export class StreakController {
   ): Promise<StreakLeaderboardEntry[]> {
     const clamped = Math.min(Math.max(limit ?? 10, 1), 50);
     return this.streakService.getLeaderboard(clamped);
+  }
+
+  @Get('today')
+  @ApiOkResponse({ type: StreakTodayResponse })
+  async today(@Req() req: Request): Promise<StreakTodayResponse> {
+    return this.streakService.getTodayProgress(req.user.userId);
   }
 
   @Post('refresh')

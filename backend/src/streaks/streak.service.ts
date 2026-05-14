@@ -14,6 +14,8 @@ export interface SyncResult {
   yesterdaySeconds: number;
 }
 
+export const STREAK_QUALIFY_SECONDS = QUALIFY_SECONDS;
+
 @Injectable()
 export class StreakService {
   private readonly logger = new Logger(StreakService.name);
@@ -477,6 +479,32 @@ export class StreakService {
         refreshed: false,
       };
     }
+  }
+
+  /**
+   * Today's qualifying-coding progress for one user, read from the persisted
+   * UserDailyActivity high-watermark row. No Hackatime fetch — relies on the
+   * most recent sync, which the hourly cron and the per-page-load refresh
+   * keep current. Returns 0 seconds when no row exists yet.
+   */
+  async getTodayProgress(
+    userId: number,
+  ): Promise<{ todaySeconds: number; qualified: boolean; qualifyingSeconds: number }> {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: { timezone: true },
+    });
+    const tz = user?.timezone ?? 'UTC';
+    const todayLocal = localDateOf(Math.floor(Date.now() / 1000), tz);
+    const row = await this.prisma.userDailyActivity.findUnique({
+      where: { userId_localDate: { userId, localDate: ymdToDate(todayLocal) } },
+      select: { seconds: true, qualified: true },
+    });
+    return {
+      todaySeconds: row?.seconds ?? 0,
+      qualified: row?.qualified ?? false,
+      qualifyingSeconds: QUALIFY_SECONDS,
+    };
   }
 
   /**

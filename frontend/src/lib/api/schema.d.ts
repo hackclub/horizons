@@ -223,6 +223,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/streaks/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StreakController_today"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/streaks/refresh": {
         parameters: {
             query?: never;
@@ -735,6 +751,38 @@ export interface paths {
         get: operations["AdminController_getFraudQueue"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/fraud-review/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getFraudReviewQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/fraud-review/{projectId}/perm-reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_permRejectProject"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1995,6 +2043,14 @@ export interface components {
             /** @description Current consecutive-day Hackatime streak */
             currentStreak: number;
         };
+        StreakTodayResponse: {
+            /** @description Seconds of qualifying coding logged today (user-local). */
+            todaySeconds: number;
+            /** @description Whether today has already qualified for the streak. */
+            qualified: boolean;
+            /** @description Seconds required per day to extend the streak. */
+            qualifyingSeconds: number;
+        };
         StreakRefreshResponse: {
             /** @description Current consecutive-day streak after refresh */
             currentStreak: number;
@@ -2123,6 +2179,8 @@ export interface components {
             nowHackatimeProjects: string[];
             /** @description Whether the project is locked for editing */
             isLocked: boolean;
+            /** @description True if an admin has permanently rejected this project. Blocks all further submissions and edits; the user-facing reason lives on the latest submission as `hoursJustification`. */
+            permReject: boolean;
             /** @description Creation timestamp */
             createdAt: string;
             /** @description Last update timestamp */
@@ -2419,6 +2477,8 @@ export interface components {
             hoursJustification: string | null;
             adminComment: string | null;
             isLocked: boolean;
+            /** @description Permanent reject flag. User-facing reason is the latest submission's `hoursJustification`; audit (who/when) is in SubmissionAuditLog. */
+            permReject: boolean;
             joeFraudPassed: boolean | null;
             joeTrustScore: number | null;
             /** Format: date-time */
@@ -2470,6 +2530,8 @@ export interface components {
             hoursJustification?: string | null;
             approvedHours?: number | null;
             isLocked?: boolean;
+            /** @description Permanently reject (or un-reject) the project. Enabling requires the latest submission to already have a user-visible reason in `hoursJustification`. Audit (who/when) is recorded in SubmissionAuditLog. */
+            permReject?: boolean;
         };
         HackatimeProjectEntry: {
             name: string;
@@ -2615,6 +2677,66 @@ export interface components {
             stats: components["schemas"]["FraudQueueStatsResponse"];
             inQueue: components["schemas"]["FraudQueueProjectResponse"][];
             notInQueue: components["schemas"]["FraudQueueProjectResponse"][];
+        };
+        FraudReviewQueueUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+            slackUserId: string | null;
+            isFraud: boolean;
+            isSus: boolean;
+        };
+        FraudReviewQueueItemResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            description: string | null;
+            repoUrl: string | null;
+            playableUrl: string | null;
+            screenshotUrl: string | null;
+            nowHackatimeHours: number | null;
+            nowHackatimeProjects: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            latestSubmissionCreatedAt: string | null;
+            submissionCount: number;
+            /** Format: date-time */
+            joeFraudReviewedAt: string | null;
+            joeTrustScore: number | null;
+            joeJustification: string | null;
+            joeOutcomeStatus: string | null;
+            joeOutcomeReason: string | null;
+            permReject: boolean;
+            /** @description User-facing reason (mirrors latest submission's hoursJustification). */
+            permRejectReason: string | null;
+            user: components["schemas"]["FraudReviewQueueUserResponse"];
+        };
+        FraudReviewQueueResponse: {
+            pendingPermReject: components["schemas"]["FraudReviewQueueItemResponse"][];
+            permRejected: components["schemas"]["FraudReviewQueueItemResponse"][];
+        };
+        PermRejectProjectDto: {
+            /** @description User-facing rejection reason. Shown to the project owner and embedded in the email/Slack DM. */
+            reason: string;
+            /** @description Internal-only note for future admin context. Not shown to the user. */
+            internalNote?: string;
+            /**
+             * @description Send Loops email + Slack DM to the owner (default true).
+             * @default true
+             */
+            sendEmail: boolean;
+        };
+        PermRejectActionResponse: {
+            success: boolean;
+            project: components["schemas"]["FraudReviewQueueItemResponse"];
+            /** @description True if a Loops email was successfully dispatched. */
+            emailSent: boolean;
+            /** @description True if a Slack DM was successfully dispatched. */
+            slackSent: boolean;
         };
         StatsFunnelEventEntry: {
             eventId: number;
@@ -4075,6 +4197,25 @@ export interface operations {
             };
         };
     };
+    StreakController_today: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreakTodayResponse"];
+                };
+            };
+        };
+    };
     StreakController_refresh: {
         parameters: {
             query?: never;
@@ -4887,6 +5028,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FraudQueueResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getFraudReviewQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FraudReviewQueueResponse"];
+                };
+            };
+        };
+    };
+    AdminController_permRejectProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PermRejectProjectDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermRejectActionResponse"];
                 };
             };
         };
