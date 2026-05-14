@@ -549,30 +549,27 @@
 				onclick={() => { if (!deleting) deleteOpen = false; }}
 				disabled={deleting}
 			></button>
-			<div class="relative max-w-md w-full bg-[#f3e8d8] border-4 border-black rounded-[20px] p-6 shadow-[4px_4px_0px_0px_black] flex flex-col gap-3">
+			<div class="relative max-w-xl w-full max-h-[85vh] bg-[#f3e8d8] border-4 border-black rounded-[20px] p-6 shadow-[4px_4px_0px_0px_black] flex flex-col gap-3 overflow-y-auto">
 				<p class="font-cook text-[28px] font-semibold text-black m-0">DELETE PROJECT?</p>
-				<p class="font-bricolage text-[16px] text-black m-0">
-					This hides the project from your account and frees up its linked Hackatime projects. You won't be able to re-open it from here.
-				</p>
 				{#if deleteError}
 					<p class="font-bricolage text-[14px] m-0" style="color: #ec3750;">{deleteError}</p>
 				{/if}
-				<div class="flex gap-3 mt-1 justify-end">
+				<div class="flex flex-col-reverse sm:flex-row gap-2.5 justify-end mt-1">
 					<button
 						type="button"
-						class="font-bricolage text-[15px] font-semibold text-black underline cursor-pointer"
+						class="action-btn cancel py-2 px-5 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black"
 						onclick={() => { if (!deleting) deleteOpen = false; }}
 						disabled={deleting}
 					>
-						Cancel
+						CANCEL
 					</button>
 					<button
 						type="button"
-						class="delete-confirm font-bricolage text-[15px] font-semibold border-2 border-black rounded-lg px-4 py-2"
+						class="action-btn delete py-2 px-5 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black"
 						onclick={deleteProject}
 						disabled={deleting}
 					>
-						{deleting ? 'Deleting…' : 'Delete'}
+						{deleting ? 'DELETING…' : 'DELETE'}
 					</button>
 				</div>
 			</div>
@@ -681,20 +678,23 @@
 		}
 	}
 
-	.delete-confirm {
-		background-color: #ec3750;
-		color: black;
+	.action-btn {
+		background-color: #f3e8d8;
 		cursor: pointer;
-		transition: transform var(--juice-duration) var(--juice-easing), filter 0.15s ease;
+		transition:
+			background-color var(--selected-duration) ease,
+			transform var(--juice-duration) var(--juice-easing);
 	}
-	.delete-confirm:disabled {
+	.action-btn.delete {
+		background-color: #ec3750;
+	}
+	.action-btn:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
 	}
 	@media (hover: hover) {
-		.delete-confirm:not(:disabled):hover {
+		.action-btn:not(:disabled):hover {
 			transform: scale(var(--juice-scale));
-			filter: brightness(1.05);
 		}
 	}
 
