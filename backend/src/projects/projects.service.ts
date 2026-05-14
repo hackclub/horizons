@@ -802,6 +802,7 @@ export class ProjectsService {
         user: {
           select: {
             hackatimeAccount: true,
+            hackatimeAccessToken: true,
             hackatimeStartDate: true,
             timezone: true,
             currentStreak: true,
@@ -863,17 +864,33 @@ export class ProjectsService {
     );
 
     const hackatimeProjectHours: Record<string, number> = {};
-    let totalSeconds = 0;
+    let perProjectTotalSeconds = 0;
     for (const name of projectNames) {
       const seconds = durationsMap.get(name) ?? 0;
       hackatimeProjectHours[name] = Math.round((seconds / 3600) * 10) / 10;
-      totalSeconds += seconds;
+      perProjectTotalSeconds += seconds;
     }
+
+    // Use the dedup endpoint for the displayed total so it matches what
+    // `createSubmission` will snapshot. Summing the per-project durations
+    // above double-counts any minute the user heartbeated two linked
+    // projects at once. Fall back to the naive sum only if the user has no
+    // OAuth token (dedup endpoint requires Bearer auth).
+    const currentHackatimeHours = project.user.hackatimeAccessToken
+      ? await this.hackatimeService.calculateProjectHours(
+          {
+            hackatimeAccount: project.user.hackatimeAccount,
+            hackatimeAccessToken: project.user.hackatimeAccessToken,
+            hackatimeStartDate: project.user.hackatimeStartDate,
+          },
+          projectNames,
+        )
+      : Math.round((perProjectTotalSeconds / 3600) * 10) / 10;
 
     return {
       projectId: project.projectId,
       hackatimeProjects: projectNames,
-      currentHackatimeHours: Math.round((totalSeconds / 3600) * 10) / 10,
+      currentHackatimeHours,
       hackatimeProjectHours,
       lastSubmittedHours,
       currentStreak,
