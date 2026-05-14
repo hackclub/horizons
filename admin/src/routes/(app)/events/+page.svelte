@@ -99,9 +99,16 @@
                                     <span class="rounded-lg bg-neutral-700 px-1.5 py-0.5 text-xs text-neutral-400">{event.slug}</span>
                                 </div>
                             </div>
-                            <span class="shrink-0 rounded-full border border-ds-border px-2.5 py-0.5 text-xs text-ds-text">
-                                Pinned by {getPinnedCount(event)} participant{getPinnedCount(event) !== 1 ? 's' : ''}
-                            </span>
+                            <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                                {#if event.ticketEnabled}
+                                    <span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-xs text-emerald-300">
+                                        Tickets on sale
+                                    </span>
+                                {/if}
+                                <span class="rounded-full border border-ds-border px-2.5 py-0.5 text-xs text-ds-text">
+                                    Pinned by {getPinnedCount(event)} participant{getPinnedCount(event) !== 1 ? 's' : ''}
+                                </span>
+                            </div>
                         </div>
                         {#if event.description}
                             <p class="mt-1 text-xs text-ds-text-secondary line-clamp-2">{event.description}</p>
