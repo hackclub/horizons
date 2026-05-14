@@ -22,6 +22,8 @@
 
 	let entries = $state<Entry[]>([]);
 	let loaded = $state(false);
+	let todayQualified = $state(false);
+	let todayMinutesLeft = $state<number | null>(null);
 
 	const PLACE_BG = ['#ffa936', '#f86d95', '#7d7de9'];
 
@@ -32,6 +34,15 @@
 			})
 			.catch(() => {})
 			.finally(() => { loaded = true; });
+
+		api.GET('/api/streaks/today')
+			.then(({ data }) => {
+				if (!data) return;
+				todayQualified = data.qualified;
+				const remaining = Math.max(0, data.qualifyingSeconds - data.todaySeconds);
+				todayMinutesLeft = Math.max(1, Math.ceil(remaining / 60));
+			})
+			.catch(() => {});
 	});
 </script>
 
@@ -42,6 +53,11 @@
 	{onmouseenter}
 >
 	<p class="font-cook text-[16px] text-black m-0 leading-none">STREAKS LEADERBOARD</p>
+	{#if !todayQualified && todayMinutesLeft !== null}
+		<p class="font-bricolage text-[14px] text-black/70 m-0 leading-tight">
+			Code {todayMinutesLeft}min to get your streak for today
+		</p>
+	{/if}
 	<div class="lb-list">
 		{#if !loaded}
 			<p class="font-bricolage text-[16px] text-black/50 m-0 px-2">Loading…</p>
