@@ -30,10 +30,10 @@
 				<span>{timeAgo(commit.date)}</span>
 				<div class="flex gap-1.5 ml-auto">
 					{#if commit.additions > 0}
-						<span class="text-rv-green font-semibold font-[Space_Mono,monospace] text-[11px]">+{commit.additions}</span>
+						<span class="text-rv-green font-semibold text-[11px]">+{commit.additions}</span>
 					{/if}
 					{#if commit.deletions > 0}
-						<span class="text-rv-red font-semibold font-[Space_Mono,monospace] text-[11px]">-{commit.deletions}</span>
+						<span class="text-rv-red font-semibold text-[11px]">-{commit.deletions}</span>
 					{/if}
 				</div>
 			</div>

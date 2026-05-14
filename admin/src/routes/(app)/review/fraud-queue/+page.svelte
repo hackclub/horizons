@@ -125,7 +125,7 @@
 			>
 				← Back to review
 			</a>
-			<div class="font-[Space_Mono,monospace] font-bold text-[18px] text-rv-accent">
+			<div class="font-bold text-[18px] text-rv-accent">
 				HORIZONS <span class="text-rv-text font-normal text-[13px] ml-2">Fraud Queue</span>
 			</div>
 		</div>

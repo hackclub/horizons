@@ -59,7 +59,7 @@
 		background: var(--rv-surface2);
 		padding: 2px 6px;
 		border-radius: 3px;
-		font-family: 'Space Mono', monospace;
+		font-family: monospace;
 		font-size: 12px;
 	}
 

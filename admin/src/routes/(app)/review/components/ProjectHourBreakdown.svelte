@@ -121,7 +121,7 @@
 							<span class="w-2.5 h-2.5 rounded-sm bg-red-500 shrink-0"></span>
 							<span class="text-rv-text font-semibold">AI</span>
 							<span
-								class="text-rv-dim ml-auto font-[Space_Mono,monospace] whitespace-nowrap"
+								class="text-rv-dim ml-auto whitespace-nowrap"
 							>
 								{(aiHours ?? 0).toFixed(1)}h · {aiPct}%
 							</span>
@@ -130,7 +130,7 @@
 							<span class="w-2.5 h-2.5 rounded-sm bg-green-500 shrink-0"></span>
 							<span class="text-rv-text font-semibold">Non-AI</span>
 							<span
-								class="text-rv-dim ml-auto font-[Space_Mono,monospace] whitespace-nowrap"
+								class="text-rv-dim ml-auto whitespace-nowrap"
 							>
 								{(nonAiHours ?? 0).toFixed(1)}h · {nonAiPct}%
 							</span>
@@ -157,7 +157,7 @@
 										{p.name}
 									</span>
 									<span
-										class="text-rv-dim font-[Space_Mono,monospace] whitespace-nowrap shrink-0"
+										class="text-rv-dim whitespace-nowrap shrink-0"
 									>
 										{p.totalHours.toFixed(1)}h
 									</span>
@@ -181,7 +181,7 @@
 									</div>
 								</div>
 								<div
-									class="flex items-center justify-between gap-2 text-[10px] text-rv-dim font-[Space_Mono,monospace]"
+									class="flex items-center justify-between gap-2 text-[10px] text-rv-dim"
 								>
 									<span>AI {p.aiHours.toFixed(1)}h · {aiInProject}%</span>
 									<span>Non-AI {p.nonAiHours.toFixed(1)}h · {nonAiInProject}%</span>

@@ -270,19 +270,19 @@
 					min="0"
 					bind:value={approvedHours}
 					oninput={() => { reviewerManuallyEditedHours = true; }}
-					class="w-[100px] bg-rv-surface border border-rv-border rounded-md p-2.5 text-rv-text font-[Space_Mono,monospace] text-[13px] font-semibold resize-vertical focus:outline-none focus:border-rv-accent"
+					class="w-[100px] bg-rv-surface border border-rv-border rounded-md p-2.5 text-rv-text text-[13px] font-semibold resize-vertical focus:outline-none focus:border-rv-accent"
 				/>
 				{#if hasReshipContext && reshipDelta != null}
 					<p class="mt-1 mb-0 text-[11px] text-rv-dim">
 						Already credited:
 						{#if priorReshipApprovedHours != null}
-							<span class="font-[Space_Mono,monospace] font-semibold text-rv-text">{priorReshipApprovedHours.toFixed(1)}h</span> Horizons{#if priorYswsHoursShipped > 0}{' '}+{' '}{/if}
+							<span class="font-semibold text-rv-text">{priorReshipApprovedHours.toFixed(1)}h</span> Horizons{#if priorYswsHoursShipped > 0}{' '}+{' '}{/if}
 						{/if}
 						{#if priorYswsHoursShipped > 0}
-							<span class="font-[Space_Mono,monospace] font-semibold text-rv-text">{priorYswsHoursShipped.toFixed(1)}h</span> other YSWS
+							<span class="font-semibold text-rv-text">{priorYswsHoursShipped.toFixed(1)}h</span> other YSWS
 						{/if}
 						→ granting
-						<span class="font-[Space_Mono,monospace] font-semibold {reshipDelta < 0 ? 'text-rv-red' : 'text-rv-green'}">
+						<span class="font-semibold {reshipDelta < 0 ? 'text-rv-red' : 'text-rv-green'}">
 							{reshipDelta >= 0 ? '+' : ''}{reshipDelta.toFixed(1)}h
 						</span>
 						new

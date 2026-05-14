@@ -49,7 +49,7 @@
 				<div class="flex items-center justify-between gap-2 text-[11px] text-rv-dim">
 					<span>{timeAgo(s.createdAt)}</span>
 					{#if s.hackatimeHours != null}
-						<span class="font-[Space_Mono,monospace]">{s.hackatimeHours.toFixed(1)}h</span>
+						<span>{s.hackatimeHours.toFixed(1)}h</span>
 					{/if}
 				</div>
 			</button>

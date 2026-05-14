@@ -99,7 +99,7 @@
 {:else}
 <div class="p-4">
 	<div class="flex items-center gap-2 mb-0.5">
-		<span class="text-[18px] font-bold font-[Space_Mono,monospace]">{displayLabel}</span>
+		<span class="text-[18px] font-bold">{displayLabel}</span>
 	</div>
 
 	<div class="flex items-center gap-2 mb-3">
@@ -107,7 +107,7 @@
 			{fraudBadge.label}
 		</span>
 		{#if joeTrustScore != null}
-			<span class="inline-flex items-center rounded-full border border-rv-border text-rv-dim px-2 py-0.5 text-[11px] font-medium font-[Space_Mono,monospace]">
+			<span class="inline-flex items-center rounded-full border border-rv-border text-rv-dim px-2 py-0.5 text-[11px] font-medium">
 				Trust: {joeTrustScore}
 			</span>
 		{/if}
@@ -130,7 +130,7 @@
 				</svg>
 				DM on Slack ↗
 			</a>
-			<span class="inline-flex items-center gap-1 font-[Space_Mono,monospace] text-rv-dim/80">
+			<span class="inline-flex items-center gap-1 text-rv-dim/80">
 				<span>{user.slackUserId}</span>
 				<button
 					type="button"

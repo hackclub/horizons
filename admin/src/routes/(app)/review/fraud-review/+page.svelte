@@ -191,7 +191,7 @@
 			>
 				← Back to review
 			</a>
-			<div class="font-[Space_Mono,monospace] text-[18px] font-bold text-rv-accent">
+			<div class="text-[18px] font-bold text-rv-accent">
 				HORIZONS
 				<span class="ml-2 text-[13px] font-normal text-rv-text">Fraud Review</span>
 			</div>

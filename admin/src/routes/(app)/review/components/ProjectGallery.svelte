@@ -236,7 +236,7 @@
 
 <div class="flex flex-col h-screen overflow-hidden">
 	<div class="flex items-center justify-between px-6 py-4 bg-rv-surface border-b border-rv-border shrink-0">
-		<div class="font-[Space_Mono,monospace] font-bold text-[18px] text-rv-accent">HORIZONS <span class="text-rv-text font-normal text-[13px] ml-2">Project Review</span></div>
+		<div class="font-bold text-[18px] text-rv-accent">HORIZONS <span class="text-rv-text font-normal text-[13px] ml-2">Project Review</span></div>
 		<div class="flex items-center gap-3">
 			{#if loading}
 				<Skeleton class="h-4 w-32" />
@@ -388,7 +388,7 @@
 							<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
 							{#if item.hackatimeHours != null}
 								<span
-									class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border bg-rv-tag-bg text-rv-dim border-rv-border font-[Space_Mono,monospace]"
+									class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border bg-rv-tag-bg text-rv-dim border-rv-border"
 									title="Hackatime hours submitted for this project"
 								>
 									{item.hackatimeHours.toFixed(1)}h

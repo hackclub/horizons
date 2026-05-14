@@ -53,7 +53,7 @@
 	<!-- Title + type badge -->
 	<div class="shrink-0">
 		<div class="flex items-center gap-3 mb-2">
-			<h2 class="text-2xl font-bold m-0 font-[Space_Mono,monospace] leading-tight">
+			<h2 class="text-2xl font-bold m-0 leading-tight">
 				{projectTitle ?? 'Untitled Project'}
 			</h2>
 			<span class="shrink-0 text-xs font-semibold uppercase tracking-wide px-2.5 py-1 rounded bg-rv-surface2 border border-rv-border text-rv-dim">
@@ -87,7 +87,7 @@
 </div>
 
 {#snippet LinkRow({ label, url }: { label: string; url: string })}
-	<div class="flex items-center gap-2.5 text-sm font-[Space_Mono,monospace]">
+	<div class="flex items-center gap-2.5 text-sm">
 		<span class="text-rv-dim font-semibold w-16 shrink-0">{label}</span>
 		<a
 			href={url}

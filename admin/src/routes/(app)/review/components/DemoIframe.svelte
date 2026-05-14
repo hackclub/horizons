@@ -41,7 +41,7 @@
 	</button>
 
 	<!-- URL bar -->
-	<div class="flex-1 bg-rv-surface2 border border-rv-border rounded-md py-1.5 px-3 text-gray-400 text-[12px] font-[Space_Mono,monospace] overflow-hidden text-ellipsis whitespace-nowrap">
+	<div class="flex-1 bg-rv-surface2 border border-rv-border rounded-md py-1.5 px-3 text-gray-400 text-[12px] overflow-hidden text-ellipsis whitespace-nowrap">
 		{demoUrl ?? 'No demo URL'}
 	</div>
 

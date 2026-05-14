@@ -67,7 +67,7 @@
 							{sub.shipStatus}
 						</span>
 					</div>
-					<div class="text-[10px] text-rv-dim mt-0.5 font-[Space_Mono,monospace]">
+					<div class="text-[10px] text-rv-dim mt-0.5">
 						{#if sub.shippedAt}
 							shipped {fmtDate(sub.shippedAt)}{#if sub.hoursShipped != null} · {sub.hoursShipped}h{/if}
 						{:else if sub.approvedAt}

@@ -26,7 +26,7 @@
 		</div>
 		{#if repo}
 			<a
-				class="font-[Space_Mono,monospace] text-[13px] font-bold text-rv-blue no-underline hover:underline"
+				class="text-[13px] font-bold text-rv-blue no-underline hover:underline"
 				href={repoUrl}
 				target="_blank"
 				rel="noopener noreferrer"
