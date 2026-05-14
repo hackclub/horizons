@@ -536,6 +536,111 @@ export class HackatimeService {
     }));
   }
 
+  // Hackatime categories that count as non-coding time for the reviewer's
+  // AI-vs-non-AI breakdown. "ai coding" is AI-assisted prompting; the others
+  // are time the user wasn't actually building (browsing, meetings, chat).
+  private readonly AI_BREAKDOWN_CATEGORIES = [
+    'ai coding',
+    'browsing',
+    'meeting',
+    'communicating',
+  ];
+
+  /**
+   * Live per-project hour breakdown — aggregate plus per-Hackatime-project
+   * rows, each split into AI vs non-AI by Hackatime category. Two calls to
+   * Hackatime's `features=projects` endpoint (one unfiltered, one with the
+   * AI category filter); the deltas are non-AI. Aggregate numbers sum the
+   * per-project values — not deduplicated — to keep the chart and the
+   * per-project breakdown internally consistent.
+   */
+  async getProjectHourBreakdown(projectId: number): Promise<{
+    totalHours: number;
+    aiHours: number;
+    nonAiHours: number;
+    perProject: Array<{
+      name: string;
+      totalHours: number;
+      aiHours: number;
+      nonAiHours: number;
+    }>;
+  }> {
+    const project = await this.prisma.project.findUnique({
+      where: { projectId },
+      select: {
+        nowHackatimeProjects: true,
+        user: {
+          select: {
+            hackatimeAccount: true,
+            hackatimeAccessToken: true,
+            hackatimeStartDate: true,
+          },
+        },
+      },
+    });
+
+    const empty = {
+      totalHours: 0,
+      aiHours: 0,
+      nonAiHours: 0,
+      perProject: [] as Array<{
+        name: string;
+        totalHours: number;
+        aiHours: number;
+        nonAiHours: number;
+      }>,
+    };
+
+    if (!project || !project.nowHackatimeProjects?.length) return empty;
+
+    const names = project.nowHackatimeProjects;
+    const account = project.user?.hackatimeAccount;
+    const token = project.user?.hackatimeAccessToken;
+
+    if (!account || !token) {
+      return {
+        ...empty,
+        perProject: names.map((name) => ({
+          name,
+          totalHours: 0,
+          aiHours: 0,
+          nonAiHours: 0,
+        })),
+      };
+    }
+
+    const cutoffDate =
+      project.user.hackatimeStartDate ??
+      new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z');
+
+    const [totalDurations, aiDurations] = await Promise.all([
+      this.fetchHackatimePerProjectDurations(account, names, token, cutoffDate),
+      this.fetchHackatimePerProjectDurations(
+        account,
+        names,
+        token,
+        cutoffDate,
+        this.AI_BREAKDOWN_CATEGORIES,
+      ),
+    ]);
+
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+    const perProject = names.map((name) => {
+      const totalHours = round1((totalDurations.get(name) ?? 0) / 3600);
+      const aiHours = round1((aiDurations.get(name) ?? 0) / 3600);
+      // Clamp: dedup/rounding on Hackatime's side can put AI > total by a
+      // fraction; a negative non-AI value would break the bar chart math.
+      const nonAiHours = Math.max(0, round1(totalHours - aiHours));
+      return { name, totalHours, aiHours, nonAiHours };
+    });
+
+    const totalHours = round1(perProject.reduce((s, p) => s + p.totalHours, 0));
+    const aiHours = round1(perProject.reduce((s, p) => s + p.aiHours, 0));
+    const nonAiHours = Math.max(0, round1(totalHours - aiHours));
+
+    return { totalHours, aiHours, nonAiHours, perProject };
+  }
+
   async getTotalNowHackatimeHours(userId: number): Promise<number> {
     const result = await this.prisma.project.aggregate({
       where: { userId, deletedAt: null },
@@ -642,6 +747,7 @@ export class HackatimeService {
     projectNames: string[],
     accessToken: string,
     cutoffDate: Date,
+    categories?: string[],
   ): Promise<Map<string, number>> {
     const durationsMap = new Map<string, number>();
     for (const projectName of projectNames) {
@@ -650,7 +756,15 @@ export class HackatimeService {
     if (projectNames.length === 0) return durationsMap;
 
     const startDate = cutoffDate.toISOString().split('T')[0];
-    const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?features=projects&start_date=${startDate}`;
+    const params = new URLSearchParams({
+      features: 'projects',
+      start_date: startDate,
+      filter_by_project: projectNames.join(','),
+    });
+    if (categories && categories.length > 0) {
+      params.set('filter_by_category', categories.join(','));
+    }
+    const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?${params.toString()}`;
 
     try {
       const response = await fetch(uri, {
@@ -694,6 +808,7 @@ export class HackatimeService {
     projectNames: string[],
     accessToken: string,
     cutoffDate: Date,
+    categories?: string[],
   ): Promise<number> {
     if (projectNames.length === 0) return 0;
 
@@ -705,6 +820,9 @@ export class HackatimeService {
       total_seconds: 'true',
       filter_by_project: projectNames.join(','),
     });
+    if (categories && categories.length > 0) {
+      params.set('filter_by_category', categories.join(','));
+    }
     const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?${params.toString()}`;
 
     try {

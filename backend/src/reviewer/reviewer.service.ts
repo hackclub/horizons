@@ -49,6 +49,14 @@ export class ReviewerService {
   }
 
   /**
+   * Per-project hour breakdown for a project: aggregate plus per-Hackatime-
+   * project rows, each split into AI vs non-AI by Hackatime category.
+   */
+  async getProjectHourBreakdown(projectId: number) {
+    return this.hackatimeService.getProjectHourBreakdown(projectId);
+  }
+
+  /**
    * Reviewer-facing Manifest lookup: shows whether this project's codeUrl has
    * been submitted to other YSWS programs (for cross-program fraud signal).
    * Returns null when the project has no codeUrl, manifest is disabled, or

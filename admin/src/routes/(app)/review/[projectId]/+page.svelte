@@ -13,6 +13,7 @@
 	import TabBar, { type Tab } from '../components/TabBar.svelte';
 	import ReadmePanel from '../components/ReadmePanel.svelte';
 	import ProjectCardPanel from '../components/ProjectCardPanel.svelte';
+	import ProjectHourBreakdown from '../components/ProjectHourBreakdown.svelte';
 	import VerdictPanel from '../components/VerdictPanel.svelte';
 	import GitHubPanel from '../components/GitHubPanel.svelte';
 	import ReviewChecklist from '../components/ReviewChecklist.svelte';
@@ -116,6 +117,15 @@
 	// Real per-Hackatime-project hours (live-fetched). Null until loaded; the
 	// HoursBreakdown component falls back to an even split while we wait.
 	let hackatimeProjectHours = $state<Record<string, number> | null>(null);
+	// AI vs non-AI hour breakdown (aggregate + per-project), live-fetched.
+	type HourBreakdown = {
+		totalHours: number;
+		aiHours: number;
+		nonAiHours: number;
+		perProject: { name: string; totalHours: number; aiHours: number; nonAiHours: number }[];
+	};
+	let hourBreakdown = $state<HourBreakdown | null>(null);
+	let hourBreakdownLoading = $state(false);
 
 	// Claim/lock state — keeps two reviewers from working the same submission.
 	const claimManager = createClaimManager();
@@ -353,6 +363,7 @@
 		readmeMarkdown = '';
 		manifestLookup = null;
 		hackatimeProjectHours = null;
+		hourBreakdown = null;
 		// Read-only mode is per-submission — switching submissions resets it
 		// (attachClaim below decides whether to surface a fresh conflict).
 		readOnlyMode = false;
@@ -381,6 +392,7 @@
 			promises.push(loadChecklist(submissionId));
 			promises.push(loadManifestLookup(data.project.projectId));
 			promises.push(loadHackatimeBreakdown(data.project.projectId));
+			promises.push(loadHourBreakdown(data.project.projectId));
 
 			await Promise.all(promises);
 		} catch (error) {
@@ -402,6 +414,21 @@
 			hackatimeProjectHours = map;
 		} catch {
 			hackatimeProjectHours = null;
+		}
+	}
+
+	async function loadHourBreakdown(projectId: number) {
+		hourBreakdownLoading = true;
+		try {
+			const { data } = await api.GET(
+				'/api/reviewer/projects/{id}/hour-breakdown',
+				{ params: { path: { id: projectId } } },
+			);
+			hourBreakdown = (data as HourBreakdown | undefined) ?? null;
+		} catch {
+			hourBreakdown = null;
+		} finally {
+			hourBreakdownLoading = false;
 		}
 	}
 
@@ -619,7 +646,13 @@
 					loading={submissionLoading}
 				/>
 
-				<hr class="border-none border-t border-rv-border m-0" />
+				<ProjectHourBreakdown
+					totalHours={hourBreakdown?.totalHours ?? null}
+					aiHours={hourBreakdown?.aiHours ?? null}
+					nonAiHours={hourBreakdown?.nonAiHours ?? null}
+					perProject={hourBreakdown?.perProject ?? []}
+					loading={hourBreakdownLoading || submissionLoading}
+				/>
 
 				<NotesSection
 					title="Notes — Project"

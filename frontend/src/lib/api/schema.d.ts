@@ -1269,6 +1269,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/projects/{id}/hour-breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getProjectHourBreakdown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/projects/{id}/notes": {
         parameters: {
             query?: never;
@@ -1903,6 +1919,23 @@ export interface paths {
         };
         /** Get a user's referral code and referral count by Slack ID */
         get: operations["IntegrationsController_getReferral"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/event-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get aggregated stats for a sub-event — counts, hour-goal split, DAU, and 30-day timelines for dashboards */
+        get: operations["IntegrationsController_getEventStats"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2799,14 +2832,23 @@ export interface components {
             modes: components["schemas"]["StatsSignupQualificationModes"];
         };
         EventStatsResponse: {
-            event: components["schemas"]["EventStatsEventDetail"];
+            event: components["schemas"]["EventStatsEventInfo"];
+            /** @description Total users currently pinned to this sub-event */
             pinnedCount: number;
+            /** @description Pinned users whose approved hours ≥ hourCost */
             metHourGoal: number;
+            /** @description Pinned users whose approved hours < hourCost */
             notMetHourGoal: number;
+            /** @description Yesterday's DAU for this sub-event — read from the historical metric snapshot (today is mid-stream and intentionally omitted) */
             dauYesterday: number;
-            pinnedTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
-            dauTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
-            qualification: components["schemas"]["EventStatsQualification"];
+            /** @description Cumulative pinned user count, last 30 days, one point per day */
+            pinnedTimeline: components["schemas"]["TimeSeriesPoint"][];
+            /** @description Daily active users for this sub-event, last 30 days */
+            dauTimeline: components["schemas"]["TimeSeriesPoint"][];
+            /** @description Funnel counts among pinned users, by approved hours */
+            qualification: components["schemas"]["QualificationFunnel"];
+            /** @description ISO timestamp when this response was generated */
+            generatedAt: string;
         };
         LedgerEntryUserSummary: {
             userId: number;
@@ -3234,6 +3276,18 @@ export interface components {
         HackatimeProjectHours: {
             name: string;
             hours: number;
+        };
+        ProjectHourBreakdownPerProject: {
+            name: string;
+            totalHours: number;
+            aiHours: number;
+            nonAiHours: number;
+        };
+        ProjectHourBreakdownResponse: {
+            totalHours: number;
+            aiHours: number;
+            nonAiHours: number;
+            perProject: components["schemas"]["ProjectHourBreakdownPerProject"][];
         };
         NoteResponse: {
             content: string;
@@ -3700,6 +3754,41 @@ export interface components {
             referralCode: string | null;
             /** @description Number of users this user has referred */
             referralCount: number;
+        };
+        EventStatsEventInfo: {
+            eventId: number;
+            slug: string;
+            title: string;
+            description: string | null;
+            /** @description Event thumbnail / cover image */
+            imageUrl: string | null;
+            location: string | null;
+            country: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string;
+            /** @description Approved-hours goal users must meet for this sub-event */
+            hourCost: number;
+            ticketThreshold: number | null;
+            ticketCost: number | null;
+            ticketEnabled: boolean;
+            isActive: boolean;
+        };
+        TimeSeriesPoint: {
+            /** @description ISO date (YYYY-MM-DD) */
+            date: string;
+            value: number;
+        };
+        QualificationFunnel: {
+            /** @description Anyone pinned to this event */
+            signedUp: number;
+            /** @description Pinned users with ≥1h of approved work */
+            engaged: number;
+            /** @description Pinned users with ≥15h of approved work (RSVP threshold) */
+            rsvped: number;
+            /** @description Pinned users with ≥30h of approved work (qualified) */
+            qualified: number;
         };
     };
     responses: never;
@@ -5538,6 +5627,27 @@ export interface operations {
             };
         };
     };
+    ReviewerController_getProjectHourBreakdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectHourBreakdownResponse"];
+                };
+            };
+        };
+    };
     ReviewerController_getProjectNote: {
         parameters: {
             query?: never;
@@ -6789,6 +6899,38 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReferralResponse"];
                 };
+            };
+        };
+    };
+    IntegrationsController_getEventStats: {
+        parameters: {
+            query: {
+                /** @description Sub-event identifier — matches Event.slug first, then Event.title (case-insensitive) as a fallback */
+                name: string;
+            };
+            header: {
+                /** @description Shared secret from INTEGRATIONS_API_KEY env var */
+                "x-api-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventStatsResponse"];
+                };
+            };
+            /** @description Missing or invalid x-api-key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

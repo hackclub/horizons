@@ -563,6 +563,34 @@ export class HackatimeProjectHours {
   hours: number;
 }
 
+export class ProjectHourBreakdownPerProject {
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  totalHours: number;
+
+  @ApiProperty()
+  aiHours: number;
+
+  @ApiProperty()
+  nonAiHours: number;
+}
+
+export class ProjectHourBreakdownResponse {
+  @ApiProperty()
+  totalHours: number;
+
+  @ApiProperty()
+  aiHours: number;
+
+  @ApiProperty()
+  nonAiHours: number;
+
+  @ApiProperty({ type: [ProjectHourBreakdownPerProject] })
+  perProject: ProjectHourBreakdownPerProject[];
+}
+
 export class ManifestSubmissionResponse {
   @ApiProperty()
   submissionId: string;
