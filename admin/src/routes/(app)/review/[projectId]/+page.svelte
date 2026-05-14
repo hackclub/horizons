@@ -137,16 +137,21 @@
 	];
 	let activeTab = $state('readme');
 
-	// Silent-rejection (fraud) celebration: when reviewers land on a project
-	// that fraud silently rejected, confetti + audio + a banner makes it
-	// unmissable so they don't waste time re-reviewing fraud-killed work.
+	// Fraud celebration: fires both for submissions silently rejected by fraud
+	// (silentReject=true) AND for projects Joe has flagged as fraud
+	// (joeFraudPassed=false) where the current submission isn't itself the
+	// silent-reject — so reviewers landing on any fraud-tainted project get
+	// the unmissable confetti + audio + banner and don't waste time reviewing.
 	let fraudCelebrationFiredFor = $state<number | null>(null);
 	let showFraudBanner = $state(false);
 	let fraudAudio: HTMLAudioElement | null = null;
 
 	$effect(() => {
 		if (!currentSubmission) return;
-		if (!currentSubmission.silentReject) return;
+		const isFraud =
+			currentSubmission.silentReject ||
+			currentSubmission.project.joeFraudPassed === false;
+		if (!isFraud) return;
 		if (fraudCelebrationFiredFor === currentSubmission.submissionId) return;
 		fraudCelebrationFiredFor = currentSubmission.submissionId;
 
