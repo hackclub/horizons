@@ -1,14 +1,62 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export class ProjectSubmissionResponse {
+  @ApiProperty({ description: 'Submission ID' })
+  submissionId: number;
+
+  @ApiProperty({ description: 'Project ID' })
+  projectId: number;
+
+  @ApiProperty({
+    description:
+      'Approval status (silently-rejected submissions are surfaced as "pending")',
+    enum: ['pending', 'approved', 'rejected'],
+  })
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+
+  @ApiProperty({ type: Number, nullable: true })
+  approvedHours: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  hackatimeHours: number | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  hoursJustification: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  playableUrl: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  screenshotUrl: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  description: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  repoUrl: string | null;
+
+  @ApiProperty({ description: 'Creation timestamp' })
+  createdAt: string;
+
+  @ApiProperty({ description: 'Last update timestamp' })
+  updatedAt: string;
+}
+
 export class ProjectResponse {
   @ApiProperty({ description: 'Project ID' })
   projectId: number;
 
+  @ApiProperty({ description: 'Owner user ID' })
+  userId: number;
+
   @ApiProperty({ description: 'Project title' })
   projectTitle: string;
 
+  @ApiProperty({ description: 'Project type' })
+  projectType: string;
+
   @ApiPropertyOptional({ description: 'Project description' })
-  description: string;
+  description: string | null;
 
   @ApiPropertyOptional({ description: 'Screenshot URL' })
   screenshotUrl: string | null;
@@ -31,11 +79,27 @@ export class ProjectResponse {
   @ApiPropertyOptional({ description: 'Current tracked Hackatime hours' })
   nowHackatimeHours: number | null;
 
+  @ApiProperty({ description: 'Linked Hackatime project names', type: [String] })
+  nowHackatimeProjects: string[];
+
+  @ApiProperty({ description: 'Whether the project is locked for editing' })
+  isLocked: boolean;
+
   @ApiProperty({ description: 'Creation timestamp' })
   createdAt: string;
 
   @ApiProperty({ description: 'Last update timestamp' })
   updatedAt: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Soft-delete timestamp; user endpoints always return null (deleted projects are hidden)',
+    nullable: true,
+  })
+  deletedAt: string | null;
+
+  @ApiProperty({ type: [ProjectSubmissionResponse] })
+  submissions: ProjectSubmissionResponse[];
 }
 
 export class ProjectUserResponse {

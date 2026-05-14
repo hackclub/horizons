@@ -324,6 +324,7 @@ export class AdminService {
 
   async recalculateAllProjects() {
     const projects = await this.prisma.project.findMany({
+      where: { deletedAt: null },
       include: projectAdminInclude,
     });
 
@@ -373,15 +374,18 @@ export class AdminService {
       submittedProjects,
     ] = await Promise.all([
       this.prisma.project.aggregate({
+        where: { deletedAt: null },
         _sum: { nowHackatimeHours: true },
       }),
       this.prisma.project.aggregate({
+        where: { deletedAt: null },
         _sum: { approvedHours: true },
       }),
       this.prisma.user.count(),
-      this.prisma.project.count(),
+      this.prisma.project.count({ where: { deletedAt: null } }),
       this.prisma.project.findMany({
         where: {
+          deletedAt: null,
           submissions: {
             some: {},
           },
@@ -467,9 +471,9 @@ export class AdminService {
     // Project.nowHackatimeProjects is a String[]; "linked" means it has at
     // least one element.
     const [total, withHackatime] = await Promise.all([
-      this.prisma.project.count(),
+      this.prisma.project.count({ where: { deletedAt: null } }),
       this.prisma.project.count({
-        where: { nowHackatimeProjects: { isEmpty: false } },
+        where: { deletedAt: null, nowHackatimeProjects: { isEmpty: false } },
       }),
     ]);
     return {
@@ -541,18 +545,18 @@ export class AdminService {
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { hackatimeAccount: { not: null } } }),
-      this.prisma.user.count({ where: { projects: { some: {} } } }),
+      this.prisma.user.count({ where: { projects: { some: { deletedAt: null } } } }),
       this.prisma.user.count({
-        where: { projects: { some: { nowHackatimeProjects: { isEmpty: false } } } },
+        where: { projects: { some: { deletedAt: null, nowHackatimeProjects: { isEmpty: false } } } },
       }),
       this.prisma.user.count({
-        where: { projects: { some: { nowHackatimeHours: { gte: 10 } } } },
+        where: { projects: { some: { deletedAt: null, nowHackatimeHours: { gte: 10 } } } },
       }),
       this.prisma.user.count({
-        where: { projects: { some: { submissions: { some: {} } } } },
+        where: { projects: { some: { deletedAt: null, submissions: { some: {} } } } },
       }),
       this.prisma.user.count({
-        where: { projects: { some: { approvedHours: { gte: 1 } } } },
+        where: { projects: { some: { deletedAt: null, approvedHours: { gte: 1 } } } },
       }),
       this.countUsersWithApprovedHoursGte(10),
       this.countUsersWithApprovedHoursGte(30),
@@ -608,28 +612,29 @@ export class AdminService {
           u.user_id,
           (u.hackatime_account IS NOT NULL) AS has_hackatime,
           EXISTS (
-            SELECT 1 FROM projects p WHERE p.user_id = u.user_id
+            SELECT 1 FROM projects p WHERE p.user_id = u.user_id AND p.deleted_at IS NULL
           ) AS has_project,
           EXISTS (
             SELECT 1 FROM projects p
             WHERE p.user_id = u.user_id
+              AND p.deleted_at IS NULL
               AND COALESCE(array_length(p.now_hackatime_projects, 1), 0) > 0
           ) AS linked_hackatime_project,
           EXISTS (
             SELECT 1 FROM projects p
-            WHERE p.user_id = u.user_id AND p.now_hackatime_hours >= 10
+            WHERE p.user_id = u.user_id AND p.deleted_at IS NULL AND p.now_hackatime_hours >= 10
           ) AS project_10h,
           EXISTS (
             SELECT 1 FROM projects p
             INNER JOIN submissions s ON s.project_id = p.project_id
-            WHERE p.user_id = u.user_id
+            WHERE p.user_id = u.user_id AND p.deleted_at IS NULL
           ) AS has_submission,
           EXISTS (
             SELECT 1 FROM projects p
-            WHERE p.user_id = u.user_id AND p.approved_hours >= 1
+            WHERE p.user_id = u.user_id AND p.deleted_at IS NULL AND p.approved_hours >= 1
           ) AS has_1h_approved,
           COALESCE(
-            (SELECT SUM(p.approved_hours) FROM projects p WHERE p.user_id = u.user_id),
+            (SELECT SUM(p.approved_hours) FROM projects p WHERE p.user_id = u.user_id AND p.deleted_at IS NULL),
             0
           ) AS approved_total
         FROM users u
@@ -686,6 +691,7 @@ export class AdminService {
         SELECT u.user_id
         FROM users u
         INNER JOIN projects p ON p.user_id = u.user_id
+        WHERE p.deleted_at IS NULL
         GROUP BY u.user_id
         HAVING COALESCE(SUM(p.approved_hours), 0) >= ${threshold}
       ) sub
@@ -783,6 +789,7 @@ export class AdminService {
             ) THEN COALESCE(p.now_hackatime_hours, 0) ELSE 0 END
           ) AS shipped_total
         FROM projects p
+        WHERE p.deleted_at IS NULL
         GROUP BY p.user_id
       ) ut ON ut.user_id = pe.user_id
       GROUP BY e.event_id, e.title, e.slug
@@ -897,7 +904,7 @@ export class AdminService {
         _count: { _all: true },
         where: {
           utmSource: { not: null },
-          projects: { some: { nowHackatimeHours: { gte: 10 } } },
+          projects: { some: { deletedAt: null, nowHackatimeHours: { gte: 10 } } },
         },
       }),
     ]);
@@ -940,7 +947,10 @@ export class AdminService {
       include: {
         user: {
           include: {
-            projects: { select: { approvedHours: true } },
+            projects: {
+              where: { deletedAt: null },
+              select: { approvedHours: true },
+            },
           },
         },
       },
@@ -1051,6 +1061,7 @@ export class AdminService {
             ) THEN COALESCE(p.now_hackatime_hours, 0) ELSE 0 END
           ) AS shipped_total
         FROM projects p
+        WHERE p.deleted_at IS NULL
         GROUP BY p.user_id
       ) ut ON ut.user_id = pe.user_id
       WHERE pe.event_id = ${eventId}
@@ -1364,7 +1375,7 @@ export class AdminService {
     });
 
     const projects = await this.prisma.project.findMany({
-      where: { userId },
+      where: { userId, deletedAt: null },
       include: projectAdminInclude,
     });
 
@@ -1638,7 +1649,7 @@ export class AdminService {
         SELECT DISTINCT p.project_id
         FROM projects p
         INNER JOIN submissions s ON s.project_id = p.project_id
-        WHERE s.approval_status = 'pending'
+        WHERE s.approval_status = 'pending' AND p.deleted_at IS NULL
       ),
       user_hours AS (
         SELECT
@@ -1654,7 +1665,7 @@ export class AdminService {
             END
           ), 0) AS potential_hours_if_approved
         FROM users u
-        LEFT JOIN projects p ON p.user_id = u.user_id
+        LEFT JOIN projects p ON p.user_id = u.user_id AND p.deleted_at IS NULL
         LEFT JOIN projects_with_pending pwp ON pwp.project_id = p.project_id
         GROUP BY u.user_id, u.email, u.first_name, u.last_name
       )
@@ -2230,6 +2241,7 @@ export class AdminService {
         slackUserId: true,
         createdAt: true,
         projects: {
+          where: { deletedAt: null },
           select: { createdAt: true, nowHackatimeProjects: true },
           orderBy: { createdAt: 'asc' },
         },
@@ -2249,6 +2261,7 @@ export class AdminService {
       SELECT p.user_id, MIN(s.created_at) AS first_submission_at
       FROM submissions s
       JOIN projects p ON p.project_id = s.project_id
+      WHERE p.deleted_at IS NULL
       GROUP BY p.user_id
     `;
     const submissionMap = new Map(
@@ -2291,6 +2304,7 @@ export class AdminService {
         JOIN projects p ON p.project_id = s.project_id
         WHERE s.approval_status = 'approved'
           AND p.joe_fraud_passed = true
+          AND p.deleted_at IS NULL
           AND s.created_at = (
             SELECT MAX(s2.created_at) FROM submissions s2
             WHERE s2.project_id = p.project_id
@@ -2301,37 +2315,41 @@ export class AdminService {
       this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
         SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
         FROM projects p
-        WHERE EXISTS (
-          SELECT 1 FROM submissions s
-          WHERE s.project_id = p.project_id
-            AND s.approval_status = 'pending'
-            AND s.review_passed IS NULL
-            AND s.created_at = (
-              SELECT MAX(s2.created_at) FROM submissions s2
-              WHERE s2.project_id = p.project_id
-            )
-        )
+        WHERE p.deleted_at IS NULL
+          AND EXISTS (
+            SELECT 1 FROM submissions s
+            WHERE s.project_id = p.project_id
+              AND s.approval_status = 'pending'
+              AND s.review_passed IS NULL
+              AND s.created_at = (
+                SELECT MAX(s2.created_at) FROM submissions s2
+                WHERE s2.project_id = p.project_id
+              )
+          )
         GROUP BY p.user_id
       `,
       this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
         SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
         FROM projects p
-        WHERE NOT EXISTS (
-          SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
-        )
+        WHERE p.deleted_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
+          )
         GROUP BY p.user_id
       `,
       this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
         SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
         FROM projects p
-        WHERE EXISTS (
-          SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
-        )
+        WHERE p.deleted_at IS NULL
+          AND EXISTS (
+            SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
+          )
         GROUP BY p.user_id
       `,
       this.prisma.$queryRaw<{ user_id: number; hours: number }[]>`
         SELECT user_id, COALESCE(SUM(now_hackatime_hours), 0) AS hours
         FROM projects
+        WHERE deleted_at IS NULL
         GROUP BY user_id
       `,
     ]);
@@ -2407,6 +2425,7 @@ export class AdminService {
             country: true,
             createdAt: true,
             projects: {
+              where: { deletedAt: null },
               select: { nowHackatimeProjects: true },
             },
           },
@@ -2449,6 +2468,7 @@ export class AdminService {
           FROM submissions s
           JOIN projects p ON p.project_id = s.project_id
           WHERE p.user_id = ANY(${userIds}::int[])
+            AND p.deleted_at IS NULL
             AND s.approval_status = 'approved'
             AND p.joe_fraud_passed = true
             AND s.created_at = (
@@ -2462,6 +2482,7 @@ export class AdminService {
           SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
           FROM projects p
           WHERE p.user_id = ANY(${userIds}::int[])
+            AND p.deleted_at IS NULL
             AND EXISTS (
               SELECT 1 FROM submissions s
               WHERE s.project_id = p.project_id
@@ -2478,6 +2499,7 @@ export class AdminService {
           SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
           FROM projects p
           WHERE p.user_id = ANY(${userIds}::int[])
+            AND p.deleted_at IS NULL
             AND NOT EXISTS (
               SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
             )
@@ -2487,6 +2509,7 @@ export class AdminService {
           SELECT p.user_id, COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
           FROM projects p
           WHERE p.user_id = ANY(${userIds}::int[])
+            AND p.deleted_at IS NULL
             AND EXISTS (
               SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
             )
@@ -2496,6 +2519,7 @@ export class AdminService {
           SELECT user_id, COALESCE(SUM(now_hackatime_hours), 0) AS hours
           FROM projects
           WHERE user_id = ANY(${userIds}::int[])
+            AND deleted_at IS NULL
           GROUP BY user_id
         `,
       ]);
@@ -2544,7 +2568,9 @@ export class AdminService {
     const projects = await this.prisma.project.findMany({
       where: {
         // Only projects that have at least one submission — pre-submission drafts
-        // never enter the fraud queue.
+        // never enter the fraud queue. Soft-deleted projects also drop out so the
+        // queue doesn't churn on rows the user has already torn down.
+        deletedAt: null,
         submissions: { some: {} },
       },
       include: {

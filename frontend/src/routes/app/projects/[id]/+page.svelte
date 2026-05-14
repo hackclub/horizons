@@ -9,7 +9,7 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { createGridNav } from '$lib/nav/wasd.svelte';
 	import { projectDetailStore, fetchProjectDetail, preloadEditData, invalidateAllProjectCaches } from '$lib/store/projectDetailCache';
-	import { fetchProjects } from '$lib/store/projectCache';
+	import { fetchProjects, projectsStore } from '$lib/store/projectCache';
 	import type { components } from '$lib/api';
 	import { api } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
@@ -21,6 +21,9 @@
 	let entered = $state(false);
 	let navigating = $state(false);
 	let feedbackOpen = $state(false);
+	let deleteOpen = $state(false);
+	let deleting = $state(false);
+	let deleteError = $state<string | null>(null);
 
 	onMount(() => {
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
@@ -41,6 +44,11 @@
 	}>({ project: null, submission: null, hackatimeInfo: null, loading: true, error: null });
 	let unsubscribe: (() => void) | null = null;
 
+	// Total active projects for this user. Used to disable the delete button
+	// when this is the user's only project — backend enforces too.
+	let activeProjectCount = $state<number | null>(null);
+	let projectsUnsubscribe: (() => void) | null = null;
+
 	$effect(() => {
 		// Subscribe to store updates
 		unsubscribe = projectDetailStore.subscribe(state => {
@@ -52,13 +60,23 @@
 			}
 		});
 
+		projectsUnsubscribe = projectsStore.subscribe(state => {
+			activeProjectCount = state.loading && state.projects.length === 0
+				? null
+				: state.projects.length;
+		});
+
 		// Fetch project details on mount or ID change
 		fetchProjectDetail(projectId).catch(() => {
 			// Error is already in store
 		});
+		// Kick off a projects list fetch so we know whether this is the user's
+		// only project (deep-link entry won't have the list cached yet).
+		fetchProjects().catch(() => {});
 
 		return () => {
 			unsubscribe?.();
+			projectsUnsubscribe?.();
 		};
 	});
 
@@ -70,6 +88,11 @@
 	// Submission tracking
 	let latestSubmission = $derived(detailState.submission);
 	let hasSubmission = $derived(latestSubmission !== null);
+	// Hide delete when this is the user's last remaining project. Wait for the
+	// projects list to load (null) so we don't briefly flash the button.
+	let canDelete = $derived(
+		!hasSubmission && activeProjectCount !== null && activeProjectCount > 1,
+	);
 	let isPending = $derived(latestSubmission?.approvalStatus === 'pending');
 	let isApproved = $derived(latestSubmission?.approvalStatus === 'approved');
 	let isRejected = $derived(latestSubmission?.approvalStatus === 'rejected');
@@ -92,6 +115,34 @@
 	let hoursLabel = $derived(isApproved ? 'approved' : 'submitted');
 
 	let refreshingHours = $state(false);
+
+	async function deleteProject() {
+		if (deleting) return;
+		deleting = true;
+		deleteError = null;
+		try {
+			const { error } = await api.DELETE('/api/projects/auth/{id}', {
+				params: { path: { id: Number(projectId) } },
+			});
+			if (error) {
+				const msg = (error as { message?: unknown })?.message;
+				deleteError =
+					typeof msg === 'string' && msg.length > 0
+						? msg
+						: 'Could not delete this project. Please try again.';
+				deleting = false;
+				return;
+			}
+			invalidateAllProjectCaches();
+			deleteOpen = false;
+			navigating = true;
+			await new Promise((resolve) => setTimeout(resolve, EXIT_DURATION + 350));
+			goto('/app/projects?noanimate');
+		} catch {
+			deleteError = 'Could not delete this project. Please try again.';
+			deleting = false;
+		}
+	}
 
 	async function refreshTrackedHours() {
 		if (refreshingHours) return;
@@ -134,6 +185,10 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
+			if (deleteOpen) {
+				if (!deleting) deleteOpen = false;
+				return;
+			}
 			if (feedbackOpen) {
 				feedbackOpen = false;
 				return;
@@ -141,7 +196,7 @@
 			navigateTo('/app/projects?noanimate');
 			return;
 		}
-		if (feedbackOpen) return;
+		if (feedbackOpen || deleteOpen) return;
 		if (needsHackatime || !isPending) nav.handleKeydown(e);
 	}
 </script>
@@ -189,9 +244,28 @@
 			class:exiting={navigating}
 		>
 			<div class="flex flex-col gap-2 w-full leading-normal text-black">
-				<p class="font-cook text-[26px] sm:text-[36px] font-semibold m-0 break-words">
-					{project.projectTitle}
-				</p>
+				<div class="flex items-start justify-between gap-3 w-full">
+					<p class="font-cook text-[26px] sm:text-[36px] font-semibold m-0 break-words flex-1 min-w-0">
+						{project.projectTitle}
+					</p>
+					{#if canDelete}
+						<button
+							type="button"
+							class="delete-btn shrink-0"
+							aria-label="Delete project"
+							title="Delete project"
+							onclick={() => { deleteError = null; deleteOpen = true; }}
+						>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true">
+								<path d="M3 6h18" />
+								<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+								<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+								<path d="M10 11v6" />
+								<path d="M14 11v6" />
+							</svg>
+						</button>
+					{/if}
+				</div>
 				{#if project.description}
 					<p class="font-bricolage text-[20px] sm:text-[32px] font-semibold m-0 break-words">
 						{project.description}
@@ -427,6 +501,51 @@
 		</div>
 	{/if}
 
+	<!-- Delete confirmation modal -->
+	{#if deleteOpen}
+		<div
+			class="fixed inset-0 z-50 flex items-center justify-center p-6"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Delete project"
+		>
+			<button
+				type="button"
+				class="absolute inset-0 bg-black/50 cursor-default"
+				aria-label="Cancel delete"
+				onclick={() => { if (!deleting) deleteOpen = false; }}
+				disabled={deleting}
+			></button>
+			<div class="relative max-w-md w-full bg-[#f3e8d8] border-4 border-black rounded-[20px] p-6 shadow-[4px_4px_0px_0px_black] flex flex-col gap-3">
+				<p class="font-cook text-[28px] font-semibold text-black m-0">DELETE PROJECT?</p>
+				<p class="font-bricolage text-[16px] text-black m-0">
+					This hides the project from your account and frees up its linked Hackatime projects. You won't be able to re-open it from here.
+				</p>
+				{#if deleteError}
+					<p class="font-bricolage text-[14px] m-0" style="color: #ec3750;">{deleteError}</p>
+				{/if}
+				<div class="flex gap-3 mt-1 justify-end">
+					<button
+						type="button"
+						class="font-bricolage text-[15px] font-semibold text-black underline cursor-pointer"
+						onclick={() => { if (!deleting) deleteOpen = false; }}
+						disabled={deleting}
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						class="delete-confirm font-bricolage text-[15px] font-semibold border-2 border-black rounded-lg px-4 py-2"
+						onclick={deleteProject}
+						disabled={deleting}
+					>
+						{deleting ? 'Deleting…' : 'Delete'}
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Back button -->
 	<BackButton onclick={() => navigateTo('/app/projects?noanimate')} />
 
@@ -506,6 +625,44 @@
 	@keyframes white-blink {
 		0%, 100% { background-color: #fdd9a8; }
 		50%      { background-color: #fba74d; }
+	}
+
+	.delete-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 38px;
+		height: 38px;
+		padding: 0;
+		background-color: #ec3750;
+		color: black;
+		border: 2px solid black;
+		border-radius: 8px;
+		cursor: pointer;
+		transition: transform var(--juice-duration) var(--juice-easing), filter 0.15s ease;
+	}
+	@media (hover: hover) {
+		.delete-btn:hover {
+			transform: scale(var(--juice-scale));
+			filter: brightness(1.05);
+		}
+	}
+
+	.delete-confirm {
+		background-color: #ec3750;
+		color: black;
+		cursor: pointer;
+		transition: transform var(--juice-duration) var(--juice-easing), filter 0.15s ease;
+	}
+	.delete-confirm:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+	@media (hover: hover) {
+		.delete-confirm:not(:disabled):hover {
+			transform: scale(var(--juice-scale));
+			filter: brightness(1.05);
+		}
 	}
 
 	.refresh-hours {

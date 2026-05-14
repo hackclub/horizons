@@ -295,6 +295,7 @@ export class FraudReviewService {
     // reuseFraud / preDeterminedFraud paths instead of starting from scratch.
     const unsubmittedProjects = await this.prisma.project.findMany({
       where: {
+        deletedAt: null,
         joeProjectId: null,
         joeFraudPassed: null,
         submissions: { some: {} },
@@ -326,6 +327,7 @@ export class FraudReviewService {
     //     "fraud pending" on dashboards forever.
     const pendingProjects = await this.prisma.project.findMany({
       where: {
+        deletedAt: null,
         joeProjectId: { not: null },
         OR: [
           { submissions: { some: { approvalStatus: 'pending' } } },

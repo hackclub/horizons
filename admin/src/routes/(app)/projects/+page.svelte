@@ -41,6 +41,7 @@
     let sortDirection = $state<SortDirection>('asc');
     let showFraudProjects = $state(true);
     let showSusProjects = $state(true);
+    let showDeletedProjects = $state(false);
     let submissionCountFilter = $state<string>('all');
 
     let globalSettings = $state<GlobalSettingsResponse | null>(null);
@@ -190,6 +191,15 @@
         return showSusProjects || !project.user.isSus;
     }
 
+    function matchesDeleted(project: AdminProject): boolean {
+        // Hide deleted projects by default. They surface when the admin types a
+        // search query (so they can be looked up by name/email/etc) or toggles
+        // the "Show deleted" checkbox.
+        if (!project.deletedAt) return true;
+        if (showDeletedProjects) return true;
+        return searchQuery.trim().length > 0;
+    }
+
     function matchesSubmissionCount(project: AdminProject): boolean {
         const count = project.submissions?.length ?? 0;
         if (submissionCountFilter === 'single') return count === 1;
@@ -232,6 +242,7 @@
                     matchesPriority(p) &&
                     matchesFraud(p) &&
                     matchesSus(p) &&
+                    matchesDeleted(p) &&
                     matchesSubmissionCount(p),
             )
             .sort(compareProjects),
@@ -398,7 +409,7 @@
                     </div>
 
                     <div>
-                        <div class="block text-sm font-medium text-ds-text-secondary mb-2">Fraud / Sus</div>
+                        <div class="block text-sm font-medium text-ds-text-secondary mb-2">Fraud / Sus / Deleted</div>
                         <div class="flex flex-col gap-2">
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <Checkbox bind:checked={showFraudProjects} />
@@ -407,6 +418,10 @@
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <Checkbox bind:checked={showSusProjects} />
                                 <span class="text-sm text-ds-text-secondary">Show sus</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <Checkbox bind:checked={showDeletedProjects} />
+                                <span class="text-sm text-ds-text-secondary">Show deleted (always shown when searching)</span>
                             </label>
                         </div>
                     </div>
@@ -464,6 +479,9 @@
                                     {/if}
                                 </div>
                                 <div class="flex flex-wrap gap-2 text-sm text-ds-text-secondary">
+                                    {#if project.deletedAt}
+                                        <span class="rounded-full border border-red-500 bg-red-600/20 text-red-700 dark:text-red-300 px-3 py-1 text-xs font-bold uppercase tracking-wide">Deleted</span>
+                                    {/if}
                                     {#if project.joeFraudPassed === false}
                                         <span class="rounded-full border border-red-500 bg-red-600/20 text-red-700 dark:text-red-300 px-3 py-1 text-xs font-bold uppercase tracking-wide">Fraud</span>
                                     {/if}

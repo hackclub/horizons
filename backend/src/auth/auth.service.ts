@@ -584,6 +584,7 @@ export class AuthService {
             longestStreak: true,
             lastActiveDate: true,
             projects: {
+              where: { deletedAt: null },
               include: { submissions: true },
             },
           },

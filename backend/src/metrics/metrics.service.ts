@@ -17,7 +17,9 @@ export class MetricsService {
    * daily snapshot job to backfill historical rows. Omit for the live "as of now" dashboard.
    */
   async computeReviewHours(asOf?: Date) {
-    const projectWhere = asOf ? { createdAt: { lte: asOf } } : {};
+    const projectWhere = asOf
+      ? { createdAt: { lte: asOf }, deletedAt: null }
+      : { deletedAt: null };
     // Sentinel that always passes when no asOf is set — keeps the WHERE clauses
     // identical between the live and snapshot paths so the SQL plan is shared.
     const ceiling = asOf ?? new Date(8640000000000000);
@@ -47,6 +49,7 @@ export class MetricsService {
         SELECT COALESCE(SUM(p.now_hackatime_hours), 0) as total_hours
         FROM projects p
         WHERE p.created_at <= ${ceiling}
+          AND p.deleted_at IS NULL
           AND EXISTS (
             SELECT 1 FROM submissions s
             WHERE s.project_id = p.project_id
@@ -68,6 +71,7 @@ export class MetricsService {
         WHERE s.approval_status = 'approved'
           AND p.joe_fraud_passed = true
           AND p.created_at <= ${ceiling}
+          AND p.deleted_at IS NULL
           AND s.created_at <= ${ceiling}
           AND s.created_at = (
             SELECT MAX(s2.created_at) FROM submissions s2
@@ -81,7 +85,9 @@ export class MetricsService {
       this.prisma.$queryRaw<Array<{ total_hours: number }>>`
         SELECT COALESCE(SUM(s.hackatime_hours), 0) as total_hours
         FROM submissions s
+        JOIN projects p ON p.project_id = s.project_id
         WHERE s.approval_status = 'rejected'
+          AND p.deleted_at IS NULL
           AND s.created_at <= ${ceiling}
           AND s.created_at = (
             SELECT MAX(s2.created_at) FROM submissions s2
@@ -156,6 +162,7 @@ export class MetricsService {
           END AS bucket
           FROM projects
           WHERE created_at <= ${ceiling}
+            AND deleted_at IS NULL
         ) p
         GROUP BY bucket
       `,
@@ -178,6 +185,7 @@ export class MetricsService {
           END AS bucket
           FROM projects p
           WHERE p.created_at <= ${ceiling}
+            AND p.deleted_at IS NULL
             AND EXISTS (
               SELECT 1 FROM submissions s
               WHERE s.project_id = p.project_id
@@ -206,6 +214,7 @@ export class MetricsService {
           END AS bucket
           FROM projects
           WHERE created_at <= ${ceiling}
+            AND deleted_at IS NULL
             AND approved_hours IS NOT NULL
             AND approved_hours > 0
         ) p
@@ -252,6 +261,7 @@ export class MetricsService {
     // Median fraud check time this week (joeFraudReviewedAt - earliest submission createdAt)
     const fraudCheckedProjects = await this.prisma.project.findMany({
       where: {
+        deletedAt: null,
         joeFraudReviewedAt: { gte: weekStart },
         joeFraudPassed: { not: null },
         submissions: { some: {} },
@@ -296,6 +306,7 @@ export class MetricsService {
 
     const lastFraudChecked = await this.prisma.project.findFirst({
       where: {
+        deletedAt: null,
         joeFraudReviewedAt: { not: null },
         joeFraudPassed: { not: null },
         submissions: { some: {} },
@@ -336,7 +347,9 @@ export class MetricsService {
     const reference = asOf ?? new Date();
     const sevenDaysBefore = new Date(reference);
     sevenDaysBefore.setUTCDate(sevenDaysBefore.getUTCDate() - 7);
-    const projectCreated = asOf ? { createdAt: { lte: asOf } } : {};
+    const projectCreated = asOf
+      ? { createdAt: { lte: asOf }, deletedAt: null }
+      : { deletedAt: null };
     const subCreated = asOf ? { createdAt: { lte: asOf } } : {};
     const subWeek = asOf
       ? { createdAt: { gte: sevenDaysBefore, lte: asOf } }
@@ -486,6 +499,7 @@ export class MetricsService {
       FROM latest_submission ls
       JOIN projects p ON p.project_id = ls.project_id
       WHERE p.created_at <= ${ceiling}
+        AND p.deleted_at IS NULL
       GROUP BY review_bucket, fraud_bucket;
     `;
 
@@ -652,6 +666,7 @@ export class MetricsService {
                COUNT(*)::bigint AS count
         FROM projects
         WHERE joe_fraud_passed = true AND joe_fraud_reviewed_at IS NOT NULL
+          AND deleted_at IS NULL
         GROUP BY day
         ORDER BY day ASC
       `;

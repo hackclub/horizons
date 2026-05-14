@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -137,6 +138,9 @@ export class ProjectsService {
     }
 
     try {
+      // Count all projects ever (including soft-deleted) so users who delete
+      // their first draft and create another don't re-fire the one-time
+      // firstProjectCreated / onboardingCompleted Airtable events.
       const existingProjectsCount = await this.prisma.project.count({
         where: { userId },
       });
@@ -223,7 +227,7 @@ export class ProjectsService {
 
   async getUserProjects(userId: number) {
     const projects = await this.prisma.project.findMany({
-      where: { userId },
+      where: { userId, deletedAt: null },
       include: {
         submissions: true,
       },
@@ -248,7 +252,7 @@ export class ProjectsService {
       },
     });
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       throw new NotFoundException('Project not found');
     }
 
@@ -280,6 +284,7 @@ export class ProjectsService {
         journalUrl: true,
         createdAt: true,
         updatedAt: true,
+        deletedAt: true,
         joeFraudPassed: true,
         user: {
           select: {
@@ -294,6 +299,7 @@ export class ProjectsService {
 
     if (
       !project ||
+      project.deletedAt ||
       project._count.submissions === 0 ||
       project.joeFraudPassed === false
     ) {
@@ -311,6 +317,7 @@ export class ProjectsService {
 
     const {
       joeFraudPassed: _f,
+      deletedAt: _d,
       _count: _c,
       user: _u,
       ...publicFields
@@ -332,7 +339,7 @@ export class ProjectsService {
       },
     });
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       throw new NotFoundException('Project not found');
     }
 
@@ -564,10 +571,10 @@ export class ProjectsService {
   async getShipAlerts(projectId: number, userId: number, codeUrl?: string) {
     const project = await this.prisma.project.findUnique({
       where: { projectId },
-      select: { userId: true, repoUrl: true },
+      select: { userId: true, repoUrl: true, deletedAt: true },
     });
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       throw new NotFoundException('Project not found');
     }
 
@@ -610,7 +617,7 @@ export class ProjectsService {
       where: { projectId },
     });
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       throw new NotFoundException('Project not found');
     }
 
@@ -635,7 +642,7 @@ export class ProjectsService {
       where: { projectId },
     });
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       throw new NotFoundException('Project not found');
     }
 
@@ -710,7 +717,7 @@ export class ProjectsService {
       },
     });
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       throw new NotFoundException('Project not found');
     }
 
@@ -748,6 +755,7 @@ export class ProjectsService {
     const allLinkedProjects = await this.prisma.project.findMany({
       where: {
         userId: userId,
+        deletedAt: null,
         NOT: {
           projectId: { equals: projectId },
         },
@@ -799,6 +807,7 @@ export class ProjectsService {
         projectId: true,
         nowHackatimeProjects: true,
         userId: true,
+        deletedAt: true,
         user: {
           select: {
             hackatimeAccount: true,
@@ -818,7 +827,7 @@ export class ProjectsService {
       },
     });
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       throw new NotFoundException('Project not found');
     }
 
@@ -1029,6 +1038,7 @@ export class ProjectsService {
   async getApprovedProjects() {
     const projects = await this.prisma.project.findMany({
       where: {
+        deletedAt: null,
         approvedHours: {
           gt: 0,
         },
@@ -1055,6 +1065,7 @@ export class ProjectsService {
     const users = await this.prisma.user.findMany({
       include: {
         projects: {
+          where: { deletedAt: null },
           select: {
             nowHackatimeHours: true,
             approvedHours: true,
@@ -1091,15 +1102,25 @@ export class ProjectsService {
     return leaderboard;
   }
 
+  // Soft delete: flips deletedAt and clears the project's nowHackatimeProjects
+  // so the same Hackatime project names can immediately be relinked to a
+  // different project. The row is retained so admins/fraud audits keep their
+  // history. Only drafts (no submissions) are deletable — once a project has
+  // shipped, the submission/fraud/review records anchor it and deletion would
+  // let users escape pending review or fraud flagging. Already-deleted
+  // projects 404 so the user can't toggle the flag back via this path.
   async deleteProject(projectId: number, userId: number) {
     const project = await this.prisma.project.findUnique({
       where: { projectId },
-      include: {
-        submissions: true,
+      select: {
+        projectId: true,
+        userId: true,
+        deletedAt: true,
+        _count: { select: { submissions: true } },
       },
     });
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       throw new NotFoundException('Project not found');
     }
 
@@ -1107,12 +1128,53 @@ export class ProjectsService {
       throw new ForbiddenException('Access denied');
     }
 
-    if (project.submissions.length > 0) {
-      throw new ForbiddenException('Cannot delete project with submissions');
+    if (project._count.submissions > 0) {
+      throw new BadRequestException(
+        'This project has already been shipped and can no longer be deleted.',
+      );
     }
 
-    await this.prisma.project.delete({
-      where: { projectId },
+    // Users must always have at least one project. activeCount includes the
+    // project being deleted (it's still deletedAt=null at this point), so 1
+    // means "this is the only one".
+    const activeCount = await this.prisma.project.count({
+      where: { userId, deletedAt: null },
+    });
+    if (activeCount <= 1) {
+      throw new BadRequestException(
+        "You can't delete your only project — create another one first.",
+      );
+    }
+
+    // Atomic guard: re-check "not deleted" and "no submissions" inside the
+    // write itself. Without this, a submission landing between the read above
+    // and this update would leave behind a soft-deleted project with a
+    // submission attached. updateMany scopes the predicate to the row, so
+    // count===0 means a concurrent write won the race.
+    const result = await this.prisma.project.updateMany({
+      where: {
+        projectId,
+        userId,
+        deletedAt: null,
+        submissions: { none: {} },
+      },
+      data: {
+        deletedAt: new Date(),
+        nowHackatimeProjects: [],
+        nowHackatimeHours: 0,
+      },
+    });
+
+    if (result.count === 0) {
+      throw new ConflictException(
+        'Project state changed during delete. Please refresh and try again.',
+      );
+    }
+
+    this.posthog.capture({
+      distinctId: String(userId),
+      event: 'project_deleted_backend',
+      properties: { projectId },
     });
 
     return { deleted: true, projectId };

@@ -643,6 +643,13 @@
                           : 'border-ds-border'
                 }`}
             >
+                {#if project.deletedAt}
+                    <div class="bg-red-600/20 border-2 border-red-500 rounded-lg p-3">
+                        <p class="text-red-700 dark:text-red-300 font-bold text-center uppercase tracking-wide">
+                            DELETED BY OWNER · {new Date(project.deletedAt).toLocaleString()}
+                        </p>
+                    </div>
+                {/if}
                 {#if project.joeFraudPassed === false}
                     <div class="bg-red-600/20 border-2 border-red-500 rounded-lg p-3">
                         <p class="text-red-700 dark:text-red-300 font-bold text-center uppercase tracking-wide">⚠️ FRAUD (JOE)</p>

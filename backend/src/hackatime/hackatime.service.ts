@@ -372,6 +372,7 @@ export class HackatimeService {
       where: { email: userEmail },
       include: {
         projects: {
+          where: { deletedAt: null },
           select: { nowHackatimeProjects: true },
         },
       },
@@ -537,7 +538,7 @@ export class HackatimeService {
 
   async getTotalNowHackatimeHours(userId: number): Promise<number> {
     const result = await this.prisma.project.aggregate({
-      where: { userId },
+      where: { userId, deletedAt: null },
       _sum: { nowHackatimeHours: true },
     });
     return result._sum.nowHackatimeHours ?? 0;
@@ -545,7 +546,7 @@ export class HackatimeService {
 
   async getTotalApprovedHours(userId: number): Promise<number> {
     const result = await this.prisma.project.aggregate({
-      where: { userId },
+      where: { userId, deletedAt: null },
       _sum: { approvedHours: true },
     });
     return result._sum.approvedHours ?? 0;
@@ -570,6 +571,7 @@ export class HackatimeService {
         hackatimeAccessToken: true,
         hackatimeStartDate: true,
         projects: {
+          where: { deletedAt: null },
           select: {
             projectId: true,
             nowHackatimeProjects: true,

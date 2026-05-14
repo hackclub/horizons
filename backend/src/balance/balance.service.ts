@@ -12,7 +12,7 @@ export class BalanceService {
 
   async getUserBalance(userId: number) {
     const totalApprovedHours = await this.prisma.project.aggregate({
-      where: { userId },
+      where: { userId, deletedAt: null },
       _sum: { approvedHours: true },
     });
 

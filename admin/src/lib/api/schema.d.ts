@@ -805,6 +805,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/events/{slug}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_exportEventCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/transactions": {
         parameters: {
             query?: never;
@@ -2023,6 +2039,65 @@ export interface components {
             /** @description Project owner */
             user: components["schemas"]["ProjectUserResponse"];
         };
+        ProjectSubmissionResponse: {
+            /** @description Submission ID */
+            submissionId: number;
+            /** @description Project ID */
+            projectId: number;
+            /**
+             * @description Approval status (silently-rejected submissions are surfaced as "pending")
+             * @enum {string}
+             */
+            approvalStatus: "pending" | "approved" | "rejected";
+            approvedHours: number | null;
+            hackatimeHours: number | null;
+            hoursJustification: string | null;
+            playableUrl: string | null;
+            screenshotUrl: string | null;
+            description: string | null;
+            repoUrl: string | null;
+            /** @description Creation timestamp */
+            createdAt: string;
+            /** @description Last update timestamp */
+            updatedAt: string;
+        };
+        ProjectResponse: {
+            /** @description Project ID */
+            projectId: number;
+            /** @description Owner user ID */
+            userId: number;
+            /** @description Project title */
+            projectTitle: string;
+            /** @description Project type */
+            projectType: string;
+            /** @description Project description */
+            description?: string;
+            /** @description Screenshot URL */
+            screenshotUrl?: string;
+            /** @description Playable URL */
+            playableUrl?: string;
+            /** @description Repository URL */
+            repoUrl?: string;
+            /** @description README URL */
+            readmeUrl?: string;
+            /** @description Journal URL */
+            journalUrl?: string;
+            /** @description Approved hours */
+            approvedHours?: number;
+            /** @description Current tracked Hackatime hours */
+            nowHackatimeHours?: number;
+            /** @description Linked Hackatime project names */
+            nowHackatimeProjects: string[];
+            /** @description Whether the project is locked for editing */
+            isLocked: boolean;
+            /** @description Creation timestamp */
+            createdAt: string;
+            /** @description Last update timestamp */
+            updatedAt: string;
+            /** @description Soft-delete timestamp; user endpoints always return null (deleted projects are hidden) */
+            deletedAt?: string | null;
+            submissions: components["schemas"]["ProjectSubmissionResponse"][];
+        };
         CreateSubmissionDto: {
             /** @description ID of the project to submit */
             projectId: number;
@@ -2317,6 +2392,8 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /** @description Soft-delete timestamp; null when the project is active */
+            deletedAt: string | null;
             user: components["schemas"]["AdminLightUserResponse"];
             submissions: components["schemas"]["AdminProjectSubmissionResponse"][];
         };
@@ -2749,7 +2826,7 @@ export interface components {
         LedgerEntryResponse: {
             transactionId: number;
             /** @enum {string} */
-            kind: "ShopItem" | "EventRsvp" | "EventTicket";
+            kind: "ShopItem" | "EventTicket";
             itemDescription: string;
             cost: number;
             isFulfilled: boolean;
@@ -2765,7 +2842,6 @@ export interface components {
             totalCount: number;
             totalSpent: number;
             shopCount: number;
-            rsvpCount: number;
             ticketCount: number;
         };
         LedgerResponse: {
@@ -3951,7 +4027,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"][];
+                };
             };
         };
     };
@@ -4004,7 +4082,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
             };
         };
     };
@@ -4807,10 +4887,29 @@ export interface operations {
             };
         };
     };
+    AdminController_exportEventCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminController_getTransactionLedger: {
         parameters: {
             query?: {
-                kind?: "ShopItem" | "EventRsvp" | "EventTicket";
+                kind?: "ShopItem" | "EventTicket";
                 userId?: number;
                 fulfilled?: boolean;
                 limit?: number;

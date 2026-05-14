@@ -119,10 +119,16 @@ model Project {
   joeOutcomeStatus     String?      @map("joe_outcome_status")
   joeOutcomeReason     String?      @map("joe_outcome_reason") @db.Text
   joeOutcomeRecordedAt DateTime?    @map("joe_outcome_recorded_at")
+  // Soft delete: set when the owner deletes the project. The row is preserved
+  // for audit (fraud history, hour math reconciliation) but every list/stat
+  // query filters it out, and its Hackatime project links no longer block
+  // others from being claimed.
+  deletedAt            DateTime?    @map("deleted_at")
   user                 User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
   submissions          Submission[]
 
   @@index([userId])
+  @@index([deletedAt])
   @@map("projects")
 }
 

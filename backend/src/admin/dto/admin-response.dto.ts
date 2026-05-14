@@ -240,6 +240,13 @@ export class AdminProjectResponse {
   @ApiProperty()
   updatedAt: Date;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Soft-delete timestamp; null when the project is active',
+  })
+  deletedAt: Date | null;
+
   @ApiProperty({ type: AdminLightUserResponse })
   user: AdminLightUserResponse;
 

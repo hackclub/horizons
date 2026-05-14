@@ -30,6 +30,7 @@ import {
   ProjectMessageResponse,
   DeleteProjectResponse,
   HackatimeProjectsInfoResponse,
+  ProjectResponse,
   PublicProjectResponse,
   ShipAlertsResponse,
 } from './response';
@@ -82,7 +83,10 @@ export class ProjectsAuthController {
 
   @Get()
   @ApiOperation({ summary: 'Get current user projects' })
-  @ApiOkResponse({ description: 'List of user projects' })
+  @ApiOkResponse({
+    type: [ProjectResponse],
+    description: 'List of user projects',
+  })
   async getUserProjects(@Req() req: Request) {
     return this.projectsService.getUserProjects(req.user.userId);
   }
@@ -90,7 +94,7 @@ export class ProjectsAuthController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific project by ID' })
   @ApiParam({ name: 'id', description: 'Project ID', type: Number })
-  @ApiOkResponse({ description: 'Project details' })
+  @ApiOkResponse({ type: ProjectResponse, description: 'Project details' })
   async getProject(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     return this.projectsService.getProject(id, req.user.userId);
   }

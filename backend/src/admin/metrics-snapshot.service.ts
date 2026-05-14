@@ -133,9 +133,9 @@ export class MetricsSnapshotService implements OnModuleInit {
       this.computeMedianReviewTime(dayStart, dayEnd),
       this.computeMedianFraudCheckTime(dayStart, dayEnd),
       this.prisma.user.count({ where: { createdAt: beforeEnd } }),
-      this.prisma.project.count({ where: { createdAt: beforeEnd } }),
-      this.prisma.project.aggregate({ _sum: { nowHackatimeHours: true }, where: { createdAt: beforeEnd } }),
-      this.prisma.project.aggregate({ _sum: { approvedHours: true }, where: { createdAt: beforeEnd } }),
+      this.prisma.project.count({ where: { createdAt: beforeEnd, deletedAt: null } }),
+      this.prisma.project.aggregate({ _sum: { nowHackatimeHours: true }, where: { createdAt: beforeEnd, deletedAt: null } }),
+      this.prisma.project.aggregate({ _sum: { approvedHours: true }, where: { createdAt: beforeEnd, deletedAt: null } }),
       this.computeFunnel(dayEnd),
       this.metricsService.computeReviewHours(dayEnd),
       this.metricsService.computeReviewProjects(dayEnd),
@@ -195,6 +195,7 @@ export class MetricsSnapshotService implements OnModuleInit {
         hackatimeAccount: { not: null },
         projects: {
           some: {
+            deletedAt: null,
             nowHackatimeProjects: { isEmpty: false },
           },
         },
@@ -204,7 +205,7 @@ export class MetricsSnapshotService implements OnModuleInit {
         hackatimeAccount: true,
         timezone: true,
         projects: {
-          where: { nowHackatimeProjects: { isEmpty: false } },
+          where: { deletedAt: null, nowHackatimeProjects: { isEmpty: false } },
           select: { nowHackatimeProjects: true },
         },
         pinnedEvent: { select: { event: { select: { slug: true } } } },
@@ -340,6 +341,7 @@ export class MetricsSnapshotService implements OnModuleInit {
         AND p.joe_fraud_reviewed_at <= ${dayEnd}
         AND p.joe_fraud_reviewed_at IS NOT NULL
         AND p.joe_fraud_passed IS NOT NULL
+        AND p.deleted_at IS NULL
     `;
 
     return result[0]?.median_hours != null
@@ -368,30 +370,30 @@ export class MetricsSnapshotService implements OnModuleInit {
         where: { createdAt: beforeEnd, hackatimeAccount: { not: null } },
       }),
       this.prisma.user.count({
-        where: { createdAt: beforeEnd, projects: { some: {} } },
+        where: { createdAt: beforeEnd, projects: { some: { deletedAt: null } } },
       }),
       this.prisma.user.count({
         where: {
           createdAt: beforeEnd,
-          projects: { some: { nowHackatimeProjects: { isEmpty: false } } },
+          projects: { some: { deletedAt: null, nowHackatimeProjects: { isEmpty: false } } },
         },
       }),
       this.prisma.user.count({
         where: {
           createdAt: beforeEnd,
-          projects: { some: { nowHackatimeHours: { gte: 10 } } },
+          projects: { some: { deletedAt: null, nowHackatimeHours: { gte: 10 } } },
         },
       }),
       this.prisma.user.count({
         where: {
           createdAt: beforeEnd,
-          projects: { some: { submissions: { some: {} } } },
+          projects: { some: { deletedAt: null, submissions: { some: {} } } },
         },
       }),
       this.prisma.user.count({
         where: {
           createdAt: beforeEnd,
-          projects: { some: { approvedHours: { gte: 1 } } },
+          projects: { some: { deletedAt: null, approvedHours: { gte: 1 } } },
         },
       }),
       this.countUsersWithApprovedHoursGte(10, asOf),
@@ -430,6 +432,7 @@ export class MetricsSnapshotService implements OnModuleInit {
         FROM users u
         INNER JOIN projects p ON p.user_id = u.user_id
         WHERE u.created_at <= ${asOf}
+          AND p.deleted_at IS NULL
         GROUP BY u.user_id
         HAVING COALESCE(SUM(p.approved_hours), 0) >= ${threshold}
       ) sub
