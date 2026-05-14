@@ -265,11 +265,13 @@
 			{ value: funnel.totalUsers, name: 'Total Users' },
 			{ value: funnel.hasHackatime, name: 'Has Hackatime\nAccount' },
 			{ value: funnel.createdProject, name: 'Created\nProject' },
+			{ value: funnel.linkedHackatimeProject, name: 'Linked Hackatime\nProject' },
 			{ value: funnel.project10PlusHours, name: '10+ Hackatime\nHours' },
 			{ value: funnel.atLeast1Submission, name: 'At Least 1\nSubmission' },
 			{ value: funnel.atLeast1ApprovedHour, name: 'At Least 1\nApproved Hour' },
 			{ value: funnel.approved10Plus, name: '10+ Approved\nHours' },
 			{ value: funnel.approved30Plus, name: '30+ Approved\nHours' },
+			{ value: funnel.boughtTicket, name: 'Bought\nTicket' },
 			{ value: funnel.approved60Plus, name: '60+ Approved\nHours' },
 		];
 

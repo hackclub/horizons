@@ -683,6 +683,9 @@ class StatsFunnelEventEntry {
   createdProject: number;
 
   @ApiProperty()
+  linkedHackatimeProject: number;
+
+  @ApiProperty()
   project10PlusHours: number;
 
   @ApiProperty()
@@ -696,6 +699,9 @@ class StatsFunnelEventEntry {
 
   @ApiProperty()
   approved30Plus: number;
+
+  @ApiProperty()
+  boughtTicket: number;
 
   @ApiProperty()
   approved60Plus: number;
@@ -712,6 +718,9 @@ class StatsFunnel {
   createdProject: number;
 
   @ApiProperty()
+  linkedHackatimeProject: number;
+
+  @ApiProperty()
   project10PlusHours: number;
 
   @ApiProperty()
@@ -725,6 +734,9 @@ class StatsFunnel {
 
   @ApiProperty()
   approved30Plus: number;
+
+  @ApiProperty()
+  boughtTicket: number;
 
   @ApiProperty()
   approved60Plus: number;

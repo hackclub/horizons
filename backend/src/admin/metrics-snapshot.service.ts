@@ -354,12 +354,14 @@ export class MetricsSnapshotService implements OnModuleInit {
       totalUsers,
       hasHackatime,
       createdProject,
+      linkedHackatimeProject,
       project10PlusHours,
       atLeast1Submission,
       atLeast1ApprovedHour,
       approved10Plus,
       approved30Plus,
       approved60Plus,
+      boughtTicket,
     ] = await Promise.all([
       this.prisma.user.count({ where: { createdAt: beforeEnd } }),
       this.prisma.user.count({
@@ -367,6 +369,12 @@ export class MetricsSnapshotService implements OnModuleInit {
       }),
       this.prisma.user.count({
         where: { createdAt: beforeEnd, projects: { some: {} } },
+      }),
+      this.prisma.user.count({
+        where: {
+          createdAt: beforeEnd,
+          projects: { some: { nowHackatimeProjects: { isEmpty: false } } },
+        },
       }),
       this.prisma.user.count({
         where: {
@@ -389,17 +397,25 @@ export class MetricsSnapshotService implements OnModuleInit {
       this.countUsersWithApprovedHoursGte(10, asOf),
       this.countUsersWithApprovedHoursGte(30, asOf),
       this.countUsersWithApprovedHoursGte(60, asOf),
+      this.prisma.user.count({
+        where: {
+          createdAt: beforeEnd,
+          transactions: { some: { kind: 'EventTicket', createdAt: beforeEnd } },
+        },
+      }),
     ]);
 
     return {
       totalUsers,
       hasHackatime,
       createdProject,
+      linkedHackatimeProject,
       project10PlusHours,
       atLeast1Submission,
       atLeast1ApprovedHour,
       approved10Plus,
       approved30Plus,
+      boughtTicket,
       approved60Plus,
     };
   }
