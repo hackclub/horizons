@@ -701,7 +701,7 @@ export class HackatimeService {
     const params = new URLSearchParams({
       features: 'projects',
       start_date: startDate,
-      test_param: 'true',
+      boundary_aware: 'true',
       total_seconds: 'true',
       filter_by_project: projectNames.join(','),
     });
