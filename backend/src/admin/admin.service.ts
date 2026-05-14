@@ -529,17 +529,22 @@ export class AdminService {
       totalUsers,
       hasHackatime,
       createdProject,
+      linkedHackatimeProject,
       project10PlusHours,
       atLeast1Submission,
       atLeast1ApprovedHour,
       approved10Plus,
       approved30Plus,
       approved60Plus,
+      boughtTicket,
       perEvent,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { hackatimeAccount: { not: null } } }),
       this.prisma.user.count({ where: { projects: { some: {} } } }),
+      this.prisma.user.count({
+        where: { projects: { some: { nowHackatimeProjects: { isEmpty: false } } } },
+      }),
       this.prisma.user.count({
         where: { projects: { some: { nowHackatimeHours: { gte: 10 } } } },
       }),
@@ -552,6 +557,9 @@ export class AdminService {
       this.countUsersWithApprovedHoursGte(10),
       this.countUsersWithApprovedHoursGte(30),
       this.countUsersWithApprovedHoursGte(60),
+      this.prisma.user.count({
+        where: { transactions: { some: { kind: 'EventTicket' } } },
+      }),
       this.computeFunnelPerEvent(),
     ]);
 
@@ -559,20 +567,24 @@ export class AdminService {
       totalUsers,
       hasHackatime,
       createdProject,
+      linkedHackatimeProject,
       project10PlusHours,
       atLeast1Submission,
       atLeast1ApprovedHour,
       approved10Plus,
       approved30Plus,
       approved60Plus,
+      boughtTicket,
       perEvent,
     };
   }
 
   private async computeFunnelPerEvent() {
-    // Same nine-stage funnel as `computeFunnel`, but scoped to the users who
-    // pinned each event. Done in one query so the page doesn't need N round
-    // trips when more events are added.
+    // Same funnel as `computeFunnel`, but scoped to the users who pinned each
+    // event. Done in one query so the page doesn't need N round trips as more
+    // events are added. Ticket purchases are scoped to *this* event's tickets
+    // via the event_tickets CTE — buying a ticket to a different event
+    // shouldn't count for this row.
     const rows = await this.prisma.$queryRaw<
       Array<{
         event_id: number;
@@ -581,12 +593,14 @@ export class AdminService {
         total_users: bigint;
         has_hackatime: bigint;
         created_project: bigint;
+        linked_hackatime_project: bigint;
         project_10_plus_hours: bigint;
         at_least_1_submission: bigint;
         at_least_1_approved_hour: bigint;
         approved_10_plus: bigint;
         approved_30_plus: bigint;
         approved_60_plus: bigint;
+        bought_ticket: bigint;
       }>
     >`
       WITH user_metrics AS (
@@ -596,6 +610,11 @@ export class AdminService {
           EXISTS (
             SELECT 1 FROM projects p WHERE p.user_id = u.user_id
           ) AS has_project,
+          EXISTS (
+            SELECT 1 FROM projects p
+            WHERE p.user_id = u.user_id
+              AND COALESCE(array_length(p.now_hackatime_projects, 1), 0) > 0
+          ) AS linked_hackatime_project,
           EXISTS (
             SELECT 1 FROM projects p
             WHERE p.user_id = u.user_id AND p.now_hackatime_hours >= 10
@@ -614,6 +633,11 @@ export class AdminService {
             0
           ) AS approved_total
         FROM users u
+      ),
+      event_tickets AS (
+        SELECT DISTINCT user_id, event_id
+        FROM transactions
+        WHERE kind = 'EventTicket' AND event_id IS NOT NULL
       )
       SELECT
         e.event_id,
@@ -622,15 +646,18 @@ export class AdminService {
         COUNT(*) AS total_users,
         COUNT(*) FILTER (WHERE um.has_hackatime) AS has_hackatime,
         COUNT(*) FILTER (WHERE um.has_project) AS created_project,
+        COUNT(*) FILTER (WHERE um.linked_hackatime_project) AS linked_hackatime_project,
         COUNT(*) FILTER (WHERE um.project_10h) AS project_10_plus_hours,
         COUNT(*) FILTER (WHERE um.has_submission) AS at_least_1_submission,
         COUNT(*) FILTER (WHERE um.has_1h_approved) AS at_least_1_approved_hour,
         COUNT(*) FILTER (WHERE um.approved_total >= 10) AS approved_10_plus,
         COUNT(*) FILTER (WHERE um.approved_total >= 30) AS approved_30_plus,
-        COUNT(*) FILTER (WHERE um.approved_total >= 60) AS approved_60_plus
+        COUNT(*) FILTER (WHERE um.approved_total >= 60) AS approved_60_plus,
+        COUNT(*) FILTER (WHERE et.user_id IS NOT NULL) AS bought_ticket
       FROM pinned_events pe
       INNER JOIN events e ON e.event_id = pe.event_id
       INNER JOIN user_metrics um ON um.user_id = pe.user_id
+      LEFT JOIN event_tickets et ON et.user_id = pe.user_id AND et.event_id = e.event_id
       GROUP BY e.event_id, e.title, e.slug
       ORDER BY total_users DESC
     `;
@@ -642,12 +669,14 @@ export class AdminService {
       totalUsers: Number(r.total_users),
       hasHackatime: Number(r.has_hackatime),
       createdProject: Number(r.created_project),
+      linkedHackatimeProject: Number(r.linked_hackatime_project),
       project10PlusHours: Number(r.project_10_plus_hours),
       atLeast1Submission: Number(r.at_least_1_submission),
       atLeast1ApprovedHour: Number(r.at_least_1_approved_hour),
       approved10Plus: Number(r.approved_10_plus),
       approved30Plus: Number(r.approved_30_plus),
       approved60Plus: Number(r.approved_60_plus),
+      boughtTicket: Number(r.bought_ticket),
     }));
   }
 

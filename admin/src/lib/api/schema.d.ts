@@ -2513,22 +2513,26 @@ export interface components {
             totalUsers: number;
             hasHackatime: number;
             createdProject: number;
+            linkedHackatimeProject: number;
             project10PlusHours: number;
             atLeast1Submission: number;
             atLeast1ApprovedHour: number;
             approved10Plus: number;
             approved30Plus: number;
+            boughtTicket: number;
             approved60Plus: number;
         };
         StatsFunnel: {
             totalUsers: number;
             hasHackatime: number;
             createdProject: number;
+            linkedHackatimeProject: number;
             project10PlusHours: number;
             atLeast1Submission: number;
             atLeast1ApprovedHour: number;
             approved10Plus: number;
             approved30Plus: number;
+            boughtTicket: number;
             approved60Plus: number;
             perEvent: components["schemas"]["StatsFunnelEventEntry"][];
         };
