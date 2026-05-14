@@ -41,16 +41,3 @@
 	<strong>{(submittedHours ?? 0).toFixed(1)}h</strong>
 	<span class="text-rv-dim text-[12px]">submitted</span>
 </div>
-
-<div class="pl-5.5 mb-1.5">
-	<div class="text-[11px] text-rv-dim mb-0.5">
-		<span class="text-rv-text font-semibold">{currentTotal.toFixed(1)}h</span>
-		<span class="text-rv-dim">current</span>
-	</div>
-	{#each projectRows as row}
-		<div class="text-[11px] text-rv-dim mb-0.5">
-			<span class="text-rv-text font-semibold">{row.hours.toFixed(1)}h</span>
-			<span class="text-rv-dim">{row.project}</span>
-		</div>
-	{/each}
-</div>
