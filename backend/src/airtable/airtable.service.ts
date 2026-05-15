@@ -517,6 +517,90 @@ export class AirtableService {
     }
   }
 
+  /**
+   * Iterate every user with an Airtable record and refresh their stats
+   * fields. Used by the daily cron to fix drift for users whose stats
+   * changed via paths that don't fire a live sync (e.g. Hackatime recalc).
+   * Batches up to 10 records per Airtable PATCH and paces requests to stay
+   * well under the 5 req/sec base limit.
+   */
+  async syncAllUserStats(): Promise<{
+    updated: number;
+    skipped: number;
+    failed: number;
+  }> {
+    if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
+      return { updated: 0, skipped: 0, failed: 0 };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: { airtableRecId: { not: null } },
+      select: { userId: true, airtableRecId: true },
+    });
+
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+    const BATCH_SIZE = 10;
+
+    for (let i = 0; i < users.length; i += BATCH_SIZE) {
+      const chunk = users.slice(i, i + BATCH_SIZE);
+      const records = await Promise.all(
+        chunk.map(async (u) => {
+          try {
+            const stats = await this.computeUserStats(u.userId);
+            return { id: u.airtableRecId!, fields: this.statsToFields(stats) };
+          } catch (err) {
+            console.error(
+              `Error computing stats for user ${u.userId}:`,
+              err,
+            );
+            return null;
+          }
+        }),
+      );
+      const validRecords = records.filter(
+        (r): r is { id: string; fields: Record<string, any> } => r !== null,
+      );
+      skipped += records.length - validRecords.length;
+      if (validRecords.length === 0) continue;
+
+      try {
+        const response = await fetch(
+          `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}`,
+          {
+            method: 'PATCH',
+            headers: {
+              Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ records: validRecords }),
+          },
+        );
+        if (response.ok) {
+          updated += validRecords.length;
+        } else {
+          failed += validRecords.length;
+          const errorText = await response.text().catch(() => '');
+          console.error(
+            `Airtable batch update failed (${response.status}):`,
+            errorText,
+          );
+        }
+      } catch (err) {
+        failed += validRecords.length;
+        console.error('Airtable batch update threw:', err);
+      }
+
+      // Pace batches: 5 req/sec base limit. 250ms keeps us at 4 req/sec.
+      if (i + BATCH_SIZE < users.length) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    }
+
+    return { updated, skipped, failed };
+  }
+
   async createApprovedProject(data: {
     user: {
       firstName: string;
