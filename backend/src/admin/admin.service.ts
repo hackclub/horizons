@@ -3082,9 +3082,21 @@ export class AdminService {
   }
 
   /**
-   * Reset all Joe fraud-review state on a project, clear permReject + silentReject,
-   * and resubmit to Joe with a fresh dedup key so it gets a brand-new review.
-   * Audit-logged against the latest submission.
+   * Reset Joe fraud-review state on a project, clear permReject, and move the
+   * latest submission into the "reviewed-with-pending-fraud" state: keep its
+   * reviewPassed exactly as it was (preserves any reviewer verdict — including
+   * `null` if no reviewer ever touched it), but flip approvalStatus back to
+   * pending and clear silentReject so the state machine can re-finalize once
+   * Joe lands a fresh verdict.
+   *
+   * The truth table then routes naturally:
+   *   reviewPassed=null + fraud=null  → pending, shows in reviewer gallery
+   *   reviewPassed=true + fraud=null  → pending, awaiting Joe (auto-finalizes)
+   *   reviewPassed=false + fraud=null → state machine settles to rejected-normal
+   *
+   * Older submissions are history and are left untouched. The latest is only
+   * mutated when it was Joe-silent-rejected (silentReject=true) — a normal
+   * reviewer rejection isn't something this button should override.
    */
   async resetJoeAndRequeue(projectId: number, adminUserId: number) {
     const project = await this.prisma.project.findUnique({
@@ -3104,7 +3116,12 @@ export class AdminService {
         submissions: {
           orderBy: { createdAt: 'desc' as const },
           take: 1,
-          select: { submissionId: true },
+          select: {
+            submissionId: true,
+            silentReject: true,
+            approvalStatus: true,
+            reviewPassed: true,
+          },
         },
       },
     });
@@ -3128,9 +3145,15 @@ export class AdminService {
       joeOutcomeReason: project.joeOutcomeReason,
       joeOutcomeRecordedAt: project.joeOutcomeRecordedAt,
       permReject: project.permReject,
+      latestSubmission: {
+        submissionId: latestSubmission.submissionId,
+        silentReject: latestSubmission.silentReject,
+        approvalStatus: latestSubmission.approvalStatus,
+        reviewPassed: latestSubmission.reviewPassed,
+      },
     };
 
-    await this.prisma.$transaction([
+    const ops: any[] = [
       this.prisma.project.update({
         where: { projectId },
         data: {
@@ -3145,10 +3168,20 @@ export class AdminService {
           permReject: false,
         },
       }),
-      this.prisma.submission.updateMany({
-        where: { projectId, silentReject: true },
-        data: { silentReject: false },
-      }),
+    ];
+
+    // Only un-finalize the latest submission when it was Joe-silent-rejected.
+    // reviewPassed is intentionally untouched.
+    if (latestSubmission.silentReject) {
+      ops.push(
+        this.prisma.submission.update({
+          where: { submissionId: latestSubmission.submissionId },
+          data: { silentReject: false, approvalStatus: 'pending' },
+        }),
+      );
+    }
+
+    ops.push(
       this.prisma.submissionAuditLog.create({
         data: {
           submissionId: latestSubmission.submissionId,
@@ -3157,11 +3190,14 @@ export class AdminService {
           changes: { prior } as any,
         },
       }),
-    ]);
+    );
 
-    // Resubmit immediately with a fresh dedup suffix so Joe re-reviews instead
-    // of returning the cached decision keyed on the (unchanged) submission id.
-    // Fire-and-forget — submitAndPersist swallows errors and audits its own outcome.
+    await this.prisma.$transaction(ops);
+
+    // Resubmit to Joe immediately with a fresh dedup suffix. Without it, Joe's
+    // dedup-by-organizerPlatformId would return the cached prior decision
+    // (which is what we're trying to overturn). Fire-and-forget —
+    // submitAndPersist swallows errors and audits its own outcome.
     void this.fraudReviewService.submitAndPersist(projectId, {
       dedupSuffix: `requeue-${Date.now()}`,
     });
