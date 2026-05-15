@@ -428,6 +428,14 @@ export class SubmissionApprovalService {
       approvedHours: submission.approvedHours ?? undefined,
       hoursJustification: fullJustification,
     });
+    this.airtableService
+      .syncUserStats(submission.project.user.email)
+      .catch((err) =>
+        console.error(
+          '[SubmissionApproval] Airtable user-stats sync failed:',
+          err,
+        ),
+      );
     // Run the ticket-qualify check first so we can suppress the
     // submission-approved email at the moment the user crosses the bar —
     // sending both would feel like spam. tryNotify is awaited (vs.
@@ -468,6 +476,14 @@ export class SubmissionApprovalService {
     },
     finalizedAt: Date,
   ): Promise<void> {
+    this.airtableService
+      .syncUserStats(submission.project.user.email)
+      .catch((err) =>
+        console.error(
+          '[SubmissionApproval] Airtable user-stats sync failed:',
+          err,
+        ),
+      );
     await this.sendNotifications(submission, {
       approved: false,
       approvedHours: submission.approvedHours ?? undefined,

@@ -155,6 +155,7 @@ export class EventsService {
       .catch((err) =>
         console.error('[SlackChannels] inviteToSubeventChannel failed:', err),
       );
+    void this.syncChosenEventToAirtable(userId);
 
     return result;
   }
@@ -167,7 +168,21 @@ export class EventsService {
       throw new NotFoundException('No pinned event found');
     }
     await this.prisma.pinnedEvent.delete({ where: { userId } });
+    void this.syncChosenEventToAirtable(userId);
     return { removed: true };
+  }
+
+  private async syncChosenEventToAirtable(userId: number) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { userId },
+        select: { email: true },
+      });
+      if (!user?.email) return;
+      await this.airtableService.syncUserStats(user.email);
+    } catch (err) {
+      console.error('[Events] Airtable chosen-event sync failed:', err);
+    }
   }
 
   // ── Ticketing ──

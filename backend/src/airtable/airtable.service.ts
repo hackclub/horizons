@@ -176,6 +176,72 @@ export class AirtableService {
   //   }
   // }
 
+  private async computeUserStats(userId: number): Promise<{
+    approvedHours: number;
+    hoursInReview: number;
+    unsubmittedHours: number;
+    chosenEventSlug: string | null;
+  }> {
+    const [approvedAgg, unsubmittedAgg, hoursInReviewResult, pinnedEvent] =
+      await Promise.all([
+        this.prisma.project.aggregate({
+          where: { userId, deletedAt: null },
+          _sum: { approvedHours: true },
+        }),
+        this.prisma.project.aggregate({
+          where: { userId, deletedAt: null, submissions: { none: {} } },
+          _sum: { nowHackatimeHours: true },
+        }),
+        // Mirrors MetricsService.computeReviewHours: a project counts as
+        // in-review when its latest submission is still pending and the
+        // reviewer hasn't decided. Scoped to this user.
+        this.prisma.$queryRaw<Array<{ total_hours: number }>>`
+          SELECT COALESCE(SUM(p.now_hackatime_hours), 0) as total_hours
+          FROM projects p
+          WHERE p.user_id = ${userId}
+            AND p.deleted_at IS NULL
+            AND EXISTS (
+              SELECT 1 FROM submissions s
+              WHERE s.project_id = p.project_id
+                AND s.approval_status = 'pending'
+                AND s.review_passed IS NULL
+                AND s.created_at = (
+                  SELECT MAX(s2.created_at) FROM submissions s2
+                  WHERE s2.project_id = p.project_id
+                )
+            )
+        `,
+        this.prisma.pinnedEvent.findUnique({
+          where: { userId },
+          include: { event: { select: { slug: true } } },
+        }),
+      ]);
+
+    return {
+      approvedHours:
+        Math.round((approvedAgg._sum.approvedHours ?? 0) * 10) / 10,
+      hoursInReview:
+        Math.round(Number(hoursInReviewResult[0]?.total_hours ?? 0) * 10) / 10,
+      unsubmittedHours:
+        Math.round((unsubmittedAgg._sum.nowHackatimeHours ?? 0) * 10) / 10,
+      chosenEventSlug: pinnedEvent?.event?.slug ?? null,
+    };
+  }
+
+  private statsToFields(stats: {
+    approvedHours: number;
+    hoursInReview: number;
+    unsubmittedHours: number;
+    chosenEventSlug: string | null;
+  }): Record<string, any> {
+    return {
+      'Approved Hours': stats.approvedHours,
+      'Hours in Review': stats.hoursInReview,
+      'Unsubmitted Hours': stats.unsubmittedHours,
+      'Chosen Event': stats.chosenEventSlug ?? '',
+    };
+  }
+
   private async findUserRecord(
     email: string,
   ): Promise<{ id: string; fields: Record<string, any> } | null> {
@@ -321,7 +387,10 @@ export class AirtableService {
       }
 
       let recordId: string | null = null;
-      const existingRecord = await this.findUserRecord(email);
+      const [existingRecord, stats] = await Promise.all([
+        this.findUserRecord(email),
+        this.computeUserStats(userId).catch(() => null),
+      ]);
 
       if (existingRecord) {
         recordId = existingRecord.id;
@@ -343,6 +412,9 @@ export class AirtableService {
         }
         if (user?.referralCode) {
           fieldsToUpdate['Referral Code'] = user.referralCode;
+        }
+        if (stats) {
+          Object.assign(fieldsToUpdate, this.statsToFields(stats));
         }
 
         if (Object.keys(fieldsToUpdate).length > 0) {
@@ -379,6 +451,7 @@ export class AirtableService {
                     ...(user?.referralCode
                       ? { 'Referral Code': user.referralCode }
                       : {}),
+                    ...(stats ? this.statsToFields(stats) : {}),
                   },
                 },
               ],
@@ -400,6 +473,47 @@ export class AirtableService {
       }
     } catch (error) {
       console.error(`Error syncing user event '${event}' to Airtable:`, error);
+    }
+  }
+
+  /**
+   * Push the dynamic stats fields (approved/in-review/unsubmitted hours,
+   * chosen event slug) to an existing Airtable user record. No-op if the
+   * record doesn't exist yet — syncUserEvent is responsible for creating it.
+   * Callers should fire this whenever the underlying values change
+   * (submission lifecycle, pinned event changes).
+   */
+  async syncUserStats(email: string): Promise<void> {
+    if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
+      return;
+    }
+
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+        select: { userId: true },
+      });
+      if (!user) return;
+
+      const existingRecord = await this.findUserRecord(email);
+      if (!existingRecord) return;
+
+      const stats = await this.computeUserStats(user.userId);
+      await fetch(
+        `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}/${existingRecord.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fields: this.statsToFields(stats),
+          }),
+        },
+      );
+    } catch (error) {
+      console.error('Error syncing user stats to Airtable:', error);
     }
   }
 

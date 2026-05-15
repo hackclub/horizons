@@ -536,6 +536,12 @@ export class ProjectsService {
         .catch((err) =>
           console.error('Error syncing firstSubmit event to Airtable:', err),
         );
+    } else {
+      this.airtableService
+        .syncUserStats(project.user.email)
+        .catch((err) =>
+          console.error('Error syncing user stats to Airtable:', err),
+        );
     }
 
     // Submit to fraud review only when starting fresh. Skip for reuseFraud
