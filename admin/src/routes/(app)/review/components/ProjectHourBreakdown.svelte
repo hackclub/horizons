@@ -3,9 +3,7 @@
 
 	interface PerProject {
 		name: string;
-		totalHours: number;
-		aiHours: number;
-		nonAiHours: number;
+		hours: number;
 	}
 
 	interface Props {
@@ -13,6 +11,7 @@
 		aiHours: number | null;
 		nonAiHours: number | null;
 		perProject?: PerProject[];
+		startDate?: string | null;
 		loading?: boolean;
 	}
 
@@ -21,8 +20,26 @@
 		aiHours,
 		nonAiHours,
 		perProject = [],
+		startDate = null,
 		loading = false,
 	}: Props = $props();
+
+	// "Feb 21" / "May 14, 2027". Year only when the date isn't this year so
+	// short windows stay compact. Treat the YYYY-MM-DD input as UTC midnight
+	// so the displayed day matches the backend's window edge.
+	function fmtDate(ymd: string): string {
+		const [y, m, d] = ymd.split('-').map(Number);
+		const dt = new Date(Date.UTC(y, m - 1, d));
+		const thisYear = new Date().getUTCFullYear();
+		return dt.toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: y === thisYear ? undefined : 'numeric',
+			timeZone: 'UTC',
+		});
+	}
+
+	const sinceLabel = $derived(startDate ? `since ${fmtDate(startDate)}` : null);
 
 	let expanded = $state(true);
 
@@ -39,15 +56,13 @@
 	const circumference = 2 * Math.PI * radius;
 	const aiArc = $derived((aiPct / 100) * circumference);
 
-	// Bar widths are relative to the LARGEST project's total — so the
-	// reviewer can see absolute scale across projects, not just composition.
-	const maxProjectHours = $derived(
-		perProject.reduce((m, p) => Math.max(m, p.totalHours), 0),
-	);
-
-	function pctOf(n: number, total: number): number {
-		if (total <= 0) return 0;
-		return Math.round((n / total) * 100);
+	// Per-project bars are sized by share of the deduped total. Per-project
+	// hours are raw (NOT deduped) and may sum to more than `totalHours` when
+	// the user overlapped two projects in the same minute, so a single bar
+	// can exceed 100% — cap the visual width but report the true percentage.
+	function shareOfTotal(hours: number): number {
+		if (!totalHours || totalHours <= 0) return 0;
+		return (hours / totalHours) * 100;
 	}
 </script>
 
@@ -58,8 +73,15 @@
 		onclick={() => (expanded = !expanded)}
 		aria-expanded={expanded}
 	>
-		<span class="text-[13px] font-semibold uppercase tracking-wider text-rv-text">
-			AI vs non-AI Hours
+		<span class="flex items-baseline gap-2 min-w-0">
+			<span class="text-[13px] font-semibold uppercase tracking-wider text-rv-text">
+				Hours Breakdown
+			</span>
+			{#if sinceLabel}
+				<span class="text-[11px] font-normal normal-case tracking-normal text-rv-dim truncate">
+					{sinceLabel}
+				</span>
+			{/if}
 		</span>
 		<svg
 			class="w-3.5 h-3.5 text-rv-dim shrink-0 transition-transform duration-150"
@@ -141,50 +163,33 @@
 					</div>
 				</div>
 
-				<!-- Per-project bar chart -->
+				<!-- Per-project share of the deduped total. -->
 				{#if perProject.length > 0}
 					<div class="text-[11px] uppercase tracking-wider text-rv-dim font-semibold mb-2">
 						By project
 					</div>
 					<div class="flex flex-col gap-2">
 						{#each perProject as p (p.name)}
-							{@const widthPct = maxProjectHours > 0 ? (p.totalHours / maxProjectHours) * 100 : 0}
-							{@const aiInProject = pctOf(p.aiHours, p.totalHours)}
-							{@const nonAiInProject = p.totalHours > 0 ? 100 - aiInProject : 0}
+							{@const share = shareOfTotal(p.hours)}
+							{@const sharePct = Math.round(share)}
+							{@const widthPct = Math.min(100, share)}
 							<div class="flex flex-col gap-1">
 								<div class="flex items-center justify-between gap-2 text-[12px]">
 									<span class="text-rv-text font-medium truncate" title={p.name}>
 										{p.name}
 									</span>
-									<span
-										class="text-rv-dim whitespace-nowrap shrink-0"
-									>
-										{p.totalHours.toFixed(1)}h
+									<span class="text-rv-dim whitespace-nowrap shrink-0">
+										{p.hours.toFixed(1)}h · {sharePct}%
 									</span>
 								</div>
 								<div
 									class="h-2 rounded-sm bg-rv-surface2 overflow-hidden"
-									title={`AI ${p.aiHours.toFixed(1)}h · Non-AI ${p.nonAiHours.toFixed(1)}h`}
+									title={`${p.hours.toFixed(1)}h — ${sharePct}% of total`}
 								>
 									<div
-										class="h-full flex"
+										class="h-full bg-rv-accent"
 										style:width={`${widthPct}%`}
-									>
-										<div
-											class="h-full bg-red-500"
-											style:width={`${aiInProject}%`}
-										></div>
-										<div
-											class="h-full bg-green-500"
-											style:width={`${nonAiInProject}%`}
-										></div>
-									</div>
-								</div>
-								<div
-									class="flex items-center justify-between gap-2 text-[10px] text-rv-dim"
-								>
-									<span>AI {p.aiHours.toFixed(1)}h · {aiInProject}%</span>
-									<span>Non-AI {p.nonAiHours.toFixed(1)}h · {nonAiInProject}%</span>
+									></div>
 								</div>
 							</div>
 						{/each}
@@ -192,7 +197,7 @@
 				{/if}
 
 				<div class="mt-4 text-[10px] text-rv-dim italic leading-snug">
-					Note: These stats are based off of current data, not data at submission time.
+					Note: stats reflect current data, not data at submission time.
 				</div>
 			{/if}
 		</div>

@@ -547,23 +547,26 @@ export class HackatimeService {
   ];
 
   /**
-   * Live per-project hour breakdown — aggregate plus per-Hackatime-project
-   * rows, each split into AI vs non-AI by Hackatime category. Two calls to
-   * Hackatime's `features=projects` endpoint (one unfiltered, one with the
-   * AI category filter); the deltas are non-AI. Aggregate numbers sum the
-   * per-project values — not deduplicated — to keep the chart and the
-   * per-project breakdown internally consistent.
+   * Live hour breakdown for a project. Aggregate numbers come from the
+   * non-deduped breakdown endpoint (one call for the total, one filtered to
+   * AI categories — see `AI_BREAKDOWN_CATEGORIES`); the per-project list is
+   * raw per-Hackatime-project totals. Per-project AI splits are NOT returned
+   * because Hackatime's per-project + `filter_by_category` combination is
+   * unreliable — only the minimal `filter_by_category` form returns the
+   * correct slice, and that's aggregate-only.
+   *
+   * `totalHours` here is non-deduped (no `boundary_aware`), so it may exceed
+   * the user's `nowHackatimeHours` for the same project. We keep total and
+   * AI on the same non-deduped form so the AI/non-AI ratio is internally
+   * consistent; use `fetchDeduplicatedTotalSeconds` (via
+   * `calculateProjectHours`) when you need the deduped figure.
    */
   async getProjectHourBreakdown(projectId: number): Promise<{
     totalHours: number;
     aiHours: number;
     nonAiHours: number;
-    perProject: Array<{
-      name: string;
-      totalHours: number;
-      aiHours: number;
-      nonAiHours: number;
-    }>;
+    perProject: Array<{ name: string; hours: number }>;
+    startDate: string;
   }> {
     const project = await this.prisma.project.findUnique({
       where: { projectId },
@@ -579,16 +582,17 @@ export class HackatimeService {
       },
     });
 
+    const cutoffDate =
+      project?.user?.hackatimeStartDate ??
+      new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z');
+    const startDate = cutoffDate.toISOString().split('T')[0];
+
     const empty = {
       totalHours: 0,
       aiHours: 0,
       nonAiHours: 0,
-      perProject: [] as Array<{
-        name: string;
-        totalHours: number;
-        aiHours: number;
-        nonAiHours: number;
-      }>,
+      perProject: [] as Array<{ name: string; hours: number }>,
+      startDate,
     };
 
     if (!project || !project.nowHackatimeProjects?.length) return empty;
@@ -600,45 +604,40 @@ export class HackatimeService {
     if (!account || !token) {
       return {
         ...empty,
-        perProject: names.map((name) => ({
-          name,
-          totalHours: 0,
-          aiHours: 0,
-          nonAiHours: 0,
-        })),
+        perProject: names.map((name) => ({ name, hours: 0 })),
       };
     }
 
-    const cutoffDate =
-      project.user.hackatimeStartDate ??
-      new Date(process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z');
-
-    const [totalDurations, aiDurations] = await Promise.all([
-      this.fetchHackatimePerProjectDurations(account, names, token, cutoffDate),
-      this.fetchHackatimePerProjectDurations(
+    const [totalSeconds, aiSeconds, perProjectDurations] = await Promise.all([
+      this.fetchBreakdownSeconds(account, names, token, cutoffDate),
+      this.fetchBreakdownSeconds(
         account,
         names,
         token,
         cutoffDate,
         this.AI_BREAKDOWN_CATEGORIES,
       ),
+      this.fetchHackatimePerProjectDurations(account, names, token, cutoffDate),
     ]);
 
     const round1 = (n: number) => Math.round(n * 10) / 10;
-    const perProject = names.map((name) => {
-      const totalHours = round1((totalDurations.get(name) ?? 0) / 3600);
-      const aiHours = round1((aiDurations.get(name) ?? 0) / 3600);
-      // Clamp: dedup/rounding on Hackatime's side can put AI > total by a
-      // fraction; a negative non-AI value would break the bar chart math.
-      const nonAiHours = Math.max(0, round1(totalHours - aiHours));
-      return { name, totalHours, aiHours, nonAiHours };
-    });
-
-    const totalHours = round1(perProject.reduce((s, p) => s + p.totalHours, 0));
-    const aiHours = round1(perProject.reduce((s, p) => s + p.aiHours, 0));
+    const totalHours = round1(totalSeconds / 3600);
+    const aiHours = round1(aiSeconds / 3600);
+    // Clamp: dedup/rounding on Hackatime's side can briefly put AI > total.
     const nonAiHours = Math.max(0, round1(totalHours - aiHours));
 
-    return { totalHours, aiHours, nonAiHours, perProject };
+    const perProject = names.map((name) => ({
+      name,
+      hours: round1((perProjectDurations.get(name) ?? 0) / 3600),
+    }));
+
+    return {
+      totalHours,
+      aiHours,
+      nonAiHours,
+      perProject,
+      startDate,
+    };
   }
 
   async getTotalNowHackatimeHours(userId: number): Promise<number> {
@@ -742,12 +741,17 @@ export class HackatimeService {
   // Per-Hackatime-project durations for the breakdown UI. Each entry is the
   // raw `total_seconds` for that project — these may overlap, so do not sum
   // them to get a user total (use `fetchDeduplicatedTotalSeconds` instead).
+  //
+  // NOTE: this endpoint does not support a reliable category filter. The
+  // `features=projects` + `filter_by_category` combination on Hackatime
+  // returns either 0 or the unfiltered total instead of the category slice.
+  // For AI-vs-non-AI splits use `fetchCategoryFilteredSeconds`, which is
+  // aggregate-only (no per-project breakdown).
   private async fetchHackatimePerProjectDurations(
     hackatimeAccount: string,
     projectNames: string[],
     accessToken: string,
     cutoffDate: Date,
-    categories?: string[],
   ): Promise<Map<string, number>> {
     const durationsMap = new Map<string, number>();
     for (const projectName of projectNames) {
@@ -761,9 +765,6 @@ export class HackatimeService {
       start_date: startDate,
       filter_by_project: projectNames.join(','),
     });
-    if (categories && categories.length > 0) {
-      params.set('filter_by_category', categories.join(','));
-    }
     const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?${params.toString()}`;
 
     try {
@@ -808,7 +809,6 @@ export class HackatimeService {
     projectNames: string[],
     accessToken: string,
     cutoffDate: Date,
-    categories?: string[],
   ): Promise<number> {
     if (projectNames.length === 0) return 0;
 
@@ -820,9 +820,6 @@ export class HackatimeService {
       total_seconds: 'true',
       filter_by_project: projectNames.join(','),
     });
-    if (categories && categories.length > 0) {
-      params.set('filter_by_category', categories.join(','));
-    }
     const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?${params.toString()}`;
 
     try {
@@ -858,6 +855,79 @@ export class HackatimeService {
       return totalSeconds;
     } catch (error) {
       console.error('Error fetching hackatime stats:', error);
+      throw error;
+    }
+  }
+
+  // Total seconds across `projectNames` for the AI-vs-non-AI breakdown UI,
+  // optionally filtered to a set of Hackatime categories (e.g.
+  // `AI_BREAKDOWN_CATEGORIES`). The unfiltered total and the
+  // category-filtered slice MUST come from this single URL shape so they
+  // reconcile against each other — `filter_by_category` only returns the
+  // correct slice with this minimal param set (adding `features=projects`
+  // or `boundary_aware=true` makes it return 0 or the unfiltered total
+  // instead). Encoding pass is required: spaces in category names
+  // (e.g. "ai coding") must be `%20`, not `+`, and the comma separator must
+  // stay unencoded.
+  //
+  // NOT deduped — Hackatime only dedupes overlapping heartbeats when
+  // `boundary_aware=true` is set, which we can't pass here. So the total
+  // returned here is the raw sum across the listed projects and may exceed
+  // `fetchDeduplicatedTotalSeconds` for the same user. That's fine for the
+  // breakdown because both the total and the AI slice come from the same
+  // non-deduped form, so the AI/non-AI ratio stays internally consistent.
+  // Use `fetchDeduplicatedTotalSeconds` for `nowHackatimeHours` writes.
+  private async fetchBreakdownSeconds(
+    hackatimeAccount: string,
+    projectNames: string[],
+    accessToken: string,
+    cutoffDate: Date,
+    categories?: string[],
+  ): Promise<number> {
+    if (projectNames.length === 0) return 0;
+
+    const startDate = cutoffDate.toISOString().split('T')[0];
+    const params = new URLSearchParams({
+      total_seconds: 'true',
+      filter_by_project: projectNames.join(','),
+      start_date: startDate,
+    });
+    if (categories && categories.length > 0) {
+      params.set('filter_by_category', categories.join(','));
+    }
+    const qs = params.toString().replace(/\+/g, '%20').replace(/%2C/g, ',');
+    const uri = `${this.HACKATIME_BASE_URL}/api/v1/users/${hackatimeAccount}/stats?${qs}`;
+
+    try {
+      const response = await fetch(uri, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new UnauthorizedException(
+            'Hackatime denied access to your stats. Enable "Public Stats Lookup" in your Hackatime settings, or re-link your Hackatime account.',
+          );
+        }
+        throw new Error(
+          `Hackatime category stats returned ${response.status} for ${hackatimeAccount}`,
+        );
+      }
+
+      const responseData = await response.json();
+      const totalSeconds = responseData?.total_seconds;
+      if (typeof totalSeconds !== 'number') {
+        throw new Error(
+          `Hackatime category response missing total_seconds: ${JSON.stringify(responseData).slice(0, 200)}`,
+        );
+      }
+      return totalSeconds;
+    } catch (error) {
+      console.error('Error fetching hackatime category stats:', error);
       throw error;
     }
   }

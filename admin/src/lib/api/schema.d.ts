@@ -3401,15 +3401,14 @@ export interface components {
         };
         ProjectHourBreakdownPerProject: {
             name: string;
-            totalHours: number;
-            aiHours: number;
-            nonAiHours: number;
+            hours: number;
         };
         ProjectHourBreakdownResponse: {
             totalHours: number;
             aiHours: number;
             nonAiHours: number;
             perProject: components["schemas"]["ProjectHourBreakdownPerProject"][];
+            startDate: string;
         };
         NoteResponse: {
             content: string;

@@ -568,13 +568,7 @@ export class ProjectHourBreakdownPerProject {
   name: string;
 
   @ApiProperty()
-  totalHours: number;
-
-  @ApiProperty()
-  aiHours: number;
-
-  @ApiProperty()
-  nonAiHours: number;
+  hours: number;
 }
 
 export class ProjectHourBreakdownResponse {
@@ -589,6 +583,12 @@ export class ProjectHourBreakdownResponse {
 
   @ApiProperty({ type: [ProjectHourBreakdownPerProject] })
   perProject: ProjectHourBreakdownPerProject[];
+
+  // Start of the Hackatime window the breakdown reflects (YYYY-MM-DD, UTC).
+  // Comes from the user's `hackatimeStartDate` or the global
+  // `HACKATIME_CUTOFF_DATE` fallback. End is implicitly "now".
+  @ApiProperty()
+  startDate: string;
 }
 
 export class ManifestSubmissionResponse {
