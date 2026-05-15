@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { AirtableService } from './airtable.service';
 
@@ -10,21 +10,32 @@ import { AirtableService } from './airtable.service';
  * rewrites the four computed fields.
  */
 @Injectable()
-export class AirtableSyncService {
+export class AirtableSyncService implements OnModuleInit {
   private readonly logger = new Logger(AirtableSyncService.name);
 
   constructor(private airtableService: AirtableService) {}
 
+  onModuleInit() {
+    // Fire-and-forget so startup isn't blocked by a full table sweep.
+    this.runSync('startup').catch((err) =>
+      this.logger.error('Startup Airtable user-stats sync threw:', err),
+    );
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleDailyUserStatsSync() {
-    this.logger.log('Starting daily Airtable user-stats sync');
+    await this.runSync('daily');
+  }
+
+  private async runSync(trigger: 'startup' | 'daily') {
+    this.logger.log(`Starting ${trigger} Airtable user-stats sync`);
     try {
       const result = await this.airtableService.syncAllUserStats();
       this.logger.log(
-        `Daily Airtable user-stats sync complete: ${result.updated} updated, ${result.skipped} skipped, ${result.failed} failed`,
+        `${trigger} Airtable user-stats sync complete: ${result.updated} updated, ${result.skipped} skipped, ${result.failed} failed`,
       );
     } catch (err) {
-      this.logger.error('Daily Airtable user-stats sync threw:', err);
+      this.logger.error(`${trigger} Airtable user-stats sync threw:`, err);
     }
   }
 }
