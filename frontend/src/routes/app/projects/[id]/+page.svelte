@@ -99,12 +99,6 @@
 	let isPermRejected = $derived(
 		(project as { permReject?: boolean } | null)?.permReject === true,
 	);
-	// Perm-reject reason rides on the latest submission's reviewer-feedback —
-	// no separate column on the project.
-	let permRejectReason = $derived(
-		latestSubmission?.hoursJustification ?? null,
-	);
-
 	// True once we know there are no Hackatime projects linked yet.
 	let needsHackatime = $derived(
 		hackatimeInfo !== null && hackatimeInfo.hackatimeProjects.length === 0,
@@ -318,41 +312,18 @@
 				{/if}
 			</div>
 
-			<!-- Permanent rejection notice (replaces submission tracker visually) -->
-			{#if isPermRejected}
-				<div class="flex flex-col gap-2 w-full border-4 border-[#e05632] rounded-[20px] p-4 bg-[#e05632]/10">
-					<p class="font-cook text-[28px] font-semibold text-[#e05632] m-0">PROJECT REJECTED</p>
-					<p class="font-bricolage text-[15px] text-black m-0">
-						Your project has been permanently rejected and cannot be re-shipped or edited.
-					</p>
-					{#if permRejectReason}
-						<div class="rounded-xl bg-white/60 border border-[#e05632]/40 p-3 mt-1">
-							<p class="font-bricolage text-[13px] font-bold text-black m-0 mb-1">Reason</p>
-							<p class="font-bricolage text-[14px] text-black m-0 whitespace-pre-wrap break-words">{permRejectReason}</p>
-						</div>
-					{/if}
-					<a
-						href="https://hackclub.enterprise.slack.com/archives/C0AFLAUT58A"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="font-bricolage text-[13px] text-black/70 underline self-start mt-1"
-					>
-						Questions? Ask in #horizons-help
-					</a>
-				</div>
-			{/if}
-
 			<!-- Submission Tracker -->
-			{#if hasSubmission && !isPermRejected}
+			{#if hasSubmission}
 				{@const submissionDate = latestSubmission?.createdAt ? new Date(latestSubmission.createdAt) : null}
 				{@const daysAgo = submissionDate ? Math.floor((Date.now() - submissionDate.getTime()) / (1000 * 60 * 60 * 24)) : null}
 				{@const formattedDate = submissionDate ? `${submissionDate.getMonth() + 1}/${submissionDate.getDate()}/${submissionDate.getFullYear()}` : ''}
 				{@const repoUrl = latestSubmission?.repoUrl ?? project?.repoUrl}
 				{@const demoUrl = latestSubmission?.playableUrl ?? project?.playableUrl}
 				{@const reviewerFeedback = latestSubmission?.hoursJustification}
-				{@const step2Color = isApproved ? '#ffa936' : isRejected ? '#e05632' : isPending ? '#ffa936' : '#f3e8d8'}
-				{@const step3Color = isApproved ? '#ffa936' : '#f3e8d8'}
-				{@const step2Label = isRejected ? 'Rejected' : 'Under Review'}
+				{@const step2Color = (isApproved || isPermRejected) ? '#ffa936' : isRejected ? '#e05632' : isPending ? '#ffa936' : '#f3e8d8'}
+				{@const step3Color = isApproved ? '#ffa936' : isPermRejected ? '#e05632' : '#f3e8d8'}
+				{@const step2Label = isPermRejected ? 'Reviewed' : isRejected ? 'Rejected' : 'Under Review'}
+				{@const step3Label = isPermRejected ? 'Permanently Rejected' : 'Approved'}
 
 				<div class="flex flex-col gap-3 w-full border-4 border-black rounded-[20px] p-4">
 					<p class="font-cook text-[28px] font-semibold text-black m-0">SUBMISSION TRACKING</p>
@@ -380,7 +351,7 @@
 						<polyline points="400,0 416,24 400,48" fill="none" stroke="black" stroke-width="2.5" stroke-linejoin="round" />
 						<text x="100" y="24" dominant-baseline="middle" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif" font-size="19" fill="black">Submitted</text>
 						<text x="308" y="24" dominant-baseline="middle" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif" font-size="19" fill="black">{step2Label}</text>
-						<text x="500" y="24" dominant-baseline="middle" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif" font-size="19" fill="black">Approved</text>
+						<text x="500" y="24" dominant-baseline="middle" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif" font-size={isPermRejected ? 14 : 19} fill="black">{step3Label}</text>
 					</svg>
 
 					<!-- Info Panels -->
