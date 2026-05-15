@@ -19,9 +19,35 @@ export class EventStatsEventInfo {
   @ApiProperty() isActive: boolean;
 }
 
-export class TimeSeriesPoint {
-  @ApiProperty({ description: 'ISO date (YYYY-MM-DD)' }) date: string;
-  @ApiProperty() value: number;
+export class EventHourTotals {
+  @ApiProperty({
+    description:
+      'Sum of approved_hours from the latest approved submission per fraud-passed project, across pinned users',
+  })
+  approvedHours: number;
+
+  @ApiProperty({
+    description:
+      'Sum of now_hackatime_hours for projects whose latest submission is still pending review',
+  })
+  hoursInReview: number;
+
+  @ApiProperty({
+    description:
+      'Sum of now_hackatime_hours for projects that have never been submitted for review',
+  })
+  unsubmittedHours: number;
+
+  @ApiProperty({
+    description:
+      'Sum of now_hackatime_hours for projects with ≥1 submission of any status (overlaps with approved/in-review by design)',
+  })
+  submittedHours: number;
+
+  @ApiProperty({
+    description: "Sum of every pinned user's project now_hackatime_hours",
+  })
+  trackedHours: number;
 }
 
 export class QualificationFunnel {
@@ -52,16 +78,11 @@ export class EventStatsResponse {
   dauYesterday: number;
 
   @ApiProperty({
-    type: [TimeSeriesPoint],
-    description: 'Cumulative pinned user count, last 30 days, one point per day',
+    type: EventHourTotals,
+    description:
+      'Aggregate hour buckets across users pinned to this sub-event — definitions match the admin dashboard / user CSV export',
   })
-  pinnedTimeline: TimeSeriesPoint[];
-
-  @ApiProperty({
-    type: [TimeSeriesPoint],
-    description: 'Daily active users for this sub-event, last 30 days',
-  })
-  dauTimeline: TimeSeriesPoint[];
+  hours: EventHourTotals;
 
   @ApiProperty({
     type: QualificationFunnel,

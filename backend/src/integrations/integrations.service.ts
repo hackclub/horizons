@@ -40,19 +40,16 @@ export class IntegrationsService {
 
     const eventId = event.eventId;
     const slug = event.slug;
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
     const yesterdayStart = new Date();
     yesterdayStart.setUTCHours(0, 0, 0, 0);
     yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1);
 
-    const [pinnedCount, hourGoalSplit, dauYesterday, pinnedTimeline, dauTimeline, qualification] =
+    const [pinnedCount, hourGoalSplit, dauYesterday, hours, qualification] =
       await Promise.all([
         this.prisma.pinnedEvent.count({ where: { eventId } }),
         this.computeHourGoalSplit(eventId, event.hourCost),
         this.fetchDauForDate(slug, yesterdayStart),
-        this.buildPinnedTimeline(eventId, thirtyDaysAgo),
-        this.buildDauTimeline(slug, thirtyDaysAgo),
+        this.computeHourTotals(eventId),
         this.computeQualificationFunnel(eventId),
       ]);
 
@@ -77,8 +74,7 @@ export class IntegrationsService {
       metHourGoal: hourGoalSplit.met,
       notMetHourGoal: hourGoalSplit.notMet,
       dauYesterday,
-      pinnedTimeline,
-      dauTimeline,
+      hours,
       qualification,
       generatedAt: new Date().toISOString(),
     };
@@ -124,40 +120,85 @@ export class IntegrationsService {
     return typeof row.value === 'number' ? row.value : Number(row.value) || 0;
   }
 
-  // Cumulative pinned count, one point per day for the last 30 days.
-  // Back-calculates the starting cumulative from the current total minus the
-  // pins created in-window, so the line ends at the live pinned count.
-  private async buildPinnedTimeline(eventId: number, since: Date) {
-    const daily = await this.prisma.$queryRaw<
-      Array<{ date: Date; count: bigint }>
-    >`
-      SELECT DATE(pe.created_at) as date, COUNT(*) as count
-      FROM pinned_events pe
-      WHERE pe.event_id = ${eventId}
-        AND pe.created_at >= ${since}
-      GROUP BY DATE(pe.created_at)
-      ORDER BY date ASC
-    `;
+  // Aggregate hour buckets across users pinned to the sub-event. Bucket
+  // definitions mirror AdminService.exportAllUsersCsv so totals reconcile with
+  // the dashboard / CSV export.
+  private async computeHourTotals(eventId: number) {
+    const [
+      approvedRows,
+      inReviewRows,
+      unsubmittedRows,
+      submittedRows,
+      trackedRows,
+    ] = await Promise.all([
+      this.prisma.$queryRaw<{ hours: number }[]>`
+        SELECT COALESCE(SUM(s.approved_hours), 0) AS hours
+        FROM submissions s
+        JOIN projects p ON p.project_id = s.project_id
+        JOIN pinned_events pe ON pe.user_id = p.user_id
+        WHERE pe.event_id = ${eventId}
+          AND s.approval_status = 'approved'
+          AND p.joe_fraud_passed = true
+          AND p.deleted_at IS NULL
+          AND s.created_at = (
+            SELECT MAX(s2.created_at) FROM submissions s2
+            WHERE s2.project_id = p.project_id
+              AND s2.approval_status = 'approved'
+          )
+      `,
+      this.prisma.$queryRaw<{ hours: number }[]>`
+        SELECT COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
+        FROM projects p
+        JOIN pinned_events pe ON pe.user_id = p.user_id
+        WHERE pe.event_id = ${eventId}
+          AND p.deleted_at IS NULL
+          AND EXISTS (
+            SELECT 1 FROM submissions s
+            WHERE s.project_id = p.project_id
+              AND s.approval_status = 'pending'
+              AND s.review_passed IS NULL
+              AND s.created_at = (
+                SELECT MAX(s2.created_at) FROM submissions s2
+                WHERE s2.project_id = p.project_id
+              )
+          )
+      `,
+      this.prisma.$queryRaw<{ hours: number }[]>`
+        SELECT COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
+        FROM projects p
+        JOIN pinned_events pe ON pe.user_id = p.user_id
+        WHERE pe.event_id = ${eventId}
+          AND p.deleted_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
+          )
+      `,
+      this.prisma.$queryRaw<{ hours: number }[]>`
+        SELECT COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
+        FROM projects p
+        JOIN pinned_events pe ON pe.user_id = p.user_id
+        WHERE pe.event_id = ${eventId}
+          AND p.deleted_at IS NULL
+          AND EXISTS (
+            SELECT 1 FROM submissions s WHERE s.project_id = p.project_id
+          )
+      `,
+      this.prisma.$queryRaw<{ hours: number }[]>`
+        SELECT COALESCE(SUM(p.now_hackatime_hours), 0) AS hours
+        FROM projects p
+        JOIN pinned_events pe ON pe.user_id = p.user_id
+        WHERE pe.event_id = ${eventId}
+          AND p.deleted_at IS NULL
+      `,
+    ]);
 
-    const totalNow = await this.prisma.pinnedEvent.count({ where: { eventId } });
-    const inWindow = daily.reduce((s, d) => s + Number(d.count), 0);
-    let cumulative = totalNow - inWindow;
-
-    return daily.map((d) => {
-      cumulative += Number(d.count);
-      return { date: d.date.toISOString().split('T')[0], value: cumulative };
-    });
-  }
-
-  private async buildDauTimeline(slug: string, since: Date) {
-    const rows = await this.prisma.historicalMetric.findMany({
-      where: { metric: `dau_event.${slug}`, date: { gte: since } },
-      orderBy: { date: 'asc' },
-    });
-    return rows.map((r) => ({
-      date: r.date.toISOString().split('T')[0],
-      value: typeof r.value === 'number' ? r.value : Number(r.value) || 0,
-    }));
+    return {
+      approvedHours: Number(approvedRows[0]?.hours ?? 0),
+      hoursInReview: Number(inReviewRows[0]?.hours ?? 0),
+      unsubmittedHours: Number(unsubmittedRows[0]?.hours ?? 0),
+      submittedHours: Number(submittedRows[0]?.hours ?? 0),
+      trackedHours: Number(trackedRows[0]?.hours ?? 0),
+    };
   }
 
   // Engagement funnel for pinned users, bucketed by total approved hours.

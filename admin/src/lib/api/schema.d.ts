@@ -2963,10 +2963,8 @@ export interface components {
             notMetHourGoal: number;
             /** @description Yesterday's DAU for this sub-event — read from the historical metric snapshot (today is mid-stream and intentionally omitted) */
             dauYesterday: number;
-            /** @description Cumulative pinned user count, last 30 days, one point per day */
-            pinnedTimeline: components["schemas"]["TimeSeriesPoint"][];
-            /** @description Daily active users for this sub-event, last 30 days */
-            dauTimeline: components["schemas"]["TimeSeriesPoint"][];
+            /** @description Aggregate hour buckets across users pinned to this sub-event — definitions match the admin dashboard / user CSV export */
+            hours: components["schemas"]["EventHourTotals"];
             /** @description Funnel counts among pinned users, by approved hours */
             qualification: components["schemas"]["QualificationFunnel"];
             /** @description ISO timestamp when this response was generated */
@@ -3896,10 +3894,17 @@ export interface components {
             ticketEnabled: boolean;
             isActive: boolean;
         };
-        TimeSeriesPoint: {
-            /** @description ISO date (YYYY-MM-DD) */
-            date: string;
-            value: number;
+        EventHourTotals: {
+            /** @description Sum of approved_hours from the latest approved submission per fraud-passed project, across pinned users */
+            approvedHours: number;
+            /** @description Sum of now_hackatime_hours for projects whose latest submission is still pending review */
+            hoursInReview: number;
+            /** @description Sum of now_hackatime_hours for projects that have never been submitted for review */
+            unsubmittedHours: number;
+            /** @description Sum of now_hackatime_hours for projects with ≥1 submission of any status (overlaps with approved/in-review by design) */
+            submittedHours: number;
+            /** @description Sum of every pinned user's project now_hackatime_hours */
+            trackedHours: number;
         };
         QualificationFunnel: {
             /** @description Anyone pinned to this event */
