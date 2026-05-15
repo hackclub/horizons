@@ -40,6 +40,10 @@ export interface EventConfig {
 	};
 	stripes: string[];
 	menu: EventMenuItem[];
+	nexusOverrideFlag?: boolean;
+	/** ISO datetime string. When set, the EventColumnCard renders a live
+	 * "Announcement in DD:HH:MM:SS" countdown line. */
+	announcementDeadline?: string;
 }
 
 export interface EventMenuItem {

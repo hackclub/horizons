@@ -89,15 +89,43 @@
 	})());
 
 	const heroImage = $derived(imageUrl ?? config.eventCard?.bgImage ?? null);
-	const gradientColor = $derived(config.colors?.primary ?? '#fac393');
+	const nexusOverride = $derived(config.nexusOverrideFlag === true);
+	const gradientColor = $derived(
+		nexusOverride ? '#000000' : (config.colors?.primary ?? '#fac393')
+	);
 	const subtitle = $derived(
 		[config.locationText, config.dates].filter(Boolean).join(' • ')
 	);
+
+	const deadlineMs = $derived(
+		config.announcementDeadline ? new Date(config.announcementDeadline).getTime() : null
+	);
+
+	let now = $state(Date.now());
+	$effect(() => {
+		if (deadlineMs === null) return;
+		const id = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(id);
+	});
+
+	const pad = (n: number) => String(n).padStart(2, '0');
+	const announcementText = $derived.by(() => {
+		if (deadlineMs === null) return null;
+		const diff = deadlineMs - now;
+		if (diff <= 0) return null;
+		const totalSec = Math.floor(diff / 1000);
+		const days = Math.floor(totalSec / 86400);
+		const hours = Math.floor((totalSec % 86400) / 3600);
+		const minutes = Math.floor((totalSec % 3600) / 60);
+		const seconds = totalSec % 60;
+		return `Announcement in ${pad(days)}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+	});
 </script>
 
 <button
 	class="event-column-card group"
 	class:selected
+	class:nexus-override={nexusOverride}
 	{onclick}
 	{onmouseenter}
 	type="button"
@@ -127,15 +155,20 @@
 			style="max-width: {config.logoMaxWidth ?? '218px'};"
 		/>
 		<div class="card-text">
-			<p class="font-cook text-[20px] text-black m-0 leading-normal">{config.name}</p>
+			<p class="card-text-primary font-cook text-[20px] m-0 leading-normal">{config.name}</p>
 			{#if subtitle}
-				<p class="font-bricolage font-semibold text-[16px] text-black m-0 leading-normal">
+				<p class="card-text-primary font-bricolage font-semibold text-[16px] m-0 leading-normal">
 					{subtitle}
 				</p>
 			{/if}
 			{#if attendCount !== null && attendCount !== undefined}
-				<p class="font-bricolage font-semibold text-[16px] text-black m-0 leading-normal">
+				<p class="card-text-primary font-bricolage font-semibold text-[16px] m-0 leading-normal">
 					{attendCount} plan to attend
+				</p>
+			{/if}
+			{#if announcementText}
+				<p class="card-text-primary font-bricolage font-semibold text-[16px] m-0 leading-normal tabular-nums">
+					{announcementText}
 				</p>
 			{/if}
 		</div>
@@ -147,35 +180,35 @@
 			class:state-buy-ticket={progressState === 'buy-ticket'}
 		>
 			{#if progressState === 'qualified'}
-				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
+				<p class="progress-text-primary font-cook text-[16px] m-0 leading-normal whitespace-nowrap">
 					{round1(targetHours)}/{round1(targetHours)} approved • QUALIFIED
 				</p>
 			{:else if progressState === 'buy-ticket'}
-				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
+				<p class="progress-text-primary font-cook text-[16px] m-0 leading-normal whitespace-nowrap">
 					Buy event ticket now
 				</p>
-				<p class="font-cook text-[12px] text-black/70 m-0 leading-normal whitespace-nowrap">
+				<p class="progress-text-muted font-cook text-[12px] m-0 leading-normal whitespace-nowrap">
 					{ticketCost}hr to buy ticket
 				</p>
 			{:else if progressState === 'ship'}
-				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
+				<p class="progress-text-primary font-cook text-[16px] m-0 leading-normal whitespace-nowrap">
 					{completedDisplay}/{round1(targetHours)} hours completed
 				</p>
-				<p class="font-cook text-[12px] text-black m-0 leading-normal whitespace-nowrap">
+				<p class="progress-text-primary font-cook text-[12px] m-0 leading-normal whitespace-nowrap">
 					Ship to qualify Now
 				</p>
 			{:else if progressState === 'approved-majority'}
-				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
+				<p class="progress-text-primary font-cook text-[16px] m-0 leading-normal whitespace-nowrap">
 					{approvedDisplay}/{round1(targetHours)} hours approved
 				</p>
-				<p class="font-cook text-[12px] text-black/60 m-0 leading-normal whitespace-nowrap">
+				<p class="progress-text-muted font-cook text-[12px] m-0 leading-normal whitespace-nowrap">
 					{completedDisplay}/{round1(targetHours)} hours completed
 				</p>
 			{:else}
-				<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
+				<p class="progress-text-primary font-cook text-[16px] m-0 leading-normal whitespace-nowrap">
 					{completedDisplay}/{round1(targetHours)} hours completed
 				</p>
-				<p class="font-cook text-[12px] text-black/60 m-0 leading-normal whitespace-nowrap">
+				<p class="progress-text-muted font-cook text-[12px] m-0 leading-normal whitespace-nowrap">
 					{approvedDisplay}/{round1(targetHours)} hours approved
 				</p>
 			{/if}
@@ -192,6 +225,14 @@
 
 <style>
 	.event-column-card {
+		--card-border: black;
+		--card-shadow: black;
+		--card-text: black;
+		--progress-bg: #f3e8d8;
+		--progress-border: black;
+		--progress-shadow: black;
+		--progress-text: black;
+		--progress-text-muted: rgba(0, 0, 0, 0.6);
 		position: relative;
 		display: flex;
 		flex-direction: column;
@@ -200,15 +241,65 @@
 		width: 100%;
 		height: 100%;
 		padding: 30px;
-		border: 4px solid black;
+		border: 4px solid var(--card-border);
 		border-radius: 20px;
-		box-shadow: 4px 4px 0px 0px black;
+		box-shadow: 4px 4px 0px 0px var(--card-shadow);
 		overflow: clip;
-		background: transparent;
+		/* Match border to kill any subpixel seam between border and inner image. */
+		background-color: var(--card-border);
 		text-align: left;
 		cursor: pointer;
 		outline: none;
 		transition: transform var(--juice-duration, 200ms) var(--juice-easing, ease);
+	}
+
+	.event-column-card.nexus-override {
+		--card-border: black;
+		--card-text: white;
+		--progress-bg: black;
+		--progress-border: white;
+		--progress-shadow: white;
+		--progress-text: white;
+		--progress-text-muted: rgba(255, 255, 255, 0.6);
+	}
+
+	/* Bright-bg states keep black text for legibility, even under nexus-override. */
+	.event-column-card.nexus-override .progress-bar.state-ship,
+	.event-column-card.nexus-override .progress-bar.state-qualified,
+	.event-column-card.nexus-override .progress-bar.state-buy-ticket {
+		--progress-text: black;
+		--progress-text-muted: rgba(0, 0, 0, 0.6);
+	}
+
+	/* The progressHint snippet is rendered by the parent and hardcodes
+	   text-black + a black-fill SVG icon. Under nexus-override on a dark
+	   bar bg, both vanish — recolor text via the existing var and invert
+	   the icon. Bright-bg states (where text returns to black) skip the
+	   invert so the icon stays black to match. */
+	.event-column-card.nexus-override :global(.progress-hint .text-black) {
+		color: var(--progress-text);
+	}
+
+	.event-column-card.nexus-override .progress-bar :global(.enter-hint-key) {
+		filter: invert(1);
+	}
+
+	.event-column-card.nexus-override .progress-bar.state-ship :global(.enter-hint-key),
+	.event-column-card.nexus-override .progress-bar.state-qualified :global(.enter-hint-key),
+	.event-column-card.nexus-override .progress-bar.state-buy-ticket :global(.enter-hint-key) {
+		filter: none;
+	}
+
+	.card-text-primary {
+		color: var(--card-text);
+	}
+
+	.progress-text-primary {
+		color: var(--progress-text);
+	}
+
+	.progress-text-muted {
+		color: var(--progress-text-muted);
 	}
 
 	.event-column-card.selected {
@@ -307,10 +398,10 @@
 		gap: 4px;
 		width: 100%;
 		padding: 16px;
-		border: 4px solid black;
+		border: 4px solid var(--progress-border);
 		border-radius: 20px;
-		box-shadow: 4px 4px 0px 0px black;
-		background-color: #f3e8d8;
+		box-shadow: 4px 4px 0px 0px var(--progress-shadow);
+		background-color: var(--progress-bg);
 		overflow: clip;
 		transition: background-color 200ms ease;
 	}

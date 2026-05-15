@@ -1,4 +1,6 @@
 nexus:
+  nexusOverrideFlag: true
+  announcementDeadline: "2026-05-22T20:00:00-04:00"
   name: Horizons Nexus
   location: [37.7879363, -122.4075201]
   locationText: "San Francisco, CA"
