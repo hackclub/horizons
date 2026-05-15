@@ -117,12 +117,15 @@
 	// Real per-Hackatime-project hours (live-fetched). Null until loaded; the
 	// HoursBreakdown component falls back to an even split while we wait.
 	let hackatimeProjectHours = $state<Record<string, number> | null>(null);
-	// AI vs non-AI hour breakdown (aggregate + per-project), live-fetched.
+	// Aggregate AI vs non-AI + per-project totals, live-fetched. Per-project
+	// rows are raw (NOT deduped) totals — they may sum to more than
+	// `totalHours` when the user logged overlapping time across projects.
 	type HourBreakdown = {
 		totalHours: number;
 		aiHours: number;
 		nonAiHours: number;
-		perProject: { name: string; totalHours: number; aiHours: number; nonAiHours: number }[];
+		perProject: { name: string; hours: number }[];
+		startDate: string;
 	};
 	let hourBreakdown = $state<HourBreakdown | null>(null);
 	let hourBreakdownLoading = $state(false);
@@ -651,6 +654,7 @@
 					aiHours={hourBreakdown?.aiHours ?? null}
 					nonAiHours={hourBreakdown?.nonAiHours ?? null}
 					perProject={hourBreakdown?.perProject ?? []}
+					startDate={hourBreakdown?.startDate ?? null}
 					loading={hourBreakdownLoading || submissionLoading}
 				/>
 
