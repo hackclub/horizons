@@ -165,6 +165,14 @@
 	// fraud page surfaces a "click to hear" button so the reviewer can still
 	// trigger the audio with an explicit click.
 	let fraudAudioBlocked = $state(false);
+	// Lets a reviewer/admin bypass the fraud overlay and inspect the project
+	// (e.g. to sanity-check Joe's verdict or investigate appeals). Reset per
+	// project so revealing one fraud submission doesn't auto-reveal the next.
+	let fraudOverrideRevealed = $state(false);
+	$effect(() => {
+		projectId;
+		fraudOverrideRevealed = false;
+	});
 
 	function playFraudAudio() {
 		if (!fraudAudio) fraudAudio = new Audio(`${base}/wholikestofraudy.mp3`);
@@ -580,7 +588,7 @@
 			</p>
 			<button class="mt-3 bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit hover:border-rv-accent" onclick={goBack}>← Back to Gallery</button>
 		</div>
-	{:else if isFraudProject}
+	{:else if isFraudProject && !fraudOverrideRevealed}
 		<div class="flex flex-col items-center justify-center h-screen gap-4 text-rv-dim bg-rv-bg px-6">
 			<div
 				class="text-7xl font-extrabold text-center"
@@ -599,7 +607,16 @@
 					🔊 Click to hear the verdict
 				</button>
 			{/if}
-			<button class="mt-3 bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit hover:border-rv-accent" onclick={goBack}>← Back to Gallery</button>
+			<div class="flex flex-wrap gap-2 justify-center mt-3">
+				<button class="bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit hover:border-rv-accent" onclick={goBack}>← Back to Gallery</button>
+				<button
+					class="bg-rv-surface2 border border-rv-border text-rv-text px-5 py-2 rounded-md cursor-pointer font-inherit hover:border-rv-accent"
+					onclick={() => { fraudOverrideRevealed = true; }}
+					title="Bypass the fraud screen and inspect the project (e.g. to sanity-check Joe or investigate an appeal)."
+				>
+					View project anyway →
+				</button>
+			</div>
 		</div>
 	{:else}
 		{#if readOnlyMode}
