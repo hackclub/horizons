@@ -56,13 +56,8 @@
 	let purchasing = $state<ItemKey | null>(null);
 	let purchaseError = $state<string | null>(null);
 
-	// Confirmation modal — activated when the user picks "Buy Ticket". The user
-	// must type REQUIRED_PHRASE verbatim before the Purchase button enables.
-	const REQUIRED_PHRASE =
-		'I understand that by purchasing an ticket I must complete the requirements for an invite by the event date to receive prizes for my logged hours and to be allowed entry, regardless of my travel arrangements.';
 	let showConfirmModal = $state(false);
 	let confirmText = $state('');
-	const phraseMatches = $derived(confirmText.trim() === REQUIRED_PHRASE);
 	let confirmInputEl = $state<HTMLTextAreaElement | null>(null);
 
 	// --- DEBUG: ?debug enables overlay to preview each event + each state ---
@@ -96,6 +91,13 @@
 	const effectiveCompletedHours = $derived(
 		debugApprovedState === '' ? completedHours : Math.max(effectiveApprovedHours, completedHours)
 	);
+
+	// Confirmation modal — activated when the user picks "Buy Ticket". The user
+	// must type REQUIRED_PHRASE verbatim before the Purchase button enables.
+	const REQUIRED_PHRASE = $derived(
+		`I understand that by purchasing a ticket I must complete the requirements for an invite (${effectiveTicketCost} hour requirement) by the event date to receive prizes for my logged hours and to be allowed entry, regardless of my travel arrangements.`
+	);
+	const phraseMatches = $derived(confirmText.trim() === REQUIRED_PHRASE);
 
 	// Hydrate from cache for instant render.
 	const cached = getCachedPinnedEvent();
