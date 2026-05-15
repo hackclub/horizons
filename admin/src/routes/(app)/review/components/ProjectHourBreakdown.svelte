@@ -197,7 +197,7 @@
 				{/if}
 
 				<div class="mt-4 text-[10px] text-rv-dim italic leading-snug">
-					Note: stats reflect current data, not data at submission time.
+					Note: stats reflect current data, not data at submission time.<br>This data should be treated as an approximation, and doesn't take into account off-platform AI (ex. copy/paste ChatGPT code).
 				</div>
 			{/if}
 		</div>
