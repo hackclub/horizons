@@ -720,7 +720,7 @@ void main(){
 				<img src={eventEntries[selectedEventIndex][1].eventCard.bgImage} alt="" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-(--selected-duration) ease-out" />
 			{/if}
 			{#if eventEntries[selectedEventIndex][1].eventCard.gradient}
-				<div class="absolute inset-0 transition-opacity duration-(--selected-duration) ease-out" style="background: {eventEntries[selectedEventIndex][1].eventCard.gradient}"></div>
+				<div class="absolute inset-0 transition-opacity duration-(--selected-duration) ease-out" style="background: {eventEntries[selectedEventIndex][1].nexusOverrideFlag ? 'rgba(0,0,0,0.85)' : eventEntries[selectedEventIndex][1].eventCard.gradient}"></div>
 			{/if}
 
 			<!-- Divider masks -->
@@ -738,9 +738,14 @@ void main(){
 					>
 						{#each eventEntries as [key, event], i}
 							{@const selected = i === selectedEventIndex}
+							{@const nexusOverride = event.nexusOverrideFlag === true}
 							<button
 								class="event-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative shrink-0 cursor-pointer bg-cover bg-center max-sm:w-full max-sm:opacity-100 {selected ? 'opacity-100' : 'opacity-80 hover:opacity-100 hover:scale-(--juice-scale)'}"
-								style="width: {selected ? '325px' : '262px'}; height: {selected ? '435px' : '351px'}; transition: all var(--juice-duration) var(--juice-easing); background-color: {event.eventCard.bgColor};{event.eventCard.bgImage ? ` background-image: ${event.eventCard.gradient ? event.eventCard.gradient + ', ' : ''}url(${event.eventCard.bgImage});` : ''}"
+								style="width: {selected ? '325px' : '262px'}; height: {selected ? '435px' : '351px'}; transition: all var(--juice-duration) var(--juice-easing); background-color: {event.eventCard.bgColor};{event.eventCard.bgImage
+									? nexusOverride
+										? ` background-image: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), url(${event.eventCard.bgImage});`
+										: ` background-image: ${event.eventCard.gradient ? event.eventCard.gradient + ', ' : ''}url(${event.eventCard.bgImage});`
+									: ''}"
 								onclick={() => selectEvent(i)}
 							>
 								<!-- Gradient overlay -->

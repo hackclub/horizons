@@ -168,7 +168,10 @@
 	}
 
 	const heroImage = $derived(effectiveImage ?? effectiveConfig.eventCard?.bgImage ?? null);
-	const gradientColor = $derived(effectiveConfig.colors?.primary ?? '#fac393');
+	const nexusOverride = $derived(effectiveConfig.nexusOverrideFlag === true);
+	const gradientColor = $derived(
+		nexusOverride ? '#000000' : (effectiveConfig.colors?.primary ?? '#fac393')
+	);
 	const subtitle = $derived(
 		[effectiveConfig.locationText, effectiveConfig.dates].filter(Boolean).join(' • ')
 	);
@@ -419,6 +422,7 @@
 			class="event-card fly-up"
 			class:exiting={navigating}
 			class:exit-back={backExiting}
+			class:nexus-override={nexusOverride}
 			style:--enter-delay="0ms"
 		>
 			<div class="event-card-bg" aria-hidden="true">
@@ -438,19 +442,19 @@
 					style="max-width: {effectiveConfig.logoMaxWidth ?? '285px'};"
 				/>
 				<div class="event-card-text">
-					<p class="font-cook text-[20px] text-black m-0 leading-normal">{effectiveConfig.name}</p>
+					<p class="card-text-primary font-cook text-[20px] m-0 leading-normal">{effectiveConfig.name}</p>
 					{#if subtitle}
-						<p class="font-bricolage font-semibold text-[16px] text-black m-0 leading-normal">
+						<p class="card-text-primary font-bricolage font-semibold text-[16px] m-0 leading-normal">
 							{subtitle}
 						</p>
 					{/if}
 				</div>
 				<div class="progress-bar">
-					<p class="font-cook text-[16px] text-black m-0 leading-normal whitespace-nowrap">
+					<p class="progress-text-primary font-cook text-[16px] m-0 leading-normal whitespace-nowrap">
 						{loading && !debugMode ? '— / —' : `${round1(effectiveCompletedHours)}/${round1(targetHours)}`} hours completed
 					</p>
 					{#if !loading || debugMode}
-						<p class="font-cook text-[12px] text-black/60 m-0 leading-normal whitespace-nowrap">
+						<p class="progress-text-muted font-cook text-[12px] m-0 leading-normal whitespace-nowrap">
 							{round1(effectiveBalance)} hour{round1(effectiveBalance) === 1 ? '' : 's'} available to spend
 						</p>
 					{/if}
@@ -734,6 +738,12 @@
 
 	/* Event detail card */
 	.event-card {
+		--card-text: black;
+		--progress-bg: #f3e8d8;
+		--progress-border: black;
+		--progress-shadow: black;
+		--progress-text: black;
+		--progress-text-muted: rgba(0, 0, 0, 0.6);
 		position: relative;
 		display: flex;
 		flex-direction: column;
@@ -745,9 +755,27 @@
 		border: 4px solid black;
 		border-radius: 20px;
 		box-shadow: 4px 4px 0px 0px black;
-		background: transparent;
+		/* Match border so any subpixel seam under the bg image blends in. */
+		background-color: black;
 		overflow: clip;
 		text-align: left;
+	}
+	.event-card.nexus-override {
+		--card-text: white;
+		--progress-bg: black;
+		--progress-border: white;
+		--progress-shadow: white;
+		--progress-text: white;
+		--progress-text-muted: rgba(255, 255, 255, 0.6);
+	}
+	.card-text-primary {
+		color: var(--card-text);
+	}
+	.progress-text-primary {
+		color: var(--progress-text);
+	}
+	.progress-text-muted {
+		color: var(--progress-text-muted);
 	}
 	.event-card-bg {
 		position: absolute;
@@ -796,10 +824,10 @@
 		justify-content: center;
 		width: 100%;
 		padding: 16px;
-		border: 4px solid black;
+		border: 4px solid var(--progress-border);
 		border-radius: 20px;
-		box-shadow: 4px 4px 0px 0px black;
-		background-color: #f3e8d8;
+		box-shadow: 4px 4px 0px 0px var(--progress-shadow);
+		background-color: var(--progress-bg);
 		overflow: clip;
 	}
 

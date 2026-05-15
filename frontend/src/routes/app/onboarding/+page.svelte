@@ -231,11 +231,11 @@
 			<div class="w-full h-10 shrink-0"></div>
 			{#each events as event}
 				<button
-					class="event-card w-74.5 h-39.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing)"
+					class="event-card w-74.5 h-39.75 border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-(--juice-duration) ease-(--juice-easing)"
 					class:selected={selectedEvent === event.slug}
-					style={event.slug === 'nexus' && event.eventCard?.bgImage
-						? `background-image: url(${event.eventCard.bgImage}); background-size: cover; background-position: center;`
-						: undefined}
+					style={event.nexusOverrideFlag && event.eventCard?.bgImage
+						? `background-image: linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.9)), url(${event.eventCard.bgImage}); background-size: cover; background-position: center;`
+						: 'background-color: #f3e8d8;'}
 					onclick={(e) => { e.stopPropagation(); handleEventSelect(event.slug); }}
 					disabled={!isEventSelectStep}
 				>
@@ -243,7 +243,7 @@
 						<img src={event.logo} alt={event.name} class="max-w-65 max-h-full object-contain" />
 					</div>
 					{#if event.location || (event.startDate && event.endDate)}
-						<div class="flex flex-col items-center pb-3 shrink-0 leading-tight" class:text-white={event.slug === 'nexus'}>
+						<div class="flex flex-col items-center pb-3 shrink-0 leading-tight" class:text-white={event.nexusOverrideFlag}>
 							{#if event.location}
 								<p class="font-bricolage text-base font-semibold whitespace-nowrap">{event.location}</p>
 							{/if}

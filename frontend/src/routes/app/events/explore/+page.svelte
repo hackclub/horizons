@@ -180,6 +180,8 @@
 			{:else}
 				{#each events as event, i (event.slug)}
 					{@const selected = i === nav.selectedIndex}
+					{@const nexusOverride = event.config.nexusOverrideFlag === true}
+					{@const heroBg = event.api?.imageUrl ?? event.config.eventCard?.bgImage ?? null}
 					<button
 						class="event-card border-4 border-black rounded-[20px] p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start overflow-hidden relative cursor-pointer text-left outline-none"
 						class:selected
@@ -187,10 +189,18 @@
 						onpointerdown={() => { clickWasSelected = nav.selectedIndex === i; }}
 						onfocus={() => { nav.selectedIndex = i; updateScroll(); }}
 						onclick={() => { if (clickWasSelected) { togglePin(event.slug); } }}
-						style="--card-index: {i}; width: {selected ? '824px' : '649px'}; background-color: {selected ? getCardBgSelected(event) : getCardBg(event)}; gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
+						style="--card-index: {i}; width: {selected ? '824px' : '649px'}; {nexusOverride && heroBg
+							? `background: linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.9)), url(${heroBg}) center/cover;`
+							: `background-color: ${selected ? getCardBgSelected(event) : getCardBg(event)};`} gap: {selected ? '32px' : '0'}; transition: width var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease, padding 0.3s ease;"
 					>
 						{#if currentPinnedSlug === event.slug}
-							<span class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black z-1" style="background-color: {getCardBgSelected(event)};">
+							<span
+								class="absolute top-4 right-4 font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 z-1"
+								class:border-black={!nexusOverride}
+								class:border-white={nexusOverride}
+								class:text-white={nexusOverride}
+								style="background-color: {nexusOverride ? 'black' : getCardBgSelected(event)};"
+							>
 								PINNED
 							</span>
 						{/if}
@@ -203,11 +213,22 @@
 								style="max-width: {event.config.logoMaxWidth ?? '264px'};"
 							/>
 							{#if event.config.dates}
-								<span class="font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 border-black self-start mt-1" style="background-color: {getCardBgSelected(event)};">
+								<span
+									class="font-bricolage text-sm font-bold px-3 py-1 rounded-full border-2 self-start mt-1"
+									class:border-black={!nexusOverride}
+									class:border-white={nexusOverride}
+									class:text-white={nexusOverride}
+									style="background-color: {nexusOverride ? 'black' : getCardBgSelected(event)};"
+								>
 									{event.config.dates}
 								</span>
 							{/if}
-							<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease]" style="font-size: {selected ? '32px' : '20px'};">
+							<p
+								class="font-bricolage font-semibold m-0 transition-[font-size_0.3s_ease]"
+								class:text-black={!nexusOverride}
+								class:text-white={nexusOverride}
+								style="font-size: {selected ? '32px' : '20px'};"
+							>
 								{event.api?.description ?? event.config.tagline}
 							</p>
 						</div>
@@ -217,13 +238,13 @@
 							style="grid-template-rows: {selected ? '1fr' : '0fr'}; opacity: {selected ? 1 : 0}; transition: grid-template-rows 0.15s ease, opacity 0.15s ease;"
 						>
 							<div class="overflow-hidden flex items-center gap-2">
-								<InputPrompt type="Enter" />
+								<InputPrompt type="Enter" color={nexusOverride ? 'white' : 'black'} />
 
-								<span class="font-bricolage text-2xl font-bold text-black">OR</span>
+								<span class="font-bricolage text-2xl font-bold" class:text-black={!nexusOverride} class:text-white={nexusOverride}>OR</span>
 
-								<InputPrompt type="click" />
+								<InputPrompt type="click" color={nexusOverride ? 'white' : 'black'} />
 
-								<span class="font-bricolage text-2xl font-bold text-black">{currentPinnedSlug === event.slug ? 'TO UNPIN' : 'TO PIN'}</span>
+								<span class="font-bricolage text-2xl font-bold" class:text-black={!nexusOverride} class:text-white={nexusOverride}>{currentPinnedSlug === event.slug ? 'TO UNPIN' : 'TO PIN'}</span>
 							</div>
 						</div>
 					</button>
