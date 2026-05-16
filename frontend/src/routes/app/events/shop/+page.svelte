@@ -38,10 +38,12 @@
 	let interacted = $state(false);
 	let itemsReady = $state(false);
 
-	const pinnedConfig = $derived(pinnedSlug ? eventsMap[pinnedSlug] ?? null : null);
+	const eventOverride = $derived(page.url.searchParams.get('event'));
+	const activeSlug = $derived(eventOverride ?? pinnedSlug);
+	const pinnedConfig = $derived(activeSlug ? eventsMap[activeSlug] ?? null : null);
 
 	const eventItems = $derived(
-		pinnedSlug ? items.filter((item) => item.shopSlug === pinnedSlug) : []
+		activeSlug ? items.filter((item) => item.shopSlug === activeSlug) : []
 	);
 
 	const filteredItems = $derived(eventItems);
