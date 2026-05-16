@@ -7,11 +7,12 @@
 	import { createGridNav } from '$lib/nav/wasd.svelte';
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
+	import { getCachedPinnedEvent } from '$lib/store/pinnedEventCache';
 	import yaml from 'js-yaml';
 	import type { EventConfig } from '$lib/events/types';
 	import eventsRaw from '$lib/events/events.yaml?raw';
 
-	const eventSlugs = new Set(Object.keys(yaml.load(eventsRaw) as Record<string, EventConfig>));
+	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 
 	interface ShopItem {
 		itemId: number;
@@ -28,9 +29,7 @@
 	let items = $state<ShopItem[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-
-	let selectedCategories = $state<Set<string>>(new Set());
-	let selectedRegion = $state('');
+	let pinnedSlug = $state<string | null>(getCachedPinnedEvent()?.slug ?? null);
 
 	let entered = $state(false);
 	let navigating = $state(false);
@@ -39,33 +38,29 @@
 	let interacted = $state(false);
 	let itemsReady = $state(false);
 
-	const nonEventItems = $derived(items.filter((item) => !eventSlugs.has(item.shopSlug)));
+	const pinnedConfig = $derived(pinnedSlug ? eventsMap[pinnedSlug] ?? null : null);
 
-	const availableCategories = $derived(
-		[...new Set(nonEventItems.map((i) => i.shopSlug))].filter((s) => s)
-	);
-	const availableRegions = $derived(
-		[...new Set(nonEventItems.flatMap((item) => item.regions))]
+	const eventItems = $derived(
+		pinnedSlug ? items.filter((item) => item.shopSlug === pinnedSlug) : []
 	);
 
-	const filteredItems = $derived(
-		nonEventItems.filter((item) => {
-			if (selectedCategories.size > 0 && !selectedCategories.has(item.shopSlug)) return false;
-			if (selectedRegion && !item.regions.includes(selectedRegion)) return false;
-			return true;
-		})
-	);
+	const filteredItems = $derived(eventItems);
 
 	onMount(async () => {
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
 
 		try {
-			const { data, error: apiError } = await api.GET('/api/shop/items');
-			if (apiError) {
+			const [itemsRes, pinnedRes] = await Promise.all([
+				api.GET('/api/shop/items'),
+				api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null),
+			]);
+			if (itemsRes.error) {
 				error = 'Failed to load items';
 			} else {
-				items = (data as unknown as ShopItem[]) ?? [];
+				items = (itemsRes.data as unknown as ShopItem[]) ?? [];
 			}
+			const pinned = (pinnedRes?.data as any)?.event ?? null;
+			if (pinned?.slug) pinnedSlug = pinned.slug;
 		} catch {
 			error = 'Failed to load items';
 		} finally {
@@ -80,14 +75,6 @@
 		if (opts.exitBack) backExiting = true;
 		await new Promise((resolve) => setTimeout(resolve, EXIT_DURATION + 350));
 		goto(href);
-	}
-
-	function toggleCategory(slug: string) {
-		const next = new Set(selectedCategories);
-		if (next.has(slug)) next.delete(slug);
-		else next.add(slug);
-		selectedCategories = next;
-		skipItemAnimation = true;
 	}
 
 	let usingMouse = $state(true);
@@ -114,12 +101,12 @@
 
 	const nav = createGridNav({
 		columns: () => getColumnsLayout(),
-		onEscape: () => navigateTo('/app?noanimate', { exitBack: true }),
+		onEscape: () => navigateTo('/app/events?noanimate', { exitBack: true }),
 		onSelect: () => {
 			const idx = getSelectedIndex();
 			const item = filteredItems[idx];
 			if (item && item.isActive) {
-				navigateTo(`/app/shop/${item.itemId}`);
+				navigateTo(`/app/events/shop/${item.itemId}`);
 			}
 		}
 	});
@@ -185,13 +172,37 @@
 	<div class="info-card" class:exiting={navigating}>
 		<!-- Header card -->
 		<div
-			class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden p-7.5 flex flex-col items-start w-full max-w-[932px]"
-			style="background-color: #fac393;"
+			class="relative border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden p-7.5 flex flex-col items-start w-full max-w-[932px]"
+			style="background-color: #000;"
 		>
-			<p class="font-cook font-semibold text-[48px] m-0 leading-[1.1] text-black">Shop</p>
-			<p class="font-bricolage font-semibold text-[32px] m-0 leading-normal w-full text-black">
-				Spend your hours on swag, grants, and more.
-			</p>
+			{#if pinnedConfig?.eventCard?.bgImage}
+				<img
+					src={pinnedConfig.eventCard.bgImage}
+					alt=""
+					aria-hidden="true"
+					class="absolute inset-0 size-full object-cover pointer-events-none"
+				/>
+				{#if pinnedConfig.nexusOverrideFlag === true}
+					<div class="absolute inset-0 pointer-events-none" style="background-color: rgba(0,0,0,0.9);"></div>
+				{:else}
+					<div
+						class="absolute inset-0 pointer-events-none"
+						style="background-image: linear-gradient(180.1deg, #00000000 0%, #000000 52.757%);"
+					></div>
+				{/if}
+			{/if}
+			<div class="relative flex flex-col gap-1 items-start w-full">
+				{#if pinnedConfig?.logo}
+					<img
+						src={pinnedConfig.logo}
+						alt="{pinnedConfig.name ?? ''} logo"
+						class="h-[85px] w-auto max-w-full object-contain"
+					/>
+				{/if}
+				<p class="m-0 leading-normal w-full text-white">
+					<span class="font-cook font-semibold text-[32px]">{pinnedConfig?.name ?? 'Event'}</span><br /><span class="font-bricolage font-semibold text-[24px]">Event Shop</span>
+				</p>
+			</div>
 		</div>
 
 		<!-- Status card -->
@@ -201,55 +212,9 @@
 			style="background-color: #f3e8d8; height: 300px;"
 		>
 			<p class="font-bricolage font-semibold text-[28px] text-black/50 m-0">
-				{#if loading}LOADING...{:else if error}{error}{:else if (selectedCategories.size > 0 || selectedRegion) && items.length > 0}No items match these filters{:else}Shop items coming soon{/if}
+				{#if loading}LOADING...{:else if error}{error}{:else}Shop items coming soon{/if}
 			</p>
 		</div>
-
-		<!-- Filters -->
-		{#if availableCategories.length > 0 || availableRegions.length > 0}
-			<div class="flex gap-2 flex-wrap w-full max-w-[932px] items-center">
-				{#if availableCategories.length > 0}
-					<span class="font-bricolage font-semibold text-sm text-black/60 mr-1">Categories:</span>
-					<button
-						class="category-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
-						class:active={selectedCategories.size === 0}
-						onclick={() => { selectedCategories = new Set(); skipItemAnimation = true; }}
-					>
-						All
-					</button>
-					{#each availableCategories as slug (slug)}
-						{@const active = selectedCategories.has(slug)}
-						<button
-							class="category-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors capitalize"
-							class:active
-							onclick={() => toggleCategory(slug)}
-						>
-							{slug}
-						</button>
-					{/each}
-				{/if}
-
-				{#if availableRegions.length > 0}
-					<span class="font-bricolage font-semibold text-sm text-black/60 mx-1">Region:</span>
-					<button
-						class="region-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
-						class:active={selectedRegion === ''}
-						onclick={() => { selectedRegion = ''; skipItemAnimation = true; }}
-					>
-						All
-					</button>
-					{#each availableRegions as region}
-						<button
-							class="region-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
-							class:active={selectedRegion === region}
-							onclick={() => { selectedRegion = selectedRegion === region ? '' : region; skipItemAnimation = true; }}
-						>
-							{region}
-						</button>
-					{/each}
-				{/if}
-			</div>
-		{/if}
 
 		<!-- Items -->
 		<div class="flex gap-4 flex-wrap w-full max-w-[932px]" bind:this={gridEl}>
@@ -271,7 +236,7 @@
 						onclick={(e) => {
 							if (usingMouse && item.isActive) {
 								(e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-								setTimeout(() => navigateTo(`/app/shop/${item.itemId}`), 200);
+								setTimeout(() => navigateTo(`/app/events/shop/${item.itemId}`), 200);
 							} else if (!usingMouse) {
 								const cols = Math.max(1, Math.floor(((gridEl?.clientWidth ?? 932) + GAP) / (CARD_W + GAP)));
 								nav.col = i % cols;
@@ -332,7 +297,7 @@
 
 <!-- Fixed UI -->
 <BackButton
-	onclick={() => navigateTo('/app?noanimate', { exitBack: true })}
+	onclick={() => navigateTo('/app/events?noanimate', { exitBack: true })}
 	exiting={backExiting}
 	flyIn={page.url.searchParams.has('back')}
 />
@@ -412,27 +377,6 @@
 		opacity: 1;
 		transition: opacity var(--enter-duration) ease;
 	}
-	.region-btn,
-	.category-btn {
-		background-color: #f3e8d8;
-		color: black;
-		cursor: pointer;
-	}
-	.region-btn:hover {
-		background-color: #e8dac8;
-	}
-	.region-btn.active {
-		background-color: black;
-		color: #f3e8d8;
-	}
-	.category-btn:hover {
-		filter: brightness(0.95);
-	}
-	.category-btn.active {
-		background-color: #ffa936;
-		color: black;
-	}
-
 	.fade-wrap.exiting {
 		opacity: 0;
 		transition: opacity 250ms ease;

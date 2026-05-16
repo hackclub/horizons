@@ -16,7 +16,7 @@
 
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 
-	type ItemKey = 'ticket' | 'stipends' | 'change';
+	type ItemKey = 'ticket' | 'stipends' | 'shop' | 'change';
 	type NavItem = {
 		key: ItemKey;
 		title: string;
@@ -31,8 +31,13 @@
 	const navItems: NavItem[] = [
 		{ key: 'ticket', title: 'Buy Ticket', prereqLabel: 'ticket', colorKey: 'primary' },
 		{ key: 'stipends', title: 'Travel Stipends', prereq: 'ticket' },
+		{ key: 'shop', title: 'Event Shop' },
 		{ key: 'change', title: 'Change Event' },
 	];
+
+	const visibleNavItems = $derived(
+		navItems.filter((it) => it.key !== 'shop' || hasEventShopItems)
+	);
 
 	let entered = $state(false);
 	let navigating = $state(false);
@@ -55,6 +60,7 @@
 	let approvedHours = $state(0);
 	let purchasing = $state<ItemKey | null>(null);
 	let purchaseError = $state<string | null>(null);
+	let hasEventShopItems = $state(false);
 
 	let showConfirmModal = $state(false);
 	let confirmText = $state('');
@@ -136,9 +142,10 @@
 
 	onMount(async () => {
 		try {
-			const [pinnedRes, totalRes] = await Promise.all([
+			const [pinnedRes, totalRes, shopRes] = await Promise.all([
 				api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null),
 				api.GET('/api/hackatime/hours/total').catch(() => null),
+				api.GET('/api/shop/items').catch(() => null),
 			]);
 			const pinned = (pinnedRes?.data as any)?.event ?? null;
 			if (pinned?.slug && eventsMap[pinned.slug]) {
@@ -156,6 +163,8 @@
 			if (totalRes?.data) {
 				completedHours = Math.round(((totalRes.data as any).totalNowHackatimeHours ?? 0) * 10) / 10;
 			}
+			const shopItems = (shopRes?.data as unknown as { shopSlug: string }[] | undefined) ?? [];
+			hasEventShopItems = shopItems.some((it) => it.shopSlug === pinnedSlug);
 			await hydrateTicketStatus(pinnedSlug);
 		} finally {
 			loading = false;
@@ -273,6 +282,10 @@
 			navigateTo('/app/events/explore?back');
 			return;
 		}
+		if (item.key === 'shop') {
+			navigateTo('/app/events/shop');
+			return;
+		}
 		// Already purchased → fully disabled, no feedback.
 		if (isPurchased(item.key)) return;
 		// Locked or in-flight → shake to indicate "no-op". Same treatment for
@@ -353,9 +366,9 @@
 	}
 
 	const nav = createListNav({
-		count: () => navItems.length,
+		count: () => visibleNavItems.length,
 		wheel: 80,
-		onSelect: (i) => activate(navItems[i]),
+		onSelect: (i) => activate(visibleNavItems[i]),
 		onEscape: () => navigateTo('/app?noanimate', { exitBack: true }),
 	});
 
@@ -366,7 +379,7 @@
 	$effect(() => {
 		if (loading || initialSelectionSet) return;
 		initialSelectionSet = true;
-		const firstActionable = navItems.findIndex((it) => statusOf(it) === 'available');
+		const firstActionable = visibleNavItems.findIndex((it) => statusOf(it) === 'available');
 		if (firstActionable >= 0) nav.selectedIndex = firstActionable;
 	});
 
@@ -394,6 +407,7 @@
 
 	function actionLabelFor(item: NavItem, status: ItemStatus): string | null {
 		if (item.key === 'change') return 'TO CHANGE';
+		if (item.key === 'shop') return 'TO BROWSE';
 		if (item.key !== 'ticket') return null;
 		if (status !== 'available') return null;
 		if (purchasing === item.key) return 'PURCHASING...';
@@ -466,7 +480,7 @@
 
 		<!-- Nav column -->
 		<div class="nav-column" role="listbox" tabindex="-1">
-			{#each navItems as item, i (item.key)}
+			{#each visibleNavItems as item, i (item.key)}
 				{@const selected = i === nav.selectedIndex}
 				{@const status = statusOf(item)}
 				{@const sub = subtitleFor(item, status)}
