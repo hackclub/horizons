@@ -63,6 +63,11 @@
 	}
 
 	function goBack() {
+		const from = page.url.searchParams.get('from');
+		if (from === 'events') {
+			navigateTo('/app/events?noanimate');
+			return;
+		}
 		navigateTo('/app/events/shop?back');
 	}
 
