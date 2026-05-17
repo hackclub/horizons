@@ -10,6 +10,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ProjectType } from '../../../generated/prisma/client';
+import { IsCdnUrl } from '../../uploads/cdn-url.validator';
 
 export class CreateProjectDto {
   @ApiProperty({ description: 'Project title', maxLength: 30 })
@@ -43,8 +44,8 @@ export class CreateProjectDto {
   @IsOptional()
   readmeUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Screenshot URL' })
-  @IsUrl()
+  @ApiPropertyOptional({ description: 'Screenshot URL (Hack Club CDN only)' })
+  @IsCdnUrl()
   @IsOptional()
   screenshotUrl?: string;
 

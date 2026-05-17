@@ -12,6 +12,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { ProjectType } from '../../../generated/prisma/client';
+import { IsCdnUrl } from '../../uploads/cdn-url.validator';
 
 export class UpdateAdminProjectDto {
   @ApiPropertyOptional({ maxLength: 30 })
@@ -56,9 +57,9 @@ export class UpdateAdminProjectDto {
   @IsOptional()
   journalUrl?: string | null;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ nullable: true, description: 'Hack Club CDN URL only' })
   @ValidateIf((_, v) => v !== null && v !== '')
-  @IsUrl()
+  @IsCdnUrl()
   @IsOptional()
   screenshotUrl?: string | null;
 
