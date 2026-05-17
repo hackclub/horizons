@@ -330,6 +330,32 @@ Validates image MIME type, uploads to Hack Club CDN via `HC_CDN_API_KEY`, return
 
 ---
 
+### Utils (`/api/utils`)
+
+User-URL reachability checks for the project ship/edit flows.
+
+**Endpoints:**
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/check-url?url=...&type=url\|repo` | User | Forwards to the Cloudflare URL-check Worker (30 req/min throttle) |
+
+**Why this is a thin forwarder.** The backend does *not* fetch user-submitted URLs directly. Any outbound request whose host comes from user input is sent to an isolated [Cloudflare Worker](#cloudflare-url-check-worker) which runs the fetch on Cloudflare's edge — a network with no path to the backend's VPC or internal services. This removes the SSRF surface from the application entirely; the backend's responsibility shrinks to: parse the URL for basic UX errors, forward to the Worker over a bearer-authed POST, relay the JSON response.
+
+**Required env vars:** `URL_CHECK_WORKER_URL` (deployed Worker URL), `URL_CHECK_WORKER_SECRET` (matches the Worker's `SHARED_SECRET`).
+
+**If you add a feature that fetches a user-supplied URL** (link preview, OG image, webhook verification, "import from URL", favicon probe — anything where the host comes from user input), **route it through the Worker too.** Do not call `fetch()` directly on a user URL from backend code. The pattern is one POST to the Worker; everything else stays the same.
+
+Response shape (mirrors the Worker):
+```ts
+{ ok: boolean; status: number; error?: string; favicon?: string | null }
+```
+`status` is bucketed: `200` (reachable), `400` (4xx), `500` (5xx), `0` (no response or blocked). Never the raw upstream status — exposing 401-vs-404 to the caller turns this into an external-service fingerprinting primitive.
+
+Test script: `bun scripts/url-check-test.ts` covers both the Worker directly and the backend forwarder. See the script header for required env vars.
+
+---
+
 ### Mail (internal service)
 
 Email sending service. **Currently disabled** — logs intent but does not send via SMTP.
@@ -438,7 +464,11 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 ### Rate Limiting
 - Global: 1M requests/hour
 - File uploads: 2 requests/minute
+- URL check (`/api/utils/check-url`): 30 requests/minute
 - Applied via NestJS `ThrottlerModule`
+
+### Server-Side Request Forgery (SSRF)
+The backend never makes outbound HTTP requests against user-supplied URLs. The one feature that needs to (`/api/utils/check-url`) forwards to an isolated Cloudflare Worker; see the [Utils module](#utils-apiutils) and [Cloudflare URL-check Worker](#cloudflare-url-check-worker) for details. Any new feature that needs to fetch a user URL must use the same Worker — do not introduce direct `fetch(userUrl)` calls in backend code.
 
 ### Audit Trail
 - `SubmissionAuditLog` records every review action with admin ID, status change, hours, and diff of changes
@@ -457,6 +487,19 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 | **PostHog** | Analytics | `POSTHOG_API_KEY` |
 | **Datadog** | APM tracing | `DD_TRACE_ENABLED` |
 | **attend.hackclub.com** | Midnight ticket registration | Called on item #1 purchase |
+| **Cloudflare URL-check Worker** | Isolated outbound fetch for user-supplied URLs (SSRF mitigation) | `URL_CHECK_WORKER_URL`, `URL_CHECK_WORKER_SECRET` |
+
+### Cloudflare URL-check Worker
+
+Deployed separately (not in this repo). A small Cloudflare Worker that accepts `POST { url, type }` with a bearer secret, performs the actual `fetch()` against the user-supplied URL from Cloudflare's edge runtime, and returns `{ ok, status, error?, favicon? }`. The Worker:
+
+- Lives on Cloudflare's public-internet edge with no network path to Horizons infrastructure — any SSRF blast radius is contained there, not in our VPC.
+- Re-validates everything: rejects non-http(s) schemes, IP-literal hostnames (incl. octal/decimal/IPv6 forms after WHATWG normalization), and self-references to `*.workers.dev`.
+- Never reads response bodies (status + headers only — no ReDoS / memory-DoS surface).
+- Buckets status codes so the backend can't be used as a fingerprinting tool for external services.
+- Handles both `type=url` (with `/favicon.ico`/`.png` probe) and `type=repo` (with `/info/refs?service=git-upload-pack` probe).
+
+To run the local test suite against the Worker: `bun backend/scripts/url-check-test.ts`. See the script for required env vars.
 
 ## Key Business Flows
 
