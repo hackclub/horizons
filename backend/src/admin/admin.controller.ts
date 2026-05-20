@@ -301,12 +301,14 @@ export class AdminController {
   @ApiQuery({ name: 'kind', required: false, enum: ['ShopItem', 'EventTicket'] })
   @ApiQuery({ name: 'userId', required: false, type: Number })
   @ApiQuery({ name: 'fulfilled', required: false, type: Boolean })
+  @ApiQuery({ name: 'refunded', required: false, type: Boolean })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiOkResponse({ type: LedgerResponse })
   async getTransactionLedger(
     @Query('kind') kind?: 'ShopItem' | 'EventTicket',
     @Query('userId') userId?: string,
     @Query('fulfilled') fulfilled?: string,
+    @Query('refunded') refunded?: string,
     @Query('limit') limit?: string,
   ) {
     return this.adminService.getTransactionLedger({
@@ -316,6 +318,12 @@ export class AdminController {
         fulfilled === 'true'
           ? true
           : fulfilled === 'false'
+            ? false
+            : undefined,
+      refunded:
+        refunded === 'true'
+          ? true
+          : refunded === 'false'
             ? false
             : undefined,
       limit: limit ? Math.min(parseInt(limit, 10), 2000) : undefined,

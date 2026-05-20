@@ -2774,12 +2774,16 @@ export class AdminService {
     kind?: 'ShopItem' | 'EventTicket';
     userId?: number;
     fulfilled?: boolean;
+    refunded?: boolean;
     limit?: number;
   }) {
     const where: any = {};
     if (filters.kind) where.kind = filters.kind;
     if (filters.userId) where.userId = filters.userId;
     if (filters.fulfilled !== undefined) where.isFulfilled = filters.fulfilled;
+    if (filters.refunded !== undefined) {
+      where.refundedAt = filters.refunded ? { not: null } : null;
+    }
 
     const entries = await this.prisma.transaction.findMany({
       where,

@@ -12,6 +12,7 @@
 		cost: number;
 		isFulfilled: boolean;
 		fulfilledAt: string | null;
+		refundedAt: string | null;
 		createdAt: string;
 		user: {
 			userId: number;
@@ -39,6 +40,7 @@
 
 	let kindFilter = $state<'all' | Kind>('all');
 	let fulfilledFilter = $state<'all' | 'fulfilled' | 'unfulfilled'>('all');
+	let refundedFilter = $state<'all' | 'hide' | 'only'>('all');
 	let search = $state('');
 
 	const kindTabs = [
@@ -53,6 +55,12 @@
 		{ label: 'Unfulfilled', value: 'unfulfilled' },
 	];
 
+	const refundedTabs = [
+		{ label: 'All', value: 'all' },
+		{ label: 'Hide refunded', value: 'hide' },
+		{ label: 'Only refunded', value: 'only' },
+	];
+
 	async function loadLedger() {
 		loading = true;
 		error = null;
@@ -61,6 +69,8 @@
 			if (kindFilter !== 'all') params.set('kind', kindFilter);
 			if (fulfilledFilter === 'fulfilled') params.set('fulfilled', 'true');
 			else if (fulfilledFilter === 'unfulfilled') params.set('fulfilled', 'false');
+			if (refundedFilter === 'hide') params.set('refunded', 'false');
+			else if (refundedFilter === 'only') params.set('refunded', 'true');
 			params.set('limit', '500');
 
 			const resp = await fetch(`/api/admin/transactions?${params.toString()}`, {
@@ -82,6 +92,7 @@
 	$effect(() => {
 		kindFilter;
 		fulfilledFilter;
+		refundedFilter;
 		loadLedger();
 	});
 
@@ -161,16 +172,10 @@
 						: 'Refund failed';
 				return;
 			}
-			entries = entries.filter((row) => row.transactionId !== e.transactionId);
-			if (summary) {
-				summary = {
-					...summary,
-					totalCount: summary.totalCount - 1,
-					totalSpent: Math.round((summary.totalSpent - e.cost) * 10) / 10,
-					shopCount: e.kind === 'ShopItem' ? summary.shopCount - 1 : summary.shopCount,
-					ticketCount: e.kind === 'EventTicket' ? summary.ticketCount - 1 : summary.ticketCount,
-				};
-			}
+			const refundedAt = new Date().toISOString();
+			entries = entries.map((row) =>
+				row.transactionId === e.transactionId ? { ...row, refundedAt } : row,
+			);
 		} catch (err) {
 			refundError = err instanceof Error ? err.message : 'Refund failed';
 		} finally {
@@ -214,7 +219,7 @@
 		{/if}
 
 		<div class="space-y-3 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-			<div class="grid gap-3 md:grid-cols-3">
+			<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
 				<div class="space-y-1">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Kind</p>
 					<Tab items={kindTabs} bind:value={kindFilter} />
@@ -222,6 +227,10 @@
 				<div class="space-y-1">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Fulfillment</p>
 					<Tab items={fulfilledTabs} bind:value={fulfilledFilter} />
+				</div>
+				<div class="space-y-1">
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Refunded</p>
+					<Tab items={refundedTabs} bind:value={refundedFilter} />
 				</div>
 				<div class="space-y-1">
 					<label class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary" for="ledger-search">Search</label>
@@ -285,7 +294,10 @@
 								<td class="px-3 py-2 text-ds-text-secondary">{e.itemDescription}</td>
 								<td class="px-3 py-2 text-right font-mono text-ds-text">{e.cost}h</td>
 								<td class="px-3 py-2">
-									{#if e.isFulfilled}
+									{#if e.refundedAt}
+										<span class="text-xs text-red-700 dark:text-red-300">Refunded</span>
+										<div class="text-[10px] text-ds-text-secondary">{formatDateTime(e.refundedAt)}</div>
+									{:else if e.isFulfilled}
 										<span class="text-xs text-green-700 dark:text-green-300">Fulfilled</span>
 										{#if e.fulfilledAt}
 											<div class="text-[10px] text-ds-text-secondary">{formatDateTime(e.fulfilledAt)}</div>
@@ -298,13 +310,17 @@
 								</td>
 								<td class="px-3 py-2 text-xs text-ds-text-secondary">{formatDateTime(e.createdAt)}</td>
 								<td class="px-3 py-2 text-right">
-									<button
-										class="rounded border border-red-300 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-700/50 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50"
-										onclick={() => handleRefund(e)}
-										disabled={refundingId === e.transactionId}
-									>
-										{refundingId === e.transactionId ? 'Refunding…' : 'Refund'}
-									</button>
+									{#if e.refundedAt}
+										<span class="text-[11px] text-ds-text-placeholder">—</span>
+									{:else}
+										<button
+											class="rounded border border-red-300 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-700/50 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50"
+											onclick={() => handleRefund(e)}
+											disabled={refundingId === e.transactionId}
+										>
+											{refundingId === e.transactionId ? 'Refunding…' : 'Refund'}
+										</button>
+									{/if}
 								</td>
 							</tr>
 						{/each}

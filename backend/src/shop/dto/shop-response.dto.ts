@@ -206,6 +206,9 @@ export class AdminTransactionResponse extends UserTransactionResponse {
   @ApiProperty({ type: Date, nullable: true })
   fulfilledAt: Date | null;
 
+  @ApiProperty({ type: Date, nullable: true })
+  refundedAt: Date | null;
+
   @ApiProperty({ type: TransactionUserSummary })
   user: TransactionUserSummary;
 }

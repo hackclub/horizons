@@ -355,6 +355,7 @@ model Transaction {
   cost            Float
   isFulfilled     Boolean          @default(false) @map("is_fulfilled")
   fulfilledAt     DateTime?        @map("fulfilled_at")
+  refundedAt      DateTime?        @map("refunded_at")
   createdAt       DateTime         @default(now()) @map("created_at")
   user            User             @relation(fields: [userId], references: [userId], onDelete: Cascade)
   item            ShopItem?        @relation(fields: [itemId], references: [itemId], onDelete: Cascade)

@@ -3605,6 +3605,8 @@ export interface components {
             isFulfilled: boolean;
             /** Format: date-time */
             fulfilledAt: string | null;
+            /** Format: date-time */
+            refundedAt: string | null;
             user: components["schemas"]["TransactionUserSummary"];
         };
         RefundResponse: {

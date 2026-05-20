@@ -54,7 +54,7 @@
     let shopItemSuccess = $state('');
     let shopSubTab = $state<'items' | 'transactions' | 'transactions-by-user'>('items');
     let selectedItemFilter = $state<number | null>(null);
-    let fulfillmentFilter = $state<'all' | 'fulfilled' | 'unfulfilled'>('all');
+    let fulfillmentFilter = $state<'all' | 'fulfilled' | 'unfulfilled' | 'refunded'>('all');
 
     let variantForm = $state<{ name: string; cost: string }>({
         name: '',
@@ -79,9 +79,11 @@
         }
 
         if (fulfillmentFilter === 'fulfilled') {
-            transactions = transactions.filter((t) => t.isFulfilled);
+            transactions = transactions.filter((t) => t.isFulfilled && !t.refundedAt);
         } else if (fulfillmentFilter === 'unfulfilled') {
-            transactions = transactions.filter((t) => !t.isFulfilled);
+            transactions = transactions.filter((t) => !t.isFulfilled && !t.refundedAt);
+        } else if (fulfillmentFilter === 'refunded') {
+            transactions = transactions.filter((t) => !!t.refundedAt);
         }
 
         return transactions;
@@ -108,9 +110,15 @@
         }
 
         if (fulfillmentFilter === 'fulfilled') {
-            transactionsToGroup = transactionsToGroup.filter((t) => t.isFulfilled);
+            transactionsToGroup = transactionsToGroup.filter(
+                (t) => t.isFulfilled && !t.refundedAt
+            );
         } else if (fulfillmentFilter === 'unfulfilled') {
-            transactionsToGroup = transactionsToGroup.filter((t) => !t.isFulfilled);
+            transactionsToGroup = transactionsToGroup.filter(
+                (t) => !t.isFulfilled && !t.refundedAt
+            );
+        } else if (fulfillmentFilter === 'refunded') {
+            transactionsToGroup = transactionsToGroup.filter((t) => !!t.refundedAt);
         }
 
         for (const transaction of transactionsToGroup) {
@@ -549,7 +557,10 @@
                 console.error('Failed to refund transaction:', error);
                 return;
             }
-            shopTransactions = shopTransactions.filter((t) => t.transactionId !== transactionId);
+            const refundedAt = new Date().toISOString();
+            shopTransactions = shopTransactions.map((t) =>
+                t.transactionId === transactionId ? { ...t, refundedAt } : t
+            );
         } catch (err) {
             console.error('Failed to refund transaction:', err);
         } finally {
@@ -1191,7 +1202,8 @@
                         items={[
                             { label: 'All', value: 'all' },
                             { label: 'Fulfilled', value: 'fulfilled' },
-                            { label: 'Unfulfilled', value: 'unfulfilled' }
+                            { label: 'Unfulfilled', value: 'unfulfilled' },
+                            { label: 'Refunded', value: 'refunded' }
                         ]}
                         bind:value={fulfillmentFilter}
                     />
@@ -1278,7 +1290,17 @@
                                         >{transaction.cost} hours</td
                                     >
                                     <td class="px-4 py-3">
-                                        {#if transaction.isFulfilled}
+                                        {#if transaction.refundedAt}
+                                            <div class="flex flex-col gap-1">
+                                                <span
+                                                    class="px-2 py-1 text-xs rounded bg-red-500/20 border border-red-400 text-red-700 dark:text-red-300 w-fit"
+                                                    >Refunded</span
+                                                >
+                                                <span class="text-xs text-ds-text-placeholder"
+                                                    >{formatDate(transaction.refundedAt)}</span
+                                                >
+                                            </div>
+                                        {:else if transaction.isFulfilled}
                                             <div class="flex flex-col gap-1">
                                                 <span
                                                     class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 dark:text-green-300 w-fit"
@@ -1301,7 +1323,11 @@
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="flex gap-2">
-                                            {#if transaction.isFulfilled}
+                                            {#if transaction.refundedAt}
+                                                <span class="text-xs text-ds-text-placeholder"
+                                                    >No actions available</span
+                                                >
+                                            {:else if transaction.isFulfilled}
                                                 <Button
                                                     variant="ghost"
                                                     onclick={() =>
@@ -1371,7 +1397,8 @@
                         items={[
                             { label: 'All', value: 'all' },
                             { label: 'Fulfilled', value: 'fulfilled' },
-                            { label: 'Unfulfilled', value: 'unfulfilled' }
+                            { label: 'Unfulfilled', value: 'unfulfilled' },
+                            { label: 'Refunded', value: 'refunded' }
                         ]}
                         bind:value={fulfillmentFilter}
                     />

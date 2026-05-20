@@ -302,7 +302,7 @@ export class ShopService {
       }
 
       const existingPurchaseCount = await this.prisma.transaction.count({
-        where: { userId, itemId },
+        where: { userId, itemId, refundedAt: null },
       });
 
       if (existingPurchaseCount >= maxPerUser) {
@@ -352,7 +352,7 @@ export class ShopService {
       preCheck: async (tx) => {
         if (maxPerUser !== null && maxPerUser > 0) {
           const count = await tx.transaction.count({
-            where: { userId, itemId },
+            where: { userId, itemId, refundedAt: null },
           });
           if (count >= maxPerUser) {
             throw new BadRequestException(
@@ -583,8 +583,13 @@ export class ShopService {
       throw new NotFoundException('Transaction not found');
     }
 
-    await this.prisma.transaction.delete({
+    if (transaction.refundedAt) {
+      throw new BadRequestException('Transaction is already refunded');
+    }
+
+    await this.prisma.transaction.update({
       where: { transactionId },
+      data: { refundedAt: new Date() },
     });
 
     const baseName = transaction.item?.name ?? transaction.itemDescription;
@@ -617,6 +622,10 @@ export class ShopService {
 
     if (!transaction) {
       throw new NotFoundException('Transaction not found');
+    }
+
+    if (transaction.refundedAt) {
+      throw new BadRequestException('Cannot fulfill a refunded transaction');
     }
 
     if (transaction.isFulfilled) {

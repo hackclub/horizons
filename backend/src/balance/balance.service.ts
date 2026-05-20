@@ -21,7 +21,7 @@ export class BalanceService {
     });
 
     const totalSpent = await db.transaction.aggregate({
-      where: { userId },
+      where: { userId, refundedAt: null },
       _sum: { cost: true },
     });
 

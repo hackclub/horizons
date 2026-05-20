@@ -1455,6 +1455,9 @@ export class LedgerEntryResponse {
   @ApiProperty({ type: Date, nullable: true })
   fulfilledAt: Date | null;
 
+  @ApiProperty({ type: Date, nullable: true })
+  refundedAt: Date | null;
+
   @ApiProperty()
   createdAt: Date;
 
