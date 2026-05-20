@@ -150,7 +150,7 @@ async function fetchDedupedTotal(
   const params = new URLSearchParams({
     features: 'projects',
     start_date: startYmd,
-    test_param: 'true',
+    boundary_aware: 'true',
     total_seconds: 'true',
     filter_by_project: projectNames.join(','),
   });
@@ -180,6 +180,49 @@ async function fetchDedupedTotal(
   if (typeof total !== 'number') {
     throw new Error(
       `deduped response missing total_seconds: ${JSON.stringify(data).slice(0, 200)}`,
+    );
+  }
+  return total;
+}
+
+async function fetchUndedupedFilteredTotal(
+  account: string,
+  token: string,
+  startYmd: string,
+  projectNames: string[],
+): Promise<number> {
+  const params = new URLSearchParams({
+    features: 'projects',
+    start_date: startYmd,
+    total_seconds: 'true',
+    filter_by_project: projectNames.join(','),
+  });
+  const url = `${HACKATIME_BASE_URL}/api/v1/users/${encodeURIComponent(account)}/stats?${params.toString()}`;
+  console.log(`[no-boundary] GET ${url}`);
+  const resp = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const rawBody = await resp.text();
+  console.log(`[no-boundary] HTTP ${resp.status} (${rawBody.length} bytes)`);
+  if (!resp.ok) {
+    console.log(`[no-boundary] body: ${rawBody}`);
+    throw new Error(`no-boundary stats: HTTP ${resp.status}`);
+  }
+  let data: any;
+  try {
+    data = JSON.parse(rawBody);
+  } catch {
+    console.log(`[no-boundary] body: ${rawBody}`);
+    throw new Error('no-boundary stats: response was not JSON');
+  }
+  console.log(`[no-boundary] body:\n${JSON.stringify(data, null, 2)}`);
+  const total = data?.total_seconds;
+  if (typeof total !== 'number') {
+    throw new Error(
+      `no-boundary response missing total_seconds: ${JSON.stringify(data).slice(0, 200)}`,
     );
   }
   return total;
@@ -270,8 +313,16 @@ async function main() {
     args.projectNames,
   );
 
-  console.log(`\n${sep}\n DEDUPED      (filter_by_project + total_seconds=true)\n${sep}`);
+  console.log(`\n${sep}\n DEDUPED      (filter_by_project + total_seconds=true + boundary_aware=true)\n${sep}`);
   const dedupedTotal = await fetchDedupedTotal(
+    args.hackatimeAccount,
+    token,
+    fromYmd,
+    args.projectNames,
+  );
+
+  console.log(`\n${sep}\n NO-BOUNDARY  (filter_by_project + total_seconds=true, NO boundary_aware)\n${sep}`);
+  const noBoundaryTotal = await fetchUndedupedFilteredTotal(
     args.hackatimeAccount,
     token,
     fromYmd,
@@ -289,6 +340,7 @@ async function main() {
   const nondedup = perProject.total;
   console.log(`Sum of per-project   : ${nondedup.toString().padStart(8)} sec  (${fmtHours(nondedup)} hr)`);
   console.log(`Deduped total        : ${dedupedTotal.toString().padStart(8)} sec  (${fmtHours(dedupedTotal)} hr)`);
+  console.log(`No-boundary total    : ${noBoundaryTotal.toString().padStart(8)} sec  (${fmtHours(noBoundaryTotal)} hr)`);
 }
 
 main().catch((err) => {
