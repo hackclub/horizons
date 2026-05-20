@@ -15,8 +15,11 @@
 		cost: number;
 		regions: string[];
 		isActive: boolean;
+		maxPerUser: number | null;
 		variants: { variantId: number; name: string; cost: number }[];
 	}
+
+	const MAX_QUANTITY = 50;
 
 	const itemId = $derived(Number(page.params.itemId));
 
@@ -29,13 +32,16 @@
 	let purchasing = $state(false);
 	let purchaseError = $state<string | null>(null);
 	let purchaseSuccess = $state(false);
+	let quantity = $state(1);
 
 	const selectedVariant = $derived(
 		item?.variants.find((v) => v.variantId === selectedVariantId) ?? null
 	);
-	const effectiveCost = $derived(selectedVariant?.cost ?? item?.cost ?? 0);
+	const unitCost = $derived(selectedVariant?.cost ?? item?.cost ?? 0);
+	const allowsQuantity = $derived(!item?.maxPerUser);
+	const totalCost = $derived(unitCost * (allowsQuantity ? quantity : 1));
 	const needsVariant = $derived((item?.variants.length ?? 0) > 0);
-	const canAfford = $derived(balance !== null && balance >= effectiveCost);
+	const canAfford = $derived(balance !== null && balance >= totalCost);
 	const purchaseDisabled = $derived(
 		!item ||
 			!item.isActive ||
@@ -49,8 +55,12 @@
 		if (item && !item.isActive) return 'Unavailable';
 		if (needsVariant && selectedVariantId == null) return 'Select a variant';
 		if (!canAfford) return 'Insufficient balance';
-		return `Purchase (${effectiveCost}h)`;
+		return `Purchase (${totalCost}h)`;
 	});
+
+	function adjustQuantity(delta: number) {
+		quantity = Math.max(1, Math.min(MAX_QUANTITY, quantity + delta));
+	}
 
 	let navigating = $state(false);
 
@@ -105,7 +115,8 @@
 			const { data, response } = await api.POST('/api/shop/auth/purchase', {
 				body: {
 					itemId: item.itemId,
-					variantId: needsVariant ? (selectedVariantId ?? undefined) : undefined
+					variantId: needsVariant ? (selectedVariantId ?? undefined) : undefined,
+					quantity: allowsQuantity ? quantity : undefined
 				}
 			});
 
@@ -221,6 +232,31 @@
 									{variant.name} ({variant.cost}h)
 								</button>
 							{/each}
+						</div>
+					{/if}
+
+					{#if allowsQuantity}
+						<div class="flex items-center gap-3">
+							<span class="font-bricolage text-sm font-semibold text-black">Qty</span>
+							<button
+								type="button"
+								class="qty-btn border-2 border-black rounded-lg w-8 h-8 font-bricolage text-base font-semibold text-black bg-[#f3e8d8] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+								disabled={quantity <= 1 || purchasing || purchaseSuccess}
+								onclick={() => adjustQuantity(-1)}
+								aria-label="Decrease quantity"
+							>
+								−
+							</button>
+							<span class="font-bricolage text-base font-semibold text-black w-6 text-center">{quantity}</span>
+							<button
+								type="button"
+								class="qty-btn border-2 border-black rounded-lg w-8 h-8 font-bricolage text-base font-semibold text-black bg-[#f3e8d8] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+								disabled={quantity >= MAX_QUANTITY || purchasing || purchaseSuccess}
+								onclick={() => adjustQuantity(1)}
+								aria-label="Increase quantity"
+							>
+								+
+							</button>
 						</div>
 					{/if}
 

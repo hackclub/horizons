@@ -3467,6 +3467,7 @@ export interface components {
         PurchaseItemDto: {
             itemId: number;
             variantId?: number;
+            quantity?: number;
         };
         TransactionItemSummary: {
             itemId: number;

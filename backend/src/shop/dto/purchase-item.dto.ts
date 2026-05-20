@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class PurchaseItemDto {
   @IsInt()
@@ -9,4 +9,10 @@ export class PurchaseItemDto {
   @IsOptional()
   @Min(1)
   variantId?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(1)
+  @Max(50)
+  quantity?: number;
 }

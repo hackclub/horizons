@@ -37,8 +37,8 @@ export class BalanceService {
   }
 
   // Atomic spend: row-locks the user, re-checks balance and any caller-supplied
-  // preCheck under the lock, then writes the Transaction. Prevents concurrent
-  // purchases from both passing a stale balance check.
+  // preCheck under the lock, then writes one Transaction per unit. Prevents
+  // concurrent purchases from both passing a stale balance check.
   async processPurchase(params: {
     userId: number;
     cost: number;
@@ -47,6 +47,7 @@ export class BalanceService {
     itemId?: number | null;
     variantId?: number | null;
     eventId?: number | null;
+    quantity?: number;
     enforceBalance?: boolean;
     preCheck?: (tx: Prisma.TransactionClient) => Promise<void>;
   }) {
@@ -58,9 +59,16 @@ export class BalanceService {
       itemId = null,
       variantId = null,
       eventId = null,
+      quantity = 1,
       enforceBalance = true,
       preCheck,
     } = params;
+
+    if (quantity < 1) {
+      throw new BadRequestException('Quantity must be at least 1');
+    }
+
+    const totalCost = cost * quantity;
 
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM users WHERE user_id = ${userId} FOR UPDATE`;
@@ -71,28 +79,34 @@ export class BalanceService {
 
       if (enforceBalance) {
         const { balance } = await this.getUserBalance(userId, tx);
-        if (balance < cost) {
+        if (balance < totalCost) {
           throw new BadRequestException(
-            `Insufficient balance. You have ${balance} hours but this costs ${cost} hours.`,
+            `Insufficient balance. You have ${balance} hours but this costs ${totalCost} hours.`,
           );
         }
       }
 
-      return tx.transaction.create({
-        data: {
-          userId,
-          kind,
-          itemId,
-          variantId,
-          eventId,
-          itemDescription,
-          cost,
-        },
-        include: {
-          item: true,
-          variant: true,
-        },
-      });
+      const data = {
+        userId,
+        kind,
+        itemId,
+        variantId,
+        eventId,
+        itemDescription,
+        cost,
+      };
+
+      let lastTxn = null;
+      for (let i = 0; i < quantity; i++) {
+        lastTxn = await tx.transaction.create({
+          data,
+          include: {
+            item: true,
+            variant: true,
+          },
+        });
+      }
+      return lastTxn!;
     });
   }
 

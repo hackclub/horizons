@@ -259,9 +259,14 @@ export class ShopService {
     return this.balanceService.getUserBalance(userId);
   }
 
-  async purchaseItem(userId: number, itemId: number, variantId?: number) {
+  async purchaseItem(
+    userId: number,
+    itemId: number,
+    variantId?: number,
+    quantity: number = 1,
+  ) {
     console.log(
-      `[Shop Purchase] Starting purchase for userId: ${userId}, itemId: ${itemId}, variantId: ${variantId || 'none'}`,
+      `[Shop Purchase] Starting purchase for userId: ${userId}, itemId: ${itemId}, variantId: ${variantId || 'none'}, quantity: ${quantity}`,
     );
 
     await this.balanceService.verifyEligibility(userId, 'Shop Purchase');
@@ -290,6 +295,12 @@ export class ShopService {
 
     const maxPerUser = item.maxPerUser;
     if (maxPerUser !== null && maxPerUser > 0) {
+      if (quantity > 1) {
+        throw new BadRequestException(
+          'This item has a per-user limit and cannot be purchased in bulk',
+        );
+      }
+
       const existingPurchaseCount = await this.prisma.transaction.count({
         where: { userId, itemId },
       });
@@ -328,11 +339,12 @@ export class ShopService {
     }
 
     console.log(
-      `[Shop Purchase] Creating transaction for userId: ${userId}, itemId: ${itemId}, cost: ${cost}`,
+      `[Shop Purchase] Creating transaction for userId: ${userId}, itemId: ${itemId}, unitCost: ${cost}, quantity: ${quantity}, total: ${cost * quantity}`,
     );
     const transaction = await this.balanceService.processPurchase({
       userId,
       cost,
+      quantity,
       kind: 'ShopItem',
       itemDescription: description,
       itemId,

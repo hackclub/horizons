@@ -85,6 +85,7 @@ export class ShopAuthController {
       req.user.userId,
       purchaseItemDto.itemId,
       purchaseItemDto.variantId,
+      purchaseItemDto.quantity,
     );
   }
 
