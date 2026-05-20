@@ -1439,9 +1439,9 @@ export class LedgerEntryResponse {
   transactionId: number;
 
   @ApiProperty({
-    enum: ['ShopItem', 'EventTicket'],
+    enum: ['ShopItem', 'EventTicket', 'AdminAdjustment'],
   })
-  kind: 'ShopItem' | 'EventTicket';
+  kind: 'ShopItem' | 'EventTicket' | 'AdminAdjustment';
 
   @ApiProperty()
   itemDescription: string;
@@ -1483,6 +1483,9 @@ export class LedgerSummaryResponse {
 
   @ApiProperty()
   ticketCount: number;
+
+  @ApiProperty()
+  adminAdjustmentCount: number;
 }
 
 export class LedgerResponse {
@@ -1621,4 +1624,27 @@ export class ResetJoeActionResponse {
 
   @ApiProperty({ type: FraudReviewQueueItemResponse })
   project: FraudReviewQueueItemResponse;
+}
+
+export class AdjustUserHoursResponse {
+  @ApiProperty()
+  transactionId: number;
+
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty({
+    description:
+      'Signed adjustment in hours: positive when hours were credited to the user, negative when deducted.',
+  })
+  hours: number;
+
+  @ApiProperty()
+  reason: string;
+
+  @ApiProperty({ description: 'New balance after the adjustment.' })
+  newBalance: number;
+
+  @ApiProperty()
+  createdAt: Date;
 }

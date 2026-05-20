@@ -374,6 +374,7 @@ enum TransactionKind {
   ShopItem
   EventRsvp
   EventTicket
+  AdminAdjustment
 }
 
 model GiftCode {

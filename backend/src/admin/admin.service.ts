@@ -12,6 +12,7 @@ import { FraudReviewService } from '../fraud-review/fraud-review.service';
 import { StreakService } from '../streaks/streak.service';
 import { HackatimeService } from '../hackatime/hackatime.service';
 import { LoopsService } from '../loops/loops.service';
+import { BalanceService } from '../balance/balance.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 import * as Papa from 'papaparse';
 
@@ -56,6 +57,7 @@ export class AdminService {
     private streakService: StreakService,
     private hackatimeService: HackatimeService,
     private loopsService: LoopsService,
+    private balanceService: BalanceService,
   ) {}
 
   async getAllSubmissions() {
@@ -2771,7 +2773,7 @@ export class AdminService {
   }
 
   async getTransactionLedger(filters: {
-    kind?: 'ShopItem' | 'EventTicket';
+    kind?: 'ShopItem' | 'EventTicket' | 'AdminAdjustment';
     userId?: number;
     fulfilled?: boolean;
     refunded?: boolean;
@@ -2814,6 +2816,7 @@ export class AdminService {
       totalSpent: 0,
       shopCount: 0,
       ticketCount: 0,
+      adminAdjustmentCount: 0,
     };
     for (const row of allTotals) {
       const count = row._count._all;
@@ -2822,10 +2825,76 @@ export class AdminService {
       summary.totalSpent += spent;
       if (row.kind === 'ShopItem') summary.shopCount = count;
       else if (row.kind === 'EventTicket') summary.ticketCount = count;
+      else if (row.kind === 'AdminAdjustment') summary.adminAdjustmentCount = count;
     }
     summary.totalSpent = Math.round(summary.totalSpent * 10) / 10;
 
     return { entries, summary };
+  }
+
+  // Superadmin-only manual balance adjustment. Positive hours credit the user
+  // (stored as negative cost so balance = approvedHours - sumCost increases);
+  // negative hours deduct. Recorded as a TransactionKind.AdminAdjustment row so
+  // it shows up in the ledger and can be refunded like any other transaction.
+  async adjustUserHours(
+    targetUserId: number,
+    dto: { hours: number; reason: string },
+    requestingUserId: number,
+  ) {
+    const hours = Math.round(dto.hours * 10) / 10;
+    if (!Number.isFinite(hours) || hours === 0) {
+      throw new BadRequestException('hours must be a non-zero number');
+    }
+
+    const reason = dto.reason.trim();
+    if (!reason) {
+      throw new BadRequestException('reason is required');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { userId: targetUserId },
+      select: { userId: true, email: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const description = `Admin adjustment by user #${requestingUserId}: ${reason}`;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM users WHERE user_id = ${targetUserId} FOR UPDATE`;
+
+      const txn = await tx.transaction.create({
+        data: {
+          userId: targetUserId,
+          kind: 'AdminAdjustment',
+          cost: -hours,
+          itemDescription: description,
+          isFulfilled: true,
+          fulfilledAt: new Date(),
+        },
+      });
+
+      const { balance } = await this.balanceService.getUserBalance(
+        targetUserId,
+        tx,
+      );
+
+      return { txn, balance };
+    });
+
+    console.log(
+      `[AdminAdjustment] user_id=${targetUserId} email=${user.email} hours=${hours} reason="${reason}" by_admin=${requestingUserId} new_balance=${result.balance}`,
+    );
+
+    return {
+      transactionId: result.txn.transactionId,
+      userId: targetUserId,
+      hours,
+      reason,
+      newBalance: result.balance,
+      createdAt: result.txn.createdAt,
+    };
   }
 
   // ---------------------------------------------------------------------------
