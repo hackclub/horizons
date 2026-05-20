@@ -44,6 +44,13 @@
 			!canAfford ||
 			(needsVariant && selectedVariantId == null)
 	);
+	const purchaseLabel = $derived.by(() => {
+		if (purchaseSuccess) return 'Purchased!';
+		if (item && !item.isActive) return 'Unavailable';
+		if (needsVariant && selectedVariantId == null) return 'Select a variant';
+		if (!canAfford) return 'Insufficient balance';
+		return `Purchase (${effectiveCost}h)`;
+	});
 
 	let navigating = $state(false);
 
@@ -207,7 +214,7 @@
 						<div class="flex flex-wrap gap-2">
 							{#each item.variants as variant (variant.variantId)}
 								<button
-									class="font-bricolage text-sm font-semibold text-black border-2 border-black rounded-lg px-3 py-1 cursor-pointer {selectedVariantId === variant.variantId ? 'shadow-[2px_2px_0px_0px_black]' : ''}"
+									class="font-bricolage text-sm font-semibold text-black border-2 border-black rounded-lg px-3 py-1 cursor-pointer"
 									style="background-color: {selectedVariantId === variant.variantId ? 'var(--selected-color)' : '#f3e8d8'}; transition: background-color var(--selected-duration) ease;"
 									onclick={() => { selectedVariantId = variant.variantId; }}
 								>
@@ -218,29 +225,18 @@
 					{/if}
 
 					<button
-						class="border-2 border-black rounded-[8px] px-4 py-2 font-bricolage font-semibold text-[16px] leading-normal {purchaseDisabled
+						type="button"
+						class="purchase-btn border-2 border-black rounded-lg px-4 py-2 font-bricolage text-base font-semibold {purchaseDisabled
 							? 'bg-transparent text-black/50 cursor-not-allowed'
-							: 'bg-[#f3e8d8] text-black cursor-pointer shadow-[2px_2px_0px_0px_black]'}"
+							: 'bg-[#ffa936] text-black cursor-pointer'}"
 						disabled={purchaseDisabled}
 						onclick={handlePurchase}
 					>
-						{#if purchaseSuccess}
-							Purchased!
-						{:else if purchasing}
-							Purchasing...
-						{:else if item && !item.isActive}
-							Unavailable
-						{:else if needsVariant && selectedVariantId == null}
-							Select a variant
-						{:else if !canAfford}
-							Insufficient balance
-						{:else}
-							Purchase ({effectiveCost}h)
-						{/if}
+						{purchasing ? 'Purchasing...' : purchaseLabel}
 					</button>
 
 					{#if purchaseError}
-						<p class="font-bricolage text-[14px] text-red-700 leading-normal m-0">{purchaseError}</p>
+						<p class="font-bricolage text-sm font-semibold text-red-600 m-0">{purchaseError}</p>
 					{/if}
 				</div>
 			{/if}
@@ -283,5 +279,11 @@
 	}
 	.detail-card.exiting {
 		animation: fly-right-exit var(--exit-duration) var(--exit-easing) both;
+	}
+	.purchase-btn {
+		transition: transform var(--juice-duration) var(--juice-easing);
+	}
+	.purchase-btn:hover:not(:disabled) {
+		transform: scale(var(--juice-scale));
 	}
 </style>
