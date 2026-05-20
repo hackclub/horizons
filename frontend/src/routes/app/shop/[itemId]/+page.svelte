@@ -26,6 +26,25 @@
 	let error = $state<string | null>(null);
 	let selectedVariantId = $state<number | null>(null);
 
+	let purchasing = $state(false);
+	let purchaseError = $state<string | null>(null);
+	let purchaseSuccess = $state(false);
+
+	const selectedVariant = $derived(
+		item?.variants.find((v) => v.variantId === selectedVariantId) ?? null
+	);
+	const effectiveCost = $derived(selectedVariant?.cost ?? item?.cost ?? 0);
+	const needsVariant = $derived((item?.variants.length ?? 0) > 0);
+	const canAfford = $derived(balance !== null && balance >= effectiveCost);
+	const purchaseDisabled = $derived(
+		!item ||
+			!item.isActive ||
+			purchasing ||
+			purchaseSuccess ||
+			!canAfford ||
+			(needsVariant && selectedVariantId == null)
+	);
+
 	let navigating = $state(false);
 
 	onMount(async () => {
@@ -64,6 +83,41 @@
 
 	function goBack() {
 		navigateTo('/app/shop?back');
+	}
+
+	async function handlePurchase() {
+		if (!item || purchaseDisabled) return;
+		purchasing = true;
+		purchaseError = null;
+		try {
+			const { data, response } = await api.POST('/api/shop/auth/purchase', {
+				body: {
+					itemId: item.itemId,
+					variantId: needsVariant ? (selectedVariantId ?? undefined) : undefined
+				}
+			});
+
+			if (data) {
+				if (typeof data.newBalance?.balance === 'number') {
+					balance = data.newBalance.balance;
+				}
+				purchaseSuccess = true;
+				return;
+			}
+
+			let message = response.statusText || 'Purchase failed.';
+			try {
+				const body = await response.json();
+				if (body?.message) {
+					message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
+				}
+			} catch {}
+			purchaseError = message;
+		} catch {
+			purchaseError = 'Purchase failed. Please try again.';
+		} finally {
+			purchasing = false;
+		}
 	}
 
 	function calcDays(hours: number): number {
@@ -159,11 +213,30 @@
 					{/if}
 
 					<button
-						class="border-2 border-black rounded-[8px] px-4 py-2 bg-transparent font-bricolage font-semibold text-[16px] text-black/50 leading-normal cursor-not-allowed"
-						disabled
+						class="border-2 border-black rounded-[8px] px-4 py-2 font-bricolage font-semibold text-[16px] leading-normal {purchaseDisabled
+							? 'bg-transparent text-black/50 cursor-not-allowed'
+							: 'bg-[#f3e8d8] text-black cursor-pointer shadow-[2px_2px_0px_0px_black]'}"
+						disabled={purchaseDisabled}
+						onclick={handlePurchase}
 					>
-						Purchase
+						{#if purchaseSuccess}
+							Purchased!
+						{:else if purchasing}
+							Purchasing...
+						{:else if item && !item.isActive}
+							Unavailable
+						{:else if needsVariant && selectedVariantId == null}
+							Select a variant
+						{:else if !canAfford}
+							Insufficient balance
+						{:else}
+							Purchase ({effectiveCost}h)
+						{/if}
 					</button>
+
+					{#if purchaseError}
+						<p class="font-bricolage text-[14px] text-red-700 leading-normal m-0">{purchaseError}</p>
+					{/if}
 				</div>
 			{/if}
 		</div>
