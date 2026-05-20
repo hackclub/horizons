@@ -4,6 +4,7 @@ import {
   IsString,
   IsOptional,
   IsIn,
+  IsNumber,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -38,6 +39,26 @@ export class UpdateUserRoleDto {
   @IsString()
   @IsIn(['user', 'admin', 'reviewer', 'event_viewer'])
   role: 'user' | 'admin' | 'reviewer' | 'event_viewer';
+}
+
+export class AdjustUserHoursDto {
+  @ApiProperty({
+    description:
+      'Hours to credit (positive) or deduct (negative) from the user. Cannot be zero.',
+  })
+  @IsNumber()
+  hours: number;
+
+  @ApiProperty({
+    description:
+      'Reason for the adjustment. Stored as the transaction description and visible to the user in their transaction history.',
+    minLength: 1,
+    maxLength: 500,
+  })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  reason: string;
 }
 
 export class PermRejectProjectDto {

@@ -14,6 +14,86 @@
     type SortMode = 'recent' | 'streak-desc' | 'streak-asc' | 'longest-desc';
     let sortMode = $state<SortMode>('recent');
 
+    let currentUserRole = $state<string | null>(null);
+    const isSuperadmin = $derived(currentUserRole === 'superadmin');
+
+    // Hours adjustment state (superadmin only)
+    let hoursEditingUserId = $state<number | null>(null);
+    let hoursDelta = $state('');
+    let hoursReason = $state('');
+    let hoursSaving = $state(false);
+    let hoursError = $state('');
+    let hoursLastAdjustment = $state<{
+        userId: number;
+        hours: number;
+        newBalance: number;
+    } | null>(null);
+
+    function startHoursEdit(user: AdminUserResponse) {
+        hoursEditingUserId = user.userId;
+        hoursDelta = '';
+        hoursReason = '';
+        hoursError = '';
+    }
+
+    function cancelHoursEdit() {
+        hoursEditingUserId = null;
+        hoursDelta = '';
+        hoursReason = '';
+        hoursError = '';
+    }
+
+    async function submitHoursAdjustment(userId: number) {
+        const parsed = parseFloat(hoursDelta);
+        if (!Number.isFinite(parsed) || parsed === 0) {
+            hoursError = 'Enter a non-zero number of hours.';
+            return;
+        }
+        const reason = hoursReason.trim();
+        if (!reason) {
+            hoursError = 'A reason is required.';
+            return;
+        }
+        const action = parsed > 0 ? 'award' : 'deduct';
+        const confirmed =
+            typeof window !== 'undefined'
+                ? window.confirm(
+                      `${action === 'award' ? 'Award' : 'Deduct'} ${Math.abs(parsed)}h ${
+                          action === 'award' ? 'to' : 'from'
+                      } this user?\n\nReason: ${reason}\n\nThis creates a ledger transaction.`,
+                  )
+                : true;
+        if (!confirmed) return;
+
+        hoursSaving = true;
+        hoursError = '';
+        try {
+            const { data, error } = await (api as any).POST(
+                '/api/admin/users/{id}/hours-adjustment',
+                {
+                    params: { path: { id: userId } },
+                    body: { hours: parsed, reason },
+                },
+            );
+            if (error) {
+                hoursError = (error as any)?.message || 'Failed to adjust hours';
+                return;
+            }
+            if (data) {
+                hoursLastAdjustment = {
+                    userId,
+                    hours: data.hours,
+                    newBalance: data.newBalance,
+                };
+                cancelHoursEdit();
+            }
+        } catch (e) {
+            hoursError = 'Failed to adjust hours';
+        } finally {
+            hoursSaving = false;
+        }
+    }
+
     // Slack editing state
     let slackEditingUserId = $state<number | null>(null);
     let slackEditValue = $state('');
@@ -252,8 +332,14 @@
         return sorted;
     });
 
-    onMount(() => {
+    onMount(async () => {
         loadUsers();
+        try {
+            const { data: me } = await api.GET('/api/user/auth/me');
+            currentUserRole = me?.role ?? null;
+        } catch {
+            currentUserRole = null;
+        }
     });
 </script>
 
@@ -557,6 +643,58 @@
                                     : 'Flag as Sus'}
                             </Button>
                         </div>
+
+                        {#if isSuperadmin}
+                            <div class="rounded-xl border border-purple-500/40 bg-purple-500/5 p-4 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                                        Hours adjustment (superadmin)
+                                    </h4>
+                                    {#if hoursLastAdjustment?.userId === user.userId}
+                                        <span class="text-xs text-purple-700 dark:text-purple-300">
+                                            Last: {hoursLastAdjustment.hours > 0 ? '+' : ''}{hoursLastAdjustment.hours}h
+                                            · new balance {hoursLastAdjustment.newBalance}h
+                                        </span>
+                                    {/if}
+                                </div>
+                                {#if hoursEditingUserId === user.userId}
+                                    <div class="space-y-2">
+                                        <p class="text-xs text-ds-text-secondary">
+                                            Positive = award hours, negative = deduct hours. Recorded in the transactions ledger and refundable from there.
+                                        </p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <TextField
+                                                class="w-32"
+                                                placeholder="e.g. 5 or -2"
+                                                bind:value={hoursDelta}
+                                            />
+                                            <TextField
+                                                class="flex-1 min-w-50"
+                                                placeholder="Reason (visible in ledger)"
+                                                bind:value={hoursReason}
+                                            />
+                                            <Button
+                                                variant="approve"
+                                                onclick={() => submitHoursAdjustment(user.userId)}
+                                                disabled={hoursSaving}
+                                            >
+                                                {hoursSaving ? 'Saving…' : 'Apply'}
+                                            </Button>
+                                            <Button variant="ghost" onclick={cancelHoursEdit} disabled={hoursSaving}>
+                                                Cancel
+                                            </Button>
+                                        </div>
+                                        {#if hoursError}
+                                            <p class="text-xs text-ds-red">{hoursError}</p>
+                                        {/if}
+                                    </div>
+                                {:else}
+                                    <Button variant="ghost" onclick={() => startHoursEdit(user)}>
+                                        Adjust hours
+                                    </Button>
+                                {/if}
+                            </div>
+                        {/if}
 
                         {#if user.projects.length > 0}
                             <div class="space-y-3">

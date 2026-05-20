@@ -10,6 +10,7 @@ import { FraudReviewModule } from '../fraud-review/fraud-review.module';
 import { StreakModule } from '../streaks/streak.module';
 import { HackatimeModule } from '../hackatime/hackatime.module';
 import { LoopsModule } from '../loops/loops.module';
+import { BalanceModule } from '../balance/balance.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { LoopsModule } from '../loops/loops.module';
     StreakModule,
     HackatimeModule,
     LoopsModule,
+    BalanceModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, MetricsSnapshotService, PrismaService],

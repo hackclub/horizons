@@ -3,7 +3,7 @@
 	import { Button, TextField, Tab } from '$lib/components';
 	import { api } from '$lib/api';
 
-	type Kind = 'ShopItem' | 'EventTicket';
+	type Kind = 'ShopItem' | 'EventTicket' | 'AdminAdjustment';
 
 	interface LedgerEntry {
 		transactionId: number;
@@ -29,6 +29,7 @@
 		totalSpent: number;
 		shopCount: number;
 		ticketCount: number;
+		adminAdjustmentCount: number;
 	}
 
 	let entries = $state<LedgerEntry[]>([]);
@@ -47,6 +48,7 @@
 		{ label: 'All', value: 'all' },
 		{ label: 'Shop', value: 'ShopItem' },
 		{ label: 'Tickets', value: 'EventTicket' },
+		{ label: 'Admin Adj', value: 'AdminAdjustment' },
 	];
 
 	const fulfilledTabs = [
@@ -130,31 +132,39 @@
 
 	function kindLabel(k: Kind): string {
 		if (k === 'ShopItem') return 'Shop';
+		if (k === 'AdminAdjustment') return 'Admin Adj';
 		return 'Ticket';
 	}
 
 	function kindColor(k: Kind): string {
 		if (k === 'ShopItem')
 			return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 border-blue-300/50 dark:border-blue-700/50';
+		if (k === 'AdminAdjustment')
+			return 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200 border-purple-300/50 dark:border-purple-700/50';
 		return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 border-emerald-300/50 dark:border-emerald-700/50';
 	}
 
 	function targetLabel(e: LedgerEntry): string {
 		if (e.event) return `${e.event.title}`;
 		if (e.item) return e.item.name;
+		if (e.kind === 'AdminAdjustment') return e.cost < 0 ? 'Hours awarded' : 'Hours deducted';
 		return e.itemDescription;
 	}
 
 	async function handleRefund(e: LedgerEntry) {
 		const target = targetLabel(e);
+		const balanceEffect =
+			e.cost > 0
+				? `Reversing this returns ${e.cost}h to the user (their balance increases).`
+				: `Reversing this removes the ${-e.cost}h that was awarded (their balance decreases).`;
 		const ok =
 			typeof window !== 'undefined'
 				? window.confirm(
-						`Refund this transaction?\n\n` +
+						`${e.kind === 'AdminAdjustment' ? 'Reverse' : 'Refund'} this transaction?\n\n` +
 							`User: ${e.user.firstName} ${e.user.lastName} (${e.user.email})\n` +
 							`${kindLabel(e.kind)}: ${target}\n` +
 							`Cost: ${e.cost}h\n\n` +
-							`The ${e.cost}h will be returned to the user (their balance increases).`,
+							balanceEffect,
 					)
 				: true;
 		if (!ok) return;
@@ -194,11 +204,11 @@
 		</div>
 
 		{#if summary}
-			<div class="grid gap-3 sm:grid-cols-3">
+			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">All Transactions</p>
 					<p class="text-2xl font-bold text-ds-text">{summary.totalCount}</p>
-					<p class="text-[11px] text-ds-text-secondary">{summary.totalSpent}h spent total</p>
+					<p class="text-[11px] text-ds-text-secondary">{summary.totalSpent}h net total</p>
 				</div>
 				<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Shop Purchases</p>
@@ -207,6 +217,10 @@
 				<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Event Tickets</p>
 					<p class="text-2xl font-bold text-ds-text">{summary.ticketCount}</p>
+				</div>
+				<div class="space-y-1 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Admin Adjustments</p>
+					<p class="text-2xl font-bold text-ds-text">{summary.adminAdjustmentCount}</p>
 				</div>
 			</div>
 		{/if}

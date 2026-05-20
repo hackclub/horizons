@@ -35,6 +35,7 @@ import {
   RecalculateProjectResponse,
   RecalculateAllResponse,
   DeleteProjectResponse,
+  AdjustUserHoursResponse,
   AdminUserResponse,
   AdminMetricsResponse,
   ReviewerLeaderboardEntry,
@@ -66,6 +67,7 @@ import {
   ToggleSubmissionsFrozenDto,
   UpdateUserRoleDto,
   PermRejectProjectDto,
+  AdjustUserHoursDto,
 } from './dto/admin-request.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateAdminProjectDto } from './dto/update-admin-project.dto';
@@ -298,14 +300,18 @@ export class AdminController {
   @Get('transactions')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @ApiQuery({ name: 'kind', required: false, enum: ['ShopItem', 'EventTicket'] })
+  @ApiQuery({
+    name: 'kind',
+    required: false,
+    enum: ['ShopItem', 'EventTicket', 'AdminAdjustment'],
+  })
   @ApiQuery({ name: 'userId', required: false, type: Number })
   @ApiQuery({ name: 'fulfilled', required: false, type: Boolean })
   @ApiQuery({ name: 'refunded', required: false, type: Boolean })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiOkResponse({ type: LedgerResponse })
   async getTransactionLedger(
-    @Query('kind') kind?: 'ShopItem' | 'EventTicket',
+    @Query('kind') kind?: 'ShopItem' | 'EventTicket' | 'AdminAdjustment',
     @Query('userId') userId?: string,
     @Query('fulfilled') fulfilled?: string,
     @Query('refunded') refunded?: string,
@@ -462,6 +468,18 @@ export class AdminController {
     @Body() body: UpdateUserDto,
   ) {
     return this.adminService.updateUser(id, body);
+  }
+
+  @Post('users/:id/hours-adjustment')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiCreatedResponse({ type: AdjustUserHoursResponse })
+  async adjustUserHours(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: AdjustUserHoursDto,
+    @Req() req: Request,
+  ) {
+    return this.adminService.adjustUserHours(id, body, req.user.userId);
   }
 
   @Post('import/csv')
