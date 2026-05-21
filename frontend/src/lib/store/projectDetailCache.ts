@@ -301,13 +301,24 @@ export async function fetchEditData(id: string, forceRefresh = false) {
 			throw new Error(error);
 		}
 
+		// "No Hackatime account linked" makes both hackatime endpoints throw 404,
+		// which openapi-fetch surfaces as `{ data: undefined }` — extractProjects
+		// then returns `[]`. Caching that would lock the user into "no projects
+		// found" for the full TTL even after they link their account, so only
+		// persist the entry when the hackatime calls actually succeeded.
+		const hackatimeFetchOk =
+			(linkedHackatimeRes.response?.ok ?? false) &&
+			(unlinkedHackatimeRes.response?.ok ?? false);
+
 		const cacheEntry: EditDataCache = {
 			project,
 			allHackatimeProjects,
 			linkedHackatimeProjects,
 			timestamp: now,
 		};
-		editDataCache.set(cacheKey, cacheEntry);
+		if (hackatimeFetchOk) {
+			editDataCache.set(cacheKey, cacheEntry);
+		}
 
 		editDataStore.set({
 			project,

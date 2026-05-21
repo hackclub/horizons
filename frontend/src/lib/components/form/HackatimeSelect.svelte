@@ -10,12 +10,22 @@
 		onToggle: (name: string) => void;
 		loading?: boolean;
 		variant?: 'dropdown' | 'inline';
+		onRefresh?: () => void;
+		refreshing?: boolean;
 	}
 
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 
-	let { projects, selectedNames, onToggle, loading = false, variant = 'dropdown' }: Props = $props();
+	let {
+		projects,
+		selectedNames,
+		onToggle,
+		loading = false,
+		variant = 'dropdown',
+		onRefresh,
+		refreshing = false,
+	}: Props = $props();
 
 	let open = $state(false);
 	let containerEl = $state<HTMLDivElement | undefined>(undefined);
@@ -78,9 +88,31 @@
 
 <svelte:window onclick={handleClickOutside} />
 
+{#snippet label()}
+	<div class="flex items-center gap-1.5">
+		<span class="font-bricolage text-base font-semibold text-black leading-normal">Hackatime Projects</span>
+		{#if onRefresh}
+			<button
+				type="button"
+				class="refresh-projects"
+				class:spinning={refreshing}
+				aria-label="Refresh Hackatime project list"
+				title="Refresh Hackatime project list"
+				disabled={refreshing || loading}
+				onclick={onRefresh}
+			>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+					<path d="M21 12a9 9 0 1 1-3-6.7"/>
+					<path d="M21 3v6h-6"/>
+				</svg>
+			</button>
+		{/if}
+	</div>
+{/snippet}
+
 {#if variant === 'inline'}
 	<div class="flex flex-col gap-1 w-full">
-		<span class="font-bricolage text-base font-semibold text-black leading-normal">Hackatime Projects</span>
+		{@render label()}
 
 		<!-- Selected projects summary (matches dropdown trigger styling, sans chevron) -->
 		<div class="bg-[#f3e8d8] border-2 border-black rounded-lg px-4 py-2 shadow-[2px_2px_0px_0px_black] w-full flex items-center gap-2">
@@ -109,7 +141,7 @@
 	</div>
 {:else}
 	<div class="flex flex-col gap-1 w-full" bind:this={containerEl}>
-		<span class="font-bricolage text-base font-semibold text-black leading-normal">Hackatime Projects</span>
+		{@render label()}
 
 		<div class="relative w-full">
 			<!-- Trigger -->
@@ -176,5 +208,35 @@
 	.dropdown-list::-webkit-scrollbar-thumb {
 		background: black;
 		border-radius: 8px;
+	}
+	.refresh-projects {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		background: none;
+		border: none;
+		color: black;
+		opacity: 0.5;
+		cursor: pointer;
+		transition: opacity 0.15s ease, transform 0.15s ease;
+	}
+	@media (hover: hover) {
+		.refresh-projects:hover:not(:disabled) {
+			opacity: 1;
+			transform: rotate(25deg);
+		}
+	}
+	.refresh-projects:disabled {
+		cursor: default;
+	}
+	@keyframes refresh-spin {
+		from { transform: rotate(0deg); }
+		to   { transform: rotate(360deg); }
+	}
+	.refresh-projects.spinning {
+		opacity: 1;
+		animation: refresh-spin 0.8s linear infinite;
+		pointer-events: none;
 	}
 </style>

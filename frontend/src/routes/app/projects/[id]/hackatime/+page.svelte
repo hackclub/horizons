@@ -38,7 +38,20 @@
 	let allHackatimeProjects = $derived(editState.allHackatimeProjects);
 	let errorMsg = $state<string | null>(null);
 	let submitting = $state(false);
+	let refreshing = $state(false);
 	let selectedHackatimeNames = $state<Set<string>>(new Set());
+
+	async function refreshHackatimeProjects() {
+		if (refreshing || hackatimeLoading) return;
+		refreshing = true;
+		try {
+			await fetchEditData(projectId, true);
+		} catch {
+			// Error is already surfaced in the store; keep the existing list visible.
+		} finally {
+			refreshing = false;
+		}
+	}
 
 	$effect(() => {
 		selectedHackatimeNames = new Set(editState.linkedHackatimeProjects ?? []);
@@ -102,6 +115,8 @@
 				onToggle={toggleHackatimeProject}
 				loading={hackatimeLoading}
 				variant="inline"
+				onRefresh={refreshHackatimeProjects}
+				{refreshing}
 			/>
 
 			{@const linkDisabled = hackatimeLoading || selectedHackatimeNames.size === 0}

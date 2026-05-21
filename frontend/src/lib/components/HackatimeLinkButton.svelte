@@ -1,6 +1,7 @@
 <script lang="ts">
 	import hackatimeIcon from '$lib/assets/icons/hackatime.svg';
 	import { api } from '$lib/api';
+	import { invalidateAllProjectCaches } from '$lib/store/projectDetailCache';
 
 	let { linked = $bindable(false), variant = 'default' }: { linked?: boolean; variant?: 'default' | 'card' } = $props();
 
@@ -10,9 +11,16 @@
 	let popup: Window | null = null;
 
 	async function checkStatus() {
+		const wasLinked = status === 'linked';
 		const { data } = await api.GET('/api/hackatime/account');
 		if (data?.hasHackatimeAccount && data?.tokenValid) {
 			status = 'linked';
+			// Project/edit caches may hold "no hackatime projects" entries captured
+			// before the user linked. Clear them on the linking edge so the next
+			// detail/hackatime page mount refetches against the live account.
+			if (!wasLinked) {
+				invalidateAllProjectCaches();
+			}
 			stopPolling();
 		} else if (data?.hasHackatimeAccount && !data?.tokenValid) {
 			status = 'invalid';
