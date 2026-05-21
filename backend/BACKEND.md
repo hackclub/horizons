@@ -480,7 +480,7 @@ The backend never makes outbound HTTP requests against user-supplied URLs. The o
 | **Hack Club Auth** | OAuth login (OpenID Connect) | `HACKCLUB_CLIENT_ID`, `HACKCLUB_CLIENT_SECRET`, `HACKCLUB_REDIRECT_URI` |
 | **Hackatime** | Time tracking OAuth + hours API | `HACKATIME_CLIENT_ID`, `HACKATIME_CLIENT_SECRET`, `HACKATIME_API_KEY` |
 | **Airtable** | Record sync for users and approved projects | `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID` |
-| **Slack** | DM notifications to students | `SLACK_BOT_TOKEN` |
+| **Slack** | DM notifications to students; daily reviewer leaderboard (UTC midnight) | `SLACK_BOT_TOKEN`, `SLACK_REVIEWER_LEADERBOARD_CHANNEL` (optional — channel ID; leaderboard cron no-ops if unset) |
 | **Loops** | Transactional emails (submission reviewed) | `LOOPS_API_KEY`, `LOOPS_TID_SUBMISSION_APPROVED`, `LOOPS_TID_SUBMISSION_DENIED` |
 | **GitHub** | Repo info and README for reviewers | `GITHUB_TOKENS` (comma-separated pool) |
 | **Hack Club CDN** | Image uploads | `HC_CDN_API_KEY` |

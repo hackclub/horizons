@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ReviewerController } from './reviewer.controller';
 import { ReviewerService } from './reviewer.service';
+import { ReviewerLeaderboardCronService } from './reviewer-leaderboard-cron.service';
 import { PrismaService } from '../prisma.service';
 import { FraudReviewModule } from '../fraud-review/fraud-review.module';
 import { SubmissionApprovalModule } from '../submission-approval/submission-approval.module';
@@ -19,6 +20,11 @@ import { MetricsModule } from '../metrics/metrics.module';
     MetricsModule,
   ],
   controllers: [ReviewerController],
-  providers: [ReviewerService, PrismaService],
+  providers: [
+    ReviewerService,
+    ReviewerLeaderboardCronService,
+    PrismaService,
+  ],
+  exports: [ReviewerLeaderboardCronService],
 })
 export class ReviewerModule {}

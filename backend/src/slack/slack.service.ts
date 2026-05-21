@@ -455,6 +455,52 @@ export class SlackService {
     return this.sendDmWithToken(this.botToken, slackUserId, message, blocks);
   }
 
+  /**
+   * Post a message to a channel ID. Caller is responsible for inviting the
+   * bot to the channel — Slack returns `not_in_channel` otherwise.
+   */
+  async postToChannel(
+    channelId: string,
+    message: string,
+    blocks?: SlackMessageBlock[],
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.botToken) {
+      return { success: false, error: 'Slack not configured' };
+    }
+    if (!channelId) {
+      return { success: false, error: 'Missing channel id' };
+    }
+
+    try {
+      const payload: any = { channel: channelId, text: message };
+      if (blocks) payload.blocks = blocks;
+
+      const response = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!data.ok) {
+        console.error(
+          `Failed to post to channel ${channelId}:`,
+          data.error,
+        );
+        return { success: false, error: data.error };
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error posting to Slack channel:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
   async sendDirectMessageAsUser(
     slackUserId: string,
     message: string,
