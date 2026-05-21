@@ -38,7 +38,7 @@
 	let detailState = $state<{
 		project: ProjectResponse | null;
 		submission: any | null;
-		hackatimeInfo: { hackatimeProjects: string[]; currentHackatimeHours: number; hackatimeProjectHours: Record<string, number>; lastSubmittedHours: number | null } | null;
+		hackatimeInfo: { hackatimeProjects: string[]; currentHackatimeHours: number; hackatimeProjectHours: Record<string, number>; lastSubmittedHours: number | null; lastApprovedHours: number | null } | null;
 		loading: boolean;
 		error: string | null;
 	}>({ project: null, submission: null, hackatimeInfo: null, loading: true, error: null });
@@ -106,6 +106,16 @@
 
 	// Hackatime derived
 	let currentHours = $derived(hackatimeInfo?.currentHackatimeHours ?? 0);
+	// Ship-eligibility gate: first ship needs ≥3h, reship needs ≥3h beyond
+	// the last approved submission. Mirrors the backend check in
+	// `createSubmission` so the button reflects reality.
+	let requiredShipHours = $derived((hackatimeInfo?.lastApprovedHours ?? 0) + 3);
+	let canShip = $derived(hackatimeInfo !== null && currentHours >= requiredShipHours);
+	let shipBlockedReason = $derived(
+		hackatimeInfo?.lastApprovedHours != null
+			? `Track ${requiredShipHours.toFixed(1)} hours on this project to re-ship (3 more than your last approved submission's ${hackatimeInfo.lastApprovedHours.toFixed(1)}h).`
+			: 'You need to track 3 hours on this project before you can ship it.'
+	);
 	// Show approved hours (set by reviewer) when approved, otherwise show the original submitted hours
 	let submittedHours = $derived(
 		isApproved
@@ -448,17 +458,25 @@
 					>
 						EDIT PROJECT
 					</button>
-					<button
-						class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
-						class:selected={nav.usingKeyboard && nav.isSelected(1, 0)}
-						class:keyboard={nav.usingKeyboard}
-						class:pending={isPending || isPermRejected}
-						onclick={() => navigateTo(`/app/projects/${projectId}/ship/presubmit`)}
-						onmouseenter={() => nav.select(1, 0)}
-						disabled={isPending || isPermRejected}
-					>
-						{hasSubmission ? 'RE-SHIP' : 'SHIP'}
-					</button>
+					<div class="flex flex-col items-center gap-2 w-full sm:w-70.25">
+						<button
+							class="action-btn w-full py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+							class:selected={nav.usingKeyboard && nav.isSelected(1, 0)}
+							class:keyboard={nav.usingKeyboard}
+							class:pending={isPending || isPermRejected || !canShip}
+							onclick={() => navigateTo(`/app/projects/${projectId}/ship/presubmit`)}
+							onmouseenter={() => nav.select(1, 0)}
+							disabled={isPending || isPermRejected || !canShip}
+							title={!canShip && !isPending && !isPermRejected ? shipBlockedReason : undefined}
+						>
+							{hasSubmission ? 'RE-SHIP' : 'SHIP'}
+						</button>
+						{#if !canShip && !isPending && !isPermRejected && hackatimeInfo !== null}
+							<p class="font-bricolage text-xs sm:text-sm text-black/60 m-0 text-center">
+								{shipBlockedReason}
+							</p>
+						{/if}
+					</div>
 				{/if}
 			</div>
 		</div>

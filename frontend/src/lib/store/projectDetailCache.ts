@@ -12,6 +12,7 @@ interface HackatimeInfo {
 	currentHackatimeHours: number;
 	hackatimeProjectHours: Record<string, number>;
 	lastSubmittedHours: number | null;
+	lastApprovedHours: number | null;
 }
 
 interface ProjectDetailCache {
@@ -135,6 +136,7 @@ export async function fetchProjectDetail(
 			currentHackatimeHours: d?.currentHackatimeHours ?? 0,
 			hackatimeProjectHours: d?.hackatimeProjectHours ?? {},
 			lastSubmittedHours: d?.lastSubmittedHours ?? null,
+			lastApprovedHours: d?.lastApprovedHours ?? null,
 		};
 
 		if (error) {
