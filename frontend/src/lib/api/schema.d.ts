@@ -2257,6 +2257,8 @@ export interface components {
             };
             /** @description Hours tallied at the time of the last submission; null if never submitted */
             lastSubmittedHours?: number | null;
+            /** @description Hours tallied at the time of the most recent approved submission; null if never approved. Used by the ship gate to require an additional 3 hours per reship. */
+            lastApprovedHours?: number | null;
             /** @description Consecutive days the user has logged >=1 hour on linked Hackatime projects, with timezone-aware lazy decay applied */
             currentStreak: number;
             /** @description Longest streak ever achieved by the user */

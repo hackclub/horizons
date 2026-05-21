@@ -29,6 +29,13 @@ export class HackatimeProjectsInfoResponse {
   })
   lastSubmittedHours: number | null;
 
+  @ApiPropertyOptional({
+    description:
+      'Hours tallied at the time of the most recent approved submission; null if never approved. Used by the ship gate to require an additional 3 hours per reship.',
+    nullable: true,
+  })
+  lastApprovedHours: number | null;
+
   @ApiProperty({
     description:
       'Consecutive days the user has logged >=1 hour on linked Hackatime projects, with timezone-aware lazy decay applied',
