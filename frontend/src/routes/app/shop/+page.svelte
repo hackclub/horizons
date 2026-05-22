@@ -52,6 +52,14 @@
 	let selectedTabIdx = $state(0);
 	const TABS: Tab[] = ['shop', 'orders'];
 
+	type FilterButton =
+		| { type: 'category-all' }
+		| { type: 'category'; slug: string }
+		| { type: 'region-all' }
+		| { type: 'region'; name: string };
+	let onFilters = $state(false);
+	let selectedFilterIdx = $state(0);
+
 	let selectedCategories = $state<Set<string>>(new Set());
 	let selectedRegion = $state('');
 
@@ -78,6 +86,67 @@
 			return true;
 		})
 	);
+
+	const filterButtons = $derived.by<FilterButton[]>(() => {
+		const result: FilterButton[] = [];
+		if (availableCategories.length > 0) {
+			result.push({ type: 'category-all' });
+			for (const slug of availableCategories) result.push({ type: 'category', slug });
+		}
+		if (availableRegions.length > 0) {
+			result.push({ type: 'region-all' });
+			for (const name of availableRegions) result.push({ type: 'region', name });
+		}
+		return result;
+	});
+
+	function filterIsActive(btn: FilterButton): boolean {
+		switch (btn.type) {
+			case 'category-all': return selectedCategories.size === 0;
+			case 'category': return selectedCategories.has(btn.slug);
+			case 'region-all': return selectedRegion === '';
+			case 'region': return selectedRegion === btn.name;
+		}
+	}
+
+	function filterClick(btn: FilterButton) {
+		switch (btn.type) {
+			case 'category-all':
+				selectedCategories = new Set();
+				skipItemAnimation = true;
+				break;
+			case 'category':
+				toggleCategory(btn.slug);
+				break;
+			case 'region-all':
+				selectedRegion = '';
+				skipItemAnimation = true;
+				break;
+			case 'region':
+				selectedRegion = selectedRegion === btn.name ? '' : btn.name;
+				skipItemAnimation = true;
+				break;
+		}
+	}
+
+	function filterLabel(btn: FilterButton): string {
+		switch (btn.type) {
+			case 'category-all':
+			case 'region-all':
+				return 'All';
+			case 'category': return btn.slug;
+			case 'region': return btn.name;
+		}
+	}
+
+	function defaultFilterIdx(): number {
+		for (let i = 0; i < filterButtons.length; i++) {
+			const btn = filterButtons[i];
+			if (btn.type === 'category' && selectedCategories.has(btn.slug)) return i;
+			if (btn.type === 'region' && selectedRegion === btn.name) return i;
+		}
+		return 0;
+	}
 
 	onMount(async () => {
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
@@ -123,6 +192,8 @@
 		skipItemAnimation = false;
 		nav.col = 0;
 		nav.row = 0;
+		onFilters = false;
+		selectedFilterIdx = 0;
 		scrollContainer?.scrollTo({ top: 0 });
 		if (tab === 'orders' && !ordersLoaded) loadOrders();
 	}
@@ -248,15 +319,23 @@
 			return;
 		}
 		const navKeys = ['w', 'a', 's', 'd', 'W', 'A', 'S', 'D', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+		const isUp = (k: string) => k === 'w' || k === 'W' || k === 'ArrowUp';
+		const isDown = (k: string) => k === 's' || k === 'S' || k === 'ArrowDown';
+		const isLeft = (k: string) => k === 'a' || k === 'A' || k === 'ArrowLeft';
+		const isRight = (k: string) => k === 'd' || k === 'D' || k === 'ArrowRight';
+		const hasFilters = activeTab === 'shop' && filterButtons.length > 0;
+
 		if (usingMouse && navKeys.includes(e.key)) {
 			usingMouse = false;
-			if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
+			if (isUp(e.key)) {
 				onTabs = true;
+				onFilters = false;
 				selectedTabIdx = TABS.indexOf(activeTab);
 			} else {
 				nav.col = 0;
 				nav.row = 0;
 				onTabs = false;
+				onFilters = false;
 			}
 			e.preventDefault();
 			interacted = true;
@@ -266,16 +345,19 @@
 		interacted = true;
 
 		if (onTabs) {
-			if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
+			if (isLeft(e.key)) {
 				e.preventDefault();
 				selectedTabIdx = Math.max(0, selectedTabIdx - 1);
-			} else if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
+			} else if (isRight(e.key)) {
 				e.preventDefault();
 				selectedTabIdx = Math.min(TABS.length - 1, selectedTabIdx + 1);
-			} else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
+			} else if (isDown(e.key)) {
 				e.preventDefault();
-				const cols = getColumnsLayout();
-				if (cols.length > 0) {
+				if (hasFilters) {
+					onTabs = false;
+					onFilters = true;
+					selectedFilterIdx = defaultFilterIdx();
+				} else if (getColumnsLayout().length > 0) {
 					onTabs = false;
 					nav.col = 0;
 					nav.row = 0;
@@ -287,10 +369,41 @@
 			return;
 		}
 
-		if ((e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') && nav.row === 0) {
+		if (onFilters) {
+			if (isLeft(e.key)) {
+				e.preventDefault();
+				selectedFilterIdx = Math.max(0, selectedFilterIdx - 1);
+			} else if (isRight(e.key)) {
+				e.preventDefault();
+				selectedFilterIdx = Math.min(filterButtons.length - 1, selectedFilterIdx + 1);
+			} else if (isUp(e.key)) {
+				e.preventDefault();
+				onFilters = false;
+				onTabs = true;
+				selectedTabIdx = TABS.indexOf(activeTab);
+			} else if (isDown(e.key)) {
+				e.preventDefault();
+				if (getColumnsLayout().length > 0) {
+					onFilters = false;
+					nav.col = 0;
+					nav.row = 0;
+				}
+			} else if (e.key === 'Enter') {
+				e.preventDefault();
+				filterClick(filterButtons[selectedFilterIdx]);
+			}
+			return;
+		}
+
+		if (isUp(e.key) && nav.row === 0) {
 			e.preventDefault();
-			onTabs = true;
-			selectedTabIdx = TABS.indexOf(activeTab);
+			if (hasFilters) {
+				onFilters = true;
+				selectedFilterIdx = defaultFilterIdx();
+			} else {
+				onTabs = true;
+				selectedTabIdx = TABS.indexOf(activeTab);
+			}
 			return;
 		}
 
@@ -311,8 +424,8 @@
 				{@const isKbSelected = inKbTabMode && selectedTabIdx === i}
 				{@const showOrange = isKbSelected || (!inKbTabMode && isActive)}
 				<button
-					class="font-bricolage font-semibold text-[24px] text-black border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] py-2 px-4 cursor-pointer capitalize {showOrange ? 'bg-[#ffa936]' : 'bg-[#f3e8d8] hover:brightness-95'}"
-					style="transform: {isKbSelected ? 'scale(var(--juice-scale))' : 'scale(1)'}; transition: transform var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease;"
+					class="juice-btn font-bricolage font-semibold text-[24px] text-black border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] py-2 px-4 cursor-pointer capitalize {showOrange ? 'bg-[#ffa936]' : 'bg-[#f3e8d8]'}"
+					class:kb-selected={isKbSelected}
 					onclick={() => { usingMouse = true; onTabs = false; setTab(tab); }}
 					onmouseenter={() => { usingMouse = true; }}
 				>
@@ -346,48 +459,27 @@
 		</div>
 
 		<!-- Filters -->
-		{#if availableCategories.length > 0 || availableRegions.length > 0}
+		{#if filterButtons.length > 0}
 			<div class="flex gap-2 flex-wrap w-full max-w-[932px] items-center">
-				{#if availableCategories.length > 0}
-					<span class="font-bricolage font-semibold text-sm text-black/60 mr-1">Categories:</span>
+				{#each filterButtons as btn, i (i)}
+					{@const inKbFilterMode = onFilters && !usingMouse}
+					{@const isFilterCursor = inKbFilterMode && selectedFilterIdx === i}
+					{@const showOrange = isFilterCursor || (!inKbFilterMode && filterIsActive(btn))}
+					{#if btn.type === 'category-all'}
+						<span class="font-bricolage font-semibold text-sm text-black/60 mr-1">Categories:</span>
+					{/if}
+					{#if btn.type === 'region-all'}
+						<span class="font-bricolage font-semibold text-sm text-black/60 mx-1">Region:</span>
+					{/if}
 					<button
-						class="category-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
-						class:active={selectedCategories.size === 0}
-						onclick={() => { selectedCategories = new Set(); skipItemAnimation = true; }}
+						class="juice-btn font-bricolage font-semibold text-sm text-black border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] cursor-pointer {btn.type === 'category' ? 'capitalize' : ''} {showOrange ? 'bg-[#ffa936]' : 'bg-[#f3e8d8]'}"
+						class:kb-selected={isFilterCursor}
+						onclick={() => { usingMouse = true; onFilters = false; filterClick(btn); }}
+						onmouseenter={() => { usingMouse = true; }}
 					>
-						All
+						{filterLabel(btn)}
 					</button>
-					{#each availableCategories as slug (slug)}
-						{@const active = selectedCategories.has(slug)}
-						<button
-							class="category-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors capitalize"
-							class:active
-							onclick={() => toggleCategory(slug)}
-						>
-							{slug}
-						</button>
-					{/each}
-				{/if}
-
-				{#if availableRegions.length > 0}
-					<span class="font-bricolage font-semibold text-sm text-black/60 mx-1">Region:</span>
-					<button
-						class="region-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
-						class:active={selectedRegion === ''}
-						onclick={() => { selectedRegion = ''; skipItemAnimation = true; }}
-					>
-						All
-					</button>
-					{#each availableRegions as region}
-						<button
-							class="region-btn font-bricolage font-semibold text-sm border-3 border-black rounded-xl px-3 py-1.5 shadow-[2px_2px_0px_0px_black] transition-colors"
-							class:active={selectedRegion === region}
-							onclick={() => { selectedRegion = selectedRegion === region ? '' : region; skipItemAnimation = true; }}
-						>
-							{region}
-						</button>
-					{/each}
-				{/if}
+				{/each}
 			</div>
 		{/if}
 
@@ -628,26 +720,14 @@
 		animation: item-exit var(--exit-duration) var(--exit-easing) both;
 	}
 
-	.region-btn,
-	.category-btn {
-		background-color: #f3e8d8;
-		color: black;
-		cursor: pointer;
+	.juice-btn {
+		transition: transform var(--juice-duration) var(--juice-easing), background-color var(--selected-duration) ease;
 	}
-	.region-btn:hover {
-		background-color: #e8dac8;
+	.juice-btn:hover,
+	.juice-btn.kb-selected {
+		transform: scale(var(--juice-scale));
 	}
-	.region-btn.active {
-		background-color: black;
-		color: #f3e8d8;
-	}
-	.category-btn:hover {
-		filter: brightness(0.95);
-	}
-	.category-btn.active {
-		background-color: #ffa936;
-		color: black;
-	}
+
 
 	.fade-wrap.exiting {
 		opacity: 0;
