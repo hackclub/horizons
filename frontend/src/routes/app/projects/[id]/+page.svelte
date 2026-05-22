@@ -430,37 +430,37 @@
 				</div>
 			{/if}
 
-			<div class="flex flex-col sm:flex-row gap-2.5 w-full justify-center">
-				{#if needsHackatime}
-					<div class="flex flex-col items-center gap-2 w-full">
-						<button
-							class="action-btn link-hackatime w-full sm:w-143 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
-							class:selected={nav.usingKeyboard && nav.isSelected(0, 0)}
-							class:keyboard={nav.usingKeyboard}
-							onclick={() => navigateTo(`/app/projects/${projectId}/hackatime`)}
-							onmouseenter={() => nav.select(0, 0)}
-						>
-							LINK HACKATIME PROJECTS
-						</button>
-						<p class="font-bricolage text-sm sm:text-base text-black/60 m-0 text-center max-w-143">
-							To start tracking your hours for your project, link your project to hackatime! (<a href="https://hackatime.hackclub.com/my/wakatime_setup" target="_blank" rel="noopener noreferrer" class="underline transition-colors hover:text-black">Make sure to set up hackatime!</a> We can't accept untracked hours)
-						</p>
-					</div>
-				{:else}
+			{#if needsHackatime}
+				<div class="flex flex-col items-center gap-2 w-full">
 					<button
-						class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+						class="action-btn link-hackatime w-full sm:w-143 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
 						class:selected={nav.usingKeyboard && nav.isSelected(0, 0)}
 						class:keyboard={nav.usingKeyboard}
-						class:pending={isPending || isPermRejected}
-						onclick={() => navigateTo(`/app/projects/${projectId}/edit`)}
+						onclick={() => navigateTo(`/app/projects/${projectId}/hackatime`)}
 						onmouseenter={() => nav.select(0, 0)}
-						disabled={isPending || isPermRejected}
 					>
-						EDIT PROJECT
+						LINK HACKATIME PROJECTS
 					</button>
-					<div class="flex flex-col items-center gap-2 w-full sm:w-70.25">
+					<p class="font-bricolage text-sm sm:text-base text-black/60 m-0 text-center max-w-143">
+						To start tracking your hours for your project, link your project to hackatime! (<a href="https://hackatime.hackclub.com/my/wakatime_setup" target="_blank" rel="noopener noreferrer" class="underline transition-colors hover:text-black">Make sure to set up hackatime!</a> We can't accept untracked hours)
+					</p>
+				</div>
+			{:else}
+				<div class="flex flex-col items-center gap-2 w-full">
+					<div class="flex flex-col sm:flex-row gap-2.5 w-full justify-center">
 						<button
-							class="action-btn w-full py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+							class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
+							class:selected={nav.usingKeyboard && nav.isSelected(0, 0)}
+							class:keyboard={nav.usingKeyboard}
+							class:pending={isPending || isPermRejected}
+							onclick={() => navigateTo(`/app/projects/${projectId}/edit`)}
+							onmouseenter={() => nav.select(0, 0)}
+							disabled={isPending || isPermRejected}
+						>
+							EDIT PROJECT
+						</button>
+						<button
+							class="action-btn w-full sm:w-70.25 py-3 sm:py-2 px-4 border-2 border-black rounded-lg font-bricolage text-base font-semibold text-black overflow-hidden"
 							class:selected={nav.usingKeyboard && nav.isSelected(1, 0)}
 							class:keyboard={nav.usingKeyboard}
 							class:pending={isPending || isPermRejected || !canShip}
@@ -471,14 +471,14 @@
 						>
 							{hasSubmission ? 'RE-SHIP' : 'SHIP'}
 						</button>
-						{#if !canShip && !isPending && !isPermRejected && hackatimeInfo !== null}
-							<p class="font-bricolage text-xs sm:text-sm text-black/60 m-0 text-center">
-								{shipBlockedReason}
-							</p>
-						{/if}
 					</div>
-				{/if}
-			</div>
+					{#if !canShip && !isPending && !isPermRejected && hackatimeInfo !== null}
+						<p class="font-bricolage text-xs sm:text-sm text-black/60 m-0 text-center">
+							{shipBlockedReason}
+						</p>
+					{/if}
+				</div>
+			{/if}
 		</div>
 		</div>
 	{/if}
