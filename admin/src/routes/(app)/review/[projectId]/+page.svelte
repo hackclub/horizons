@@ -106,14 +106,20 @@
 	let githubLoading = $state(false);
 	let githubError = $state<string | null>(null);
 
-	// Sidebar data
+	// Sidebar data — each section owns its loading flag so it can populate
+	// independently as its fetch resolves, instead of all sections waiting on
+	// the slowest one (commit-heavy GitHub repos in particular).
 	let readmeMarkdown = $state('');
+	let readmeLoading = $state(false);
 	let projectNote = $state('');
 	let userNote = $state('');
+	let notesLoading = $state(false);
 	let checkedItems = $state<number[]>([]);
+	let checklistLoading = $state(false);
 	let editedHours = $state<number | null>(null);
 	let manifestLookup = $state<ManifestLookupResponse | null>(null);
 	let manifestLoading = $state(false);
+	let hackatimeBreakdownLoading = $state(false);
 	// Real per-Hackatime-project hours (live-fetched). Null until loaded; the
 	// HoursBreakdown component falls back to an even split while we wait.
 	let hackatimeProjectHours = $state<Record<string, number> | null>(null);
@@ -375,6 +381,17 @@
 		manifestLookup = null;
 		hackatimeProjectHours = null;
 		hourBreakdown = null;
+		// Flip per-section loading flags up front so panels show their loading
+		// state immediately when switching submissions, instead of flashing
+		// "no data" between when the previous fetch's finally cleared them and
+		// the new fetch's start re-sets them.
+		githubLoading = true;
+		readmeLoading = true;
+		notesLoading = true;
+		checklistLoading = true;
+		manifestLoading = true;
+		hackatimeBreakdownLoading = true;
+		hourBreakdownLoading = true;
 		// Read-only mode is per-submission — switching submissions resets it
 		// (attachClaim below decides whether to surface a fresh conflict).
 		readOnlyMode = false;
@@ -391,21 +408,23 @@
 			// claim, attachClaim sets conflictClaim and the modal handles it.
 			void attachClaim(submissionId);
 
+			// Fire-and-forget every secondary fetch. Each section owns its own
+			// loading flag, so the layout renders as soon as the submission
+			// detail is in hand and individual panels populate independently —
+			// no slow fetch (commit-heavy GitHub) holds up everything else.
 			const repoUrl = data.project.repoUrl || data.repoUrl;
-			const promises: Promise<void>[] = [];
-
 			if (repoUrl) {
-				promises.push(loadGitHubData(repoUrl));
-				promises.push(loadReadme(repoUrl));
+				void loadGitHubData(repoUrl);
+				void loadReadme(repoUrl);
+			} else {
+				githubLoading = false;
+				readmeLoading = false;
 			}
-
-			promises.push(loadNotes(data.project.projectId, data.project.user.userId));
-			promises.push(loadChecklist(submissionId));
-			promises.push(loadManifestLookup(data.project.projectId));
-			promises.push(loadHackatimeBreakdown(data.project.projectId));
-			promises.push(loadHourBreakdown(data.project.projectId));
-
-			await Promise.all(promises);
+			void loadNotes(data.project.projectId, data.project.user.userId);
+			void loadChecklist(submissionId);
+			void loadManifestLookup(data.project.projectId);
+			void loadHackatimeBreakdown(data.project.projectId);
+			void loadHourBreakdown(data.project.projectId);
 		} catch (error) {
 			console.error('Failed to load submission detail:', error);
 		} finally {
@@ -414,6 +433,7 @@
 	}
 
 	async function loadHackatimeBreakdown(projectId: number) {
+		hackatimeBreakdownLoading = true;
 		try {
 			const { data } = await api.GET(
 				'/api/reviewer/projects/{id}/hackatime-breakdown',
@@ -425,6 +445,8 @@
 			hackatimeProjectHours = map;
 		} catch {
 			hackatimeProjectHours = null;
+		} finally {
+			hackatimeBreakdownLoading = false;
 		}
 	}
 
@@ -478,6 +500,7 @@
 	}
 
 	async function loadReadme(repoUrl: string) {
+		readmeLoading = true;
 		try {
 			const { data } = await api.GET('/api/github/readme', {
 				params: { query: { url: repoUrl } },
@@ -485,10 +508,13 @@
 			readmeMarkdown = data?.content ?? '';
 		} catch {
 			readmeMarkdown = '';
+		} finally {
+			readmeLoading = false;
 		}
 	}
 
 	async function loadNotes(projectId: number, userId: number) {
+		notesLoading = true;
 		try {
 			const [projRes, userRes] = await Promise.all([
 				api.GET('/api/reviewer/projects/{id}/notes', { params: { path: { id: projectId } } }),
@@ -499,10 +525,13 @@
 		} catch {
 			projectNote = '';
 			userNote = '';
+		} finally {
+			notesLoading = false;
 		}
 	}
 
 	async function loadChecklist(submissionId: number) {
+		checklistLoading = true;
 		try {
 			const { data } = await api.GET('/api/reviewer/submissions/{id}/checklist', {
 				params: { path: { id: submissionId } },
@@ -510,6 +539,8 @@
 			checkedItems = data?.checkedItems ?? [];
 		} catch {
 			checkedItems = [];
+		} finally {
+			checklistLoading = false;
 		}
 	}
 
@@ -672,7 +703,7 @@
 					nonAiHours={hourBreakdown?.nonAiHours ?? null}
 					perProject={hourBreakdown?.perProject ?? []}
 					startDate={hourBreakdown?.startDate ?? null}
-					loading={hourBreakdownLoading || submissionLoading}
+					loading={hourBreakdownLoading}
 				/>
 
 				<NotesSection
@@ -680,7 +711,7 @@
 					targetType="project"
 					targetId={currentSubmission?.project.projectId ?? 0}
 					bind:content={projectNote}
-					loading={submissionLoading}
+					loading={notesLoading}
 					readOnly={readOnlyMode}
 				/>
 
@@ -691,13 +722,13 @@
 					targetType="user"
 					targetId={currentSubmission?.project.user.userId ?? 0}
 					bind:content={userNote}
-					loading={submissionLoading}
+					loading={notesLoading}
 					readOnly={readOnlyMode}
 				/>
 
 				<hr class="border-none border-t border-rv-border m-0" />
 
-				<ManifestLookup lookup={manifestLookup} loading={manifestLoading || submissionLoading} />
+				<ManifestLookup lookup={manifestLookup} loading={manifestLoading} />
 
 				<hr class="border-none border-t border-rv-border m-0" />
 
@@ -719,7 +750,7 @@
 
 				<div class="flex-1 overflow-hidden relative">
 					<div class="absolute inset-0" class:hidden={activeTab !== 'readme'}>
-						<ReadmePanel markdown={readmeMarkdown} loading={submissionLoading} />
+						<ReadmePanel markdown={readmeMarkdown} loading={readmeLoading} />
 					</div>
 					{#if currentSubmission}
 						<div class="absolute inset-0 flex flex-col" class:hidden={activeTab !== 'demo'}>
@@ -786,7 +817,7 @@
 			<div class="bg-rv-surface border-l border-rv-border flex flex-col overflow-hidden">
 				<GitHubPanel
 					repo={githubRepo}
-					loading={githubLoading || submissionLoading}
+					loading={githubLoading}
 					error={githubError}
 					repoUrl={currentSubmission?.project.repoUrl ?? currentSubmission?.repoUrl ?? null}
 				/>
@@ -794,7 +825,7 @@
 				<ReviewChecklist
 					submissionId={currentSubmission?.submissionId ?? 0}
 					bind:checkedItems
-					loading={submissionLoading}
+					loading={checklistLoading}
 					readOnly={readOnlyMode}
 				/>
 			</div>
