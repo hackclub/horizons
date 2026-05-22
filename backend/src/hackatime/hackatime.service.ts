@@ -555,11 +555,12 @@ export class HackatimeService {
    * unreliable — only the minimal `filter_by_category` form returns the
    * correct slice, and that's aggregate-only.
    *
-   * `totalHours` here is non-deduped (no `boundary_aware`), so it may exceed
-   * the user's `nowHackatimeHours` for the same project. We keep total and
-   * AI on the same non-deduped form so the AI/non-AI ratio is internally
-   * consistent; use `fetchDeduplicatedTotalSeconds` (via
-   * `calculateProjectHours`) when you need the deduped figure.
+   * `totalHours` here is non-deduped — it comes from the per-project
+   * breakdown summed up, which double-counts minutes the user logged
+   * against two projects at once. We keep total and AI on the same
+   * non-deduped form so the AI/non-AI ratio is internally consistent;
+   * use `fetchDeduplicatedTotalSeconds` (via `calculateProjectHours`)
+   * when you need the deduped figure.
    */
   async getProjectHourBreakdown(projectId: number): Promise<{
     totalHours: number;
@@ -816,7 +817,6 @@ export class HackatimeService {
     const params = new URLSearchParams({
       features: 'projects',
       start_date: startDate,
-      boundary_aware: 'true',
       total_seconds: 'true',
       filter_by_project: projectNames.join(','),
     });
@@ -865,18 +865,16 @@ export class HackatimeService {
   // category-filtered slice MUST come from this single URL shape so they
   // reconcile against each other — `filter_by_category` only returns the
   // correct slice with this minimal param set (adding `features=projects`
-  // or `boundary_aware=true` makes it return 0 or the unfiltered total
-  // instead). Encoding pass is required: spaces in category names
-  // (e.g. "ai coding") must be `%20`, not `+`, and the comma separator must
-  // stay unencoded.
+  // makes it return 0 or the unfiltered total instead). Encoding pass is
+  // required: spaces in category names (e.g. "ai coding") must be `%20`,
+  // not `+`, and the comma separator must stay unencoded.
   //
-  // NOT deduped — Hackatime only dedupes overlapping heartbeats when
-  // `boundary_aware=true` is set, which we can't pass here. So the total
-  // returned here is the raw sum across the listed projects and may exceed
-  // `fetchDeduplicatedTotalSeconds` for the same user. That's fine for the
-  // breakdown because both the total and the AI slice come from the same
-  // non-deduped form, so the AI/non-AI ratio stays internally consistent.
-  // Use `fetchDeduplicatedTotalSeconds` for `nowHackatimeHours` writes.
+  // NOT deduped — this endpoint shape returns the raw sum across the
+  // listed projects, so it may exceed `fetchDeduplicatedTotalSeconds` for
+  // the same user. That's fine for the breakdown because both the total
+  // and the AI slice come from the same non-deduped form, so the AI/non-AI
+  // ratio stays internally consistent. Use `fetchDeduplicatedTotalSeconds`
+  // for `nowHackatimeHours` writes.
   private async fetchBreakdownSeconds(
     hackatimeAccount: string,
     projectNames: string[],
