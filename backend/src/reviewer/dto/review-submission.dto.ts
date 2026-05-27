@@ -45,6 +45,15 @@ export class ReviewSubmissionDto {
   @IsBoolean()
   @IsOptional()
   permReject?: boolean;
+
+  // When true, skip the Manifest-based "other YSWS hours already shipped"
+  // deduction when computing the Airtable delta. Only honored when this
+  // reviewer decision finalizes the submission in-request — if fraud is still
+  // pending and finalization defers to the fraud-poll path, the override is
+  // not preserved and normal dedupe applies.
+  @IsBoolean()
+  @IsOptional()
+  ignorePriorYswsCredit?: boolean;
 }
 
 export class QuickApproveDto {
