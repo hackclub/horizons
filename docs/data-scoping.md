@@ -67,6 +67,7 @@ Reviewers see submission and project data for the review queue, but **user PII i
 | Age | Yes | **Computed** from birthday, raw date never returned |
 | Hackatime start date | Yes | Per-user cutoff override (non-PII, operational — helps explain pre-default-cutoff hours) |
 | Country | Yes | Coarse only — for shipping/regional context. No street, city, state, or zip. |
+| Pinned event (slug + title) | Yes | Sub-event the user picked. Lets reviewers scope the queue by cohort. |
 | Email | **No** | |
 | Birthday (raw) | **No** | Only age is exposed |
 | Address (street, city, state, zip) | **No** | |

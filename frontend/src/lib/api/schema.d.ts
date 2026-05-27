@@ -3215,6 +3215,8 @@ export interface components {
             /** Format: date-time */
             hackatimeStartDate: string | null;
             country: string | null;
+            eventSlug: string | null;
+            eventTitle: string | null;
         };
         PastReviewEntry: {
             submissionId: number;

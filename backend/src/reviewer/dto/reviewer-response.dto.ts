@@ -23,6 +23,17 @@ export class ScopedUserResponse {
 
   @ApiProperty({ type: String, nullable: true })
   country: string | null;
+
+  /**
+   * Slug of the sub-event the user has pinned (their chosen cohort). Lets
+   * reviewers scope the gallery by event. Null when the user hasn't pinned one.
+   */
+  @ApiProperty({ type: String, nullable: true })
+  eventSlug: string | null;
+
+  /** Human-readable title for the pinned event; pairs with `eventSlug`. */
+  @ApiProperty({ type: String, nullable: true })
+  eventTitle: string | null;
 }
 
 class QueueProjectResponse {

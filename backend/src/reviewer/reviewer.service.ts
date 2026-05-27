@@ -26,12 +26,17 @@ import { MetricsService } from '../metrics/metrics.service';
 // Scoped user fields — no PII like email, street address, birthday, or real name.
 // Country is exposed because reviewers use it for context (shipping eligibility,
 // regional norms) and it's coarse enough not to identify a user.
+// Pinned event surfaces the user's chosen sub-event so reviewers can scope the
+// gallery by event (e.g. only review submissions from a specific cohort).
 const SCOPED_USER_SELECT = {
   userId: true,
   slackUserId: true,
   birthday: true, // used to compute age only, never sent raw
   hackatimeStartDate: true,
   country: true,
+  pinnedEvent: {
+    select: { event: { select: { slug: true, title: true } } },
+  },
 } as const;
 
 @Injectable()
@@ -1012,6 +1017,9 @@ export class ReviewerService {
       birthday: Date | null;
       hackatimeStartDate: Date | null;
       country: string | null;
+      pinnedEvent: {
+        event: { slug: string; title: string };
+      } | null;
     },
     displayNameMap: Map<string, string>,
   ) {
@@ -1038,6 +1046,8 @@ export class ReviewerService {
       age,
       hackatimeStartDate: user.hackatimeStartDate,
       country: user.country,
+      eventSlug: user.pinnedEvent?.event.slug ?? null,
+      eventTitle: user.pinnedEvent?.event.title ?? null,
     };
   }
 

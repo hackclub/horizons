@@ -7,6 +7,7 @@
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type PastReview = components['schemas']['PastReviewEntry'];
 	type FraudRejected = components['schemas']['FraudRejectedEntry'];
+	type EventResponse = components['schemas']['EventResponse'];
 
 	interface Props {
 		items: QueueItem[];
@@ -61,6 +62,40 @@
 		}
 	});
 
+	// Persist the event filter for the same reason as type filter — reviewers
+	// commonly scope to one event cohort while triaging and shouldn't have to
+	// re-pick after every round trip into a project.
+	const EVENT_FILTER_STORAGE_KEY = 'horizons-review-gallery-event-filter';
+
+	function loadSelectedEventsFromStorage(): Set<string> {
+		if (typeof sessionStorage === 'undefined') return new Set();
+		try {
+			const raw = sessionStorage.getItem(EVENT_FILTER_STORAGE_KEY);
+			if (!raw) return new Set();
+			const parsed = JSON.parse(raw);
+			if (!Array.isArray(parsed)) return new Set();
+			return new Set(parsed.filter((s): s is string => typeof s === 'string'));
+		} catch {
+			return new Set();
+		}
+	}
+
+	// Set of event slugs (or the sentinel "__none__" for users without a pinned
+	// event) to filter the gallery by.
+	let selectedEvents = $state<Set<string>>(loadSelectedEventsFromStorage());
+
+	$effect(() => {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(
+				EVENT_FILTER_STORAGE_KEY,
+				JSON.stringify([...selectedEvents]),
+			);
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+	});
+
 	let searchQuery = $state('');
 	// Default to longest wait so reviewers triage the most-stale submissions first.
 	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
@@ -69,41 +104,57 @@
 
 	let pastReviews = $state<PastReview[]>([]);
 	let fraudRejected = $state<FraudRejected[]>([]);
+	let events = $state<EventResponse[]>([]);
 	let currentReviewerId = $state<number | null>(null);
 	let pastLoading = $state(true);
 	let isAdmin = $state(false);
 
 	onMount(async () => {
 		try {
-			const [{ data: pastData }, { data: meData }, { data: fraudData }] = await Promise.all([
+			const [
+				{ data: pastData },
+				{ data: meData },
+				{ data: fraudData },
+				{ data: eventsData },
+			] = await Promise.all([
 				api.GET('/api/reviewer/past-reviews'),
 				api.GET('/api/user/auth/me'),
 				api.GET('/api/reviewer/fraud-rejected'),
+				api.GET('/api/events'),
 			]);
 			if (pastData) {
 				pastReviews = pastData.reviews;
 				currentReviewerId = pastData.currentReviewerId;
 			}
 			if (fraudData) fraudRejected = fraudData;
+			if (eventsData) events = eventsData;
 			isAdmin = meData?.role === 'admin' || meData?.role === 'superadmin';
 		} finally {
 			pastLoading = false;
 		}
 	});
 
+	// "__none__" sentinel matches users without a pinned event so reviewers can
+	// triage stragglers separately from cohort-tagged submissions.
+	const NO_EVENT_SENTINEL = '__none__';
+
 	function matchesFilters(
 		projectTitle: string,
 		projectType: string,
 		authorName: string,
+		authorEventSlug: string | null,
 	): boolean {
 		const matchesType =
 			selectedTypes.size === 0 || selectedTypes.has(projectType);
+		const matchesEvent =
+			selectedEvents.size === 0 ||
+			selectedEvents.has(authorEventSlug ?? NO_EVENT_SENTINEL);
 		const q = searchQuery.toLowerCase();
 		const matchesSearch =
 			q === '' ||
 			projectTitle.toLowerCase().includes(q) ||
 			authorName.toLowerCase().includes(q);
-		return matchesType && matchesSearch;
+		return matchesType && matchesEvent && matchesSearch;
 	}
 
 	function matchesFraudFilter(joeFraudPassed: boolean | null): boolean {
@@ -146,6 +197,7 @@
 						item.project.projectTitle,
 						item.project.projectType,
 						userLabel(item.project.user),
+						item.project.user.eventSlug,
 					) && matchesFraudFilter(item.project.joeFraudPassed),
 			)
 			.sort((a, b) => {
@@ -204,6 +256,7 @@
 						r.projectTitle,
 						r.projectType,
 						userLabel(r.user),
+						r.user.eventSlug,
 					),
 			),
 		),
@@ -216,6 +269,7 @@
 					r.projectTitle,
 					r.projectType,
 					userLabel(r.user),
+					r.user.eventSlug,
 				),
 			),
 		),
@@ -229,7 +283,12 @@
 	let filteredFraudRejected = $derived.by(() => {
 		if (searchQuery.trim() === '') return [] as FraudRejected[];
 		const matched = fraudRejected.filter((r) =>
-			matchesFilters(r.projectTitle, r.projectType, userLabel(r.user)),
+			matchesFilters(
+				r.projectTitle,
+				r.projectType,
+				userLabel(r.user),
+				r.user.eventSlug,
+			),
 		);
 		const seen = new Set<number>();
 		const out: FraudRejected[] = [];
@@ -249,6 +308,16 @@
 			next.add(type);
 		}
 		selectedTypes = next;
+	}
+
+	function toggleEvent(slug: string) {
+		const next = new Set(selectedEvents);
+		if (next.has(slug)) {
+			next.delete(slug);
+		} else {
+			next.add(slug);
+		}
+		selectedEvents = next;
 	}
 
 	function formatTypeName(type: string): string {
@@ -330,6 +399,33 @@
 				</button>
 			{/if}
 		</div>
+
+		{#if events.length > 0}
+			<div class="flex flex-wrap gap-2 items-center">
+				<span class="text-[11px] text-rv-dim mr-1">Event</span>
+				{#each events as event (event.slug)}
+					<button
+						class="py-1.5 px-3.5 rounded-[20px] border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text {selectedEvents.has(event.slug) ? 'bg-rv-tag-bg border-rv-accent! text-rv-accent!' : ''}"
+						onclick={() => toggleEvent(event.slug)}
+					>
+						{event.title}
+					</button>
+				{/each}
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text {selectedEvents.has(NO_EVENT_SENTINEL) ? 'bg-rv-tag-bg border-rv-accent! text-rv-accent!' : ''}"
+					onclick={() => toggleEvent(NO_EVENT_SENTINEL)}
+					title="Submissions from users who haven't picked an event"
+				>
+					No event
+				</button>
+
+				{#if selectedEvents.size > 0}
+					<button class="py-1.5 px-3.5 rounded-[20px] border border-rv-border bg-transparent text-rv-dim text-[12px] font-inherit cursor-pointer underline hover:text-rv-text" onclick={() => (selectedEvents = new Set())}>
+						Clear event filter
+					</button>
+				{/if}
+			</div>
+		{/if}
 	</div>
 
 	<div class="overflow-y-auto flex-1">
