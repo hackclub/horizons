@@ -66,7 +66,8 @@
 	const isValidCtaEmail = $derived(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ctaEmail));
 
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
-	const eventEntries = Object.entries(eventsMap);
+	// TODO: temporarily hidden from homepage — restore by removing the filter
+	const eventEntries = Object.entries(eventsMap).filter(([key]) => key !== 'sol');
 	const faqItems = yaml.load(faqRaw) as { question: string; answer: string }[];
 	let openFaqIndex = $state<number | null>(null);
 
