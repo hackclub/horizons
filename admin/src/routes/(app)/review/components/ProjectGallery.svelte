@@ -27,7 +27,40 @@
 		'mobile_app',
 	];
 
-	let selectedTypes = $state<Set<string>>(new Set());
+	// Persist the project-type filter across navigation. Reviewers commonly
+	// scope the gallery to one platform (e.g. web_playable) while triaging,
+	// click into a project, then return — without persistence the filter
+	// resets and they have to re-pick on every round trip.
+	const TYPE_FILTER_STORAGE_KEY = 'horizons-review-gallery-type-filter';
+
+	function loadSelectedTypesFromStorage(): Set<string> {
+		if (typeof sessionStorage === 'undefined') return new Set();
+		try {
+			const raw = sessionStorage.getItem(TYPE_FILTER_STORAGE_KEY);
+			if (!raw) return new Set();
+			const parsed = JSON.parse(raw);
+			if (!Array.isArray(parsed)) return new Set();
+			return new Set(parsed.filter((s): s is string => typeof s === 'string'));
+		} catch {
+			return new Set();
+		}
+	}
+
+	let selectedTypes = $state<Set<string>>(loadSelectedTypesFromStorage());
+
+	$effect(() => {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(
+				TYPE_FILTER_STORAGE_KEY,
+				JSON.stringify([...selectedTypes]),
+			);
+		} catch {
+			// sessionStorage can throw (private mode, quota); the in-memory set
+			// still works for the rest of the page lifecycle.
+		}
+	});
+
 	let searchQuery = $state('');
 	// Default to longest wait so reviewers triage the most-stale submissions first.
 	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
