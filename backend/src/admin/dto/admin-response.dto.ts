@@ -1164,6 +1164,23 @@ export class StreakBackfillResponse {
   results: StreakBackfillEntry[];
 }
 
+export class TriggerReviewerLeaderboardResponse {
+  @ApiProperty()
+  posted: boolean;
+
+  @ApiProperty()
+  dateLabel: string;
+
+  @ApiProperty()
+  totalReviews: number;
+
+  @ApiProperty()
+  reviewerCount: number;
+
+  @ApiProperty()
+  message: string;
+}
+
 // --- Event Stats DTOs ---
 
 class EventStatsEventDetail {

@@ -917,6 +917,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/reviewer-leaderboard/trigger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_triggerReviewerLeaderboard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/{id}/fraud-flag": {
         parameters: {
             query?: never;
@@ -2943,6 +2959,13 @@ export interface components {
             usersProcessed: number;
             totalDaysWritten: number;
             results: components["schemas"]["StreakBackfillEntry"][];
+        };
+        TriggerReviewerLeaderboardResponse: {
+            posted: boolean;
+            dateLabel: string;
+            totalReviews: number;
+            reviewerCount: number;
+            message: string;
         };
         EventStatsEventDetail: {
             eventId: number;
@@ -5266,6 +5289,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewerLeaderboardEntry"][];
+                };
+            };
+        };
+    };
+    AdminController_triggerReviewerLeaderboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TriggerReviewerLeaderboardResponse"];
                 };
             };
         };
