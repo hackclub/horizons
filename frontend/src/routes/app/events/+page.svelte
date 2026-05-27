@@ -460,6 +460,32 @@
 							{subtitle}
 						</p>
 					{/if}
+					<a
+						class="parents-guide-link font-bricolage font-semibold text-[14px] leading-normal underline"
+						href="https://hack.club/horizons-parents-guide"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						Horizons Parents Guide
+					</a>
+					{#if effectiveSlug === 'nexus'}
+						<a
+							class="parents-guide-link font-bricolage font-semibold text-[14px] leading-normal underline"
+							href="https://nexus.hackclub.com"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Theme announcement
+						</a>
+						<a
+							class="parents-guide-link font-bricolage font-semibold text-[14px] leading-normal underline"
+							href="https://forms.hackclub.com/nexus-need-based"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Need-based stipends
+						</a>
+					{/if}
 				</div>
 				<div class="progress-bar">
 					<p class="progress-text-primary font-cook text-[16px] m-0 leading-normal whitespace-nowrap">
@@ -782,6 +808,15 @@
 	}
 	.card-text-primary {
 		color: var(--card-text);
+	}
+	.parents-guide-link {
+		color: var(--card-text);
+		text-decoration-thickness: 2px;
+		text-underline-offset: 3px;
+		transition: opacity 0.15s ease;
+	}
+	.parents-guide-link:hover {
+		opacity: 0.75;
 	}
 	.progress-text-primary {
 		color: var(--progress-text);
