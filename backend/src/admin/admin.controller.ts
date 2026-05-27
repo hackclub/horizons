@@ -24,6 +24,7 @@ import { Request, Response } from 'express';
 import { AdminService } from './admin.service';
 import { MetricsSnapshotService } from './metrics-snapshot.service';
 import { StreakService } from '../streaks/streak.service';
+import { ReviewerLeaderboardCronService } from '../reviewer/reviewer-leaderboard-cron.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -59,6 +60,7 @@ import {
   FraudReviewQueueResponse,
   PermRejectActionResponse,
   ResetJoeActionResponse,
+  TriggerReviewerLeaderboardResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -79,6 +81,7 @@ export class AdminController {
     private adminService: AdminService,
     private metricsSnapshotService: MetricsSnapshotService,
     private streakService: StreakService,
+    private reviewerLeaderboardCron: ReviewerLeaderboardCronService,
   ) {}
 
   @Get('submissions')
@@ -342,6 +345,14 @@ export class AdminController {
   @ApiOkResponse({ type: [ReviewerLeaderboardEntry] })
   async getReviewerLeaderboard() {
     return this.adminService.getReviewerLeaderboard();
+  }
+
+  @Post('reviewer-leaderboard/trigger')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiCreatedResponse({ type: TriggerReviewerLeaderboardResponse })
+  async triggerReviewerLeaderboard(): Promise<TriggerReviewerLeaderboardResponse> {
+    return this.reviewerLeaderboardCron.triggerNow();
   }
 
   @Put('users/:id/fraud-flag')

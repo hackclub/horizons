@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
@@ -8,6 +8,14 @@ interface ReviewerCount {
   count: number;
   name: string;
   slackUserId: string | null;
+}
+
+export interface LeaderboardPostResult {
+  posted: boolean;
+  dateLabel: string;
+  totalReviews: number;
+  reviewerCount: number;
+  message: string;
 }
 
 @Injectable()
@@ -35,13 +43,32 @@ export class ReviewerLeaderboardCronService {
       return;
     }
 
-    const now = new Date();
-    const dayEnd = new Date(now);
-    dayEnd.setUTCHours(0, 0, 0, 0);
-    const dayStart = new Date(dayEnd);
-    dayStart.setUTCDate(dayStart.getUTCDate() - 1);
+    const { start, end } = this.previousUtcDayWindow();
+    await this.postLeaderboard(channelId, start, end);
+  }
 
-    await this.postLeaderboard(channelId, dayStart, dayEnd);
+  /**
+   * Manually trigger the same leaderboard the cron would post (yesterday's
+   * UTC window). Throws if the Slack channel env var isn't configured.
+   */
+  async triggerNow(): Promise<LeaderboardPostResult> {
+    const channelId = process.env.SLACK_REVIEWER_LEADERBOARD_CHANNEL;
+    if (!channelId) {
+      throw new BadRequestException(
+        'SLACK_REVIEWER_LEADERBOARD_CHANNEL is not configured.',
+      );
+    }
+    const { start, end } = this.previousUtcDayWindow();
+    return this.postLeaderboard(channelId, start, end);
+  }
+
+  private previousUtcDayWindow() {
+    const now = new Date();
+    const end = new Date(now);
+    end.setUTCHours(0, 0, 0, 0);
+    const start = new Date(end);
+    start.setUTCDate(start.getUTCDate() - 1);
+    return { start, end };
   }
 
   /**
@@ -49,7 +76,11 @@ export class ReviewerLeaderboardCronService {
    * Extracted so admins can trigger a manual post for any day without waiting
    * for the cron.
    */
-  async postLeaderboard(channelId: string, start: Date, end: Date) {
+  async postLeaderboard(
+    channelId: string,
+    start: Date,
+    end: Date,
+  ): Promise<LeaderboardPostResult> {
     const dateLabel = start.toISOString().split('T')[0];
 
     const submissions = await this.prisma.submission.findMany({
@@ -62,10 +93,15 @@ export class ReviewerLeaderboardCronService {
     });
 
     if (submissions.length === 0) {
-      this.logger.log(
-        `No reviews completed on ${dateLabel}, skipping leaderboard post.`,
-      );
-      return;
+      const message = `No reviews completed on ${dateLabel}, skipping leaderboard post.`;
+      this.logger.log(message);
+      return {
+        posted: false,
+        dateLabel,
+        totalReviews: 0,
+        reviewerCount: 0,
+        message,
+      };
     }
 
     const counts = new Map<
@@ -148,13 +184,24 @@ export class ReviewerLeaderboardCronService {
 
     const result = await this.slack.postToChannel(channelId, fallback, blocks);
     if (result.success) {
-      this.logger.log(
-        `Posted reviewer leaderboard for ${dateLabel}: ${totalReviews} reviews by ${leaderboard.length} reviewers.`,
-      );
-    } else {
-      this.logger.warn(
-        `Failed to post reviewer leaderboard for ${dateLabel}: ${result.error}`,
-      );
+      const message = `Posted reviewer leaderboard for ${dateLabel}: ${totalReviews} reviews by ${leaderboard.length} reviewers.`;
+      this.logger.log(message);
+      return {
+        posted: true,
+        dateLabel,
+        totalReviews,
+        reviewerCount: leaderboard.length,
+        message,
+      };
     }
+    const errMessage = `Failed to post reviewer leaderboard for ${dateLabel}: ${result.error}`;
+    this.logger.warn(errMessage);
+    return {
+      posted: false,
+      dateLabel,
+      totalReviews,
+      reviewerCount: leaderboard.length,
+      message: errMessage,
+    };
   }
 }

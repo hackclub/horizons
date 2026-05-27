@@ -34,6 +34,13 @@
     let leaderboardLoading = $state(false);
     let leaderboardLoaded = $state(false);
 
+    // Manual leaderboard send (superadmin only)
+    let currentUserRole = $state<string | null>(null);
+    const isSuperadmin = $derived(currentUserRole === 'superadmin');
+    let leaderboardSendBusy = $state(false);
+    let leaderboardSendMessage = $state('');
+    let leaderboardSendError = $state('');
+
     // Priority users state
     let priorityUsers = $state<PriorityUserResponse[]>([]);
     let priorityUsersLoading = $state(false);
@@ -159,6 +166,28 @@
         }
     }
 
+    async function triggerLeaderboardSend() {
+        if (leaderboardSendBusy) return;
+        if (!confirm('Post yesterday\'s reviewer leaderboard to Slack now?')) return;
+        leaderboardSendBusy = true;
+        leaderboardSendMessage = '';
+        leaderboardSendError = '';
+        try {
+            const { data, error } = await api.POST('/api/admin/reviewer-leaderboard/trigger');
+            if (error) {
+                leaderboardSendError =
+                    (error as { message?: string })?.message ?? 'Failed to send leaderboard';
+                return;
+            }
+            leaderboardSendMessage = data?.message ?? 'Triggered.';
+        } catch (err) {
+            leaderboardSendError =
+                err instanceof Error ? err.message : 'Failed to send leaderboard';
+        } finally {
+            leaderboardSendBusy = false;
+        }
+    }
+
     async function recalculateAllProjects() {
         if (recalcAllBusy) return;
         recalcAllBusy = true;
@@ -176,10 +205,16 @@
         }
     }
 
-    onMount(() => {
+    onMount(async () => {
         loadGlobalSettings();
         loadReviewerLeaderboard();
         loadPriorityUsers();
+        try {
+            const { data: me } = await api.GET('/api/user/auth/me');
+            currentUserRole = me?.role ?? null;
+        } catch {
+            currentUserRole = null;
+        }
     });
 </script>
 
@@ -330,14 +365,31 @@
             <h2 class="text-xl font-semibold flex items-center gap-2">
                 🏆 Reviewer Leaderboard
             </h2>
-            <Button variant="ghost" onclick={loadReviewerLeaderboard} disabled={leaderboardLoading}>
-                {leaderboardLoading
-                    ? 'Loading...'
-                    : leaderboardLoaded
-                      ? 'Refresh'
-                      : 'Load Leaderboard'}
-            </Button>
+            <div class="flex items-center gap-2">
+                {#if isSuperadmin}
+                    <Button
+                        variant="ghost"
+                        onclick={triggerLeaderboardSend}
+                        disabled={leaderboardSendBusy}
+                        title="Post yesterday's leaderboard to Slack now"
+                    >
+                        {leaderboardSendBusy ? 'Sending...' : '📣 Send to Slack now'}
+                    </Button>
+                {/if}
+                <Button variant="ghost" onclick={loadReviewerLeaderboard} disabled={leaderboardLoading}>
+                    {leaderboardLoading
+                        ? 'Loading...'
+                        : leaderboardLoaded
+                          ? 'Refresh'
+                          : 'Load Leaderboard'}
+                </Button>
+            </div>
         </div>
+        {#if isSuperadmin && (leaderboardSendError || leaderboardSendMessage)}
+            <p class="text-xs {leaderboardSendError ? 'text-ds-red' : 'text-ds-green'}">
+                {leaderboardSendError || leaderboardSendMessage}
+            </p>
+        {/if}
 
         {#if leaderboardLoaded && reviewerLeaderboard.length > 0}
             <div class="overflow-x-auto">
