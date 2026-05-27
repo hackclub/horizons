@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 import { SlackService } from '../slack/slack.service';
 
@@ -20,12 +20,12 @@ export class ReviewerLeaderboardCronService {
   ) {}
 
   /**
-   * Post yesterday's reviewer leaderboard to Slack at UTC midnight. The window
+   * Post yesterday's reviewer leaderboard to Slack at noon Eastern. The window
    * matches MetricsSnapshotService so daily numbers reconcile against the
    * historical metric snapshot. Skips silently if the channel env var is
    * unset (e.g. local dev) or no reviews landed in the window.
    */
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron('0 12 * * *', { timeZone: 'America/New_York' })
   async handleDaily() {
     const channelId = process.env.SLACK_REVIEWER_LEADERBOARD_CHANNEL;
     if (!channelId) {
