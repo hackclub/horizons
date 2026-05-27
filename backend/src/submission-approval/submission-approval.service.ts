@@ -142,7 +142,9 @@ export class SubmissionApprovalService {
       where: { submissionId },
       data,
     });
-    await this.evaluateAndFinalize(submissionId, reviewerId);
+    await this.evaluateAndFinalize(submissionId, reviewerId, {
+      ignorePriorYswsCredit: dto.ignorePriorYswsCredit === true,
+    });
   }
 
   /**
@@ -238,6 +240,7 @@ export class SubmissionApprovalService {
   private async evaluateAndFinalize(
     submissionId: number,
     actorUserId: number,
+    overrides: { ignorePriorYswsCredit?: boolean } = {},
   ): Promise<void> {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
@@ -262,6 +265,7 @@ export class SubmissionApprovalService {
         reviewPassed !== false,
         actorUserId,
         fraudRaw,
+        overrides,
       );
       return;
     }
@@ -279,6 +283,7 @@ export class SubmissionApprovalService {
         false,
         actorUserId,
         fraudRaw,
+        overrides,
       );
       return;
     }
@@ -290,6 +295,7 @@ export class SubmissionApprovalService {
       false,
       actorUserId,
       fraudRaw,
+      overrides,
     );
   }
 
@@ -327,6 +333,7 @@ export class SubmissionApprovalService {
     isSilent: boolean,
     actorUserId: number,
     fraudRaw: boolean | null,
+    overrides: { ignorePriorYswsCredit?: boolean } = {},
   ): Promise<void> {
     // CAS: only the first caller wins the pending → terminal transition.
     const finalizedAt = new Date();
@@ -362,7 +369,7 @@ export class SubmissionApprovalService {
     });
 
     if (newStatus === 'approved') {
-      await this.fireApprovalSideEffects(submission, finalizedAt);
+      await this.fireApprovalSideEffects(submission, finalizedAt, overrides);
     } else if (!isSilent) {
       await this.fireRejectionSideEffects(submission, finalizedAt);
     }
@@ -398,6 +405,7 @@ export class SubmissionApprovalService {
       };
     },
     finalizedAt: Date,
+    overrides: { ignorePriorYswsCredit?: boolean } = {},
   ): Promise<void> {
     // Rebuild the full justification from the persisted reviewer analysis +
     // current project / reviewer state. This defers to finalization time so
@@ -427,6 +435,7 @@ export class SubmissionApprovalService {
     await this.syncAirtable(submission, {
       approvedHours: submission.approvedHours ?? undefined,
       hoursJustification: fullJustification,
+      ignorePriorYswsCredit: overrides.ignorePriorYswsCredit,
     });
     this.airtableService
       .syncUserStats(submission.project.user.email)
@@ -557,7 +566,11 @@ export class SubmissionApprovalService {
         description: string | null;
       };
     },
-    dto: { approvedHours?: number; hoursJustification?: string },
+    dto: {
+      approvedHours?: number;
+      hoursJustification?: string;
+      ignorePriorYswsCredit?: boolean;
+    },
   ): Promise<void> {
     try {
       const project = await this.prisma.project.findUnique({
@@ -584,10 +597,14 @@ export class SubmissionApprovalService {
       // so we don't double-credit work the user already got hours for. Sum
       // hoursShipped across non-Horizons submissions; null/missing entries
       // contribute 0, so this is a safe no-op if Manifest is disabled or the
-      // codeUrl isn't registered.
+      // codeUrl isn't registered. Reviewer can opt out via ignorePriorYswsCredit.
       const codeUrl = submission.repoUrl || submission.project.repoUrl;
       let priorYswsHoursShipped = 0;
-      if (codeUrl && this.manifestService.isEnabled()) {
+      if (
+        codeUrl &&
+        this.manifestService.isEnabled() &&
+        !dto.ignorePriorYswsCredit
+      ) {
         const manifest = await this.manifestService.lookup(codeUrl);
         priorYswsHoursShipped = (manifest?.submissions ?? [])
           .filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')

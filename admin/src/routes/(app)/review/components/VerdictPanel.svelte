@@ -77,6 +77,7 @@
 	let hasReshipContext = $derived(
 		priorReshipApprovedHours != null || priorYswsHoursShipped > 0,
 	);
+	let reshipNoticeDismissed = $state(false);
 	let reshipDelta = $derived(
 		hasReshipContext
 			? Math.round((approvedHours - alreadyCreditedHours) * 10) / 10
@@ -103,6 +104,7 @@
 		permReject = false;
 		permRejectInternalNote = '';
 		justSubmitted = false;
+		reshipNoticeDismissed = false;
 	});
 
 	// Sync approved hours from the breakdown panel unless reviewer manually edited
@@ -127,7 +129,10 @@
 					hoursJustification: hoursJustification || undefined,
 					userFeedback: approveComment || undefined,
 					sendEmail,
-				},
+					...(reshipNoticeDismissed && hasReshipContext
+						? { ignorePriorYswsCredit: true }
+						: {}),
+				} as any,
 			});
 			if (error) throw new Error(`Failed to approve submission ${submissionId}`);
 			toast.success('Project approved');
@@ -272,20 +277,45 @@
 					oninput={() => { reviewerManuallyEditedHours = true; }}
 					class="w-[100px] bg-rv-surface border border-rv-border rounded-md p-2.5 text-rv-text text-[13px] font-semibold resize-vertical focus:outline-none focus:border-rv-accent"
 				/>
-				{#if hasReshipContext && reshipDelta != null}
-					<p class="mt-1 mb-0 text-[11px] text-rv-dim">
-						Already credited:
-						{#if priorReshipApprovedHours != null}
-							<span class="font-semibold text-rv-text">{priorReshipApprovedHours.toFixed(1)}h</span> Horizons{#if priorYswsHoursShipped > 0}{' '}+{' '}{/if}
-						{/if}
-						{#if priorYswsHoursShipped > 0}
-							<span class="font-semibold text-rv-text">{priorYswsHoursShipped.toFixed(1)}h</span> other YSWS
-						{/if}
-						→ granting
-						<span class="font-semibold {reshipDelta < 0 ? 'text-rv-red' : 'text-rv-green'}">
-							{reshipDelta >= 0 ? '+' : ''}{reshipDelta.toFixed(1)}h
+				{#if hasReshipContext && reshipDelta != null && !reshipNoticeDismissed}
+					<p class="mt-1 mb-0 text-[11px] text-rv-dim flex items-center gap-1.5">
+						<span>
+							Already credited:
+							{#if priorReshipApprovedHours != null}
+								<span class="font-semibold text-rv-text">{priorReshipApprovedHours.toFixed(1)}h</span> Horizons{#if priorYswsHoursShipped > 0}{' '}+{' '}{/if}
+							{/if}
+							{#if priorYswsHoursShipped > 0}
+								<span class="font-semibold text-rv-text">{priorYswsHoursShipped.toFixed(1)}h</span> other YSWS
+							{/if}
+							→ granting
+							<span class="font-semibold {reshipDelta < 0 ? 'text-rv-red' : 'text-rv-green'}">
+								{reshipDelta >= 0 ? '+' : ''}{reshipDelta.toFixed(1)}h
+							</span>
+							new
 						</span>
-						new
+						{#if priorYswsHoursShipped > 0}
+							<button
+								type="button"
+								class="text-rv-dim hover:text-rv-text text-[11px] underline cursor-pointer bg-transparent border-none p-0"
+								onclick={() => (reshipNoticeDismissed = true)}
+								title="Skip the other-YSWS dedupe on this approval"
+							>
+								ignore
+							</button>
+						{/if}
+					</p>
+				{:else if hasReshipContext && reshipNoticeDismissed && priorYswsHoursShipped > 0}
+					<p class="mt-1 mb-0 text-[11px] text-rv-dim flex items-center gap-1.5">
+						<span class="italic">
+							Ignoring <span class="font-semibold text-rv-text">{priorYswsHoursShipped.toFixed(1)}h</span> other YSWS dedupe on approval.
+						</span>
+						<button
+							type="button"
+							class="text-rv-dim hover:text-rv-text text-[11px] underline cursor-pointer bg-transparent border-none p-0"
+							onclick={() => (reshipNoticeDismissed = false)}
+						>
+							undo
+						</button>
 					</p>
 				{/if}
 			</div>
