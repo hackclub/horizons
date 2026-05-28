@@ -299,7 +299,7 @@
 			<div class="mb-3">
 				<label for="approved-hours" class="block text-xs font-semibold text-rv-dim mb-1">
 					Approved Hours
-					<span class="font-normal opacity-80 italic">(defaults to Hackatime hours)</span>
+					<span class="font-normal opacity-80 italic">(defaults to submitted hours)</span>
 				</label>
 				<input
 					id="approved-hours"
