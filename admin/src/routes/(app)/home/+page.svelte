@@ -270,7 +270,7 @@
 			{ value: funnel.atLeast1Submission, name: 'At Least 1\nSubmission' },
 			{ value: funnel.atLeast1ApprovedHour, name: 'At Least 1\nApproved Hour' },
 			{ value: funnel.approved10Plus, name: '10+ Approved\nHours' },
-			{ value: funnel.approved30Plus, name: '30+ Approved\nHours' },
+			{ value: funnel.canBuyTicket, name: 'Can Buy\nTicket' },
 			{ value: funnel.boughtTicket, name: 'Bought\nTicket' },
 			{ value: funnel.approved60Plus, name: '60+ Approved\nHours' },
 		];

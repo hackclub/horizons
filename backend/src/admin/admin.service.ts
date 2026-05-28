@@ -643,7 +643,7 @@ export class AdminService {
       atLeast1Submission,
       atLeast1ApprovedHour,
       approved10Plus,
-      approved30Plus,
+      canBuyTicket,
       approved60Plus,
       boughtTicket,
       perEvent,
@@ -664,7 +664,10 @@ export class AdminService {
         where: { projects: { some: { deletedAt: null, approvedHours: { gte: 1 } } } },
       }),
       this.countUsersWithApprovedHoursGte(10),
-      this.countUsersWithApprovedHoursGte(30),
+      // "Can buy ticket" is scoped to each user's pinned event: their approved
+      // hours must clear that specific event's ticketThreshold (null = no gate).
+      // Users without a pinned event are excluded.
+      this.countUsersWhoCanBuyTheirPinnedTicket(),
       this.countUsersWithApprovedHoursGte(60),
       this.prisma.user.count({
         where: { transactions: { some: { kind: 'EventTicket' } } },
@@ -681,7 +684,7 @@ export class AdminService {
       atLeast1Submission,
       atLeast1ApprovedHour,
       approved10Plus,
-      approved30Plus,
+      canBuyTicket,
       approved60Plus,
       boughtTicket,
       perEvent,
@@ -707,7 +710,7 @@ export class AdminService {
         at_least_1_submission: bigint;
         at_least_1_approved_hour: bigint;
         approved_10_plus: bigint;
-        approved_30_plus: bigint;
+        can_buy_ticket: bigint;
         approved_60_plus: bigint;
         bought_ticket: bigint;
       }>
@@ -761,7 +764,9 @@ export class AdminService {
         COUNT(*) FILTER (WHERE um.has_submission) AS at_least_1_submission,
         COUNT(*) FILTER (WHERE um.has_1h_approved) AS at_least_1_approved_hour,
         COUNT(*) FILTER (WHERE um.approved_total >= 10) AS approved_10_plus,
-        COUNT(*) FILTER (WHERE um.approved_total >= 30) AS approved_30_plus,
+        COUNT(*) FILTER (
+          WHERE e.ticket_threshold IS NULL OR um.approved_total >= e.ticket_threshold
+        ) AS can_buy_ticket,
         COUNT(*) FILTER (WHERE um.approved_total >= 60) AS approved_60_plus,
         COUNT(*) FILTER (WHERE et.user_id IS NOT NULL) AS bought_ticket
       FROM pinned_events pe
@@ -784,7 +789,7 @@ export class AdminService {
       atLeast1Submission: Number(r.at_least_1_submission),
       atLeast1ApprovedHour: Number(r.at_least_1_approved_hour),
       approved10Plus: Number(r.approved_10_plus),
-      approved30Plus: Number(r.approved_30_plus),
+      canBuyTicket: Number(r.can_buy_ticket),
       approved60Plus: Number(r.approved_60_plus),
       boughtTicket: Number(r.bought_ticket),
     }));
@@ -800,6 +805,20 @@ export class AdminService {
         GROUP BY u.user_id
         HAVING COALESCE(SUM(p.approved_hours), 0) >= ${threshold}
       ) sub
+    `;
+    return Number(result[0]?.count ?? 0);
+  }
+
+  private async countUsersWhoCanBuyTheirPinnedTicket(): Promise<number> {
+    const result = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*) as count
+      FROM pinned_events pe
+      INNER JOIN events e ON e.event_id = pe.event_id
+      LEFT JOIN (
+        SELECT user_id, COALESCE(SUM(approved_hours), 0) AS approved_total
+        FROM projects WHERE deleted_at IS NULL GROUP BY user_id
+      ) ut ON ut.user_id = pe.user_id
+      WHERE e.ticket_threshold IS NULL OR COALESCE(ut.approved_total, 0) >= e.ticket_threshold
     `;
     return Number(result[0]?.count ?? 0);
   }

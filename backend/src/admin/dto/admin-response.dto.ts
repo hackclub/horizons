@@ -730,7 +730,7 @@ class StatsFunnelEventEntry {
   approved10Plus: number;
 
   @ApiProperty()
-  approved30Plus: number;
+  canBuyTicket: number;
 
   @ApiProperty()
   boughtTicket: number;
@@ -765,7 +765,7 @@ class StatsFunnel {
   approved10Plus: number;
 
   @ApiProperty()
-  approved30Plus: number;
+  canBuyTicket: number;
 
   @ApiProperty()
   boughtTicket: number;

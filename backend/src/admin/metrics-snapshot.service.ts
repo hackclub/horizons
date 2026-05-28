@@ -361,7 +361,7 @@ export class MetricsSnapshotService implements OnModuleInit {
       atLeast1Submission,
       atLeast1ApprovedHour,
       approved10Plus,
-      approved30Plus,
+      canBuyTicket,
       approved60Plus,
       boughtTicket,
     ] = await Promise.all([
@@ -397,7 +397,10 @@ export class MetricsSnapshotService implements OnModuleInit {
         },
       }),
       this.countUsersWithApprovedHoursGte(10, asOf),
-      this.countUsersWithApprovedHoursGte(30, asOf),
+      // "Can buy ticket" is scoped to each user's pinned event: their approved
+      // hours must clear that specific event's ticketThreshold (null = no gate).
+      // Users without a pinned event are excluded.
+      this.countUsersWhoCanBuyTheirPinnedTicket(asOf),
       this.countUsersWithApprovedHoursGte(60, asOf),
       this.prisma.user.count({
         where: {
@@ -416,7 +419,7 @@ export class MetricsSnapshotService implements OnModuleInit {
       atLeast1Submission,
       atLeast1ApprovedHour,
       approved10Plus,
-      approved30Plus,
+      canBuyTicket,
       boughtTicket,
       approved60Plus,
     };
@@ -436,6 +439,24 @@ export class MetricsSnapshotService implements OnModuleInit {
         GROUP BY u.user_id
         HAVING COALESCE(SUM(p.approved_hours), 0) >= ${threshold}
       ) sub
+    `;
+    return Number(result[0]?.count ?? 0);
+  }
+
+  private async countUsersWhoCanBuyTheirPinnedTicket(
+    asOf: Date,
+  ): Promise<number> {
+    const result = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*) as count
+      FROM pinned_events pe
+      INNER JOIN events e ON e.event_id = pe.event_id
+      INNER JOIN users u ON u.user_id = pe.user_id
+      LEFT JOIN (
+        SELECT user_id, COALESCE(SUM(approved_hours), 0) AS approved_total
+        FROM projects WHERE deleted_at IS NULL GROUP BY user_id
+      ) ut ON ut.user_id = pe.user_id
+      WHERE u.created_at <= ${asOf}
+        AND (e.ticket_threshold IS NULL OR COALESCE(ut.approved_total, 0) >= e.ticket_threshold)
     `;
     return Number(result[0]?.count ?? 0);
   }

@@ -2818,7 +2818,7 @@ export interface components {
             atLeast1Submission: number;
             atLeast1ApprovedHour: number;
             approved10Plus: number;
-            approved30Plus: number;
+            canBuyTicket: number;
             boughtTicket: number;
             approved60Plus: number;
         };
@@ -2831,7 +2831,7 @@ export interface components {
             atLeast1Submission: number;
             atLeast1ApprovedHour: number;
             approved10Plus: number;
-            approved30Plus: number;
+            canBuyTicket: number;
             boughtTicket: number;
             approved60Plus: number;
             perEvent: components["schemas"]["StatsFunnelEventEntry"][];
