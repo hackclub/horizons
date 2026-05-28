@@ -1301,6 +1301,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/submissions/{id}/preview-slack-message": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewerController_previewSlackMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/submissions/{id}/quick-approve": {
         parameters: {
             query?: never;
@@ -5853,6 +5869,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReviewResultResponse"];
                 };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewerController_previewSlackMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    userFeedback?: string;
+                    approvedHours?: number;
+                    approved?: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             201: {
                 headers: {

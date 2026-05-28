@@ -222,6 +222,39 @@
 			savingDraft = false;
 		}
 	}
+
+	let sendingPreview = $state(false);
+
+	async function previewSlackMessage() {
+		sendingPreview = true;
+		try {
+			const feedbackText = activeForm === 'approve' ? approveComment : changesComment;
+			const isApproved = activeForm === 'approve';
+
+			const { error } = await api.POST('/api/reviewer/submissions/{id}/preview-slack-message', {
+				params: { path: { id: submissionId } },
+				body: {
+					userFeedback: feedbackText,
+					approvedHours: approvedHours,
+					approved: isApproved,
+				},
+			});
+
+			if (error) {
+				const errMsg = (error as { message?: string })?.message || 'Unknown error';
+				throw new Error(errMsg);
+			}
+
+			toast.success('Preview DM sent to your Slack!');
+		} catch (error) {
+			console.error('Preview Slack DM failed:', error);
+			toast.error(
+				`Preview failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
+		} finally {
+			sendingPreview = false;
+		}
+	}
 </script>
 
 <div class="h-full overflow-y-auto bg-rv-bg p-5">
@@ -355,6 +388,14 @@
 					<span class="text-[11px] text-rv-green mr-1">Draft saved</span>
 				{/if}
 				<button
+					type="button"
+					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
+					onclick={previewSlackMessage}
+					disabled={sendingPreview || submitting || savingDraft || readOnly}
+				>
+					{sendingPreview ? 'Sending...' : 'Preview Slack'}
+				</button>
+				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={saveDraft}
 					disabled={submitting || savingDraft || readOnly}
@@ -422,6 +463,14 @@
 				{#if draftSavedFlash}
 					<span class="text-[11px] text-rv-green mr-1">Draft saved</span>
 				{/if}
+				<button
+					type="button"
+					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
+					onclick={previewSlackMessage}
+					disabled={sendingPreview || submitting || savingDraft || readOnly}
+				>
+					{sendingPreview ? 'Sending...' : 'Preview Slack'}
+				</button>
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={saveDraft}

@@ -9,6 +9,7 @@ import {
   QuickApproveDto,
   SaveNoteDto,
   SaveChecklistDto,
+  PreviewSlackMessageDto,
 } from './dto/review-submission.dto';
 
 // A claim is "active" while heartbeats arrive within this window. Past it,
@@ -629,6 +630,112 @@ export class ReviewerService {
     });
 
     return { success: true, submissionId, status: 'approved' };
+  }
+
+  async sendPreviewSlackMessage(
+    submissionId: number,
+    reviewerId: number,
+    dto: PreviewSlackMessageDto,
+  ) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      include: {
+        project: { select: { projectTitle: true } },
+      },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+
+    const reviewer = await this.prisma.user.findUnique({
+      where: { userId: reviewerId },
+      select: { slackUserId: true },
+    });
+    if (!reviewer?.slackUserId) {
+      throw new BadRequestException(
+        'You do not have a linked Slack account to receive the test message.',
+      );
+    }
+
+    let feedback = dto.userFeedback ?? '';
+    feedback = feedback.replace(/@me\b/gi, `<@${reviewer.slackUserId}>`);
+
+    const approved = dto.approved ?? true;
+    const approvedHours = dto.approvedHours ?? submission.approvedHours ?? submission.hackatimeHours ?? 0;
+    const projectTitle = submission.project.projectTitle;
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://horizons.hackclub.com';
+    const baseUrl = /^https?:\/\//.test(frontendUrl)
+      ? frontendUrl
+      : `https://${frontendUrl}`;
+    const projectUrl = `${baseUrl}/app/projects/${submission.projectId}`;
+
+    const blocks: any[] = [
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: ':test_tube: *Horizons Test Notification* (Only you can see this message)',
+          },
+        ],
+      },
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: approved
+            ? 'Submission is ship certified :check:'
+            : 'Submission failed ship certification :X:',
+          emoji: true,
+        },
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: approved
+            ? `Your submission for *${projectTitle}* is ship certified.`
+            : `Your submission for *${projectTitle}* failed ship certification.`,
+        },
+      },
+    ];
+
+    if (approved && approvedHours !== undefined) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Approved Hours:* ${approvedHours} hours`,
+        },
+      });
+    }
+
+    if (feedback) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Feedback:*\n>${feedback.split('\n').join('\n>')}`,
+        },
+      });
+    }
+
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `<${projectUrl}|View your project →>`,
+      },
+    });
+
+    const fallbackText = `[TEST] ${
+      approved
+        ? `Your submission for "${projectTitle}" is ship certified.${feedback ? ` Feedback: ${feedback}` : ''}`
+        : `Your submission for "${projectTitle}" failed ship certification.${feedback ? ` Feedback: ${feedback}` : ''}`
+    }`;
+
+    return this.slackService.sendDirectMessage(reviewer.slackUserId, fallbackText, blocks);
   }
 
   /**

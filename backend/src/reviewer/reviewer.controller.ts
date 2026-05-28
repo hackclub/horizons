@@ -19,6 +19,7 @@ import {
   SaveNoteDto,
   SaveChecklistDto,
   ClaimSubmissionDto,
+  PreviewSlackMessageDto,
 } from './dto/review-submission.dto';
 import {
   QueueItemResponse,
@@ -142,6 +143,17 @@ export class ReviewerController {
     @Req() req: Request,
   ) {
     return this.reviewerService.reviewSubmission(id, dto, req.user.userId);
+  }
+
+  /** Send a preview Slack DM to the reviewer to preview the message (e.g. their username shows up, double-checking Slack formatting). */
+  @Post('submissions/:id/preview-slack-message')
+  @ApiOkResponse({ description: 'Preview Slack DM sent to the requesting reviewer' })
+  async previewSlackMessage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: PreviewSlackMessageDto,
+    @Req() req: Request,
+  ) {
+    return this.reviewerService.sendPreviewSlackMessage(id, req.user.userId, dto);
   }
 
   /** Quick-approve a submission using hackatime hours */

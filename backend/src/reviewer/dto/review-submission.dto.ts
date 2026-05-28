@@ -72,6 +72,21 @@ export class QuickApproveDto {
   approvedHours?: number;
 }
 
+export class PreviewSlackMessageDto {
+  @IsString()
+  @IsOptional()
+  @MaxLength(5000)
+  userFeedback?: string;
+
+  @IsNumber()
+  @IsOptional()
+  approvedHours?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  approved?: boolean;
+}
+
 export class SaveNoteDto {
   @IsString()
   @MaxLength(2000)

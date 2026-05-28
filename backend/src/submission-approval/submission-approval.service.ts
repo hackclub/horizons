@@ -462,10 +462,17 @@ export class SubmissionApprovalService {
       );
     }
 
+    // Resolve @me shorthand → Slack mention at notification time (raw @me
+    // is stored in the DB so reviewers see the friendly shorthand when editing).
+    let resolvedFeedback = submission.hoursJustification ?? '';
+    if (reviewer?.slackUserId) {
+      resolvedFeedback = resolvedFeedback.replace(/@me\b/gi, `<@${reviewer.slackUserId}>`);
+    }
+
     await this.sendNotifications(submission, {
       approved: true,
       approvedHours: submission.approvedHours ?? undefined,
-      feedback: submission.hoursJustification,
+      feedback: resolvedFeedback || null,
       sendEmail: submission.pendingSendEmail && !qualifyEmailSent,
       finalizedAt,
     });
@@ -476,6 +483,7 @@ export class SubmissionApprovalService {
       submissionId: number;
       approvedHours: number | null;
       hoursJustification: string | null;
+      reviewedBy: string | null;
       pendingSendEmail: boolean;
       project: {
         projectTitle: string;
@@ -493,10 +501,24 @@ export class SubmissionApprovalService {
           err,
         ),
       );
+
+    // Resolve @me shorthand → Slack mention at notification time.
+    let resolvedFeedback = submission.hoursJustification ?? '';
+    const reviewerId = Number(submission.reviewedBy);
+    if (Number.isFinite(reviewerId)) {
+      const reviewer = await this.prisma.user.findUnique({
+        where: { userId: reviewerId },
+        select: { slackUserId: true },
+      });
+      if (reviewer?.slackUserId) {
+        resolvedFeedback = resolvedFeedback.replace(/@me\b/gi, `<@${reviewer.slackUserId}>`);
+      }
+    }
+
     await this.sendNotifications(submission, {
       approved: false,
       approvedHours: submission.approvedHours ?? undefined,
-      feedback: submission.hoursJustification,
+      feedback: resolvedFeedback || null,
       sendEmail: submission.pendingSendEmail,
       finalizedAt,
     });
