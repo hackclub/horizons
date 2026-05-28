@@ -293,6 +293,26 @@ export class SlackService {
     return map;
   }
 
+  /**
+   * Replace Slack mention syntax (`<@U12345>`) with `@<displayName>` for
+   * surfaces that don't auto-render mentions (email, in-app views). Slack
+   * itself renders the mention syntax natively, so feedback bound for Slack
+   * should be left as-is.
+   */
+  async renderMentionsAsText(
+    text: string | null | undefined,
+  ): Promise<string | null | undefined> {
+    if (!text) return text;
+    const matches = [...text.matchAll(/<@([A-Z0-9]+)>/g)];
+    if (matches.length === 0) return text;
+    const ids = Array.from(new Set(matches.map((m) => m[1])));
+    const names = await this.getDisplayNames(ids);
+    return text.replace(/<@([A-Z0-9]+)>/g, (full, id) => {
+      const name = names.get(id);
+      return name ? `@${name}` : full;
+    });
+  }
+
   async getUserChannels(slackUserId: string): Promise<Set<string>> {
     const result = new Set<string>();
     if (!this.botToken) return result;

@@ -233,6 +233,33 @@ export class ReviewerService {
       reviewerMap,
     );
 
+    // Resolve Slack mention syntax in everything the admin UI will display.
+    // Collect every `<@U…>` across the detail + timeline into a single batch
+    // so we issue one Slack/Prisma lookup per request.
+    const mentionTexts: (string | null | undefined)[] = [
+      submission.hoursJustification,
+      ...timeline.map((e) => ('userFeedback' in e ? e.userFeedback : null)),
+    ];
+    const mentionIds = new Set<string>();
+    for (const t of mentionTexts) {
+      if (!t) continue;
+      for (const m of t.matchAll(/<@([A-Z0-9]+)>/g)) mentionIds.add(m[1]);
+    }
+    const mentionNameMap = mentionIds.size
+      ? await this.slackService.getDisplayNames([...mentionIds])
+      : new Map<string, string>();
+    const renderMentions = (t: string | null | undefined) =>
+      t == null
+        ? t
+        : t.replace(/<@([A-Z0-9]+)>/g, (full, id) =>
+            mentionNameMap.get(id) ? `@${mentionNameMap.get(id)}` : full,
+          );
+    for (const e of timeline) {
+      if ('userFeedback' in e) {
+        e.userFeedback = renderMentions(e.userFeedback) ?? null;
+      }
+    }
+
     // Compact list of sibling submissions so reviewers can jump between
     // resubmissions of the same project without leaving the detail view.
     const submissionsList = submission.project.submissions
@@ -262,7 +289,7 @@ export class ReviewerService {
       hackatimeHours: submission.hackatimeHours,
       // submission.hoursJustification stores the reviewer's user-facing feedback
       // (the DTO field `userFeedback` is persisted here — name is historical).
-      userFeedback: submission.hoursJustification,
+      userFeedback: renderMentions(submission.hoursJustification) ?? null,
       // Raw reviewer analysis used to build the Airtable "ship justification".
       reviewerAnalysis: submission.reviewerAnalysis,
       description: submission.description,
@@ -411,6 +438,41 @@ export class ReviewerService {
   }
 
   /**
+   * Normalize reviewer feedback to canonical Slack mention syntax
+   * (`<@U12345>`) before storage. Handles two inputs:
+   *   - `@me`            — the fresh shorthand reviewers type
+   *   - `@<displayname>` — what the form hydrates with when the reviewer
+   *                        re-edits a previously stored value (since the
+   *                        admin UI sees the resolved name, not the raw ID)
+   * Both collapse to the same `<@U…>` form so the DB stays canonical.
+   * Slack renders the mention natively; non-Slack surfaces (email, in-app)
+   * resolve it back to `@<displayname>` at read time via
+   * `slackService.renderMentionsAsText`.
+   */
+  private async resolveAtMeForStorage(
+    text: string | undefined,
+    reviewerId: number,
+  ): Promise<string | undefined> {
+    if (text === undefined) return text;
+    const reviewer = await this.prisma.user.findUnique({
+      where: { userId: reviewerId },
+      select: { slackUserId: true, slackUsername: true },
+    });
+    if (!reviewer?.slackUserId) return text;
+    const mention = `<@${reviewer.slackUserId}>`;
+    let result = text.replace(/@me\b/gi, mention);
+    let username = reviewer.slackUsername;
+    if (!username) {
+      username = await this.slackService.getDisplayName(reviewer.slackUserId);
+    }
+    if (username) {
+      const escaped = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      result = result.replace(new RegExp(`@${escaped}\\b`, 'gi'), mention);
+    }
+    return result;
+  }
+
+  /**
    * Update a submission: change status, hours, feedback, etc.
    *
    * Reviewer decisions (dto.approvalStatus set) are recorded as one gate in the
@@ -430,6 +492,13 @@ export class ReviewerService {
 
     if (!submission) {
       throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+
+    if (dto.userFeedback !== undefined) {
+      dto.userFeedback = await this.resolveAtMeForStorage(
+        dto.userFeedback,
+        reviewerId,
+      );
     }
 
     // Persist field-level edits (hours / user feedback / analysis / admin
@@ -581,6 +650,13 @@ export class ReviewerService {
       throw new NotFoundException(`Submission ${submissionId} not found`);
     }
 
+    if (dto.userFeedback !== undefined) {
+      dto.userFeedback = await this.resolveAtMeForStorage(
+        dto.userFeedback,
+        reviewerId,
+      );
+    }
+
     const hackatimeHours = submission.project.nowHackatimeHours || 0;
     const approvedHours = dto.approvedHours ?? hackatimeHours;
     const autoAnalysis = `Quick approved with ${approvedHours.toFixed(1)} hours.`;
@@ -657,8 +733,11 @@ export class ReviewerService {
       );
     }
 
-    let feedback = dto.userFeedback ?? '';
-    feedback = feedback.replace(/@me\b/gi, `<@${reviewer.slackUserId}>`);
+    // Normalize to canonical mention syntax (the same form stored in the DB);
+    // Slack renders `<@U…>` as the live display name + ping, so the preview
+    // matches what the recipient would actually see.
+    const feedback =
+      (await this.resolveAtMeForStorage(dto.userFeedback, reviewerId)) ?? '';
 
     const approved = dto.approved ?? true;
     const approvedHours = dto.approvedHours ?? submission.approvedHours ?? submission.hackatimeHours ?? 0;

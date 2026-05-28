@@ -120,6 +120,25 @@ export class ProjectsService {
     return stripped;
   }
 
+  /**
+   * Walk the submissions on a scoped project and rewrite Slack mention syntax
+   * (`<@U…>`) in `hoursJustification` to `@<displayName>` so the user-facing
+   * UI doesn't show raw mention IDs.
+   */
+  private async renderSubmissionMentions(scopedProject: any): Promise<void> {
+    const submissions = scopedProject?.submissions;
+    if (!Array.isArray(submissions)) return;
+    await Promise.all(
+      submissions.map(async (s: any) => {
+        if (s?.hoursJustification) {
+          s.hoursJustification = await this.slackService.renderMentionsAsText(
+            s.hoursJustification,
+          );
+        }
+      }),
+    );
+  }
+
   async createProject(createProjectDto: CreateProjectDto, userId: number) {
     const lockKey = `project-create-lock:${userId}`;
     const lockValue = randomBytes(16).toString('hex');
@@ -234,7 +253,9 @@ export class ProjectsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return projects.map((p) => this.scopeProjectForUser(p));
+    const scoped = projects.map((p) => this.scopeProjectForUser(p));
+    await Promise.all(scoped.map((p) => this.renderSubmissionMentions(p)));
+    return scoped;
   }
 
   async getProject(projectId: number, userId: number) {
@@ -260,7 +281,9 @@ export class ProjectsService {
       throw new ForbiddenException('Access denied');
     }
 
-    return this.scopeProjectForUser(project);
+    const scoped = this.scopeProjectForUser(project);
+    await this.renderSubmissionMentions(scoped);
+    return scoped;
   }
 
   /**

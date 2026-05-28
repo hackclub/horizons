@@ -462,17 +462,10 @@ export class SubmissionApprovalService {
       );
     }
 
-    // Resolve @me shorthand → Slack mention at notification time (raw @me
-    // is stored in the DB so reviewers see the friendly shorthand when editing).
-    let resolvedFeedback = submission.hoursJustification ?? '';
-    if (reviewer?.slackUserId) {
-      resolvedFeedback = resolvedFeedback.replace(/@me\b/gi, `<@${reviewer.slackUserId}>`);
-    }
-
     await this.sendNotifications(submission, {
       approved: true,
       approvedHours: submission.approvedHours ?? undefined,
-      feedback: resolvedFeedback || null,
+      feedback: submission.hoursJustification,
       sendEmail: submission.pendingSendEmail && !qualifyEmailSent,
       finalizedAt,
     });
@@ -483,7 +476,6 @@ export class SubmissionApprovalService {
       submissionId: number;
       approvedHours: number | null;
       hoursJustification: string | null;
-      reviewedBy: string | null;
       pendingSendEmail: boolean;
       project: {
         projectTitle: string;
@@ -502,23 +494,10 @@ export class SubmissionApprovalService {
         ),
       );
 
-    // Resolve @me shorthand → Slack mention at notification time.
-    let resolvedFeedback = submission.hoursJustification ?? '';
-    const reviewerId = Number(submission.reviewedBy);
-    if (Number.isFinite(reviewerId)) {
-      const reviewer = await this.prisma.user.findUnique({
-        where: { userId: reviewerId },
-        select: { slackUserId: true },
-      });
-      if (reviewer?.slackUserId) {
-        resolvedFeedback = resolvedFeedback.replace(/@me\b/gi, `<@${reviewer.slackUserId}>`);
-      }
-    }
-
     await this.sendNotifications(submission, {
       approved: false,
       approvedHours: submission.approvedHours ?? undefined,
-      feedback: resolvedFeedback || null,
+      feedback: submission.hoursJustification,
       sendEmail: submission.pendingSendEmail,
       finalizedAt,
     });
@@ -748,6 +727,11 @@ export class SubmissionApprovalService {
     },
   ): Promise<void> {
     if (payload.sendEmail) {
+      // Email doesn't auto-resolve Slack mention syntax — replace `<@U…>`
+      // with `@<displayName>` so users don't see raw mention IDs.
+      const emailFeedback = await this.slackService.renderMentionsAsText(
+        payload.feedback,
+      );
       // Dedupe inside Loops' 24h window if this finalization is re-fired
       // outside the CAS (e.g. a manual admin retrigger on the same row).
       const idempotencyKey = `submission-review-${submission.submissionId}-${payload.finalizedAt.toISOString()}`;
@@ -758,7 +742,7 @@ export class SubmissionApprovalService {
           projectId: submission.project.projectId,
           approved: payload.approved,
           approvedHours: payload.approvedHours,
-          feedback: payload.feedback,
+          feedback: emailFeedback ?? null,
         },
         { idempotencyKey },
       );
@@ -770,6 +754,7 @@ export class SubmissionApprovalService {
     }
 
     try {
+      // Slack renders `<@U…>` natively, so pass feedback through unchanged.
       await this.slackService.notifySubmissionReview(
         submission.project.user.email,
         {
@@ -777,7 +762,7 @@ export class SubmissionApprovalService {
           projectId: submission.project.projectId,
           approved: payload.approved,
           approvedHours: payload.approvedHours,
-          feedback: payload.feedback,
+          feedback: payload.feedback ?? undefined,
         },
       );
     } catch (error) {
