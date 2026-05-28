@@ -165,7 +165,27 @@ export class SubmissionApprovalService {
     });
     if (!submission || submission.approvalStatus !== 'approved') return;
 
-    // Rebuild the full justification if the reviewer edited it.
+    // If the reviewer edited approvedHours, the value just written via
+    // reviewSubmission is the raw user-entered amount. Re-apply Manifest
+    // dedupe so the stored value matches the credit shown in the UI and
+    // controls credit everywhere downstream.
+    if (dto.approvedHours !== undefined) {
+      const dedupedApprovedHours = await this.computeDedupedApprovedHours(
+        dto.approvedHours,
+        submission.repoUrl || submission.project.repoUrl,
+        dto.ignorePriorYswsCredit === true,
+      );
+      if (dedupedApprovedHours !== submission.approvedHours) {
+        await this.prisma.submission.update({
+          where: { submissionId },
+          data: { approvedHours: dedupedApprovedHours },
+        });
+        submission.approvedHours = dedupedApprovedHours;
+      }
+    }
+
+    // Rebuild the full justification if the reviewer edited it. Use the
+    // now-deduped stored value so the "tracked → adjusted to" line is honest.
     let fullJustification: string | undefined;
     if (dto.hoursJustification !== undefined) {
       const reviewer = await this.prisma.user.findUnique({
@@ -175,7 +195,7 @@ export class SubmissionApprovalService {
       fullJustification = buildFullJustification(
         dto.hoursJustification,
         submission.hackatimeHours,
-        dto.approvedHours ?? submission.approvedHours ?? 0,
+        submission.approvedHours ?? 0,
         submission.project.user.slackUserId,
         submission.createdAt,
         reviewer?.slackUserId ?? null,
@@ -183,9 +203,16 @@ export class SubmissionApprovalService {
       );
     }
 
-    const effective = fullJustification
-      ? { ...dto, hoursJustification: fullJustification }
-      : dto;
+    // Forward the post-dedupe value (not the dto raw) to syncProjectData /
+    // updateAirtableRecord so Project.approvedHours and the Airtable record
+    // both reflect the deduped credit.
+    const effective = {
+      ...dto,
+      ...(dto.approvedHours !== undefined
+        ? { approvedHours: submission.approvedHours ?? undefined }
+        : {}),
+      ...(fullJustification ? { hoursJustification: fullJustification } : {}),
+    };
 
     await this.syncProjectData(submission, effective);
     if (submission.airtableRecId) {
@@ -213,6 +240,33 @@ export class SubmissionApprovalService {
       process.env.JOE_API_KEY &&
       process.env.JOE_EVENT_ID
     );
+  }
+
+  /**
+   * Apply the Manifest dedupe to the raw reviewer-entered hours so the stored
+   * `Submission.approvedHours` reflects the user's net Horizons credit, not the
+   * raw "total work" they were credited for. This controls credit everywhere
+   * (stats, leaderboard, shop balance, Airtable) because downstream consumers
+   * read `Submission.approvedHours` / `Project.approvedHours` directly.
+   *
+   * Returns rawHours unchanged when Manifest is disabled, the codeUrl isn't
+   * registered, or the reviewer opted out via `ignorePriorYswsCredit`.
+   */
+  private async computeDedupedApprovedHours(
+    rawHours: number,
+    codeUrl: string | null,
+    ignorePriorYswsCredit: boolean,
+  ): Promise<number> {
+    if (!rawHours) return rawHours;
+    if (ignorePriorYswsCredit) return rawHours;
+    if (!codeUrl || !this.manifestService.isEnabled()) return rawHours;
+
+    const manifest = await this.manifestService.lookup(codeUrl);
+    const priorYswsHoursShipped = (manifest?.submissions ?? [])
+      .filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
+      .reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0);
+
+    return Math.max(0, rawHours - priorYswsHoursShipped);
   }
 
   /**
@@ -407,6 +461,22 @@ export class SubmissionApprovalService {
     finalizedAt: Date,
     overrides: { ignorePriorYswsCredit?: boolean } = {},
   ): Promise<void> {
+    // Replace the raw reviewer-entered approvedHours with the post-Manifest
+    // dedupe value so it controls credit everywhere downstream. Skip the write
+    // when no change is needed (dedupe is a no-op).
+    const dedupedApprovedHours = await this.computeDedupedApprovedHours(
+      submission.approvedHours ?? 0,
+      submission.repoUrl || submission.project.repoUrl,
+      overrides.ignorePriorYswsCredit === true,
+    );
+    if (dedupedApprovedHours !== submission.approvedHours) {
+      await this.prisma.submission.update({
+        where: { submissionId: submission.submissionId },
+        data: { approvedHours: dedupedApprovedHours },
+      });
+      submission.approvedHours = dedupedApprovedHours;
+    }
+
     // Rebuild the full justification from the persisted reviewer analysis +
     // current project / reviewer state. This defers to finalization time so
     // that fraud review info (populated after reviewer acted) is included.
@@ -435,7 +505,6 @@ export class SubmissionApprovalService {
     await this.syncAirtable(submission, {
       approvedHours: submission.approvedHours ?? undefined,
       hoursJustification: fullJustification,
-      ignorePriorYswsCredit: overrides.ignorePriorYswsCredit,
     });
     this.airtableService
       .syncUserStats(submission.project.user.email)
@@ -570,7 +639,6 @@ export class SubmissionApprovalService {
     dto: {
       approvedHours?: number;
       hoursJustification?: string;
-      ignorePriorYswsCredit?: boolean;
     },
   ): Promise<void> {
     try {
@@ -580,6 +648,10 @@ export class SubmissionApprovalService {
       });
       if (!project) return;
 
+      // Submission.approvedHours is already post-Manifest-dedupe (applied in
+      // fireApprovalSideEffects), so the only subtraction left here is prior
+      // Horizons credit on the same project — the Airtable record for this
+      // submission should carry only the NEW credit added by this submission.
       const totalApprovedHours = dto.approvedHours || 0;
 
       const lastApprovedSubmission = await this.prisma.submission.findFirst({
@@ -594,27 +666,9 @@ export class SubmissionApprovalService {
       const previouslyApprovedHours =
         lastApprovedSubmission?.approvedHours || 0;
 
-      // Subtract hours already shipped to other YSWS programs (from Manifest)
-      // so we don't double-credit work the user already got hours for. Sum
-      // hoursShipped across non-Horizons submissions; null/missing entries
-      // contribute 0, so this is a safe no-op if Manifest is disabled or the
-      // codeUrl isn't registered. Reviewer can opt out via ignorePriorYswsCredit.
-      const codeUrl = submission.repoUrl || submission.project.repoUrl;
-      let priorYswsHoursShipped = 0;
-      if (
-        codeUrl &&
-        this.manifestService.isEnabled() &&
-        !dto.ignorePriorYswsCredit
-      ) {
-        const manifest = await this.manifestService.lookup(codeUrl);
-        priorYswsHoursShipped = (manifest?.submissions ?? [])
-          .filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
-          .reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0);
-      }
-
       const deltaHours = Math.max(
         0,
-        totalApprovedHours - previouslyApprovedHours - priorYswsHoursShipped,
+        totalApprovedHours - previouslyApprovedHours,
       );
 
       const approvedProjectData = {

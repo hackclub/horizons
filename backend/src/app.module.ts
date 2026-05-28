@@ -24,6 +24,7 @@ import { ManifestModule } from './manifest/manifest.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { StreakModule } from './streaks/streak.module';
 import { LoopsModule } from './loops/loops.module';
+import { BackfillModule } from './backfill/backfill.module';
 import { AuthGuard } from './auth/auth.guard';
 import { PrismaService } from './prisma.service';
 
@@ -58,6 +59,7 @@ import { PrismaService } from './prisma.service';
     IntegrationsModule,
     StreakModule,
     LoopsModule,
+    BackfillModule,
   ],
   providers: [
     PrismaService,

@@ -776,7 +776,20 @@
 								{editedHours}
 								joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
 								reviewPassed={currentSubmission.reviewPassed}
-								priorApprovedHours={currentSubmission.approvedHours}
+								priorApprovedHours={(() => {
+									// Submission.approvedHours stored on already-approved rows is
+									// post-Manifest-dedupe. Reconstruct the reviewer's original raw
+									// entry so the edit input shows the value they typed (and the
+									// "granting +X new" math comes out right). Slightly stale if the
+									// Manifest dedupe shifts between approval and edit.
+									const stored = currentSubmission.approvedHours;
+									if (stored == null) return null;
+									if (currentSubmission.approvalStatus !== 'approved') return stored;
+									const manifestDedupe = (manifestLookup?.manifest?.submissions ?? [])
+										.filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
+										.reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0);
+									return stored + manifestDedupe;
+								})()}
 								priorReviewerAnalysis={currentSubmission.reviewerAnalysis}
 								priorUserFeedback={currentSubmission.userFeedback}
 								isResubmission={(currentSubmission.submissions ?? []).some(
