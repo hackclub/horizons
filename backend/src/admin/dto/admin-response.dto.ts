@@ -424,6 +424,25 @@ export class SlackLookupResponse {
   realName?: string;
 }
 
+export class ProjectManifestSummaryEntry {
+  @ApiProperty()
+  projectId: number;
+
+  @ApiProperty({ description: 'Sum of hoursShipped across non-Horizons YSWS submissions registered for this project codeUrl on Manifest.' })
+  priorYswsHoursShipped: number;
+
+  @ApiProperty({ type: [String], description: 'Names of the non-Horizons YSWS programs this codeUrl has been submitted to.' })
+  priorYswsNames: string[];
+}
+
+export class ProjectManifestSummaryResponse {
+  @ApiProperty({ type: [ProjectManifestSummaryEntry] })
+  entries: ProjectManifestSummaryEntry[];
+
+  @ApiProperty({ description: 'True when Manifest is configured and reachable. False means the entries array is empty because the lookup was skipped.' })
+  enabled: boolean;
+}
+
 export class PriorityUserResponse {
   @ApiProperty()
   userId: number;

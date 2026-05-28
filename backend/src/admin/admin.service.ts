@@ -136,6 +136,66 @@ export class AdminService {
     return projects;
   }
 
+  /**
+   * Walks every non-deleted project with a codeUrl and asks Manifest whether
+   * the same codeUrl has been submitted to other YSWS programs. Returns the
+   * sum of non-Horizons hoursShipped per project so the admin UI can sort /
+   * filter for "double-dipped" projects.
+   *
+   * Lookups run with a small concurrency cap to avoid hammering the Manifest
+   * service. Projects whose codeUrl isn't registered on Manifest (404) get
+   * priorYswsHoursShipped=0 and are omitted from the response — only entries
+   * with > 0 are returned, so the frontend can treat absence as "clean".
+   */
+  async getProjectsManifestSummary() {
+    if (!this.manifestService.isEnabled()) {
+      return { entries: [], enabled: false };
+    }
+
+    const projects = await this.prisma.project.findMany({
+      where: { deletedAt: null, repoUrl: { not: null } },
+      select: { projectId: true, repoUrl: true },
+    });
+
+    const CONCURRENCY = 8;
+    const entries: {
+      projectId: number;
+      priorYswsHoursShipped: number;
+      priorYswsNames: string[];
+    }[] = [];
+
+    let cursor = 0;
+    const workers = Array.from({ length: CONCURRENCY }, async () => {
+      while (true) {
+        const i = cursor++;
+        if (i >= projects.length) return;
+        const { projectId, repoUrl } = projects[i];
+        if (!repoUrl) continue;
+        const manifest = await this.manifestService.lookup(repoUrl);
+        if (!manifest) continue;
+        const nonHorizons = (manifest.submissions ?? []).filter(
+          (s) => (s.yswsName ?? '').toLowerCase() !== 'horizons',
+        );
+        const priorYswsHoursShipped = nonHorizons.reduce(
+          (sum, s) => sum + (s.hoursShipped ?? 0),
+          0,
+        );
+        if (priorYswsHoursShipped <= 0) continue;
+        const priorYswsNames = Array.from(
+          new Set(
+            nonHorizons
+              .map((s) => s.yswsName)
+              .filter((n): n is string => !!n),
+          ),
+        );
+        entries.push({ projectId, priorYswsHoursShipped, priorYswsNames });
+      }
+    });
+    await Promise.all(workers);
+
+    return { entries, enabled: true };
+  }
+
   async getProject(projectId: number) {
     const project = await this.prisma.project.findUnique({
       where: { projectId },

@@ -45,6 +45,7 @@ import {
   AdminUserSlackResponse,
   SlackLookupResponse,
   PriorityUserResponse,
+  ProjectManifestSummaryResponse,
   GlobalSettingsResponse,
   ElevatedUserResponse,
   UpdateUserRoleResponse,
@@ -125,6 +126,14 @@ export class AdminController {
   @ApiOkResponse({ type: [AdminProjectResponse] })
   async getAllProjects() {
     return this.adminService.getAllProjects();
+  }
+
+  @Get('projects/manifest-summary')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: ProjectManifestSummaryResponse })
+  async getProjectsManifestSummary() {
+    return this.adminService.getProjectsManifestSummary();
   }
 
   @Get('projects/:id')

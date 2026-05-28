@@ -16,7 +16,8 @@
         | 'userName'
         | 'approvalStatus'
         | 'nowHackatimeHours'
-        | 'approvedHours';
+        | 'approvedHours'
+        | 'manifestDoubleDip';
     type SortDirection = 'asc' | 'desc';
 
     const projectTypes = [
@@ -51,6 +52,15 @@
     let priorityUsersLoading = $state(false);
     let priorityUsersLoaded = $state(false);
     let priorityFilterEnabled = $state(false);
+
+    // Map of projectId → non-Horizons hours shipped per Manifest. Backend returns
+    // only entries with hours > 0, so absence from the map means "clean" (or the
+    // project has no codeUrl registered with Manifest). Drives the
+    // "manifestDoubleDip" sort and the "Double-dipped" filter.
+    let manifestSummary = $state<Map<number, { hours: number; names: string[] }>>(new Map());
+    let manifestSummaryLoading = $state(false);
+    let manifestEnabled = $state(true);
+    let doubleDipFilterEnabled = $state(false);
 
     // --- Helpers ---
     function formatDate(value: string) {
@@ -127,6 +137,27 @@
             console.error('Failed to toggle submissions frozen:', err);
         } finally {
             globalSettingsLoading = false;
+        }
+    }
+
+    async function loadManifestSummary() {
+        manifestSummaryLoading = true;
+        try {
+            const { data, error } = await api.GET('/api/admin/projects/manifest-summary');
+            if (error || !data) return;
+            manifestEnabled = data.enabled;
+            const next = new Map<number, { hours: number; names: string[] }>();
+            for (const entry of data.entries ?? []) {
+                next.set(entry.projectId, {
+                    hours: entry.priorYswsHoursShipped,
+                    names: entry.priorYswsNames ?? [],
+                });
+            }
+            manifestSummary = next;
+        } catch (err) {
+            console.error('Failed to load manifest summary:', err);
+        } finally {
+            manifestSummaryLoading = false;
         }
     }
 
@@ -207,6 +238,11 @@
         return true;
     }
 
+    function matchesDoubleDip(project: AdminProject): boolean {
+        if (!doubleDipFilterEnabled) return true;
+        return manifestSummary.has(project.projectId);
+    }
+
     function compareProjects(a: AdminProject, b: AdminProject): number {
         let c = 0;
         switch (sortField) {
@@ -228,6 +264,11 @@
             case 'approvedHours':
                 c = (a.approvedHours ?? 0) - (b.approvedHours ?? 0);
                 break;
+            case 'manifestDoubleDip':
+                c =
+                    (manifestSummary.get(a.projectId)?.hours ?? 0) -
+                    (manifestSummary.get(b.projectId)?.hours ?? 0);
+                break;
         }
         return sortDirection === 'asc' ? c : -c;
     }
@@ -243,7 +284,8 @@
                     matchesFraud(p) &&
                     matchesSus(p) &&
                     matchesDeleted(p) &&
-                    matchesSubmissionCount(p),
+                    matchesSubmissionCount(p) &&
+                    matchesDoubleDip(p),
             )
             .sort(compareProjects),
     );
@@ -276,7 +318,7 @@
     }
 
     onMount(() => {
-        Promise.all([loadProjects(), loadGlobalSettings()]);
+        Promise.all([loadProjects(), loadGlobalSettings(), loadManifestSummary()]);
     });
 </script>
 
@@ -361,6 +403,18 @@
                             <FilterTag active={submissionCountFilter === 'single'} onclick={() => (submissionCountFilter = 'single')}>Single</FilterTag>
                             <FilterTag active={submissionCountFilter === 'multiple'} onclick={() => (submissionCountFilter = 'multiple')}>Multiple</FilterTag>
                         </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <FilterTag
+                                active={doubleDipFilterEnabled}
+                                class={doubleDipFilterEnabled ? 'bg-purple-600! border-purple-400! text-white!' : ''}
+                                onclick={() => (doubleDipFilterEnabled = !doubleDipFilterEnabled)}
+                            >
+                                {manifestSummaryLoading
+                                    ? 'Loading double-dip...'
+                                    : `Double-dipped only (${manifestSummary.size})`}
+                                {#if doubleDipFilterEnabled}<span class="ml-1">✓</span>{/if}
+                            </FilterTag>
+                        </div>
                     </div>
 
                     <div>
@@ -436,6 +490,9 @@
                                 <option value="approvalStatus">Status</option>
                                 <option value="nowHackatimeHours">Hackatime Hours</option>
                                 <option value="approvedHours">Approved Hours</option>
+                                <option value="manifestDoubleDip" disabled={!manifestEnabled}>
+                                    Manifest double-dip{!manifestEnabled ? ' (disabled)' : ''}
+                                </option>
                             </Select>
                             <Button
                                 variant="default"
@@ -495,6 +552,15 @@
                                     <span class="rounded-full border border-ds-border px-3 py-1">Hackatime: {formatHours(project.nowHackatimeHours)}</span>
                                     {#if project.isLocked}
                                         <span class="rounded-full border border-ds-border px-3 py-1">Locked</span>
+                                    {/if}
+                                    {#if manifestSummary.has(project.projectId)}
+                                        {@const dip = manifestSummary.get(project.projectId)!}
+                                        <span
+                                            class="rounded-full border border-purple-500 bg-purple-600/20 text-purple-700 dark:text-purple-300 px-3 py-1 text-xs font-bold uppercase tracking-wide"
+                                            title={dip.names.length > 0 ? `Also on: ${dip.names.join(', ')}` : 'Other YSWS submission(s) via Manifest'}
+                                        >
+                                            Double-dip {dip.hours.toFixed(1)}h
+                                        </span>
                                     {/if}
                                 </div>
                             </div>
