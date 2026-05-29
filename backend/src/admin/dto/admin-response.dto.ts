@@ -938,13 +938,10 @@ class StatsSignupQualificationEntry {
   engaged: number;
 
   @ApiProperty()
-  rsvped: number;
+  canBuyTicket: number;
 
   @ApiProperty()
-  qualified: number;
-
-  @ApiProperty({ type: StatsSignupQualificationModes })
-  modes: StatsSignupQualificationModes;
+  boughtTicket: number;
 }
 
 class StatsSignups {

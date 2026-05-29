@@ -2898,9 +2898,8 @@ export interface components {
             slug: string;
             signedUp: number;
             engaged: number;
-            rsvped: number;
-            qualified: number;
-            modes: components["schemas"]["StatsSignupQualificationModes"];
+            canBuyTicket: number;
+            boughtTicket: number;
         };
         StatsSignupRoute: {
             originCountry: string;
