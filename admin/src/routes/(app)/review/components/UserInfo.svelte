@@ -10,11 +10,8 @@
 		playableUrl: string | null;
 		readmeUrl: string | null;
 		hackatimeHours: number | null;
-		hackatimeProjects: string[];
-		hackatimeProjectHours?: Record<string, number> | null;
 		joeFraudPassed?: boolean | null;
 		joeTrustScore?: number | null;
-		onHoursChange?: (hours: number) => void;
 		loading?: boolean;
 	}
 
@@ -24,11 +21,8 @@
 		playableUrl,
 		readmeUrl,
 		hackatimeHours,
-		hackatimeProjects,
-		hackatimeProjectHours = null,
 		joeFraudPassed = null,
 		joeTrustScore = null,
-		onHoursChange,
 		loading = false,
 	}: Props = $props();
 
@@ -195,12 +189,7 @@
 		{/if}
 	</div>
 
-	<HoursBreakdown
-		submittedHours={hackatimeHours}
-		projects={hackatimeProjects}
-		projectHours={hackatimeProjectHours}
-		{onHoursChange}
-	/>
+	<HoursBreakdown submittedHours={hackatimeHours} />
 
 	{#if user.age !== null || user.country}
 		<div class="text-[13px] text-rv-text flex items-center gap-1.5 mb-1">
