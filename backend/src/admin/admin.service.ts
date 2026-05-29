@@ -765,7 +765,7 @@ export class AdminService {
         COUNT(*) FILTER (WHERE um.has_1h_approved) AS at_least_1_approved_hour,
         COUNT(*) FILTER (WHERE um.approved_total >= 10) AS approved_10_plus,
         COUNT(*) FILTER (
-          WHERE e.ticket_threshold IS NULL OR um.approved_total >= e.ticket_threshold
+          WHERE e.rsvp_cost IS NULL OR um.approved_total >= e.rsvp_cost
         ) AS can_buy_ticket,
         COUNT(*) FILTER (WHERE um.approved_total >= 60) AS approved_60_plus,
         COUNT(*) FILTER (WHERE et.user_id IS NOT NULL) AS bought_ticket
@@ -818,7 +818,7 @@ export class AdminService {
         SELECT user_id, COALESCE(SUM(approved_hours), 0) AS approved_total
         FROM projects WHERE deleted_at IS NULL GROUP BY user_id
       ) ut ON ut.user_id = pe.user_id
-      WHERE e.ticket_threshold IS NULL OR COALESCE(ut.approved_total, 0) >= e.ticket_threshold
+      WHERE e.rsvp_cost IS NULL OR COALESCE(ut.approved_total, 0) >= e.rsvp_cost
     `;
     return Number(result[0]?.count ?? 0);
   }

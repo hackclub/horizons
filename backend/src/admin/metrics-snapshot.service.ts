@@ -456,7 +456,7 @@ export class MetricsSnapshotService implements OnModuleInit {
         FROM projects WHERE deleted_at IS NULL GROUP BY user_id
       ) ut ON ut.user_id = pe.user_id
       WHERE u.created_at <= ${asOf}
-        AND (e.ticket_threshold IS NULL OR COALESCE(ut.approved_total, 0) >= e.ticket_threshold)
+        AND (e.rsvp_cost IS NULL OR COALESCE(ut.approved_total, 0) >= e.rsvp_cost)
     `;
     return Number(result[0]?.count ?? 0);
   }
