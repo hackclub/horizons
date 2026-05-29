@@ -859,14 +859,11 @@ export class AdminService {
       ORDER BY count DESC
     `;
 
-    // Per-event qualification funnel: signed up → ≥15h approved (RSVPed) →
-    // ≥30h approved (qualified). Approved hours sum across all of a user's
-    // projects.
-    // Per-user totals for three "hours source" modes:
-    //   - unshipped: ALL hackatime hours across every project (incl. never-shipped)
-    //   - shipped:   hackatime hours on projects with ≥1 pending/approved submission
-    //   - approved:  reviewer-approved hours only (current default)
-    // Each mode then drives the engaged (≥1h) / rsvped (≥15h) / qualified (≥30h) thresholds.
+    // Per-event qualification funnel:
+    //   engaged       — pinned users with ≥1 approved hour
+    //   canBuyTicket  — pinned users whose approved hours clear this event's
+    //                   ticketThreshold (rsvp_cost column; null = no gate)
+    //   boughtTicket  — pinned users with an EventTicket transaction for this event
     const qualificationResult = await this.prisma.$queryRaw<
       Array<{
         event_id: number;
@@ -874,14 +871,8 @@ export class AdminService {
         slug: string;
         signed_up: bigint;
         engaged: bigint;
-        rsvped: bigint;
-        qualified: bigint;
-        unshipped_engaged: bigint;
-        unshipped_rsvped: bigint;
-        unshipped_qualified: bigint;
-        shipped_engaged: bigint;
-        shipped_rsvped: bigint;
-        shipped_qualified: bigint;
+        can_buy_ticket: bigint;
+        bought_ticket: bigint;
       }>
     >`
       SELECT
@@ -890,32 +881,25 @@ export class AdminService {
         e.slug,
         COUNT(pe.id) AS signed_up,
         COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 1) AS engaged,
-        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 15) AS rsvped,
-        COUNT(*) FILTER (WHERE COALESCE(ut.approved_total, 0) >= 30) AS qualified,
-        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 1) AS unshipped_engaged,
-        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 15) AS unshipped_rsvped,
-        COUNT(*) FILTER (WHERE COALESCE(ut.unshipped_total, 0) >= 30) AS unshipped_qualified,
-        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 1) AS shipped_engaged,
-        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 15) AS shipped_rsvped,
-        COUNT(*) FILTER (WHERE COALESCE(ut.shipped_total, 0) >= 30) AS shipped_qualified
+        COUNT(*) FILTER (
+          WHERE e.rsvp_cost IS NULL OR COALESCE(ut.approved_total, 0) >= e.rsvp_cost
+        ) AS can_buy_ticket,
+        COUNT(*) FILTER (WHERE et.user_id IS NOT NULL) AS bought_ticket
       FROM pinned_events pe
       INNER JOIN events e ON e.event_id = pe.event_id
       LEFT JOIN (
         SELECT
           p.user_id,
-          SUM(COALESCE(p.approved_hours, 0)) AS approved_total,
-          SUM(COALESCE(p.now_hackatime_hours, 0)) AS unshipped_total,
-          SUM(
-            CASE WHEN EXISTS (
-              SELECT 1 FROM submissions s
-              WHERE s.project_id = p.project_id
-                AND s.approval_status IN ('pending', 'approved')
-            ) THEN COALESCE(p.now_hackatime_hours, 0) ELSE 0 END
-          ) AS shipped_total
+          SUM(COALESCE(p.approved_hours, 0)) AS approved_total
         FROM projects p
         WHERE p.deleted_at IS NULL
         GROUP BY p.user_id
       ) ut ON ut.user_id = pe.user_id
+      LEFT JOIN (
+        SELECT DISTINCT user_id, event_id
+        FROM transactions
+        WHERE kind = 'EventTicket' AND event_id IS NOT NULL
+      ) et ON et.user_id = pe.user_id AND et.event_id = e.event_id
       GROUP BY e.event_id, e.title, e.slug
       ORDER BY signed_up DESC
     `;
@@ -984,25 +968,8 @@ export class AdminService {
         slug: r.slug,
         signedUp: Number(r.signed_up),
         engaged: Number(r.engaged),
-        rsvped: Number(r.rsvped),
-        qualified: Number(r.qualified),
-        modes: {
-          approved: {
-            engaged: Number(r.engaged),
-            rsvped: Number(r.rsvped),
-            qualified: Number(r.qualified),
-          },
-          shipped: {
-            engaged: Number(r.shipped_engaged),
-            rsvped: Number(r.shipped_rsvped),
-            qualified: Number(r.shipped_qualified),
-          },
-          unshipped: {
-            engaged: Number(r.unshipped_engaged),
-            rsvped: Number(r.unshipped_rsvped),
-            qualified: Number(r.unshipped_qualified),
-          },
-        },
+        canBuyTicket: Number(r.can_buy_ticket),
+        boughtTicket: Number(r.bought_ticket),
       })),
       routes,
       signupsMissingOrigin,

@@ -38,7 +38,6 @@
 	let signupsEl = $state<HTMLDivElement | null>(null);
 	let signupMapEl = $state<HTMLDivElement | null>(null);
 	let signupQualificationEl = $state<HTMLDivElement | null>(null);
-	let signupQualificationMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
 	let utmEl = $state<HTMLDivElement | null>(null);
 	let hoursDistributionEl = $state<HTMLDivElement | null>(null);
 
@@ -71,12 +70,6 @@
 		userRole = me?.role ?? null;
 		loadStats();
 		window.addEventListener('resize', handleResize);
-	});
-
-	$effect(() => {
-		// Re-render qualification chart when mode toggle changes (after stats load).
-		signupQualificationMode;
-		if (stats && signupQualificationEl) renderSignupQualificationChart();
 	});
 
 	$effect(() => {
@@ -644,20 +637,17 @@
 
 		const data = stats.signups.qualification;
 		const dark = isDark();
-		const mode = signupQualificationMode;
 
-		// Four-segment funnel per event:
-		// Qualified (≥30h) ⊂ Pending RSVPed (≥15h) ⊂ Engaged (≥1h) ⊂ Signed up.
-		const qualifiedColor = dark ? '#15803d' : '#166534';
-		const rsvpedColor = dark ? '#3b82f6' : '#2563eb';
+		// Three-segment funnel per event, stacked outward from the smallest:
+		// Bought Ticket ⊂ Can Buy Ticket ⊂ Engaged. The bar's total length is
+		// the Engaged count; Signed up shows on the right as the denominator.
+		const boughtColor = dark ? '#15803d' : '#166534';
+		const canBuyColor = dark ? '#3b82f6' : '#2563eb';
 		const engagedColor = dark ? '#22c55e' : '#16a34a';
-		const signedUpOnlyColor = dark ? '#475569' : '#e2e8f0';
 
-		const counts = (d: (typeof data)[number]) => d.modes?.[mode] ?? { engaged: d.engaged, rsvped: d.rsvped, qualified: d.qualified };
-		const qualifiedData = data.map((d) => counts(d).qualified);
-		const rsvpedOnlyData = data.map((d) => Math.max(0, counts(d).rsvped - counts(d).qualified));
-		const engagedOnlyData = data.map((d) => Math.max(0, counts(d).engaged - counts(d).rsvped));
-		const signedUpOnlyData = data.map((d) => Math.max(0, d.signedUp - counts(d).engaged));
+		const boughtData = data.map((d) => d.boughtTicket);
+		const canBuyOnlyData = data.map((d) => Math.max(0, d.canBuyTicket - d.boughtTicket));
+		const engagedOnlyData = data.map((d) => Math.max(0, d.engaged - d.canBuyTicket));
 
 		const segmentLabel = (value: number, total: number) => {
 			if (!value || !total) return '';
@@ -667,13 +657,13 @@
 
 		chart.setOption({
 			backgroundColor: bgColor(),
-			grid: { left: 140, right: 60, top: 32, bottom: 8 },
+			grid: { left: 140, right: 80, top: 32, bottom: 8 },
 			legend: {
 				top: 0,
 				textStyle: { color: dimColor(), fontSize: 10 },
 				itemWidth: 14,
 				itemHeight: 8,
-				data: ['Qualified (≥30h)', 'Pending RSVPed (≥15h)', 'Engaged (≥1h)', 'Signed up'],
+				data: ['Bought Ticket', 'Can Buy Ticket', 'Engaged'],
 			},
 			xAxis: {
 				type: 'value',
@@ -695,23 +685,22 @@
 				formatter: (params: any) => {
 					const idx = params[0].dataIndex;
 					const d = data[idx];
-					const c = counts(d);
 					const pct = (n: number) => (d.signedUp ? ((n / d.signedUp) * 100).toFixed(1) : '0.0');
 					return `<b>${d.title}</b><br/>`
 						+ `Signed up: ${d.signedUp} (100%)<br/>`
-						+ `Engaged (≥1h): ${c.engaged} (${pct(c.engaged)}%)<br/>`
-						+ `Pending RSVPed (≥15h): ${c.rsvped} (${pct(c.rsvped)}%)<br/>`
-						+ `Qualified (≥30h): ${c.qualified} (${pct(c.qualified)}%)`;
+						+ `Engaged (≥1h approved): ${d.engaged} (${pct(d.engaged)}%)<br/>`
+						+ `Can Buy Ticket: ${d.canBuyTicket} (${pct(d.canBuyTicket)}%)<br/>`
+						+ `Bought Ticket: ${d.boughtTicket} (${pct(d.boughtTicket)}%)`;
 				},
 			},
 			series: [
 				{
-					name: 'Qualified (≥30h)',
+					name: 'Bought Ticket',
 					type: 'bar',
 					stack: 'qualification',
-					data: qualifiedData,
+					data: boughtData,
 					barWidth: 22,
-					itemStyle: { color: qualifiedColor },
+					itemStyle: { color: boughtColor },
 					label: {
 						show: true,
 						position: 'inside',
@@ -722,12 +711,12 @@
 					},
 				},
 				{
-					name: 'Pending RSVPed (≥15h)',
+					name: 'Can Buy Ticket',
 					type: 'bar',
 					stack: 'qualification',
-					data: rsvpedOnlyData,
+					data: canBuyOnlyData,
 					barWidth: 22,
-					itemStyle: { color: rsvpedColor },
+					itemStyle: { color: canBuyColor },
 					label: {
 						show: true,
 						position: 'inside',
@@ -738,12 +727,15 @@
 					},
 				},
 				{
-					name: 'Engaged (≥1h)',
+					name: 'Engaged',
 					type: 'bar',
 					stack: 'qualification',
 					data: engagedOnlyData,
 					barWidth: 22,
-					itemStyle: { color: engagedColor },
+					itemStyle: {
+						color: engagedColor,
+						borderRadius: [0, 3, 3, 0],
+					},
 					label: {
 						show: true,
 						position: 'inside',
@@ -751,24 +743,6 @@
 						fontSize: 10,
 						fontWeight: 600,
 						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].signedUp),
-					},
-				},
-				{
-					name: 'Signed up',
-					type: 'bar',
-					stack: 'qualification',
-					data: signedUpOnlyData,
-					barWidth: 22,
-					itemStyle: {
-						color: signedUpOnlyColor,
-						borderRadius: [0, 3, 3, 0],
-					},
-					label: {
-						show: true,
-						position: 'right',
-						color: dimColor(),
-						fontSize: 11,
-						formatter: (p: any) => String(data[p.dataIndex].signedUp),
 					},
 				},
 			],
@@ -1205,14 +1179,6 @@
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
 						<div class="mb-2 flex items-center justify-between gap-2">
 							<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Qualification Funnel by Event</p>
-							<select
-								bind:value={signupQualificationMode}
-								class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
-							>
-								<option value="unshipped">Unshipped (incl. pending/approved)</option>
-								<option value="shipped">Shipped but pending (incl. approved)</option>
-								<option value="approved">Approved hours</option>
-							</select>
 						</div>
 						<div
 							bind:this={signupQualificationEl}
