@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
@@ -42,6 +43,8 @@ const SCOPED_USER_SELECT = {
 
 @Injectable()
 export class ReviewerService {
+  private readonly logger = new Logger(ReviewerService.name);
+
   constructor(
     private prisma: PrismaService,
     private fraudReviewService: FraudReviewService,
@@ -571,6 +574,15 @@ export class ReviewerService {
           reviewerId,
           dto,
         );
+        // Fire-and-forget: notify reviewers channel of the fresh verdict.
+        void this.notifyReviewersChannelOfReview({
+          submissionId,
+          reviewerId,
+          approvalStatus: dto.approvalStatus as 'approved' | 'rejected',
+          approvedHours: dto.approvedHours ?? null,
+          reviewerAnalysis: dto.hoursJustification ?? null,
+          userFeedback: dto.userFeedback ?? null,
+        });
       } else if (submission.approvalStatus === 'approved') {
         await this.submissionApprovalService.updateFinalizedSubmission(
           submissionId,
@@ -698,6 +710,16 @@ export class ReviewerService {
         sendEmail: false,
       },
     );
+
+    // Fire-and-forget: notify reviewers channel of the quick-approve verdict.
+    void this.notifyReviewersChannelOfReview({
+      submissionId,
+      reviewerId,
+      approvalStatus: 'approved',
+      approvedHours,
+      reviewerAnalysis: reviewerAnalysisText,
+      userFeedback: dto.userFeedback ?? null,
+    });
 
     // Quick-approve finalizes the verdict — release any active claim.
     await this.prisma.submission.update({
@@ -1343,5 +1365,151 @@ export class ReviewerService {
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
     return events;
+  }
+
+  /**
+   * Post a record of a reviewer's verdict to the reviewers Slack channel.
+   * Fire-and-forget — failures log and swallow so the API response isn't held
+   * up by Slack. Skips silently when SLACK_REVIEW_NOTIFICATIONS_CHANNEL isn't
+   * configured (e.g. local dev).
+   */
+  private async notifyReviewersChannelOfReview(input: {
+    submissionId: number;
+    reviewerId: number;
+    approvalStatus: 'approved' | 'rejected';
+    approvedHours: number | null;
+    reviewerAnalysis: string | null;
+    userFeedback: string | null;
+  }): Promise<void> {
+    const channelId = process.env.SLACK_REVIEW_NOTIFICATIONS_CHANNEL;
+    if (!channelId) return;
+
+    try {
+      const submission = await this.prisma.submission.findUnique({
+        where: { submissionId: input.submissionId },
+        select: {
+          project: {
+            select: {
+              projectId: true,
+              projectTitle: true,
+              repoUrl: true,
+            },
+          },
+        },
+      });
+      if (!submission?.project) return;
+
+      const reviewer = await this.prisma.user.findUnique({
+        where: { userId: input.reviewerId },
+        select: { firstName: true, lastName: true, slackUserId: true },
+      });
+
+      const frontendUrl =
+        process.env.FRONTEND_URL || 'https://horizons.hackclub.com';
+      const baseUrl = /^https?:\/\//.test(frontendUrl)
+        ? frontendUrl
+        : `https://${frontendUrl}`;
+      const projectUrl = `${baseUrl}/app/projects/${submission.project.projectId}`;
+
+      // Manifest lookup is best-effort: a null result can mean "not found",
+      // "service disabled", or "no repo URL" — only surface a section when we
+      // actually queried (enabled + repoUrl present).
+      let manifestFound: boolean | null = null;
+      if (submission.project.repoUrl && this.manifestService.isEnabled()) {
+        try {
+          const manifest = await this.manifestService.lookup(
+            submission.project.repoUrl,
+          );
+          manifestFound = manifest !== null;
+        } catch {
+          manifestFound = null;
+        }
+      }
+
+      const approved = input.approvalStatus === 'approved';
+      const verdictWord = approved ? 'Approved' : 'Rejected';
+      const verdictEmoji = approved ? ':white_check_mark:' : ':x:';
+      const reviewerLabel = reviewer?.slackUserId
+        ? `<@${reviewer.slackUserId}>`
+        : reviewer
+          ? `*${reviewer.firstName}${reviewer.lastName ? ' ' + reviewer.lastName : ''}*`
+          : 'Reviewer';
+      const hoursSuffix =
+        approved && input.approvedHours != null
+          ? ` · *${input.approvedHours}h*`
+          : '';
+
+      const blocks: any[] = [
+        {
+          type: 'header',
+          text: {
+            type: 'plain_text',
+            text: `${verdictWord}: ${submission.project.projectTitle}`,
+            emoji: true,
+          },
+        },
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `${verdictEmoji} ${reviewerLabel} reviewed <${projectUrl}|${submission.project.projectTitle}>${hoursSuffix}`,
+            },
+          ],
+        },
+      ];
+
+      const analysis = input.reviewerAnalysis?.trim();
+      if (analysis) {
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Justification:*\n>${analysis.split('\n').join('\n>')}`,
+          },
+        });
+      }
+
+      const feedback = input.userFeedback?.trim();
+      if (feedback) {
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Feedback to user:*\n>${feedback.split('\n').join('\n>')}`,
+          },
+        });
+      }
+
+      if (manifestFound !== null) {
+        blocks.push({
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: manifestFound
+                ? ':open_file_folder: Project *found* in manifest.'
+                : ':warning: Project *not found* in manifest.',
+            },
+          ],
+        });
+      }
+
+      const fallback = `${verdictWord}: ${submission.project.projectTitle}`;
+      const result = await this.slackService.postToChannel(
+        channelId,
+        fallback,
+        blocks,
+      );
+      if (!result.success) {
+        this.logger.warn(
+          `Review notification post failed for submission ${input.submissionId}: ${result.error}`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Review notification threw for submission ${input.submissionId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 }
