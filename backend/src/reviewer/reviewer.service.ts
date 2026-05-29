@@ -1411,18 +1411,33 @@ export class ReviewerService {
         : `https://${frontendUrl}`;
       const projectUrl = `${baseUrl}/app/projects/${submission.project.projectId}`;
 
-      // Manifest lookup is best-effort: a null result can mean "not found",
-      // "service disabled", or "no repo URL" — only surface a section when we
-      // actually queried (enabled + repoUrl present).
-      let manifestFound: boolean | null = null;
+      // Manifest lookup is best-effort: only surface a section when we
+      // actually queried (enabled + repoUrl present). We treat "found in
+      // manifest" as "cross-submitted to a *non-Horizons* YSWS" — Horizons
+      // itself drafts a manifest record on project create, so a bare lookup
+      // hit is meaningless. Mirrors the filter in ManifestLookup.svelte.
+      let crossSubmittedYswsNames: string[] | null = null;
       if (submission.project.repoUrl && this.manifestService.isEnabled()) {
         try {
           const manifest = await this.manifestService.lookup(
             submission.project.repoUrl,
           );
-          manifestFound = manifest !== null;
+          if (manifest) {
+            const others = manifest.submissions.filter(
+              (s) => (s.yswsName ?? '').toLowerCase() !== 'horizons',
+            );
+            crossSubmittedYswsNames = [
+              ...new Set(
+                others
+                  .map((s) => s.yswsName ?? s.ysws ?? null)
+                  .filter((n): n is string => !!n),
+              ),
+            ];
+          } else {
+            crossSubmittedYswsNames = [];
+          }
         } catch {
-          manifestFound = null;
+          crossSubmittedYswsNames = null;
         }
       }
 
@@ -1481,17 +1496,14 @@ export class ReviewerService {
         });
       }
 
-      if (manifestFound !== null) {
+      if (crossSubmittedYswsNames !== null) {
+        const text =
+          crossSubmittedYswsNames.length > 0
+            ? `:warning: Also submitted to ${crossSubmittedYswsNames.length} other YSWS: ${crossSubmittedYswsNames.join(', ')}`
+            : ':open_file_folder: No other YSWS submissions detected.';
         blocks.push({
           type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: manifestFound
-                ? ':open_file_folder: Project *found* in manifest.'
-                : ':warning: Project *not found* in manifest.',
-            },
-          ],
+          elements: [{ type: 'mrkdwn', text }],
         });
       }
 
