@@ -97,10 +97,70 @@
 	});
 
 	let searchQuery = $state('');
-	// Default to longest wait so reviewers triage the most-stale submissions first.
+
+	// Persist sort and fraud-filter selections across navigation for the same
+	// reason as the type/event filters above — reviewers shouldn't have to
+	// re-pick after every round trip into a project.
 	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
-	let sortOrder = $state<SortOrder>('longest-wait');
-	let fraudFilter = $state<'all' | 'reviewed' | 'unreviewed'>('all');
+	const SORT_ORDERS: readonly SortOrder[] = [
+		'longest-wait',
+		'shortest-wait',
+		'most-hours',
+		'least-hours',
+	];
+	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
+	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
+
+	const SORT_ORDER_STORAGE_KEY = 'horizons-review-gallery-sort-order';
+	const FRAUD_FILTER_STORAGE_KEY = 'horizons-review-gallery-fraud-filter';
+
+	function loadSortOrderFromStorage(): SortOrder {
+		// Default to longest wait so reviewers triage the most-stale submissions first.
+		if (typeof sessionStorage === 'undefined') return 'longest-wait';
+		try {
+			const raw = sessionStorage.getItem(SORT_ORDER_STORAGE_KEY);
+			if (raw && (SORT_ORDERS as readonly string[]).includes(raw)) {
+				return raw as SortOrder;
+			}
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+		return 'longest-wait';
+	}
+
+	function loadFraudFilterFromStorage(): FraudFilter {
+		if (typeof sessionStorage === 'undefined') return 'all';
+		try {
+			const raw = sessionStorage.getItem(FRAUD_FILTER_STORAGE_KEY);
+			if (raw && (FRAUD_FILTERS as readonly string[]).includes(raw)) {
+				return raw as FraudFilter;
+			}
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+		return 'all';
+	}
+
+	let sortOrder = $state<SortOrder>(loadSortOrderFromStorage());
+	let fraudFilter = $state<FraudFilter>(loadFraudFilterFromStorage());
+
+	$effect(() => {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(SORT_ORDER_STORAGE_KEY, sortOrder);
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+	});
+
+	$effect(() => {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(FRAUD_FILTER_STORAGE_KEY, fraudFilter);
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+	});
 
 	let pastReviews = $state<PastReview[]>([]);
 	let fraudRejected = $state<FraudRejected[]>([]);
