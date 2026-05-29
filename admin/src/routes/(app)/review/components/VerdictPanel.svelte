@@ -6,7 +6,6 @@
 	interface Props {
 		submissionId: number;
 		hackatimeHours: number | null;
-		editedHours?: number | null;
 		joeFraudPassed?: boolean | null;
 		/** Reviewer's own decision — null when the reviewer hasn't voted yet. */
 		reviewPassed?: boolean | null;
@@ -28,7 +27,6 @@
 	let {
 		submissionId,
 		hackatimeHours,
-		editedHours = null,
 		joeFraudPassed = null,
 		reviewPassed = null,
 		priorApprovedHours = null,
@@ -105,13 +103,6 @@
 		permRejectInternalNote = '';
 		justSubmitted = false;
 		reshipNoticeDismissed = false;
-	});
-
-	// Sync approved hours from the breakdown panel unless reviewer manually edited
-	$effect(() => {
-		if (editedHours != null && !reviewerManuallyEditedHours) {
-			approvedHours = Math.round(editedHours * 10) / 10;
-		}
 	});
 
 	function setVerdict(type: 'approve' | 'changes') {

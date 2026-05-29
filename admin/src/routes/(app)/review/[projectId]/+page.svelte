@@ -116,13 +116,8 @@
 	let notesLoading = $state(false);
 	let checkedItems = $state<number[]>([]);
 	let checklistLoading = $state(false);
-	let editedHours = $state<number | null>(null);
 	let manifestLookup = $state<ManifestLookupResponse | null>(null);
 	let manifestLoading = $state(false);
-	let hackatimeBreakdownLoading = $state(false);
-	// Real per-Hackatime-project hours (live-fetched). Null until loaded; the
-	// HoursBreakdown component falls back to an even split while we wait.
-	let hackatimeProjectHours = $state<Record<string, number> | null>(null);
 	// Aggregate AI vs non-AI + per-project totals, live-fetched. Per-project
 	// rows are raw (NOT deduped) totals — they may sum to more than
 	// `totalHours` when the user logged overlapping time across projects.
@@ -379,7 +374,6 @@
 		githubRepo = null;
 		readmeMarkdown = '';
 		manifestLookup = null;
-		hackatimeProjectHours = null;
 		hourBreakdown = null;
 		// Flip per-section loading flags up front so panels show their loading
 		// state immediately when switching submissions, instead of flashing
@@ -390,7 +384,6 @@
 		notesLoading = true;
 		checklistLoading = true;
 		manifestLoading = true;
-		hackatimeBreakdownLoading = true;
 		hourBreakdownLoading = true;
 		// Read-only mode is per-submission — switching submissions resets it
 		// (attachClaim below decides whether to surface a fresh conflict).
@@ -423,30 +416,11 @@
 			void loadNotes(data.project.projectId, data.project.user.userId);
 			void loadChecklist(submissionId);
 			void loadManifestLookup(data.project.projectId);
-			void loadHackatimeBreakdown(data.project.projectId);
 			void loadHourBreakdown(data.project.projectId);
 		} catch (error) {
 			console.error('Failed to load submission detail:', error);
 		} finally {
 			submissionLoading = false;
-		}
-	}
-
-	async function loadHackatimeBreakdown(projectId: number) {
-		hackatimeBreakdownLoading = true;
-		try {
-			const { data } = await api.GET(
-				'/api/reviewer/projects/{id}/hackatime-breakdown',
-				{ params: { path: { id: projectId } } },
-			);
-			if (!data) return;
-			const map: Record<string, number> = {};
-			for (const entry of data) map[entry.name] = entry.hours;
-			hackatimeProjectHours = map;
-		} catch {
-			hackatimeProjectHours = null;
-		} finally {
-			hackatimeBreakdownLoading = false;
 		}
 	}
 
@@ -575,10 +549,6 @@
 		}
 	}
 
-	function handleHoursChange(hours: number) {
-		editedHours = hours;
-	}
-
 	function handleReviewComplete(approved: boolean) {
 		// Backend auto-releases on verdict; tell the local manager to stop
 		// heartbeating so we don't ping a no-longer-ours claim.
@@ -689,11 +659,8 @@
 					playableUrl={currentSubmission?.project.playableUrl ?? currentSubmission?.playableUrl ?? null}
 					readmeUrl={currentSubmission?.project.readmeUrl ?? null}
 					hackatimeHours={currentSubmission?.hackatimeHours ?? null}
-					hackatimeProjects={currentSubmission?.project.nowHackatimeProjects ?? []}
-					hackatimeProjectHours={hackatimeProjectHours}
 					joeFraudPassed={currentSubmission?.project.joeFraudPassed ?? null}
 					joeTrustScore={currentSubmission?.project.joeTrustScore ?? null}
-					onHoursChange={handleHoursChange}
 					loading={submissionLoading}
 				/>
 
@@ -773,7 +740,6 @@
 							<VerdictPanel
 								submissionId={currentSubmission.submissionId}
 								hackatimeHours={currentSubmission.hackatimeHours}
-								{editedHours}
 								joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
 								reviewPassed={currentSubmission.reviewPassed}
 								priorApprovedHours={(() => {

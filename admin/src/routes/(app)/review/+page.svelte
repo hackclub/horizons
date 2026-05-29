@@ -48,7 +48,6 @@
 	let projectNote = $state('');
 	let userNote = $state('');
 	let checkedItems = $state<number[]>([]);
-	let editedHours = $state<number | null>(null);
 
 	// Tab bar
 	const centerTabs: Tab[] = [
@@ -213,10 +212,6 @@
 		}
 	}
 
-	function handleHoursChange(hours: number) {
-		editedHours = hours;
-	}
-
 	function handleReviewComplete() {
 		loadQueue();
 	}
@@ -262,8 +257,6 @@
 						playableUrl={currentSubmission.project.playableUrl ?? currentSubmission.playableUrl}
 						readmeUrl={currentSubmission.project.readmeUrl}
 						hackatimeHours={currentSubmission.hackatimeHours}
-						hackatimeProjects={currentSubmission.project.nowHackatimeProjects ?? []}
-						onHoursChange={handleHoursChange}
 					/>
 
 					<hr class="border-none border-t border-rv-border m-0" />
@@ -322,7 +315,6 @@
 							<VerdictPanel
 								submissionId={currentSubmission.submissionId}
 								hackatimeHours={currentSubmission.hackatimeHours}
-								{editedHours}
 								isResubmission={(currentSubmission.submissions ?? []).some(
 									(s) => s.submissionId !== currentSubmission!.submissionId
 										&& new Date(s.createdAt) < new Date(currentSubmission!.createdAt),

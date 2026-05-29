@@ -2,35 +2,9 @@
 	interface Props {
 		/** Hours captured on the submission row at submit time. */
 		submittedHours: number | null;
-		projects: string[];
-		/** Real per-project hours from Hackatime, fetched live. When null/undefined
-		 *  the component is still loading or no breakdown is available; we fall
-		 *  back to an even split of submittedHours so totals stay sane. */
-		projectHours?: Record<string, number> | null;
-		onHoursChange?: (hours: number) => void;
 	}
 
-	let { submittedHours, projects, projectHours = null, onHoursChange }: Props = $props();
-
-	const projectRows = $derived(
-		projects.map((proj) => {
-			const real = projectHours?.[proj];
-			const hours =
-				real != null
-					? Math.round(real * 10) / 10
-					: submittedHours && projects.length > 0
-						? Math.round((submittedHours / projects.length) * 10) / 10
-						: 0;
-			return { project: proj, hours };
-		}),
-	);
-
-	const currentTotal = $derived(projectRows.reduce((sum, r) => sum + r.hours, 0));
-
-	// Seed the verdict panel's approved-hours field with the live current total
-	$effect(() => {
-		onHoursChange?.(currentTotal);
-	});
+	let { submittedHours }: Props = $props();
 </script>
 
 <div class="flex items-center gap-1.5 text-[13px] mb-0.5">
