@@ -28,28 +28,29 @@ export class ReviewerLeaderboardCronService {
   ) {}
 
   /**
-   * Post yesterday's reviewer leaderboard to Slack at noon Eastern. The window
-   * matches MetricsSnapshotService so daily numbers reconcile against the
-   * historical metric snapshot. Skips silently if the channel env var is
-   * unset (e.g. local dev) or no reviews landed in the window.
+   * Post the reviewer leaderboard for the most recent 6-hour UTC window to
+   * Slack. Fires at 00:00, 06:00, 12:00, 18:00 UTC. Skips silently if the
+   * channel env var is unset (e.g. local dev) or no reviews landed in the
+   * window.
    */
-  @Cron('0 12 * * *', { timeZone: 'America/New_York' })
-  async handleDaily() {
+  @Cron('0 0,6,12,18 * * *', { timeZone: 'UTC' })
+  async handleSixHourly() {
     const channelId = process.env.SLACK_REVIEWER_LEADERBOARD_CHANNEL;
     if (!channelId) {
       this.logger.log(
-        'SLACK_REVIEWER_LEADERBOARD_CHANNEL not set, skipping daily leaderboard.',
+        'SLACK_REVIEWER_LEADERBOARD_CHANNEL not set, skipping leaderboard.',
       );
       return;
     }
 
-    const { start, end } = this.previousUtcDayWindow();
+    const { start, end } = this.previousSixHourWindow();
     await this.postLeaderboard(channelId, start, end);
   }
 
   /**
-   * Manually trigger the same leaderboard the cron would post (yesterday's
-   * UTC window). Throws if the Slack channel env var isn't configured.
+   * Manually trigger the same leaderboard the cron would post (the most recent
+   * completed 6-hour UTC window). Throws if the Slack channel env var isn't
+   * configured.
    */
   async triggerNow(): Promise<LeaderboardPostResult> {
     const channelId = process.env.SLACK_REVIEWER_LEADERBOARD_CHANNEL;
@@ -58,30 +59,34 @@ export class ReviewerLeaderboardCronService {
         'SLACK_REVIEWER_LEADERBOARD_CHANNEL is not configured.',
       );
     }
-    const { start, end } = this.previousUtcDayWindow();
+    const { start, end } = this.previousSixHourWindow();
     return this.postLeaderboard(channelId, start, end);
   }
 
-  private previousUtcDayWindow() {
+  private previousSixHourWindow() {
     const now = new Date();
     const end = new Date(now);
-    end.setUTCHours(0, 0, 0, 0);
+    end.setUTCMinutes(0, 0, 0);
+    end.setUTCHours(Math.floor(end.getUTCHours() / 6) * 6);
     const start = new Date(end);
-    start.setUTCDate(start.getUTCDate() - 1);
+    start.setUTCHours(start.getUTCHours() - 6);
     return { start, end };
   }
 
   /**
    * Compute and post the leaderboard for an arbitrary [start, end) UTC window.
-   * Extracted so admins can trigger a manual post for any day without waiting
-   * for the cron.
+   * Extracted so admins can trigger a manual post for any window without
+   * waiting for the cron.
    */
   async postLeaderboard(
     channelId: string,
     start: Date,
     end: Date,
   ): Promise<LeaderboardPostResult> {
-    const dateLabel = start.toISOString().split('T')[0];
+    const dateStr = start.toISOString().split('T')[0];
+    const fmtHour = (d: Date) =>
+      `${String(d.getUTCHours()).padStart(2, '0')}:00`;
+    const dateLabel = `${dateStr} ${fmtHour(start)}–${fmtHour(end)} UTC`;
 
     const submissions = await this.prisma.submission.findMany({
       where: {
@@ -169,7 +174,7 @@ export class ReviewerLeaderboardCronService {
         elements: [
           {
             type: 'mrkdwn',
-            text: `*${totalReviews}* submissions reviewed by *${leaderboard.length}* reviewer${leaderboard.length === 1 ? '' : 's'} on ${dateLabel} (UTC).`,
+            text: `*${totalReviews}* submissions reviewed by *${leaderboard.length}* reviewer${leaderboard.length === 1 ? '' : 's'} in ${dateLabel}.`,
           },
         ],
       },
