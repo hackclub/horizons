@@ -359,6 +359,7 @@ export class MetricsSnapshotService implements OnModuleInit {
       linkedHackatimeProject,
       project10PlusHours,
       atLeast1Submission,
+      submitted10PlusHours,
       atLeast1ApprovedHour,
       approved10Plus,
       canBuyTicket,
@@ -390,6 +391,7 @@ export class MetricsSnapshotService implements OnModuleInit {
           projects: { some: { deletedAt: null, submissions: { some: {} } } },
         },
       }),
+      this.countUsersWithSubmittedHoursGte(10, asOf),
       this.prisma.user.count({
         where: {
           createdAt: beforeEnd,
@@ -417,6 +419,7 @@ export class MetricsSnapshotService implements OnModuleInit {
       linkedHackatimeProject,
       project10PlusHours,
       atLeast1Submission,
+      submitted10PlusHours,
       atLeast1ApprovedHour,
       approved10Plus,
       canBuyTicket,
@@ -438,6 +441,31 @@ export class MetricsSnapshotService implements OnModuleInit {
           AND p.deleted_at IS NULL
         GROUP BY u.user_id
         HAVING COALESCE(SUM(p.approved_hours), 0) >= ${threshold}
+      ) sub
+    `;
+    return Number(result[0]?.count ?? 0);
+  }
+
+  // Mirrors AdminService.countUsersWithSubmittedHoursGte: SUM(now_hackatime_hours)
+  // restricted to projects with at least one non-rejected submission.
+  private async countUsersWithSubmittedHoursGte(
+    threshold: number,
+    asOf: Date,
+  ): Promise<number> {
+    const result = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*) as count FROM (
+        SELECT u.user_id
+        FROM users u
+        INNER JOIN projects p ON p.user_id = u.user_id
+        WHERE u.created_at <= ${asOf}
+          AND p.deleted_at IS NULL
+          AND EXISTS (
+            SELECT 1 FROM submissions s
+            WHERE s.project_id = p.project_id
+              AND s.approval_status IN ('pending', 'approved')
+          )
+        GROUP BY u.user_id
+        HAVING COALESCE(SUM(p.now_hackatime_hours), 0) >= ${threshold}
       ) sub
     `;
     return Number(result[0]?.count ?? 0);

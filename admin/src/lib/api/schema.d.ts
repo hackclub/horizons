@@ -2816,6 +2816,7 @@ export interface components {
             linkedHackatimeProject: number;
             project10PlusHours: number;
             atLeast1Submission: number;
+            submitted10PlusHours: number;
             atLeast1ApprovedHour: number;
             approved10Plus: number;
             canBuyTicket: number;
@@ -2829,6 +2830,7 @@ export interface components {
             linkedHackatimeProject: number;
             project10PlusHours: number;
             atLeast1Submission: number;
+            submitted10PlusHours: number;
             atLeast1ApprovedHour: number;
             approved10Plus: number;
             canBuyTicket: number;

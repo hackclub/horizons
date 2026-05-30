@@ -261,6 +261,7 @@
 			{ value: funnel.linkedHackatimeProject, name: 'Linked Hackatime\nProject' },
 			{ value: funnel.project10PlusHours, name: '10+ Hackatime\nHours' },
 			{ value: funnel.atLeast1Submission, name: 'At Least 1\nSubmission' },
+			{ value: funnel.submitted10PlusHours, name: 'Submitted 10+\nHours' },
 			{ value: funnel.atLeast1ApprovedHour, name: 'At Least 1\nApproved Hour' },
 			{ value: funnel.approved10Plus, name: '10+ Approved\nHours' },
 			{ value: funnel.canBuyTicket, name: 'Can Buy\nTicket' },

@@ -724,6 +724,9 @@ class StatsFunnelEventEntry {
   atLeast1Submission: number;
 
   @ApiProperty()
+  submitted10PlusHours: number;
+
+  @ApiProperty()
   atLeast1ApprovedHour: number;
 
   @ApiProperty()
@@ -757,6 +760,9 @@ class StatsFunnel {
 
   @ApiProperty()
   atLeast1Submission: number;
+
+  @ApiProperty()
+  submitted10PlusHours: number;
 
   @ApiProperty()
   atLeast1ApprovedHour: number;

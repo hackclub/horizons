@@ -641,6 +641,7 @@ export class AdminService {
       linkedHackatimeProject,
       project10PlusHours,
       atLeast1Submission,
+      submitted10PlusHours,
       atLeast1ApprovedHour,
       approved10Plus,
       canBuyTicket,
@@ -660,6 +661,7 @@ export class AdminService {
       this.prisma.user.count({
         where: { projects: { some: { deletedAt: null, submissions: { some: {} } } } },
       }),
+      this.countUsersWithSubmittedHoursGte(10),
       this.prisma.user.count({
         where: { projects: { some: { deletedAt: null, approvedHours: { gte: 1 } } } },
       }),
@@ -682,6 +684,7 @@ export class AdminService {
       linkedHackatimeProject,
       project10PlusHours,
       atLeast1Submission,
+      submitted10PlusHours,
       atLeast1ApprovedHour,
       approved10Plus,
       canBuyTicket,
@@ -708,6 +711,7 @@ export class AdminService {
         linked_hackatime_project: bigint;
         project_10_plus_hours: bigint;
         at_least_1_submission: bigint;
+        submitted_10_plus_hours: bigint;
         at_least_1_approved_hour: bigint;
         approved_10_plus: bigint;
         can_buy_ticket: bigint;
@@ -742,6 +746,20 @@ export class AdminService {
             WHERE p.user_id = u.user_id AND p.deleted_at IS NULL AND p.approved_hours >= 1
           ) AS has_1h_approved,
           COALESCE(
+            (
+              SELECT SUM(p.now_hackatime_hours)
+              FROM projects p
+              WHERE p.user_id = u.user_id
+                AND p.deleted_at IS NULL
+                AND EXISTS (
+                  SELECT 1 FROM submissions s
+                  WHERE s.project_id = p.project_id
+                    AND s.approval_status IN ('pending', 'approved')
+                )
+            ),
+            0
+          ) AS submitted_total,
+          COALESCE(
             (SELECT SUM(p.approved_hours) FROM projects p WHERE p.user_id = u.user_id AND p.deleted_at IS NULL),
             0
           ) AS approved_total
@@ -762,6 +780,7 @@ export class AdminService {
         COUNT(*) FILTER (WHERE um.linked_hackatime_project) AS linked_hackatime_project,
         COUNT(*) FILTER (WHERE um.project_10h) AS project_10_plus_hours,
         COUNT(*) FILTER (WHERE um.has_submission) AS at_least_1_submission,
+        COUNT(*) FILTER (WHERE um.submitted_total >= 10) AS submitted_10_plus_hours,
         COUNT(*) FILTER (WHERE um.has_1h_approved) AS at_least_1_approved_hour,
         COUNT(*) FILTER (WHERE um.approved_total >= 10) AS approved_10_plus,
         COUNT(*) FILTER (
@@ -787,6 +806,7 @@ export class AdminService {
       linkedHackatimeProject: Number(r.linked_hackatime_project),
       project10PlusHours: Number(r.project_10_plus_hours),
       atLeast1Submission: Number(r.at_least_1_submission),
+      submitted10PlusHours: Number(r.submitted_10_plus_hours),
       atLeast1ApprovedHour: Number(r.at_least_1_approved_hour),
       approved10Plus: Number(r.approved_10_plus),
       canBuyTicket: Number(r.can_buy_ticket),
@@ -804,6 +824,27 @@ export class AdminService {
         WHERE p.deleted_at IS NULL
         GROUP BY u.user_id
         HAVING COALESCE(SUM(p.approved_hours), 0) >= ${threshold}
+      ) sub
+    `;
+    return Number(result[0]?.count ?? 0);
+  }
+
+  // SUM(now_hackatime_hours) restricted to projects with at least one
+  // non-rejected submission (pending or approved). Rejected-only projects are
+  // excluded so the funnel reflects hours that are still in play.
+  private async countUsersWithSubmittedHoursGte(threshold: number): Promise<number> {
+    const result = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*) as count FROM (
+        SELECT p.user_id
+        FROM projects p
+        WHERE p.deleted_at IS NULL
+          AND EXISTS (
+            SELECT 1 FROM submissions s
+            WHERE s.project_id = p.project_id
+              AND s.approval_status IN ('pending', 'approved')
+          )
+        GROUP BY p.user_id
+        HAVING COALESCE(SUM(p.now_hackatime_hours), 0) >= ${threshold}
       ) sub
     `;
     return Number(result[0]?.count ?? 0);
