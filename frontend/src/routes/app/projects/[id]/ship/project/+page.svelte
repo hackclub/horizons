@@ -22,7 +22,7 @@
 	];
 
 	const projectId = $derived(page.params.id);
-	const bypassDemoCheck = $derived(page.url.searchParams.get('bypass') === 'demo');
+	let ignoreUrlErrors = $state(page.url.searchParams.get('bypass') === 'demo');
 
 	let loading = $state(true);
 	let title = $state('');
@@ -277,11 +277,11 @@
 	}
 
 	let hasUrlErrors = $derived(
-		(!bypassDemoCheck && demoUrlStatus === 'error') || codeUrlStatus === 'error' || readmeUrlStatus === 'error'
+		!ignoreUrlErrors && (demoUrlStatus === 'error' || codeUrlStatus === 'error' || readmeUrlStatus === 'error')
 	);
 
 	let urlsChecking = $derived(
-		(!bypassDemoCheck && demoUrlStatus === 'checking') || codeUrlStatus === 'checking' || readmeUrlStatus === 'checking'
+		demoUrlStatus === 'checking' || codeUrlStatus === 'checking' || readmeUrlStatus === 'checking'
 	);
 
 	let allFilled = $derived(
@@ -632,7 +632,18 @@
 									</div>
 								</div>
 								{#if demoUrlStatus === 'error' && demoUrlError}
-									<p class="text-amber-600 text-xs font-semibold mt-1 m-0">{demoUrlError}</p>
+									<p class="text-amber-600 text-xs font-semibold mt-1 m-0">
+										{demoUrlError}
+										{#if !ignoreUrlErrors}
+											<button
+												type="button"
+												class="underline cursor-pointer bg-transparent border-0 p-0 font-semibold text-amber-700 hover:text-amber-800"
+												onclick={() => (ignoreUrlErrors = true)}
+											>
+												Bypass link check
+											</button>
+										{/if}
+									</p>
 								{/if}
 							{/snippet}
 						</FormField>
@@ -684,7 +695,18 @@
 									</div>
 								</div>
 								{#if codeUrlStatus === 'error' && codeUrlError}
-									<p class="text-amber-600 text-xs font-semibold mt-1 m-0">{codeUrlError}</p>
+									<p class="text-amber-600 text-xs font-semibold mt-1 m-0">
+										{codeUrlError}
+										{#if !ignoreUrlErrors}
+											<button
+												type="button"
+												class="underline cursor-pointer bg-transparent border-0 p-0 font-semibold text-amber-700 hover:text-amber-800"
+												onclick={() => (ignoreUrlErrors = true)}
+											>
+												Bypass link check
+											</button>
+										{/if}
+									</p>
 								{/if}
 							{/snippet}
 						</FormField>
@@ -730,7 +752,18 @@
 									</div>
 								</div>
 								{#if readmeUrlStatus === 'error' && readmeUrlError}
-									<p class="text-amber-600 text-xs font-semibold mt-1 m-0">{readmeUrlError}</p>
+									<p class="text-amber-600 text-xs font-semibold mt-1 m-0">
+										{readmeUrlError}
+										{#if !ignoreUrlErrors}
+											<button
+												type="button"
+												class="underline cursor-pointer bg-transparent border-0 p-0 font-semibold text-amber-700 hover:text-amber-800"
+												onclick={() => (ignoreUrlErrors = true)}
+											>
+												Bypass link check
+											</button>
+										{/if}
+									</p>
 								{/if}
 							{/snippet}
 						</FormField>
