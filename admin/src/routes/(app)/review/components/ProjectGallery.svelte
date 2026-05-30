@@ -4,6 +4,7 @@
 	import { api, type components } from '$lib/api';
 	import { timeAgo, waitingFor } from '../utils';
 	import { Skeleton } from '$lib/components';
+	import { LayoutGrid, List } from 'lucide-svelte';
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type PastReview = components['schemas']['PastReviewEntry'];
 	type FraudRejected = components['schemas']['FraudRejectedEntry'];
@@ -94,6 +95,26 @@
 		} catch {
 			// see TYPE_FILTER_STORAGE_KEY effect for rationale
 		}
+	});
+
+	// View mode state
+	const VIEW_MODE_STORAGE_KEY = 'horizons-review-gallery-view-mode';
+	function loadViewModeFromStorage(): 'grid' | 'list' {
+		if (typeof sessionStorage === 'undefined') return 'grid';
+		try {
+			const raw = sessionStorage.getItem(VIEW_MODE_STORAGE_KEY);
+			return raw === 'list' ? 'list' : 'grid';
+		} catch {
+			return 'grid';
+		}
+	}
+	let viewMode = $state<'grid' | 'list'>(loadViewModeFromStorage());
+
+	$effect(() => {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+		} catch { }
 	});
 
 	let searchQuery = $state('');
@@ -490,14 +511,35 @@
 
 	<div class="overflow-y-auto flex-1">
 		<section class="px-6 pt-6 pb-2">
-			<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold mb-3">
-				Pending Queue
-				{#if loading}
-					<span class="ml-1 inline-block align-middle"><Skeleton class="h-3 w-8 inline-block" /></span>
-				{:else}
-					<span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
-				{/if}
-			</h2>
+			<div class="flex items-center justify-between mb-3">
+				<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold m-0">
+					Pending Queue
+					{#if loading}
+						<span class="ml-1 inline-block align-middle"><Skeleton class="h-3 w-8 inline-block" /></span>
+					{:else}
+						<span class="text-rv-text/60 font-normal normal-case ml-1">({filteredItems.length})</span>
+					{/if}
+				</h2>
+				
+				<div class="flex items-center bg-rv-surface2 border border-rv-border rounded-lg p-0.5 select-none shrink-0">
+					<button
+						class="p-1 rounded-md transition-all duration-150 cursor-pointer {viewMode === 'grid' ? 'bg-rv-surface border border-rv-border/30 text-rv-accent' : 'border border-transparent text-rv-dim hover:text-rv-text'}"
+						onclick={() => (viewMode = 'grid')}
+						title="Grid View"
+						aria-label="Grid View"
+					>
+						<LayoutGrid class="w-4 h-4" />
+					</button>
+					<button
+						class="p-1 rounded-md transition-all duration-150 cursor-pointer {viewMode === 'list' ? 'bg-rv-surface border border-rv-border/30 text-rv-accent' : 'border border-transparent text-rv-dim hover:text-rv-text'}"
+						onclick={() => (viewMode = 'list')}
+						title="List View"
+						aria-label="List View"
+					>
+						<List class="w-4 h-4" />
+					</button>
+				</div>
+			</div>
 			<div class="flex flex-wrap gap-2 items-center mb-3">
 				<span class="text-[11px] text-rv-dim">Sort</span>
 				<button
@@ -544,72 +586,217 @@
 				>
 					Unreviewed
 				</button>
+
 			</div>
-			<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
-				{#if loading}
-					{#each Array(12) as _}
-						<div class="flex flex-col gap-2 p-5 bg-rv-surface border border-rv-border rounded-[10px]">
-							<Skeleton class="h-4 w-3/4" />
-							<Skeleton class="h-3 w-1/2" />
-							<div class="flex items-center gap-1.5 flex-wrap mt-1">
-								<Skeleton class="h-5 w-20 rounded-xl" />
-								<Skeleton class="h-5 w-12 rounded-xl" />
-								<Skeleton class="h-5 w-24 rounded-xl" />
+			{#if viewMode === 'grid'}
+				<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
+					{#if loading}
+						{#each Array(12) as _}
+							<div class="flex flex-col gap-2 p-5 bg-rv-surface border border-rv-border rounded-[10px]">
+								<Skeleton class="h-4 w-3/4" />
+								<Skeleton class="h-3 w-1/2" />
+								<div class="flex items-center gap-1.5 flex-wrap mt-1">
+									<Skeleton class="h-5 w-20 rounded-xl" />
+									<Skeleton class="h-5 w-12 rounded-xl" />
+									<Skeleton class="h-5 w-24 rounded-xl" />
+								</div>
 							</div>
-						</div>
-					{/each}
-				{:else}
-				{#each filteredItems as item (item.submissionId)}
-					{@const activeOtherClaim =
-						item.claim && !item.claim.isMine && !item.claim.isStale
-							? item.claim
-							: null}
-					<a
-						href="{base}/review/{item.project.projectId}"
-						class="flex flex-col gap-1.5 p-5 bg-rv-surface border rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit color-inherit hover:bg-rv-surface2 {activeOtherClaim ? 'border-yellow-500/50 hover:border-yellow-500' : 'border-rv-border hover:border-rv-accent'}"
-						title={activeOtherClaim ? `Currently being reviewed by ${activeOtherClaim.firstName} ${activeOtherClaim.lastName}` : undefined}
-					>
-						<p class="text-[15px] font-semibold text-rv-text m-0">{item.project.projectTitle}</p>
-						<p class="text-[13px] text-rv-dim m-0">
-							{userLabel(item.project.user)}
-						</p>
-						<div class="flex items-center gap-1.5 flex-wrap mt-1">
-							<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
-							{#if item.hackatimeHours != null}
+						{/each}
+					{:else}
+					{#each filteredItems as item (item.submissionId)}
+						{@const activeOtherClaim =
+							item.claim && !item.claim.isMine && !item.claim.isStale
+								? item.claim
+								: null}
+						<a
+							href="{base}/review/{item.project.projectId}"
+							class="flex flex-col gap-1.5 p-5 bg-rv-surface border rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit color-inherit hover:bg-rv-surface2 {activeOtherClaim ? 'border-yellow-500/50 hover:border-yellow-500' : 'border-rv-border hover:border-rv-accent'}"
+							title={activeOtherClaim ? `Currently being reviewed by ${activeOtherClaim.firstName} ${activeOtherClaim.lastName}` : undefined}
+						>
+							<p class="text-[15px] font-semibold text-rv-text m-0">{item.project.projectTitle}</p>
+							<p class="text-[13px] text-rv-dim m-0">
+								{userLabel(item.project.user)}
+							</p>
+							<div class="flex items-center gap-1.5 flex-wrap mt-1">
+								<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
+								{#if item.hackatimeHours != null}
+									<span
+										class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border bg-rv-tag-bg text-rv-dim border-rv-border"
+										title="Hackatime hours submitted for this project"
+									>
+										{item.hackatimeHours.toFixed(1)}h
+									</span>
+								{/if}
 								<span
-									class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border bg-rv-tag-bg text-rv-dim border-rv-border"
-									title="Hackatime hours submitted for this project"
+									class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border {waitingPillClass(item.createdAt)}"
+									title="Submitted {new Date(item.createdAt).toLocaleString()}"
 								>
-									{item.hackatimeHours.toFixed(1)}h
+									<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+										<circle cx="12" cy="12" r="10" />
+										<polyline points="12 6 12 12 16 14" />
+									</svg>
+									Waiting {waitingFor(item.createdAt)}
 								</span>
-							{/if}
-							<span
-								class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border {waitingPillClass(item.createdAt)}"
-								title="Submitted {new Date(item.createdAt).toLocaleString()}"
-							>
-								<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-									<circle cx="12" cy="12" r="10" />
-									<polyline points="12 6 12 12 16 14" />
-								</svg>
-								Waiting {waitingFor(item.createdAt)}
-							</span>
-							{#if activeOtherClaim}
-								<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-yellow-500/15 text-yellow-600 border border-yellow-500/40">
-									<span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
-									Reviewing: {activeOtherClaim.firstName} {activeOtherClaim.lastName}
-								</span>
-							{:else if item.claim?.isMine}
-								<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-rv-tag-bg text-rv-accent border border-rv-accent/40">
-									Open in your tab
-								</span>
-							{/if}
+								{#if activeOtherClaim}
+									<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-yellow-500/15 text-yellow-600 border border-yellow-500/40">
+										<span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+										Reviewing: {activeOtherClaim.firstName} {activeOtherClaim.lastName}
+									</span>
+								{:else if item.claim?.isMine}
+									<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-rv-tag-bg text-rv-accent border border-rv-accent/40">
+										Open in your tab
+									</span>
+								{/if}
+							</div>
+						</a>
+					{:else}
+						<p class="col-span-full text-center text-rv-dim py-6 text-sm">No projects match your filters.</p>
+					{/each}
+					{/if}
+				</div>
+			{:else}
+				<div class="flex flex-col border border-rv-border rounded-[10px] bg-rv-surface overflow-x-auto">
+					<div class="grid grid-cols-[minmax(150px,2fr)_minmax(100px,1.5fr)_minmax(100px,1fr)_minmax(100px,1.2fr)_minmax(100px,1fr)_80px_minmax(120px,1.5fr)] gap-3 items-center p-3 border-b border-rv-border text-[11px] text-rv-dim uppercase tracking-wider font-semibold min-w-[800px]">
+						<div>Project</div>
+						<div>Author</div>
+						<div>Event</div>
+						<div>Type</div>
+						<div>Wait Time</div>
+						<div>Hours</div>
+						<div>Status</div>
+					</div>
+					
+					{#if loading}
+						{#each Array(8) as _}
+							<div class="grid grid-cols-[minmax(150px,2fr)_minmax(100px,1.5fr)_minmax(100px,1fr)_minmax(100px,1.2fr)_minmax(100px,1fr)_80px_minmax(120px,1.5fr)] gap-3 p-3 border-b border-rv-border min-w-[800px]">
+								<Skeleton class="h-4 w-3/4" />
+								<Skeleton class="h-4 w-1/2" />
+								<Skeleton class="h-4 w-2/3" />
+								<Skeleton class="h-4 w-1/2" />
+								<Skeleton class="h-4 w-3/4" />
+								<Skeleton class="h-4 w-8" />
+								<Skeleton class="h-4 w-1/2" />
+							</div>
+						{/each}
+					{:else}
+						<div class="flex flex-col min-w-[800px]">
+							{#each filteredItems as item (item.submissionId)}
+								{@const activeOtherClaim = item.claim && !item.claim.isMine && !item.claim.isStale ? item.claim : null}
+								<a
+									href="{base}/review/{item.project.projectId}"
+									class="grid grid-cols-[minmax(150px,2fr)_minmax(100px,1.5fr)_minmax(100px,1fr)_minmax(100px,1.2fr)_minmax(100px,1fr)_80px_minmax(120px,1.5fr)] gap-3 items-center p-3 border-b border-rv-border last:border-b-0 cursor-pointer transition-all duration-150 no-underline text-inherit hover:bg-rv-surface2 {activeOtherClaim ? 'bg-yellow-500/5' : ''}"
+									title={activeOtherClaim ? `Currently being reviewed by ${activeOtherClaim.firstName} ${activeOtherClaim.lastName}` : undefined}
+								>
+									<div class="flex flex-col min-w-0">
+										<div class="font-semibold text-[14px] text-rv-text truncate">
+											{item.project.projectTitle}
+										</div>
+										<div class="flex items-center gap-1.5 mt-1 text-[11px] font-normal text-rv-dim">
+											{#if item.project.playableUrl}
+												<a
+													href={item.project.playableUrl}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="text-rv-accent hover:underline inline-flex items-center gap-0.5"
+													onclick={(e) => e.stopPropagation()}
+												>
+													<span>Demo</span>
+													<svg class="w-3 h-3 text-rv-dim/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+														<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+														<polyline points="15 3 21 3 21 9" />
+														<line x1="10" y1="14" x2="21" y2="3" />
+													</svg>
+												</a>
+											{/if}
+											{#if item.project.playableUrl && (item.project.readmeUrl || item.project.repoUrl)}
+												<span class="text-rv-dim/30 select-none">•</span>
+											{/if}
+											{#if item.project.readmeUrl || item.project.repoUrl}
+												{@const readme = item.project.readmeUrl || (item.project.repoUrl ? `${item.project.repoUrl.replace(/\/$/, '')}/blob/main/README.md` : null)}
+												{#if readme}
+													<a
+														href={readme}
+														target="_blank"
+														rel="noopener noreferrer"
+														class="text-rv-accent hover:underline inline-flex items-center gap-0.5"
+														onclick={(e) => e.stopPropagation()}
+													>
+														<span>Readme</span>
+														<svg class="w-3 h-3 text-rv-dim/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+															<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+															<polyline points="15 3 21 3 21 9" />
+															<line x1="10" y1="14" x2="21" y2="3" />
+														</svg>
+													</a>
+												{/if}
+											{/if}
+										</div>
+									</div>
+									<div class="text-[13px] text-rv-dim truncate">
+										{userLabel(item.project.user)}
+									</div>
+									<div class="truncate">
+										{#if item.project.user.eventSlug}
+											<span class="inline-block py-0.5 px-2 bg-rv-surface2 text-rv-dim rounded text-[11px] border border-rv-border truncate max-w-full">
+												{events.find(e => e.slug === item.project.user.eventSlug)?.title || item.project.user.eventSlug}
+											</span>
+										{:else}
+											<span class="text-[11px] text-rv-dim/50">—</span>
+										{/if}
+									</div>
+									<div class="text-[12px] text-rv-text truncate">
+										<span class="inline-block py-0.5 px-2 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px] truncate max-w-full">
+											{formatTypeName(item.project.projectType)}
+										</span>
+									</div>
+									<div class="truncate flex items-center">
+										<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border {waitingPillClass(item.createdAt)} whitespace-nowrap">
+											<svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+												<circle cx="12" cy="12" r="10" />
+												<polyline points="12 6 12 12 16 14" />
+											</svg>
+											{waitingFor(item.createdAt)}
+										</span>
+									</div>
+									<div class="text-[12px] text-rv-text truncate">
+										{#if item.hackatimeHours != null}
+											{item.hackatimeHours.toFixed(1)}h
+										{:else}
+											<span class="text-[11px] text-rv-dim/50">—</span>
+										{/if}
+									</div>
+									<div class="flex items-center gap-1.5 flex-wrap">
+										{#if activeOtherClaim}
+											<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-yellow-500/15 text-yellow-600 border border-yellow-500/40 truncate max-w-full">
+												<span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse shrink-0"></span>
+												<span class="truncate">Reviewing: {activeOtherClaim.firstName}</span>
+											</span>
+										{:else if item.claim?.isMine}
+											<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-rv-tag-bg text-rv-accent border border-rv-accent/40 truncate max-w-full">
+												Open in your tab
+											</span>
+										{:else}
+											{#if item.project.joeFraudPassed === false}
+												<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-red-500/15 text-red-500 border border-red-500/40">
+													Flagged
+												</span>
+											{:else if item.project.joeFraudPassed === true}
+												<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-green-500/15 text-green-500 border border-green-500/40">
+													Passed
+												</span>
+											{/if}
+										{/if}
+									</div>
+								</a>
+							{:else}
+								<div class="p-6 text-center text-rv-dim text-sm">
+									No projects match your filters.
+								</div>
+							{/each}
 						</div>
-					</a>
-				{:else}
-					<p class="col-span-full text-center text-rv-dim py-6 text-sm">No projects match your filters.</p>
-				{/each}
-				{/if}
-			</div>
+					{/if}
+				</div>
+			{/if}
 		</section>
 
 		{#if searchQuery.trim() !== '' && filteredFraudRejected.length > 0}
