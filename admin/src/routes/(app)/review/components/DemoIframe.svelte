@@ -8,8 +8,31 @@
 	let iframeLoaded = $state(false);
 	let iframeElement: HTMLIFrameElement | undefined = $state();
 
+	function getYouTubeId(url: string): string | null {
+		try {
+			const u = new URL(url);
+			// youtu.be/<id>
+			if (u.hostname === 'youtu.be') {
+				const id = u.pathname.slice(1).split('/')[0];
+				return id || null;
+			}
+			// youtube.com/watch?v=<id>  or  youtube.com/shorts/<id>  or  youtube.com/embed/<id>
+			if (u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com' || u.hostname === 'm.youtube.com') {
+				if (u.searchParams.has('v')) return u.searchParams.get('v');
+				const parts = u.pathname.split('/').filter(Boolean);
+				if (parts[0] === 'shorts' || parts[0] === 'embed') return parts[1] ?? null;
+			}
+		} catch {
+			// not a valid URL
+		}
+		return null;
+	}
+
+	const youtubeId = $derived(demoUrl ? getYouTubeId(demoUrl) : null);
+	const youtubeEmbedUrl = $derived(youtubeId ? `https://www.youtube.com/embed/${youtubeId}?autoplay=0` : null);
+
 	function loadOrReload() {
-		if (!demoUrl) return;
+		if (!demoUrl || youtubeId) return; // YT embeds auto-load
 		if (!iframeLoaded) {
 			iframeLoaded = true;
 		} else if (iframeElement) {
@@ -32,13 +55,15 @@
 </script>
 
 <div class="flex items-center gap-1.5 px-3 py-2 bg-rv-surface border-b border-rv-border shrink-0">
-	<!-- Reload / Load -->
-	<button class={btnClass} onclick={loadOrReload} disabled={!demoUrl} title={iframeLoaded ? 'Reload' : 'Load demo'}>
-		<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-			<polyline points="23 4 23 10 17 10" />
-			<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-		</svg>
-	</button>
+	<!-- Reload / Load - hidden for YouTube embeds since they load automatically -->
+	{#if !youtubeId}
+		<button class={btnClass} onclick={loadOrReload} disabled={!demoUrl} title={iframeLoaded ? 'Reload' : 'Load demo'}>
+			<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<polyline points="23 4 23 10 17 10" />
+				<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+			</svg>
+		</button>
+	{/if}
 
 	<!-- URL bar -->
 	<div class="flex-1 bg-rv-surface2 border border-rv-border rounded-md py-1.5 px-3 text-gray-400 text-[12px] overflow-hidden text-ellipsis whitespace-nowrap">
@@ -56,7 +81,16 @@
 </div>
 
 <div class="flex-1 bg-[#0d1117] flex items-center justify-center">
-	{#if iframeLoaded && demoUrl}
+	{#if youtubeEmbedUrl}
+		<!-- YouTube embed - renders immediately, no load button needed -->
+		<iframe
+			class="w-full h-full border-none"
+			src={youtubeEmbedUrl}
+			title="YouTube video player"
+			allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+			allowfullscreen
+		></iframe>
+	{:else if iframeLoaded && demoUrl}
 		<iframe
 			class="w-full h-full border-none"
 			bind:this={iframeElement}
