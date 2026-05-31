@@ -181,21 +181,27 @@ export class AirtableService {
     hoursInReview: number;
     unsubmittedHours: number;
     chosenEventSlug: string | null;
+    country: string | null;
   }> {
-    const [approvedAgg, unsubmittedAgg, hoursInReviewResult, pinnedEvent] =
-      await Promise.all([
-        this.prisma.project.aggregate({
-          where: { userId, deletedAt: null },
-          _sum: { approvedHours: true },
-        }),
-        this.prisma.project.aggregate({
-          where: { userId, deletedAt: null, submissions: { none: {} } },
-          _sum: { nowHackatimeHours: true },
-        }),
-        // Mirrors MetricsService.computeReviewHours: a project counts as
-        // in-review when its latest submission is still pending and the
-        // reviewer hasn't decided. Scoped to this user.
-        this.prisma.$queryRaw<Array<{ total_hours: number }>>`
+    const [
+      approvedAgg,
+      unsubmittedAgg,
+      hoursInReviewResult,
+      pinnedEvent,
+      userProfile,
+    ] = await Promise.all([
+      this.prisma.project.aggregate({
+        where: { userId, deletedAt: null },
+        _sum: { approvedHours: true },
+      }),
+      this.prisma.project.aggregate({
+        where: { userId, deletedAt: null, submissions: { none: {} } },
+        _sum: { nowHackatimeHours: true },
+      }),
+      // Mirrors MetricsService.computeReviewHours: a project counts as
+      // in-review when its latest submission is still pending and the
+      // reviewer hasn't decided. Scoped to this user.
+      this.prisma.$queryRaw<Array<{ total_hours: number }>>`
           SELECT COALESCE(SUM(p.now_hackatime_hours), 0) as total_hours
           FROM projects p
           WHERE p.user_id = ${userId}
@@ -211,11 +217,15 @@ export class AirtableService {
                 )
             )
         `,
-        this.prisma.pinnedEvent.findUnique({
-          where: { userId },
-          include: { event: { select: { slug: true } } },
-        }),
-      ]);
+      this.prisma.pinnedEvent.findUnique({
+        where: { userId },
+        include: { event: { select: { slug: true } } },
+      }),
+      this.prisma.user.findUnique({
+        where: { userId },
+        select: { country: true },
+      }),
+    ]);
 
     return {
       approvedHours:
@@ -225,6 +235,7 @@ export class AirtableService {
       unsubmittedHours:
         Math.round((unsubmittedAgg._sum.nowHackatimeHours ?? 0) * 10) / 10,
       chosenEventSlug: pinnedEvent?.event?.slug ?? null,
+      country: userProfile?.country ?? null,
     };
   }
 
@@ -233,12 +244,14 @@ export class AirtableService {
     hoursInReview: number;
     unsubmittedHours: number;
     chosenEventSlug: string | null;
+    country: string | null;
   }): Record<string, any> {
     return {
       'Approved Hours': stats.approvedHours,
       'Hours in Review': stats.hoursInReview,
       'Unsubmitted Hours': stats.unsubmittedHours,
       'Chosen Event': stats.chosenEventSlug ?? '',
+      Country: stats.country ?? '',
     };
   }
 
