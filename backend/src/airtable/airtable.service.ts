@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { resolveAttachmentUrl } from './resolve-cdn-url';
 
 @Injectable()
 export class AirtableService {
@@ -719,6 +720,13 @@ export class AirtableService {
         data.project.repoUrl,
       );
 
+      // Airtable's attachment downloader can't follow cdn.hackclub.com's 302
+      // when the Location contains unencoded chars; pre-resolve so we hand it
+      // the final user-cdn URL.
+      const screenshotUrl = await resolveAttachmentUrl(
+        data.project.screenshotUrl,
+      );
+
       const fields: any = {
         'First Name': data.user.firstName,
         'Last Name': data.user.lastName,
@@ -734,7 +742,7 @@ export class AirtableService {
         'Code URL': data.project.repoUrl,
         Screenshot: [
           {
-            url: data.project.screenshotUrl,
+            url: screenshotUrl,
             filename: `screenshot-${Date.now()}.png`,
           },
         ],
@@ -857,9 +865,10 @@ export class AirtableService {
       }
 
       if (data.screenshotUrl !== undefined) {
+        const screenshotUrl = await resolveAttachmentUrl(data.screenshotUrl);
         fields['Screenshot'] = [
           {
-            url: data.screenshotUrl,
+            url: screenshotUrl,
             filename: `screenshot-${Date.now()}.png`,
           },
         ];
