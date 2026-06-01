@@ -1,0 +1,17 @@
+{
+  "name": "airtable",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ad-hoc operational scripts against the YSWS Airtable base.",
+  "type": "module",
+  "scripts": {
+    "sync-in-unified": "bun scripts/sync-in-unified.ts",
+    "fix-screenshots": "bun scripts/fix-screenshots.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.3.0",
+    "@prisma/client": "^7.0.0",
+    "dotenv": "^17.2.3",
+    "pg": "^8.18.0"
+  }
+}
