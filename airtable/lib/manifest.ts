@@ -1,5 +1,7 @@
 import { MANIFEST_BASE_URL, MANIFEST_YSWS_ID } from './env';
 
+const HORIZONS_YSWS_ID = MANIFEST_YSWS_ID;
+
 export interface ManifestSubmission {
   submissionId: string;
   ysws: string | null;
@@ -60,4 +62,76 @@ export async function lookupManifest(
 export function isInUnified(manifest: ManifestProject | null): boolean {
   if (!manifest) return false;
   return manifest.submissions.some((s) => s.shipStatus === 'shipped');
+}
+
+/**
+ * True when every shipped submission for this project is to Horizons
+ * (i.e. there's no cross-listing to another YSWS). Returns false when
+ * there are no shipped submissions at all.
+ */
+export function isHorizonsOnly(manifest: ManifestProject | null): boolean {
+  if (!manifest || !HORIZONS_YSWS_ID) return false;
+  const shipped = manifest.submissions.filter(
+    (s) => s.shipStatus === 'shipped',
+  );
+  if (shipped.length === 0) return false;
+  return shipped.every((s) => s.ysws === HORIZONS_YSWS_ID);
+}
+
+/**
+ * Human-readable label for the Airtable "In Unified Already?" column.
+ * Returns "submitted to <ysws name(s)>" when at least one shipped submission
+ * exists, otherwise "not submitted to db".
+ *
+ * When a project ships to Horizons *and* to another YSWS, only the
+ * non-Horizons names are listed — the Horizons row is the boring case and
+ * gets drowned out by the "real" cross-listing. Horizons-only matches still
+ * surface as "submitted to Horizons".
+ *
+ * If `currentHours` is provided, appends a delta against the sum of
+ * `hoursShipped` for every shipped submission in the manifest excluding
+ * Horizons itself (drafts also excluded). Positive = Horizons is granting
+ * more hours than the other YSWS have already paid out for this code.
+ * Formatted as "(+Xhr from previous)" or "(-Xhr from previous)".
+ */
+export function unifiedStatusLabel(
+  manifest: ManifestProject | null,
+  currentHours: number | null = null,
+): string {
+  if (!manifest) return 'not submitted to db';
+  const shipped = manifest.submissions.filter(
+    (s) => s.shipStatus === 'shipped',
+  );
+  if (shipped.length === 0) return 'not submitted to db';
+
+  const isHorizons = (s: ManifestSubmission): boolean =>
+    !!HORIZONS_YSWS_ID && s.ysws === HORIZONS_YSWS_ID;
+
+  const others = shipped.filter((s) => !isHorizons(s));
+  const chosen = others.length > 0 ? others : shipped;
+
+  const names = Array.from(
+    new Set(
+      chosen.map((s) => s.yswsName?.trim() || s.ysws?.trim() || 'unknown'),
+    ),
+  );
+
+  let delta = '';
+  if (typeof currentHours === 'number' && Number.isFinite(currentHours)) {
+    const shippedSum = shipped
+      .filter((s) => !isHorizons(s))
+      .reduce(
+        (acc, s) =>
+          typeof s.hoursShipped === 'number' && Number.isFinite(s.hoursShipped)
+            ? acc + s.hoursShipped
+            : acc,
+        0,
+      );
+    const diff = currentHours - shippedSum;
+    const sign = diff >= 0 ? '+' : '-';
+    const formatted = Math.abs(diff).toFixed(1).replace(/\.0$/, '');
+    delta = ` (${sign}${formatted}hr from previous)`;
+  }
+
+  return `submitted to ${names.join(', ')}${delta}`;
 }

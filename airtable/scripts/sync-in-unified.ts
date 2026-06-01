@@ -3,15 +3,18 @@
  * Airtable. For each record we look up its Code URL in the Unified YSWS
  * manifest:
  *
- *   - any submission with shipStatus="shipped"  →  "yes"
- *   - everything else (only drafts, no record)  →  "no"
+ *   - any submission with shipStatus="shipped"  →  "submitted to <ysws name>"
+ *   - everything else (only drafts, no record)  →  "not submitted to db"
  *
  * Horizons drafts a manifest record on project create, so a bare lookup hit
- * is meaningless — we only flip to "yes" once something is actually shipped.
+ * is meaningless — we only mark "submitted" once something is actually shipped.
  *
  * Usage (from airtable/):
- *   bun scripts/sync-in-unified.ts            # write changes
- *   bun scripts/sync-in-unified.ts --dry-run  # log only, no writes
+ *   bun scripts/sync-in-unified.ts                      # write changes
+ *   bun scripts/sync-in-unified.ts --dry-run            # log only, no writes
+ *   bun scripts/sync-in-unified.ts --skip-horizons-only # leave rows untouched
+ *                                                       # if shipped only to
+ *                                                       # Horizons
  *
  * Required env (loaded from backend/.env, then airtable/.env override):
  *   YSWS_AIRTABLE_API_KEY
@@ -24,17 +27,25 @@ import {
   iterateApprovedProjects,
   patchApprovedProjects,
 } from '../lib/airtable';
-import { isInUnified, isManifestEnabled, lookupManifest } from '../lib/manifest';
+import {
+  isHorizonsOnly,
+  isManifestEnabled,
+  lookupManifest,
+  unifiedStatusLabel,
+} from '../lib/manifest';
 
 const FIELD_CODE_URL = 'Code URL';
 const FIELD_IN_UNIFIED = 'In Unified Already?';
+const FIELD_HOURS_SPENT = 'Optional - Override Hours Spent';
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
+const SKIP_HORIZONS_ONLY = args.includes('--skip-horizons-only');
 
 interface RowFields {
   [FIELD_CODE_URL]?: string;
   [FIELD_IN_UNIFIED]?: string;
+  [FIELD_HOURS_SPENT]?: number | string;
 }
 
 async function main(): Promise<void> {
@@ -46,14 +57,18 @@ async function main(): Promise<void> {
   }
 
   console.log(`Mode: ${DRY_RUN ? 'DRY RUN' : 'WRITE'}`);
+  if (SKIP_HORIZONS_ONLY) {
+    console.log('Skipping projects shipped only to Horizons.');
+  }
 
   const pending: { id: string; fields: { [k: string]: string } }[] = [];
   let scanned = 0;
   let updated = 0;
   let unchanged = 0;
   let skippedNoUrl = 0;
-  let flippedYes = 0;
-  let flippedNo = 0;
+  let skippedHorizonsOnly = 0;
+  let flippedSubmitted = 0;
+  let flippedNotSubmitted = 0;
 
   const flush = async (): Promise<void> => {
     if (pending.length === 0) return;
@@ -71,7 +86,7 @@ async function main(): Promise<void> {
   };
 
   for await (const rec of iterateApprovedProjects<RowFields>({
-    fields: [FIELD_CODE_URL, FIELD_IN_UNIFIED],
+    fields: [FIELD_CODE_URL, FIELD_IN_UNIFIED, FIELD_HOURS_SPENT],
     pageSize: 100,
   })) {
     scanned++;
@@ -82,15 +97,31 @@ async function main(): Promise<void> {
     }
 
     const manifest = await lookupManifest(codeUrl);
-    const target = isInUnified(manifest) ? 'yes' : 'no';
-    const current = (rec.fields[FIELD_IN_UNIFIED] ?? '').toLowerCase().trim();
+    if (SKIP_HORIZONS_ONLY && isHorizonsOnly(manifest)) {
+      skippedHorizonsOnly++;
+      continue;
+    }
+    const rawHours = rec.fields[FIELD_HOURS_SPENT];
+    const currentHours =
+      typeof rawHours === 'number'
+        ? rawHours
+        : typeof rawHours === 'string' && rawHours.trim() !== ''
+          ? Number(rawHours)
+          : null;
+    const target = unifiedStatusLabel(
+      manifest,
+      currentHours !== null && Number.isFinite(currentHours)
+        ? currentHours
+        : null,
+    );
+    const current = (rec.fields[FIELD_IN_UNIFIED] ?? '').trim();
 
     if (current === target) {
       unchanged++;
     } else {
       updated++;
-      if (target === 'yes') flippedYes++;
-      else flippedNo++;
+      if (target.startsWith('submitted to')) flippedSubmitted++;
+      else flippedNotSubmitted++;
       console.log(
         `  ${rec.id} ${codeUrl}  ${current || '(empty)'} → ${target}`,
       );
@@ -110,9 +141,14 @@ async function main(): Promise<void> {
   console.log('');
   console.log('── Summary ───────────────────────────────────────────');
   console.log(`Scanned:      ${scanned}`);
-  console.log(`Updated:      ${updated}  (yes=${flippedYes}, no=${flippedNo})`);
+  console.log(
+    `Updated:      ${updated}  (submitted=${flippedSubmitted}, not-submitted=${flippedNotSubmitted})`,
+  );
   console.log(`Unchanged:    ${unchanged}`);
   console.log(`Skipped:      ${skippedNoUrl}  (no Code URL)`);
+  if (SKIP_HORIZONS_ONLY) {
+    console.log(`Skipped:      ${skippedHorizonsOnly}  (Horizons-only)`);
+  }
   if (DRY_RUN) console.log('(dry run — no writes were made)');
 }
 
