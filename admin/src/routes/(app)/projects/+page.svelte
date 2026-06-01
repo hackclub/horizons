@@ -193,7 +193,8 @@
             project.projectTitle.toLowerCase().includes(q) ||
             name.includes(q) ||
             project.user.email.toLowerCase().includes(q) ||
-            (project.description?.toLowerCase().includes(q) ?? false)
+            (project.description?.toLowerCase().includes(q) ?? false) ||
+            (project.repoUrl?.toLowerCase().includes(q) ?? false)
         );
     }
 
@@ -371,7 +372,7 @@
                     <TextField
                         id="search-projects"
                         type="text"
-                        placeholder="Search by project title, user name, email, or description..."
+                        placeholder="Search by project title, user name, email, description, or code URL..."
                         bind:value={searchQuery}
                     />
                 </div>
