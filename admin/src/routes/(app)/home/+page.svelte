@@ -31,6 +31,7 @@
 	let userHoursDistMode = $state<
 		'tracked' | 'submitted' | 'submittedExcludingRejected' | 'approved'
 	>('approved');
+	let canBuyTicketMode = $state<'approved' | 'approvedPlusPending'>('approved');
 
 	const validCountryNames = new Set<string>();
 
@@ -715,6 +716,12 @@
 
 		const data = stats.signups.qualification;
 		const dark = isDark();
+		const includePending = canBuyTicketMode === 'approvedPlusPending';
+		const canBuyOf = (d: (typeof data)[number]) =>
+			includePending ? d.canBuyTicketWithPending : d.canBuyTicket;
+		const canBuyLabel = includePending
+			? 'Can Buy Ticket (approved + pending)'
+			: 'Can Buy Ticket';
 
 		// Three-segment funnel per event, stacked outward from the smallest:
 		// Bought Ticket ⊂ Can Buy Ticket ⊂ Engaged. The bar's total length is
@@ -724,8 +731,8 @@
 		const engagedColor = dark ? '#22c55e' : '#16a34a';
 
 		const boughtData = data.map((d) => d.boughtTicket);
-		const canBuyOnlyData = data.map((d) => Math.max(0, d.canBuyTicket - d.boughtTicket));
-		const engagedOnlyData = data.map((d) => Math.max(0, d.engaged - d.canBuyTicket));
+		const canBuyOnlyData = data.map((d) => Math.max(0, canBuyOf(d) - d.boughtTicket));
+		const engagedOnlyData = data.map((d) => Math.max(0, d.engaged - canBuyOf(d)));
 
 		const segmentLabel = (value: number, total: number) => {
 			if (!value || !total) return '';
@@ -741,7 +748,7 @@
 				textStyle: { color: dimColor(), fontSize: 10 },
 				itemWidth: 14,
 				itemHeight: 8,
-				data: ['Bought Ticket', 'Can Buy Ticket', 'Engaged'],
+				data: ['Bought Ticket', canBuyLabel, 'Engaged'],
 			},
 			xAxis: {
 				type: 'value',
@@ -764,10 +771,11 @@
 					const idx = params[0].dataIndex;
 					const d = data[idx];
 					const pct = (n: number) => (d.signedUp ? ((n / d.signedUp) * 100).toFixed(1) : '0.0');
+					const canBuy = canBuyOf(d);
 					return `<b>${d.title}</b><br/>`
 						+ `Signed up: ${d.signedUp} (100%)<br/>`
 						+ `Engaged (≥1h approved): ${d.engaged} (${pct(d.engaged)}%)<br/>`
-						+ `Can Buy Ticket: ${d.canBuyTicket} (${pct(d.canBuyTicket)}%)<br/>`
+						+ `${canBuyLabel}: ${canBuy} (${pct(canBuy)}%)<br/>`
 						+ `Bought Ticket: ${d.boughtTicket} (${pct(d.boughtTicket)}%)`;
 				},
 			},
@@ -789,7 +797,7 @@
 					},
 				},
 				{
-					name: 'Can Buy Ticket',
+					name: canBuyLabel,
 					type: 'bar',
 					stack: 'qualification',
 					data: canBuyOnlyData,
@@ -962,6 +970,12 @@
 		userHoursDistMode;
 		userHoursDist;
 		if (userHoursDist) tick().then(() => renderUserHoursDistribution());
+	});
+
+	// Re-render only the qualification funnel chart when its mode toggles.
+	$effect(() => {
+		canBuyTicketMode;
+		if (stats) tick().then(() => renderSignupQualificationChart());
 	});
 
 	// Fetch the event-scoped user-hours distribution when the selector changes.
@@ -1298,6 +1312,14 @@
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
 						<div class="mb-2 flex items-center justify-between gap-2">
 							<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Qualification Funnel by Event</p>
+							<select
+								bind:value={canBuyTicketMode}
+								title="Hour basis for the 'Can Buy Ticket' gate"
+								class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+							>
+								<option value="approved">Approved hours only</option>
+								<option value="approvedPlusPending">Approved + pending hours</option>
+							</select>
 						</div>
 						<div
 							bind:this={signupQualificationEl}

@@ -947,6 +947,9 @@ class StatsSignupQualificationEntry {
   canBuyTicket: number;
 
   @ApiProperty()
+  canBuyTicketWithPending: number;
+
+  @ApiProperty()
   boughtTicket: number;
 }
 
