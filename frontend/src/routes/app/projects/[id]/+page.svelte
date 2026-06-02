@@ -104,6 +104,24 @@
 		hackatimeInfo !== null && hackatimeInfo.hackatimeProjects.length === 0,
 	);
 
+	const PROJECT_TYPE_NOUNS: Record<string, string> = {
+		windows_playable: 'windows',
+		mac_playable: 'mac',
+		linux_playable: 'linux',
+		web_playable: 'web',
+		cross_platform_playable: 'cross-platform',
+		hardware: 'hardware',
+		mobile_app: 'mobile',
+	};
+	let shippingGuideHref = $derived(
+		project?.projectType
+			? `https://guides.horizons.hackclub.com/guides/shipping-guide/#-${project.projectType.replace(/_/g, '-')}`
+			: null,
+	);
+	let projectTypeNoun = $derived(
+		project?.projectType ? (PROJECT_TYPE_NOUNS[project.projectType] ?? 'project') : 'project',
+	);
+
 	// Hackatime derived
 	let currentHours = $derived(hackatimeInfo?.currentHackatimeHours ?? 0);
 	// Ship-eligibility gate: first ship needs ≥3h, reship needs ≥3h beyond
@@ -321,6 +339,30 @@
 					{/if}
 				{/if}
 			</div>
+
+			<!-- Shipping Guide Hint (hidden once shipped) -->
+			{#if !hasSubmission && shippingGuideHref}
+				<a
+					href={shippingGuideHref}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="shipping-guide-link w-full flex items-center gap-2.5 rounded-lg px-4 py-2"
+				>
+					<svg class="size-8 shrink-0" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<circle cx="12" cy="12" r="10" />
+						<path d="M12 16v-4" />
+						<path d="M12 8h.01" />
+					</svg>
+					<div class="flex flex-col items-start min-w-0 flex-1">
+						<p class="font-bricolage text-[16px] font-semibold text-black m-0 leading-normal">
+							Don't want to get your {projectTypeNoun} project rejected?
+						</p>
+						<p class="font-bricolage text-[12px] font-normal text-black m-0 leading-normal">
+							Check out our <span class="underline">shipping guide</span> to avoid getting your {projectTypeNoun} project rejected!
+						</p>
+					</div>
+				</a>
+			{/if}
 
 			<!-- Submission Tracker -->
 			{#if hasSubmission}
@@ -684,6 +726,18 @@
 	@media (hover: hover) {
 		.action-btn:not(:disabled):hover {
 			transform: scale(var(--juice-scale));
+		}
+	}
+
+	.shipping-guide-link {
+		background-color: #cae6f9;
+		color: black;
+		text-decoration: none;
+		transition: transform 160ms ease-out;
+	}
+	@media (hover: hover) {
+		.shipping-guide-link:hover {
+			transform: scale(1.015);
 		}
 	}
 
