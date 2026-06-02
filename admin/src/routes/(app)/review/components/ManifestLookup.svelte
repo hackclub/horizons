@@ -12,11 +12,21 @@
 
 	const submissions = $derived(lookup?.manifest?.submissions ?? []);
 
+	// Drop submissions whose record creation predates Horizons — manifest
+	// `shippedAt`/`approvedAt` leak between submissions on the same project,
+	// so we only trust `createdAt` (the per-row timestamp) for cutoff checks.
+	const HORIZONS_START_MS = Date.parse('2026-02-21T00:00:00Z');
+
 	// Hide our own YSWS so reviewers only see *other* programs this codeUrl was
 	// submitted to. The Horizons YSWS rec ID is configured backend-side; here
 	// we just collapse exact-name matches as a defensive UI filter.
 	const otherSubmissions = $derived(
-		submissions.filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons'),
+		submissions.filter((s) => {
+			if ((s.yswsName ?? '').toLowerCase() === 'horizons') return false;
+			const created = Date.parse(s.createdAt);
+			if (Number.isFinite(created) && created < HORIZONS_START_MS) return false;
+			return true;
+		}),
 	);
 
 	function fmtDate(iso: string | null): string {
@@ -68,13 +78,11 @@
 						</span>
 					</div>
 					<div class="text-[10px] text-rv-dim mt-0.5">
-						{#if sub.shippedAt}
-							shipped {fmtDate(sub.shippedAt)}{#if sub.hoursShipped != null} · {sub.hoursShipped}h{/if}
-						{:else if sub.approvedAt}
-							approved {fmtDate(sub.approvedAt)}
-						{:else}
-							drafted {fmtDate(sub.createdAt)}
-						{/if}
+						<!-- Manifest leaks shippedAt/approvedAt between submissions on the
+						     same project, so always anchor on createdAt (the row's own
+						     creation timestamp, which is per-submission and reliable). -->
+						{sub.shipStatus === 'shipped' ? 'shipped' : 'drafted'}
+						{fmtDate(sub.createdAt)}{#if sub.shipStatus === 'shipped' && sub.hoursShipped != null} · {sub.hoursShipped}h{/if}
 					</div>
 				</li>
 			{/each}
