@@ -1442,9 +1442,20 @@ export class ReviewerService {
             submission.project.repoUrl,
           );
           if (manifest) {
-            const others = manifest.submissions.filter(
-              (s) => (s.yswsName ?? '').toLowerCase() !== 'horizons',
+            // Mirrors ManifestLookup.svelte: drop our own YSWS and any
+            // pre-Horizons rows. Only `createdAt` is trustworthy per-row;
+            // shippedAt/approvedAt leak between submissions on the same
+            // project so we can't use them for the cutoff.
+            const horizonsStartMs = Date.parse(
+              process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
             );
+            const others = manifest.submissions.filter((s) => {
+              if ((s.yswsName ?? '').toLowerCase() === 'horizons') return false;
+              const created = Date.parse(s.createdAt);
+              if (Number.isFinite(created) && created < horizonsStartMs)
+                return false;
+              return true;
+            });
             crossSubmittedYswsNames = [
               ...new Set(
                 others
