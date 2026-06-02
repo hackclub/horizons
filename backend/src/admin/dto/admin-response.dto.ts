@@ -944,6 +944,9 @@ class StatsSignupQualificationEntry {
   engaged: number;
 
   @ApiProperty()
+  engagedTracked: number;
+
+  @ApiProperty()
   canBuyTicket: number;
 
   @ApiProperty()

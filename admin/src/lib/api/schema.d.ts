@@ -2936,6 +2936,7 @@ export interface components {
             slug: string;
             signedUp: number;
             engaged: number;
+            engagedTracked: number;
             canBuyTicket: number;
             canBuyTicketWithPending: number;
             couldBuyTicket: number;
@@ -4062,7 +4063,7 @@ export interface components {
             isActive: boolean;
         };
         EventHourTotals: {
-            /** @description Sum of approved_hours from the latest approved submission per fraud-passed project, across pinned users */
+            /** @description Sum of approved_hours for fraud-passed projects whose latest submission is approved, across pinned users */
             approvedHours: number;
             /** @description Sum of now_hackatime_hours for projects whose latest submission is still pending review */
             hoursInReview: number;

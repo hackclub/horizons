@@ -719,6 +719,15 @@
 		const includePending = canBuyTicketMode === 'approvedPlusPending';
 		const canBuyOf = (d: (typeof data)[number]) =>
 			includePending ? d.canBuyTicketWithPending : d.canBuyTicket;
+		// Pick the engaged definition that keeps the funnel nested:
+		//   - approved-only mode: ≥1 approved hour (legacy)
+		//   - approved+pending mode: tracked any hour (umbrella over CouldBuy,
+		//     which can include users with zero approved hours)
+		const engagedOf = (d: (typeof data)[number]) =>
+			includePending ? d.engagedTracked : d.engaged;
+		const engagedLabel = includePending
+			? 'Engaged (tracked any hour)'
+			: 'Engaged (≥1h approved)';
 		const canBuyLabel = includePending
 			? 'Can Buy Ticket (approved + pending)'
 			: 'Can Buy Ticket';
@@ -744,7 +753,7 @@
 			const outerCanBuy = includePending
 				? Math.max(canBuyOf(d), d.couldBuyTicket)
 				: canBuyOf(d);
-			return Math.max(0, d.engaged - outerCanBuy);
+			return Math.max(0, engagedOf(d) - outerCanBuy);
 		});
 
 		const segmentLabel = (value: number, total: number) => {
@@ -762,8 +771,8 @@
 				itemWidth: 14,
 				itemHeight: 8,
 				data: includePending
-					? ['Bought Ticket', canBuyLabel, couldBuyLabel, 'Engaged']
-					: ['Bought Ticket', canBuyLabel, 'Engaged'],
+					? ['Bought Ticket', canBuyLabel, couldBuyLabel, engagedLabel]
+					: ['Bought Ticket', canBuyLabel, engagedLabel],
 			},
 			xAxis: {
 				type: 'value',
@@ -787,12 +796,13 @@
 					const d = data[idx];
 					const pct = (n: number) => (d.signedUp ? ((n / d.signedUp) * 100).toFixed(1) : '0.0');
 					const canBuy = canBuyOf(d);
+					const engaged = engagedOf(d);
 					const couldBuyLine = includePending
 						? `${couldBuyLabel}: ${d.couldBuyTicket} (${pct(d.couldBuyTicket)}%)<br/>`
 						: '';
 					return `<b>${d.title}</b><br/>`
 						+ `Signed up: ${d.signedUp} (100%)<br/>`
-						+ `Engaged (≥1h approved): ${d.engaged} (${pct(d.engaged)}%)<br/>`
+						+ `${engagedLabel}: ${engaged} (${pct(engaged)}%)<br/>`
 						+ couldBuyLine
 						+ `${canBuyLabel}: ${canBuy} (${pct(canBuy)}%)<br/>`
 						+ `Bought Ticket: ${d.boughtTicket} (${pct(d.boughtTicket)}%)`;
@@ -853,7 +863,7 @@
 						]
 					: []),
 				{
-					name: 'Engaged',
+					name: engagedLabel,
 					type: 'bar',
 					stack: 'qualification',
 					data: engagedOnlyData,
