@@ -35,6 +35,7 @@
 	let userGrowthEl = $state<HTMLDivElement | null>(null);
 	let dauEl = $state<HTMLDivElement | null>(null);
 	let dailyHoursEl = $state<HTMLDivElement | null>(null);
+	let dailySubmissionsEl = $state<HTMLDivElement | null>(null);
 	let signupsEl = $state<HTMLDivElement | null>(null);
 	let signupMapEl = $state<HTMLDivElement | null>(null);
 	let signupQualificationEl = $state<HTMLDivElement | null>(null);
@@ -233,6 +234,7 @@
 		renderLineChart(userGrowthEl, stats.historical.newSignups, '#3b82f6', 'rgba(59,130,246,0.15)');
 		renderLineChart(dauEl, stats.historical.dau, '#3b82f6', 'rgba(59,130,246,0.15)');
 		renderLineChart(dailyHoursEl, stats.historical.dailyHoursLogged, '#22c55e', 'rgba(34,197,94,0.15)', 'h');
+		renderLineChart(dailySubmissionsEl, stats.historical.dailySubmissionsLogged, '#f59e0b', 'rgba(245,158,11,0.15)');
 		renderLineChart(signupsEl, stats.historical.newSignups, '#22c55e', 'rgba(34,197,94,0.15)');
 		renderSignupQualificationChart();
 		renderSignupMap();
@@ -1068,6 +1070,13 @@
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Daily Hours Logged (30d)</p>
 					<div bind:this={dailyHoursEl} style="height: 200px;"></div>
 					{#if stats.historical.dailyHoursLogged.length === 0}
+						<p class="text-[10px] text-ds-text-secondary text-center mt-1">No historical data yet</p>
+					{/if}
+				</div>
+				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mb-3">
+					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Daily Submissions Logged (30d)</p>
+					<div bind:this={dailySubmissionsEl} style="height: 200px;"></div>
+					{#if stats.historical.dailySubmissionsLogged.length === 0}
 						<p class="text-[10px] text-ds-text-secondary text-center mt-1">No historical data yet</p>
 					{/if}
 				</div>

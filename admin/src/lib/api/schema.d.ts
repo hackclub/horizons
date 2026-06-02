@@ -2934,6 +2934,7 @@ export interface components {
             dau: components["schemas"]["HistoricalDataPoint"][];
             newSignups: components["schemas"]["HistoricalDataPoint"][];
             submissionsCreated: components["schemas"]["HistoricalDataPoint"][];
+            dailySubmissionsLogged: components["schemas"]["HistoricalDataPoint"][];
             reviewsCompleted: components["schemas"]["HistoricalDataPoint"][];
             medianReviewTimeHours: components["schemas"]["HistoricalDataPoint"][];
             dailyHoursLogged: components["schemas"]["HistoricalDataPoint"][];

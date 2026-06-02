@@ -551,6 +551,7 @@ export class MetricsService {
       dau: [],
       newSignups: [],
       submissionsCreated: [],
+      dailySubmissionsLogged: [],
       reviewsCompleted: [],
       medianReviewTimeHours: [],
       medianFraudCheckTimeHours: [],
@@ -646,6 +647,7 @@ export class MetricsService {
     for (const d of rawDaily.submissions_created) {
       submissionSum += d.value;
       result.submissionsCreated.push({ date: d.date, value: submissionSum });
+      result.dailySubmissionsLogged.push({ date: d.date, value: d.value });
     }
 
     let reviewSum = 0;

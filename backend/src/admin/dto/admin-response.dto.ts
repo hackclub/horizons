@@ -1008,6 +1008,9 @@ class StatsHistorical {
   submissionsCreated: HistoricalDataPoint[];
 
   @ApiProperty({ type: [HistoricalDataPoint] })
+  dailySubmissionsLogged: HistoricalDataPoint[];
+
+  @ApiProperty({ type: [HistoricalDataPoint] })
   reviewsCompleted: HistoricalDataPoint[];
 
   @ApiProperty({ type: [HistoricalDataPoint] })
