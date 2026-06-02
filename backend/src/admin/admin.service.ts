@@ -910,6 +910,12 @@ export class AdminService {
     //                              is still pending review (instead of its
     //                              approved_hours). Projects the funnel under
     //                              "what if all pending reviews approve".
+    //   couldBuyTicket           — the most permissive projection:
+    //                              now_hackatime_hours for every project whose
+    //                              latest submission isn't rejected (and for
+    //                              projects with no submission at all). I.e.
+    //                              tracked + approved + pending − rejected. Caps
+    //                              the chart's outer envelope when toggled on.
     //   boughtTicket             — pinned users with an EventTicket transaction
     //                              for this event
     const qualificationResult = await this.prisma.$queryRaw<
@@ -921,6 +927,7 @@ export class AdminService {
         engaged: bigint;
         can_buy_ticket: bigint;
         can_buy_ticket_with_pending: bigint;
+        could_buy_ticket: bigint;
         bought_ticket: bigint;
       }>
     >`
@@ -937,6 +944,10 @@ export class AdminService {
           WHERE e.rsvp_cost IS NULL
             OR COALESCE(ut.approved_plus_pending_total, 0) >= e.rsvp_cost
         ) AS can_buy_ticket_with_pending,
+        COUNT(*) FILTER (
+          WHERE e.rsvp_cost IS NULL
+            OR COALESCE(ut.could_total, 0) >= e.rsvp_cost
+        ) AS could_buy_ticket,
         COUNT(*) FILTER (WHERE et.user_id IS NOT NULL) AS bought_ticket
       FROM pinned_events pe
       INNER JOIN events e ON e.event_id = pe.event_id
@@ -959,7 +970,25 @@ export class AdminService {
               THEN COALESCE(p.now_hackatime_hours, 0)
               ELSE COALESCE(p.approved_hours, 0)
             END
-          ) AS approved_plus_pending_total
+          ) AS approved_plus_pending_total,
+          SUM(
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM submissions s
+                WHERE s.project_id = p.project_id
+                  AND s.approval_status = 'rejected'
+                  AND s.created_at = (
+                    SELECT MAX(s2.created_at) FROM submissions s2
+                    WHERE s2.project_id = p.project_id
+                  )
+              )
+              -- Latest ship rejected: locked-in approved hours from earlier
+              -- approved submissions still count toward "could buy"; the
+              -- rejected re-submission's incremental ask doesn't.
+              THEN COALESCE(p.approved_hours, 0)
+              ELSE COALESCE(p.now_hackatime_hours, 0)
+            END
+          ) AS could_total
         FROM projects p
         WHERE p.deleted_at IS NULL
         GROUP BY p.user_id
@@ -1039,6 +1068,7 @@ export class AdminService {
         engaged: Number(r.engaged),
         canBuyTicket: Number(r.can_buy_ticket),
         canBuyTicketWithPending: Number(r.can_buy_ticket_with_pending),
+        couldBuyTicket: Number(r.could_buy_ticket),
         boughtTicket: Number(r.bought_ticket),
       })),
       routes,

@@ -722,17 +722,30 @@
 		const canBuyLabel = includePending
 			? 'Can Buy Ticket (approved + pending)'
 			: 'Can Buy Ticket';
+		const couldBuyLabel = 'Could Buy Ticket (tracked − rejected)';
 
-		// Three-segment funnel per event, stacked outward from the smallest:
-		// Bought Ticket ⊂ Can Buy Ticket ⊂ Engaged. The bar's total length is
-		// the Engaged count; Signed up shows on the right as the denominator.
+		// Funnel per event, stacked outward from the smallest. When the
+		// approved+pending toggle is on we also surface a "Could Buy" envelope
+		// (most permissive: tracked + approved + pending − rejected). The
+		// segments are clamped to ≥0 so non-nested filters degrade gracefully —
+		// e.g. couldBuy > engaged just zeroes the engagedOnly slice instead of
+		// going negative.
 		const boughtColor = dark ? '#15803d' : '#166534';
 		const canBuyColor = dark ? '#3b82f6' : '#2563eb';
+		const couldBuyColor = dark ? '#7c3aed' : '#6d28d9';
 		const engagedColor = dark ? '#22c55e' : '#16a34a';
 
 		const boughtData = data.map((d) => d.boughtTicket);
 		const canBuyOnlyData = data.map((d) => Math.max(0, canBuyOf(d) - d.boughtTicket));
-		const engagedOnlyData = data.map((d) => Math.max(0, d.engaged - canBuyOf(d)));
+		const couldBuyOnlyData = data.map((d) =>
+			includePending ? Math.max(0, d.couldBuyTicket - canBuyOf(d)) : 0,
+		);
+		const engagedOnlyData = data.map((d) => {
+			const outerCanBuy = includePending
+				? Math.max(canBuyOf(d), d.couldBuyTicket)
+				: canBuyOf(d);
+			return Math.max(0, d.engaged - outerCanBuy);
+		});
 
 		const segmentLabel = (value: number, total: number) => {
 			if (!value || !total) return '';
@@ -748,7 +761,9 @@
 				textStyle: { color: dimColor(), fontSize: 10 },
 				itemWidth: 14,
 				itemHeight: 8,
-				data: ['Bought Ticket', canBuyLabel, 'Engaged'],
+				data: includePending
+					? ['Bought Ticket', canBuyLabel, couldBuyLabel, 'Engaged']
+					: ['Bought Ticket', canBuyLabel, 'Engaged'],
 			},
 			xAxis: {
 				type: 'value',
@@ -772,9 +787,13 @@
 					const d = data[idx];
 					const pct = (n: number) => (d.signedUp ? ((n / d.signedUp) * 100).toFixed(1) : '0.0');
 					const canBuy = canBuyOf(d);
+					const couldBuyLine = includePending
+						? `${couldBuyLabel}: ${d.couldBuyTicket} (${pct(d.couldBuyTicket)}%)<br/>`
+						: '';
 					return `<b>${d.title}</b><br/>`
 						+ `Signed up: ${d.signedUp} (100%)<br/>`
 						+ `Engaged (≥1h approved): ${d.engaged} (${pct(d.engaged)}%)<br/>`
+						+ couldBuyLine
 						+ `${canBuyLabel}: ${canBuy} (${pct(canBuy)}%)<br/>`
 						+ `Bought Ticket: ${d.boughtTicket} (${pct(d.boughtTicket)}%)`;
 				},
@@ -812,6 +831,27 @@
 						formatter: (p: any) => segmentLabel(p.value, data[p.dataIndex].signedUp),
 					},
 				},
+				...(includePending
+					? [
+							{
+								name: couldBuyLabel,
+								type: 'bar' as const,
+								stack: 'qualification',
+								data: couldBuyOnlyData,
+								barWidth: 22,
+								itemStyle: { color: couldBuyColor },
+								label: {
+									show: true,
+									position: 'inside' as const,
+									color: '#fff',
+									fontSize: 10,
+									fontWeight: 600,
+									formatter: (p: any) =>
+										segmentLabel(p.value, data[p.dataIndex].signedUp),
+								},
+							},
+						]
+					: []),
 				{
 					name: 'Engaged',
 					type: 'bar',

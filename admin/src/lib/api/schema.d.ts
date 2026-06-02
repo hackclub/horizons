@@ -2938,6 +2938,7 @@ export interface components {
             engaged: number;
             canBuyTicket: number;
             canBuyTicketWithPending: number;
+            couldBuyTicket: number;
             boughtTicket: number;
         };
         StatsSignupRoute: {
