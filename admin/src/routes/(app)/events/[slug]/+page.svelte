@@ -304,15 +304,18 @@
 		// Mutually exclusive segments: nested funnel split into rings.
 		const qualifiedColor = dark ? '#15803d' : '#166534';
 		const rsvpedColor = dark ? '#3b82f6' : '#2563eb';
-		const engagedColor = dark ? '#22c55e' : '#16a34a';
+		const engagedColor = dark ? '#f59e0b' : '#d97706';
 		const signedUpOnlyColor = dark ? '#475569' : '#cbd5e1';
 
+		// Keep zero-value slices in the data so they still appear in the legend
+		// (common case: every engaged user also cleared the 15h RSVP threshold,
+		// which would otherwise hide the Engaged entry entirely).
 		const slices = [
 			{ name: 'Qualified (≥30h)', value: counts.qualified, color: qualifiedColor },
 			{ name: 'Mid-funnel (≥15h)', value: Math.max(0, counts.rsvped - counts.qualified), color: rsvpedColor },
 			{ name: 'Engaged (≥1h)', value: Math.max(0, counts.engaged - counts.rsvped), color: engagedColor },
 			{ name: 'Signed up only', value: Math.max(0, q.signedUp - counts.engaged), color: signedUpOnlyColor },
-		].filter((s) => s.value > 0);
+		];
 
 		chart.setOption({
 			backgroundColor: 'transparent',
@@ -330,6 +333,7 @@
 				textStyle: { color: dimColor(), fontSize: 11 },
 				itemWidth: 12,
 				itemHeight: 8,
+				data: slices.map((s) => s.name),
 			},
 			series: [
 				{
