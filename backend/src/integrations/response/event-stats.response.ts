@@ -22,7 +22,7 @@ export class EventStatsEventInfo {
 export class EventHourTotals {
   @ApiProperty({
     description:
-      'Sum of approved_hours from the latest approved submission per fraud-passed project, across pinned users',
+      'Sum of approved_hours for fraud-passed projects whose latest submission is approved, across pinned users',
   })
   approvedHours: number;
 

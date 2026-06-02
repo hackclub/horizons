@@ -447,7 +447,7 @@ export class MetricsSnapshotService implements OnModuleInit {
   }
 
   // Mirrors AdminService.countUsersWithSubmittedHoursGte: SUM(now_hackatime_hours)
-  // restricted to projects with at least one non-rejected submission.
+  // restricted to projects whose latest submission isn't rejected.
   private async countUsersWithSubmittedHoursGte(
     threshold: number,
     asOf: Date,
@@ -462,7 +462,11 @@ export class MetricsSnapshotService implements OnModuleInit {
           AND EXISTS (
             SELECT 1 FROM submissions s
             WHERE s.project_id = p.project_id
-              AND s.approval_status IN ('pending', 'approved')
+              AND s.approval_status <> 'rejected'
+              AND s.created_at = (
+                SELECT MAX(s2.created_at) FROM submissions s2
+                WHERE s2.project_id = p.project_id
+              )
           )
         GROUP BY u.user_id
         HAVING COALESCE(SUM(p.now_hackatime_hours), 0) >= ${threshold}
