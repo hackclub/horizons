@@ -3245,6 +3245,11 @@ export interface components {
             shipped: components["schemas"]["HoursDistributionEntry"][];
             approved: components["schemas"]["HoursDistributionEntry"][];
         };
+        UserHoursDistribution: {
+            tracked: components["schemas"]["HoursDistributionEntry"][];
+            submitted: components["schemas"]["HoursDistributionEntry"][];
+            approved: components["schemas"]["HoursDistributionEntry"][];
+        };
         ReviewTimings: {
             medianReviewTimeThisWeek: number | null;
             medianFraudCheckTimeThisWeek: number | null;
@@ -3287,6 +3292,7 @@ export interface components {
             general: components["schemas"]["GeneralStats"];
             hours: components["schemas"]["HoursStats"];
             hoursDistribution: components["schemas"]["HoursDistribution"];
+            userHoursDistribution: components["schemas"]["UserHoursDistribution"];
             reviewStats: components["schemas"]["ReviewTimings"];
             reviewProjects: components["schemas"]["ReviewProjects"];
             historical: components["schemas"]["ReviewHistorical"];

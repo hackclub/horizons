@@ -24,6 +24,7 @@
 	let unmatchedOriginCountries = $state<string[]>([]);
 	let unmatchedEventCountries = $state<string[]>([]);
 	let hoursDistMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
+	let userHoursDistMode = $state<'tracked' | 'submitted' | 'approved'>('approved');
 
 	const validCountryNames = new Set<string>();
 
@@ -41,6 +42,7 @@
 	let signupQualificationEl = $state<HTMLDivElement | null>(null);
 	let utmEl = $state<HTMLDivElement | null>(null);
 	let hoursDistributionEl = $state<HTMLDivElement | null>(null);
+	let userHoursDistributionEl = $state<HTMLDivElement | null>(null);
 
 	let homeTab = $state<'users' | 'dau' | 'signups' | 'projects' | 'hours'>('users');
 
@@ -215,6 +217,58 @@
 		});
 	}
 
+	function renderUserHoursDistribution() {
+		const chart = initChart(userHoursDistributionEl);
+		if (!chart || !reviewStats) return;
+
+		const data = reviewStats.userHoursDistribution[userHoursDistMode];
+		const axisName = `${userHoursDistMode} hours`;
+		const barColor =
+			userHoursDistMode === 'approved'
+				? '#16a34a'
+				: userHoursDistMode === 'submitted'
+					? '#f97316'
+					: '#3b82f6';
+
+		chart.setOption({
+			backgroundColor: bgColor(),
+			grid: { left: 45, right: 12, top: 16, bottom: 32 },
+			xAxis: {
+				type: 'category',
+				data: data.map((d) => d.bucket),
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				axisLine: { lineStyle: { color: gridColor() } },
+				axisTick: { show: false },
+				name: axisName,
+				nameLocation: 'middle',
+				nameGap: 26,
+				nameTextStyle: { color: dimColor(), fontSize: 10 },
+			},
+			yAxis: {
+				type: 'value',
+				axisLabel: { color: dimColor(), fontSize: 10 },
+				splitLine: { lineStyle: { color: gridColor(), type: 'dashed' } },
+				axisLine: { show: false },
+				min: 0,
+			},
+			tooltip: {
+				trigger: 'axis',
+				formatter: (params: any) => {
+					const p = params[0];
+					return `${p.axisValue}h<br/><b>${p.value}</b> users`;
+				},
+			},
+			series: [
+				{
+					type: 'bar',
+					data: data.map((d) => d.count),
+					itemStyle: { color: barColor },
+					barWidth: '70%',
+				},
+			],
+		});
+	}
+
 	function initChart(el: HTMLDivElement | null): EChart | null {
 		if (!el) return null;
 		const existing = echarts.getInstanceByDom(el);
@@ -240,6 +294,7 @@
 		renderSignupMap();
 		renderUtmChart();
 		renderHoursDistribution();
+		renderUserHoursDistribution();
 	}
 
 	function renderFunnel() {
@@ -881,6 +936,12 @@
 		if (reviewStats) tick().then(() => renderHoursDistribution());
 	});
 
+	// Re-render only the user hours distribution chart when its mode changes.
+	$effect(() => {
+		userHoursDistMode;
+		if (reviewStats) tick().then(() => renderUserHoursDistribution());
+	});
+
 	// Re-render the map when the event filter changes (cheap — only the map).
 	$effect(() => {
 		selectedEventFilter;
@@ -1304,6 +1365,21 @@
 							</select>
 						</div>
 						<div bind:this={hoursDistributionEl} style="height: 220px;"></div>
+					</div>
+
+					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
+						<div class="mb-2 flex items-center justify-between gap-2">
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">User distribution by hours</p>
+							<select
+								bind:value={userHoursDistMode}
+								class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+							>
+								<option value="tracked">Tracked hours</option>
+								<option value="submitted">Submitted hours</option>
+								<option value="approved">Approved hours</option>
+							</select>
+						</div>
+						<div bind:this={userHoursDistributionEl} style="height: 220px;"></div>
 					</div>
 				{:else}
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-6 text-center text-ds-text-secondary text-sm">

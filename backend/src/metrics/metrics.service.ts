@@ -229,6 +229,151 @@ export class MetricsService {
     };
   }
 
+  /**
+   * Histogram of user counts by per-user total hours, computed three ways:
+   *   - `tracked`:   every user, bucketed by SUM(nowHackatimeHours) across their projects
+   *   - `submitted`: every user, bucketed by SUM(nowHackatimeHours) across projects with ≥1 submission
+   *   - `approved`:  every user, bucketed by SUM(approvedHours) across their projects
+   * Users with no projects fall into the '0' bucket. All three modes are
+   * returned so the client can toggle without re-fetching.
+   */
+  async computeUserHoursDistribution(asOf?: Date) {
+    const ceiling = asOf ?? new Date(8640000000000000);
+    const order = [
+      '0',
+      '0-5',
+      '5-10',
+      '10-15',
+      '15-20',
+      '20-25',
+      '25-30',
+      '30-40',
+      '40-50',
+      '50-75',
+      '75-100',
+      '100+',
+    ];
+
+    const bucketize = (rows: Array<{ bucket: string; count: bigint }>) => {
+      const map = new Map<string, number>();
+      for (const r of rows) map.set(r.bucket, Number(r.count));
+      return order.map((bucket) => ({ bucket, count: map.get(bucket) ?? 0 }));
+    };
+
+    const [trackedRows, submittedRows, approvedRows] = await Promise.all([
+      // Tracked mode: every user, bucketed by SUM(nowHackatimeHours) across their projects
+      this.prisma.$queryRaw<Array<{ bucket: string; count: bigint }>>`
+        SELECT bucket, COUNT(*)::bigint AS count FROM (
+          SELECT CASE
+            WHEN total_hours <= 0 THEN '0'
+            WHEN total_hours < 5   THEN '0-5'
+            WHEN total_hours < 10  THEN '5-10'
+            WHEN total_hours < 15  THEN '10-15'
+            WHEN total_hours < 20  THEN '15-20'
+            WHEN total_hours < 25  THEN '20-25'
+            WHEN total_hours < 30  THEN '25-30'
+            WHEN total_hours < 40  THEN '30-40'
+            WHEN total_hours < 50  THEN '40-50'
+            WHEN total_hours < 75  THEN '50-75'
+            WHEN total_hours < 100 THEN '75-100'
+            ELSE '100+'
+          END AS bucket
+          FROM (
+            SELECT u.user_id,
+                   COALESCE(SUM(p.now_hackatime_hours), 0) AS total_hours
+            FROM users u
+            LEFT JOIN projects p
+              ON p.user_id = u.user_id
+              AND p.deleted_at IS NULL
+              AND p.created_at <= ${ceiling}
+            WHERE u.created_at <= ${ceiling}
+            GROUP BY u.user_id
+          ) ut
+        ) b
+        GROUP BY bucket
+      `,
+      // Submitted mode: every user, bucketed by SUM(nowHackatimeHours) across
+      // projects with ≥1 submission
+      this.prisma.$queryRaw<Array<{ bucket: string; count: bigint }>>`
+        SELECT bucket, COUNT(*)::bigint AS count FROM (
+          SELECT CASE
+            WHEN total_hours <= 0 THEN '0'
+            WHEN total_hours < 5   THEN '0-5'
+            WHEN total_hours < 10  THEN '5-10'
+            WHEN total_hours < 15  THEN '10-15'
+            WHEN total_hours < 20  THEN '15-20'
+            WHEN total_hours < 25  THEN '20-25'
+            WHEN total_hours < 30  THEN '25-30'
+            WHEN total_hours < 40  THEN '30-40'
+            WHEN total_hours < 50  THEN '40-50'
+            WHEN total_hours < 75  THEN '50-75'
+            WHEN total_hours < 100 THEN '75-100'
+            ELSE '100+'
+          END AS bucket
+          FROM (
+            SELECT u.user_id,
+                   COALESCE(SUM(
+                     CASE
+                       WHEN EXISTS (
+                         SELECT 1 FROM submissions s
+                         WHERE s.project_id = p.project_id
+                           AND s.created_at <= ${ceiling}
+                       )
+                       THEN p.now_hackatime_hours
+                       ELSE 0
+                     END
+                   ), 0) AS total_hours
+            FROM users u
+            LEFT JOIN projects p
+              ON p.user_id = u.user_id
+              AND p.deleted_at IS NULL
+              AND p.created_at <= ${ceiling}
+            WHERE u.created_at <= ${ceiling}
+            GROUP BY u.user_id
+          ) ut
+        ) b
+        GROUP BY bucket
+      `,
+      // Approved mode: every user, bucketed by SUM(approvedHours) across their projects
+      this.prisma.$queryRaw<Array<{ bucket: string; count: bigint }>>`
+        SELECT bucket, COUNT(*)::bigint AS count FROM (
+          SELECT CASE
+            WHEN total_hours <= 0 THEN '0'
+            WHEN total_hours < 5   THEN '0-5'
+            WHEN total_hours < 10  THEN '5-10'
+            WHEN total_hours < 15  THEN '10-15'
+            WHEN total_hours < 20  THEN '15-20'
+            WHEN total_hours < 25  THEN '20-25'
+            WHEN total_hours < 30  THEN '25-30'
+            WHEN total_hours < 40  THEN '30-40'
+            WHEN total_hours < 50  THEN '40-50'
+            WHEN total_hours < 75  THEN '50-75'
+            WHEN total_hours < 100 THEN '75-100'
+            ELSE '100+'
+          END AS bucket
+          FROM (
+            SELECT u.user_id,
+                   COALESCE(SUM(p.approved_hours), 0) AS total_hours
+            FROM users u
+            LEFT JOIN projects p
+              ON p.user_id = u.user_id
+              AND p.deleted_at IS NULL
+              AND p.created_at <= ${ceiling}
+            WHERE u.created_at <= ${ceiling}
+            GROUP BY u.user_id
+          ) ut
+        ) b
+        GROUP BY bucket
+      `,
+    ]);
+
+    return {
+      tracked: bucketize(trackedRows),
+      submitted: bucketize(submittedRows),
+      approved: bucketize(approvedRows),
+    };
+  }
+
   /** Median / last-project review and fraud-check turnaround timings. */
   async computeReviewTimings() {
     const weekStart = new Date();
