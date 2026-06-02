@@ -221,7 +221,11 @@
 		const chart = initChart(userHoursDistributionEl);
 		if (!chart || !reviewStats) return;
 
-		const data = reviewStats.userHoursDistribution[userHoursDistMode];
+		// Drop the 0 bucket — it's dominated by users with no activity in that
+		// mode and would otherwise flatten the rest of the distribution.
+		const data = reviewStats.userHoursDistribution[userHoursDistMode].filter(
+			(d) => d.bucket !== '0',
+		);
 		const axisName = `${userHoursDistMode} hours`;
 		const barColor =
 			userHoursDistMode === 'approved'
