@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import HackatimeLinkButton from '$lib/components/HackatimeLinkButton.svelte';
 	import { api, type components } from '$lib/api';
-	import { FormField, FormTextarea, FormSelect, FileUpload, FormError, FormSubmitButton } from '$lib/components/form';
+	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, FormError, FormSubmitButton } from '$lib/components/form';
 	import { invalidateAllProjectCaches } from '$lib/store/projectDetailCache';
 	import BackButton from '$lib/components/BackButton.svelte';
 
@@ -71,11 +71,8 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="relative size-full">
-	<!-- Project form card -->
-	<div class="relative w-[calc(100%-2rem)] max-w-130 mx-auto mt-20 mb-8 sm:absolute sm:left-1/2 sm:top-1/2 sm:-translate-x-[calc(50%+0.5px)] sm:-translate-y-[calc(50%+0.5px)] sm:w-130 sm:mt-0 sm:mb-0 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col justify-between overflow-clip z-1">
+	<FormCard title="Create New Project" width="w-130">
 		<div class="flex flex-col gap-2 w-full">
-			<h1 class="font-cook text-2xl sm:text-4xl font-semibold text-black m-0 leading-normal">Create New Project</h1>
-
 			<FormField label="Title" id="title" placeholder="Horizons" maxlength={30} bind:value={title} />
 			<FormSelect label="Project Type" id="project-type" options={projectTypes} bind:value={projectType} />
 			<FormTextarea label="Description" id="description" placeholder="Describe what your project does..." maxlength={500} bind:value={description} />
@@ -90,7 +87,7 @@
 			<FormError message={errorMsg} />
 			<FormSubmitButton label="CREATE PROJECT" loadingLabel="CREATING..." onclick={handleSubmit} loading={submitting} />
 		</div>
-	</div>
+	</FormCard>
 
 	<BackButton onclick={() => goto('/app/projects')} />
 </div>
