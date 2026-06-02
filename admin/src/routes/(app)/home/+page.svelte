@@ -28,7 +28,9 @@
 	let unmatchedOriginCountries = $state<string[]>([]);
 	let unmatchedEventCountries = $state<string[]>([]);
 	let hoursDistMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
-	let userHoursDistMode = $state<'tracked' | 'submitted' | 'approved'>('approved');
+	let userHoursDistMode = $state<
+		'tracked' | 'submitted' | 'submittedExcludingRejected' | 'approved'
+	>('approved');
 
 	const validCountryNames = new Set<string>();
 
@@ -235,11 +237,16 @@
 		const data = userHoursDist[userHoursDistMode].filter(
 			(d) => d.bucket !== '0',
 		);
-		const axisName = `${userHoursDistMode} hours`;
+		const axisLabel =
+			userHoursDistMode === 'submittedExcludingRejected'
+				? 'submitted (excl. rejected)'
+				: userHoursDistMode;
+		const axisName = `${axisLabel} hours`;
 		const barColor =
 			userHoursDistMode === 'approved'
 				? '#16a34a'
-				: userHoursDistMode === 'submitted'
+				: userHoursDistMode === 'submitted' ||
+				  userHoursDistMode === 'submittedExcludingRejected'
 					? '#f97316'
 					: '#3b82f6';
 
@@ -1434,6 +1441,7 @@
 								>
 									<option value="tracked">Tracked hours</option>
 									<option value="submitted">Submitted hours</option>
+									<option value="submittedExcludingRejected">Submitted (excl. rejected)</option>
 									<option value="approved">Approved hours</option>
 								</select>
 							</div>

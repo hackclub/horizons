@@ -455,6 +455,9 @@ export class UserHoursDistributionResponse {
   submitted: HoursDistributionEntry[];
 
   @ApiProperty({ type: [HoursDistributionEntry] })
+  submittedExcludingRejected: HoursDistributionEntry[];
+
+  @ApiProperty({ type: [HoursDistributionEntry] })
   approved: HoursDistributionEntry[];
 }
 

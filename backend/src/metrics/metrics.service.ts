@@ -275,7 +275,7 @@ export class MetricsService {
         `
       : Prisma.empty;
 
-    const [trackedRows, submittedRows, approvedRows] = await Promise.all([
+    const [trackedRows, submittedRows, submittedExcludingRejectedRows, approvedRows] = await Promise.all([
       // Tracked mode: every user, bucketed by SUM(nowHackatimeHours) across their projects
       this.prisma.$queryRaw<Array<{ bucket: string; count: bigint }>>`
         SELECT bucket, COUNT(*)::bigint AS count FROM (
@@ -351,6 +351,56 @@ export class MetricsService {
         ) b
         GROUP BY bucket
       `,
+      // Submitted-excluding-rejected mode: like submitted, but a project only
+      // contributes when its latest submission isn't `rejected`. Projects whose
+      // most recent submission is rejected drop out entirely.
+      this.prisma.$queryRaw<Array<{ bucket: string; count: bigint }>>`
+        SELECT bucket, COUNT(*)::bigint AS count FROM (
+          SELECT CASE
+            WHEN total_hours <= 0 THEN '0'
+            WHEN total_hours < 5   THEN '0-5'
+            WHEN total_hours < 10  THEN '5-10'
+            WHEN total_hours < 15  THEN '10-15'
+            WHEN total_hours < 20  THEN '15-20'
+            WHEN total_hours < 25  THEN '20-25'
+            WHEN total_hours < 30  THEN '25-30'
+            WHEN total_hours < 40  THEN '30-40'
+            WHEN total_hours < 50  THEN '40-50'
+            WHEN total_hours < 75  THEN '50-75'
+            WHEN total_hours < 100 THEN '75-100'
+            ELSE '100+'
+          END AS bucket
+          FROM (
+            SELECT u.user_id,
+                   COALESCE(SUM(
+                     CASE
+                       WHEN EXISTS (
+                         SELECT 1 FROM submissions s
+                         WHERE s.project_id = p.project_id
+                           AND s.created_at <= ${ceiling}
+                           AND s.created_at = (
+                             SELECT MAX(s2.created_at) FROM submissions s2
+                             WHERE s2.project_id = p.project_id
+                               AND s2.created_at <= ${ceiling}
+                           )
+                           AND s.approval_status <> 'rejected'
+                       )
+                       THEN p.now_hackatime_hours
+                       ELSE 0
+                     END
+                   ), 0) AS total_hours
+            FROM users u
+            ${eventJoin}
+            LEFT JOIN projects p
+              ON p.user_id = u.user_id
+              AND p.deleted_at IS NULL
+              AND p.created_at <= ${ceiling}
+            WHERE u.created_at <= ${ceiling}
+            GROUP BY u.user_id
+          ) ut
+        ) b
+        GROUP BY bucket
+      `,
       // Approved mode: every user, bucketed by SUM(approvedHours) across their projects
       this.prisma.$queryRaw<Array<{ bucket: string; count: bigint }>>`
         SELECT bucket, COUNT(*)::bigint AS count FROM (
@@ -388,6 +438,7 @@ export class MetricsService {
     return {
       tracked: bucketize(trackedRows),
       submitted: bucketize(submittedRows),
+      submittedExcludingRejected: bucketize(submittedExcludingRejectedRows),
       approved: bucketize(approvedRows),
     };
   }

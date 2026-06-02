@@ -3305,6 +3305,7 @@ export interface components {
         UserHoursDistributionResponse: {
             tracked: components["schemas"]["HoursDistributionEntry"][];
             submitted: components["schemas"]["HoursDistributionEntry"][];
+            submittedExcludingRejected: components["schemas"]["HoursDistributionEntry"][];
             approved: components["schemas"]["HoursDistributionEntry"][];
         };
         ReviewTimings: {
