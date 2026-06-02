@@ -901,10 +901,17 @@ export class AdminService {
     `;
 
     // Per-event qualification funnel:
-    //   engaged       — pinned users with ≥1 approved hour
-    //   canBuyTicket  — pinned users whose approved hours clear this event's
-    //                   ticketThreshold (rsvp_cost column; null = no gate)
-    //   boughtTicket  — pinned users with an EventTicket transaction for this event
+    //   engaged                  — pinned users with ≥1 approved hour
+    //   canBuyTicket             — pinned users whose approved hours clear this
+    //                              event's ticketThreshold (rsvp_cost column;
+    //                              null = no gate)
+    //   canBuyTicketWithPending  — same gate, but counts a project's
+    //                              now_hackatime_hours when its latest submission
+    //                              is still pending review (instead of its
+    //                              approved_hours). Projects the funnel under
+    //                              "what if all pending reviews approve".
+    //   boughtTicket             — pinned users with an EventTicket transaction
+    //                              for this event
     const qualificationResult = await this.prisma.$queryRaw<
       Array<{
         event_id: number;
@@ -913,6 +920,7 @@ export class AdminService {
         signed_up: bigint;
         engaged: bigint;
         can_buy_ticket: bigint;
+        can_buy_ticket_with_pending: bigint;
         bought_ticket: bigint;
       }>
     >`
@@ -925,13 +933,33 @@ export class AdminService {
         COUNT(*) FILTER (
           WHERE e.rsvp_cost IS NULL OR COALESCE(ut.approved_total, 0) >= e.rsvp_cost
         ) AS can_buy_ticket,
+        COUNT(*) FILTER (
+          WHERE e.rsvp_cost IS NULL
+            OR COALESCE(ut.approved_plus_pending_total, 0) >= e.rsvp_cost
+        ) AS can_buy_ticket_with_pending,
         COUNT(*) FILTER (WHERE et.user_id IS NOT NULL) AS bought_ticket
       FROM pinned_events pe
       INNER JOIN events e ON e.event_id = pe.event_id
       LEFT JOIN (
         SELECT
           p.user_id,
-          SUM(COALESCE(p.approved_hours, 0)) AS approved_total
+          SUM(COALESCE(p.approved_hours, 0)) AS approved_total,
+          SUM(
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM submissions s
+                WHERE s.project_id = p.project_id
+                  AND s.approval_status = 'pending'
+                  AND s.review_passed IS NULL
+                  AND s.created_at = (
+                    SELECT MAX(s2.created_at) FROM submissions s2
+                    WHERE s2.project_id = p.project_id
+                  )
+              )
+              THEN COALESCE(p.now_hackatime_hours, 0)
+              ELSE COALESCE(p.approved_hours, 0)
+            END
+          ) AS approved_plus_pending_total
         FROM projects p
         WHERE p.deleted_at IS NULL
         GROUP BY p.user_id
@@ -1010,6 +1038,7 @@ export class AdminService {
         signedUp: Number(r.signed_up),
         engaged: Number(r.engaged),
         canBuyTicket: Number(r.can_buy_ticket),
+        canBuyTicketWithPending: Number(r.can_buy_ticket_with_pending),
         boughtTicket: Number(r.bought_ticket),
       })),
       routes,
