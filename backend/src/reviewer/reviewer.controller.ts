@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Req,
   ParseIntPipe,
@@ -28,6 +29,7 @@ import {
   NoteResponse,
   ChecklistResponse,
   ReviewStatsResponse,
+  UserHoursDistributionResponse,
   PastReviewsResponse,
   FraudRejectedEntry,
   ManifestLookupResponse,
@@ -56,6 +58,16 @@ export class ReviewerController {
   @ApiOkResponse({ type: ReviewStatsResponse })
   async getStats() {
     return this.reviewerService.getReviewStats();
+  }
+
+  /**
+   * User-hours histogram scoped to a single pinned event. The bundled
+   * `userHoursDistribution` in /stats is the unscoped (all events) variant.
+   */
+  @Get('stats/user-hours-distribution')
+  @ApiOkResponse({ type: UserHoursDistributionResponse })
+  async getUserHoursDistribution(@Query('event') event?: string) {
+    return this.reviewerService.getUserHoursDistribution(event);
   }
 
   /** List all finalized reviews; response includes currentReviewerId so the UI can split "mine" vs "all" */
