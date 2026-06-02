@@ -143,7 +143,6 @@ export class IntegrationsService {
           AND s.created_at = (
             SELECT MAX(s2.created_at) FROM submissions s2
             WHERE s2.project_id = p.project_id
-              AND s2.approval_status = 'approved'
           )
       `,
       this.prisma.$queryRaw<{ hours: number }[]>`

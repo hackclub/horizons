@@ -829,9 +829,9 @@ export class AdminService {
     return Number(result[0]?.count ?? 0);
   }
 
-  // SUM(now_hackatime_hours) restricted to projects with at least one
-  // non-rejected submission (pending or approved). Rejected-only projects are
-  // excluded so the funnel reflects hours that are still in play.
+  // SUM(now_hackatime_hours) restricted to projects whose latest submission
+  // isn't rejected. Matches the `submittedExcludingRejected` distribution mode
+  // so the funnel step and chart agree on the approved→rejected case.
   private async countUsersWithSubmittedHoursGte(threshold: number): Promise<number> {
     const result = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(*) as count FROM (
@@ -841,7 +841,11 @@ export class AdminService {
           AND EXISTS (
             SELECT 1 FROM submissions s
             WHERE s.project_id = p.project_id
-              AND s.approval_status IN ('pending', 'approved')
+              AND s.approval_status <> 'rejected'
+              AND s.created_at = (
+                SELECT MAX(s2.created_at) FROM submissions s2
+                WHERE s2.project_id = p.project_id
+              )
           )
         GROUP BY p.user_id
         HAVING COALESCE(SUM(p.now_hackatime_hours), 0) >= ${threshold}

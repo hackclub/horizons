@@ -64,7 +64,11 @@ export class MetricsService {
               )
           )
       `,
-      // Approved hours: latest approved submission per fraud-passed project
+      // Approved hours: latest submission overall is approved (per fraud-passed
+      // project). Gating on the latest-overall (not the latest-approved) keeps
+      // approved/rejected buckets mutually exclusive — a project whose most
+      // recent submission was rejected after an earlier approval lands in
+      // rejected, not approved.
       this.prisma.$queryRaw<Array<{ total_hours: number }>>`
         SELECT COALESCE(SUM(s.approved_hours), 0) as total_hours
         FROM submissions s
@@ -77,7 +81,6 @@ export class MetricsService {
           AND s.created_at = (
             SELECT MAX(s2.created_at) FROM submissions s2
             WHERE s2.project_id = p.project_id
-              AND s2.approval_status = 'approved'
               AND s2.created_at <= ${ceiling}
           )
       `,
