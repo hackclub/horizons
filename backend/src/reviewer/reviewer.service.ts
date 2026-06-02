@@ -1013,6 +1013,17 @@ export class ReviewerService {
   }
 
   /**
+   * User-hours distribution scoped to an event (by pinned-event slug).
+   * Pass an empty/undefined slug to count all users — same shape as the
+   * field bundled into `getReviewStats`.
+   */
+  async getUserHoursDistribution(eventSlug?: string) {
+    return this.metricsService.computeUserHoursDistribution({
+      eventSlug: eventSlug && eventSlug !== 'all' ? eventSlug : undefined,
+    });
+  }
+
+  /**
    * List submissions a reviewer has voted on, newest first. Includes those
    * still pending fraud reconciliation (reviewPassed set, approvalStatus
    * stuck on pending) so opening such a project from the gallery can resolve

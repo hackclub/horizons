@@ -447,7 +447,7 @@ class HoursDistribution {
   approved: HoursDistributionEntry[];
 }
 
-class UserHoursDistribution {
+export class UserHoursDistributionResponse {
   @ApiProperty({ type: [HoursDistributionEntry] })
   tracked: HoursDistributionEntry[];
 
@@ -570,8 +570,8 @@ export class ReviewStatsResponse {
   @ApiProperty({ type: HoursDistribution })
   hoursDistribution: HoursDistribution;
 
-  @ApiProperty({ type: UserHoursDistribution })
-  userHoursDistribution: UserHoursDistribution;
+  @ApiProperty({ type: UserHoursDistributionResponse })
+  userHoursDistribution: UserHoursDistributionResponse;
 
   @ApiProperty({ type: ReviewTimings })
   reviewStats: ReviewTimings;

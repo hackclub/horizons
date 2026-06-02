@@ -11,6 +11,7 @@
 
 	type Stats = components['schemas']['AdminStatsResponse'];
 	type ReviewStats = components['schemas']['ReviewStatsResponse'];
+	type UserHoursDistribution = components['schemas']['UserHoursDistributionResponse'];
 	type DataPoint = { date: string; value: number };
 	type EChart = echarts.ECharts;
 
@@ -21,6 +22,9 @@
 	let userRole = $state<string | null>(null);
 	let selectedEventFilter = $state<string>('all');
 	let selectedFunnelEvent = $state<string>('all');
+	let selectedUserHoursEvent = $state<string>('all');
+	let userHoursDist = $state<UserHoursDistribution | null>(null);
+	let userHoursLoading = $state(false);
 	let unmatchedOriginCountries = $state<string[]>([]);
 	let unmatchedEventCountries = $state<string[]>([]);
 	let hoursDistMode = $state<'unshipped' | 'shipped' | 'approved'>('approved');
@@ -150,6 +154,11 @@
 			if (statsRes.error) throw new Error('Failed to fetch stats');
 			stats = statsRes.data ?? null;
 			reviewStats = reviewRes.data ?? null;
+			// Seed the user-hours distribution from the bundled (unscoped) stats.
+			// When the user picks an event, we re-fetch the scoped version.
+			if (selectedUserHoursEvent === 'all') {
+				userHoursDist = reviewStats?.userHoursDistribution ?? null;
+			}
 			loading = false;
 			await tick();
 			renderAll();
@@ -219,11 +228,11 @@
 
 	function renderUserHoursDistribution() {
 		const chart = initChart(userHoursDistributionEl);
-		if (!chart || !reviewStats) return;
+		if (!chart || !userHoursDist) return;
 
 		// Drop the 0 bucket — it's dominated by users with no activity in that
 		// mode and would otherwise flatten the rest of the distribution.
-		const data = reviewStats.userHoursDistribution[userHoursDistMode].filter(
+		const data = userHoursDist[userHoursDistMode].filter(
 			(d) => d.bucket !== '0',
 		);
 		const axisName = `${userHoursDistMode} hours`;
@@ -940,10 +949,38 @@
 		if (reviewStats) tick().then(() => renderHoursDistribution());
 	});
 
-	// Re-render only the user hours distribution chart when its mode changes.
+	// Re-render only the user hours distribution chart when its mode changes
+	// or when the per-event-scoped data finishes loading.
 	$effect(() => {
 		userHoursDistMode;
-		if (reviewStats) tick().then(() => renderUserHoursDistribution());
+		userHoursDist;
+		if (userHoursDist) tick().then(() => renderUserHoursDistribution());
+	});
+
+	// Fetch the event-scoped user-hours distribution when the selector changes.
+	// 'all' uses the unscoped bundle from reviewStats — no extra call needed.
+	$effect(() => {
+		const slug = selectedUserHoursEvent;
+		if (!reviewStats) return;
+		if (slug === 'all') {
+			userHoursDist = reviewStats.userHoursDistribution;
+			return;
+		}
+		userHoursLoading = true;
+		api
+			.GET('/api/reviewer/stats/user-hours-distribution', {
+				params: { query: { event: slug } },
+			})
+			.then(({ data }) => {
+				// Guard against stale responses if the user has already changed
+				// the selection again before this resolves.
+				if (selectedUserHoursEvent === slug) {
+					userHoursDist = data ?? null;
+				}
+			})
+			.finally(() => {
+				if (selectedUserHoursEvent === slug) userHoursLoading = false;
+			});
 	});
 
 	// Re-render the map when the event filter changes (cheap — only the map).
@@ -1373,15 +1410,33 @@
 
 					<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
 						<div class="mb-2 flex items-center justify-between gap-2">
-							<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">User distribution by hours</p>
-							<select
-								bind:value={userHoursDistMode}
-								class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
-							>
-								<option value="tracked">Tracked hours</option>
-								<option value="submitted">Submitted hours</option>
-								<option value="approved">Approved hours</option>
-							</select>
+							<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">
+								User distribution by hours
+								{#if userHoursLoading}
+									<span class="ml-1 text-ds-text-secondary">(loading…)</span>
+								{/if}
+							</p>
+							<div class="flex items-center gap-2">
+								{#if funnelEventOptions.length > 0}
+									<select
+										bind:value={selectedUserHoursEvent}
+										class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+									>
+										<option value="all">All events</option>
+										{#each funnelEventOptions as event}
+											<option value={event.slug}>{event.title}</option>
+										{/each}
+									</select>
+								{/if}
+								<select
+									bind:value={userHoursDistMode}
+									class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+								>
+									<option value="tracked">Tracked hours</option>
+									<option value="submitted">Submitted hours</option>
+									<option value="approved">Approved hours</option>
+								</select>
+							</div>
 						</div>
 						<div bind:this={userHoursDistributionEl} style="height: 220px;"></div>
 					</div>

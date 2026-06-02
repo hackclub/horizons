@@ -1205,6 +1205,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/stats/user-hours-distribution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewerController_getUserHoursDistribution"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/past-reviews": {
         parameters: {
             query?: never;
@@ -3245,7 +3261,7 @@ export interface components {
             shipped: components["schemas"]["HoursDistributionEntry"][];
             approved: components["schemas"]["HoursDistributionEntry"][];
         };
-        UserHoursDistribution: {
+        UserHoursDistributionResponse: {
             tracked: components["schemas"]["HoursDistributionEntry"][];
             submitted: components["schemas"]["HoursDistributionEntry"][];
             approved: components["schemas"]["HoursDistributionEntry"][];
@@ -3292,7 +3308,7 @@ export interface components {
             general: components["schemas"]["GeneralStats"];
             hours: components["schemas"]["HoursStats"];
             hoursDistribution: components["schemas"]["HoursDistribution"];
-            userHoursDistribution: components["schemas"]["UserHoursDistribution"];
+            userHoursDistribution: components["schemas"]["UserHoursDistributionResponse"];
             reviewStats: components["schemas"]["ReviewTimings"];
             reviewProjects: components["schemas"]["ReviewProjects"];
             historical: components["schemas"]["ReviewHistorical"];
@@ -5715,6 +5731,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewStatsResponse"];
+                };
+            };
+        };
+    };
+    ReviewerController_getUserHoursDistribution: {
+        parameters: {
+            query?: {
+                event?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserHoursDistributionResponse"];
                 };
             };
         };

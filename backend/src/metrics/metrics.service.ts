@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 
 /**
@@ -236,9 +237,13 @@ export class MetricsService {
    *   - `approved`:  every user, bucketed by SUM(approvedHours) across their projects
    * Users with no projects fall into the '0' bucket. All three modes are
    * returned so the client can toggle without re-fetching.
+   *
+   * Pass `eventSlug` to restrict to users who have pinned that event (their
+   * chosen cohort). Omit to count across all users.
    */
-  async computeUserHoursDistribution(asOf?: Date) {
-    const ceiling = asOf ?? new Date(8640000000000000);
+  async computeUserHoursDistribution(opts?: { asOf?: Date; eventSlug?: string }) {
+    const ceiling = opts?.asOf ?? new Date(8640000000000000);
+    const eventSlug = opts?.eventSlug;
     const order = [
       '0',
       '0-5',
@@ -259,6 +264,16 @@ export class MetricsService {
       for (const r of rows) map.set(r.bucket, Number(r.count));
       return order.map((bucket) => ({ bucket, count: map.get(bucket) ?? 0 }));
     };
+
+    // Restrict the user set to a single pinned event when a slug is provided.
+    // Inlined into the FROM clause of every mode so the SQL plan stays identical
+    // for both the filtered and global paths.
+    const eventJoin = eventSlug
+      ? Prisma.sql`
+          JOIN pinned_events pe ON pe.user_id = u.user_id
+          JOIN events e ON e.event_id = pe.event_id AND e.slug = ${eventSlug}
+        `
+      : Prisma.empty;
 
     const [trackedRows, submittedRows, approvedRows] = await Promise.all([
       // Tracked mode: every user, bucketed by SUM(nowHackatimeHours) across their projects
@@ -282,6 +297,7 @@ export class MetricsService {
             SELECT u.user_id,
                    COALESCE(SUM(p.now_hackatime_hours), 0) AS total_hours
             FROM users u
+            ${eventJoin}
             LEFT JOIN projects p
               ON p.user_id = u.user_id
               AND p.deleted_at IS NULL
@@ -324,6 +340,7 @@ export class MetricsService {
                      END
                    ), 0) AS total_hours
             FROM users u
+            ${eventJoin}
             LEFT JOIN projects p
               ON p.user_id = u.user_id
               AND p.deleted_at IS NULL
@@ -355,6 +372,7 @@ export class MetricsService {
             SELECT u.user_id,
                    COALESCE(SUM(p.approved_hours), 0) AS total_hours
             FROM users u
+            ${eventJoin}
             LEFT JOIN projects p
               ON p.user_id = u.user_id
               AND p.deleted_at IS NULL
