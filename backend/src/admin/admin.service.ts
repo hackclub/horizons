@@ -961,8 +961,14 @@ export class AdminService {
           SUM(COALESCE(p.approved_hours, 0)) AS approved_total,
           SUM(
             CASE
-              WHEN EXISTS (
-                SELECT 1 FROM submissions s
+              -- Latest submission is pending: use that submission's
+              -- hackatime_hours snapshot (what the reviewer can actually
+              -- approve), not the project's live now_hackatime_hours. Tracking
+              -- added after the user hit Ship isn't part of the pending
+              -- review. GREATEST keeps earlier approved hours in play in case
+              -- a re-claim ever drops below them.
+              WHEN (
+                SELECT s.hackatime_hours FROM submissions s
                 WHERE s.project_id = p.project_id
                   AND s.approval_status = 'pending'
                   AND s.review_passed IS NULL
@@ -970,8 +976,20 @@ export class AdminService {
                     SELECT MAX(s2.created_at) FROM submissions s2
                     WHERE s2.project_id = p.project_id
                   )
+              ) IS NOT NULL
+              THEN GREATEST(
+                COALESCE(p.approved_hours, 0),
+                COALESCE((
+                  SELECT s.hackatime_hours FROM submissions s
+                  WHERE s.project_id = p.project_id
+                    AND s.approval_status = 'pending'
+                    AND s.review_passed IS NULL
+                    AND s.created_at = (
+                      SELECT MAX(s2.created_at) FROM submissions s2
+                      WHERE s2.project_id = p.project_id
+                    )
+                ), 0)
               )
-              THEN COALESCE(p.now_hackatime_hours, 0)
               ELSE COALESCE(p.approved_hours, 0)
             END
           ) AS approved_plus_pending_total,
