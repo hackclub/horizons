@@ -968,14 +968,21 @@ export class ReviewerService {
     const thirtyDaysWindow = new Date(dayStart);
     thirtyDaysWindow.setDate(thirtyDaysWindow.getDate() - 30);
 
-    const [hours, timings, projects, historical, hoursDistribution] =
-      await Promise.all([
-        this.metricsService.computeReviewHours(),
-        this.metricsService.computeReviewTimings(),
-        this.metricsService.computeReviewProjects(),
-        this.metricsService.computeHistorical(thirtyDaysWindow),
-        this.metricsService.computeProjectHoursDistribution(),
-      ]);
+    const [
+      hours,
+      timings,
+      projects,
+      historical,
+      hoursDistribution,
+      userHoursDistribution,
+    ] = await Promise.all([
+      this.metricsService.computeReviewHours(),
+      this.metricsService.computeReviewTimings(),
+      this.metricsService.computeReviewProjects(),
+      this.metricsService.computeHistorical(thirtyDaysWindow),
+      this.metricsService.computeProjectHoursDistribution(),
+      this.metricsService.computeUserHoursDistribution(),
+    ]);
 
     return {
       leaderboard: {
@@ -992,6 +999,7 @@ export class ReviewerService {
       },
       hours,
       hoursDistribution,
+      userHoursDistribution,
       reviewStats: timings,
       reviewProjects: projects,
       historical: {
