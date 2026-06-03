@@ -185,6 +185,22 @@ export class EventsService {
     }
   }
 
+  // ── Event hour progress ──
+
+  async getEventHoursCredit(userId: number, eventSlug: string): Promise<number> {
+    const result = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        kind: 'ShopItem',
+        refundedAt: null,
+        eventHoursCredit: { not: null },
+        item: { shop: { slug: eventSlug } },
+      },
+      _sum: { eventHoursCredit: true },
+    });
+    return Math.round((result._sum.eventHoursCredit ?? 0) * 10) / 10;
+  }
+
   // ── Ticketing ──
 
   async getTicketStatus(userId: number, slug: string) {
@@ -204,8 +220,11 @@ export class EventsService {
       select: { transactionId: true },
     });
 
-    const { balance, totalApprovedHours } =
-      await this.balanceService.getUserBalance(userId);
+    const [{ balance, totalApprovedHours }, eventHoursCredit] =
+      await Promise.all([
+        this.balanceService.getUserBalance(userId),
+        this.getEventHoursCredit(userId, event.slug),
+      ]);
 
     return {
       slug: event.slug,
@@ -215,6 +234,7 @@ export class EventsService {
       hasTicket: !!hasTicketTxn,
       balance,
       approvedHours: Math.round(totalApprovedHours * 10) / 10,
+      eventHoursCredit,
     };
   }
 
@@ -245,12 +265,24 @@ export class EventsService {
     if (event.ticketThreshold !== null) {
       const { totalApprovedHours } =
         await this.balanceService.getUserBalance(userId);
-      if (totalApprovedHours < event.ticketThreshold) {
+      const eventHoursCredit = await this.getEventHoursCredit(
+        userId,
+        event.slug,
+      );
+      const totalEligibleHours = totalApprovedHours + eventHoursCredit;
+      if (totalEligibleHours < event.ticketThreshold) {
         throw new BadRequestException(
-          `You need ${event.ticketThreshold} approved hours to buy a ticket. You have ${Math.round(totalApprovedHours * 10) / 10}.`,
+          `You need ${event.ticketThreshold} approved hours to buy a ticket. You have ${Math.round(totalEligibleHours * 10) / 10}.`,
         );
       }
     }
+
+    // Calculate the net ticket cost after applying event hours credit
+    const eventHoursCredit = await this.getEventHoursCredit(
+      userId,
+      event.slug,
+    );
+    const netTicketCost = Math.max(0, event.ticketCost! - eventHoursCredit);
 
     let transaction;
     try {
@@ -261,7 +293,7 @@ export class EventsService {
             eventId: event.eventId,
             kind: 'EventTicket',
             itemDescription: `Ticket — ${event.title}`,
-            cost: event.ticketCost!,
+            cost: netTicketCost,
           },
         });
         await tx.pinnedEvent.upsert({

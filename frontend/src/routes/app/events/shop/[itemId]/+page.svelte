@@ -16,6 +16,7 @@
 		regions: string[];
 		isActive: boolean;
 		maxPerUser: number | null;
+		eventHoursReduction: number | null;
 		variants: { variantId: number; name: string; cost: number }[];
 	}
 
@@ -203,6 +204,11 @@
 						<p class="font-bricolage text-[18px] text-black/60 leading-normal m-0">
 							{item.cost}h · approx. {calcDays(item.cost)} days of coding
 						</p>
+						{#if item.eventHoursReduction}
+							<p class="font-bricolage text-[16px] text-black leading-normal m-0">
+								Credits {item.eventHoursReduction}h toward your {item.shopSlug} event goal
+							</p>
+						{/if}
 						{#if item.regions.length > 0}
 							<div class="flex flex-wrap gap-1.5">
 								{#each item.regions as region}

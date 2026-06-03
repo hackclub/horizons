@@ -132,6 +132,12 @@ export class TicketStatusResponse {
 
   @ApiProperty()
   approvedHours: number;
+
+  @ApiProperty({
+    description:
+      'Hours credited toward this event goal from event shop purchases (per-user)',
+  })
+  eventHoursCredit: number;
 }
 
 export class TicketTransactionResponse {

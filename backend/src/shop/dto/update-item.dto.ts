@@ -48,4 +48,9 @@ export class UpdateItemDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  eventHoursReduction?: number | null;
 }

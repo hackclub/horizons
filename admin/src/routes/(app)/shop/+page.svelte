@@ -39,6 +39,7 @@
         cost: string;
         regions: string[];
         maxPerUser: string;
+        eventHoursReduction: string;
     }>({
         shopId: null,
         name: '',
@@ -46,7 +47,8 @@
         imageUrl: '',
         cost: '',
         regions: [],
-        maxPerUser: ''
+        maxPerUser: '',
+        eventHoursReduction: ''
     });
     let editingItemId = $state<number | null>(null);
     let shopItemSaving = $state(false);
@@ -322,7 +324,8 @@
             imageUrl: '',
             cost: '',
             regions: [],
-            maxPerUser: ''
+            maxPerUser: '',
+            eventHoursReduction: ''
         };
         editingItemId = null;
         shopItemError = '';
@@ -338,7 +341,8 @@
             imageUrl: item.imageUrl || '',
             cost: item.cost.toString(),
             regions: item.regions ?? [],
-            maxPerUser: item.maxPerUser?.toString() || ''
+            maxPerUser: item.maxPerUser?.toString() || '',
+            eventHoursReduction: item.eventHoursReduction?.toString() ?? ''
         };
         shopItemError = '';
         shopItemSuccess = '';
@@ -356,13 +360,20 @@
             return;
         }
 
+        const eventHoursReduction = shopItemForm.eventHoursReduction.trim()
+            ? parseFloat(shopItemForm.eventHoursReduction)
+            : editingItemId
+              ? null
+              : undefined;
+
         const payload = {
             name: shopItemForm.name,
             description: shopItemForm.description || undefined,
             imageUrl: shopItemForm.imageUrl || undefined,
             cost: parseFloat(shopItemForm.cost),
             regions: shopItemForm.regions.length > 0 ? shopItemForm.regions : undefined,
-            maxPerUser: shopItemForm.maxPerUser ? parseInt(shopItemForm.maxPerUser) : undefined
+            maxPerUser: shopItemForm.maxPerUser ? parseInt(shopItemForm.maxPerUser) : undefined,
+            eventHoursReduction
         };
 
         try {
@@ -863,6 +874,24 @@
                     />
                 </div>
                 <div class="space-y-2">
+                    <label
+                        class="text-sm font-medium text-ds-text-secondary"
+                        for="{idPrefix}-event-hours-reduction"
+                        >Event hour credit</label
+                    >
+                    <TextField
+                        id="{idPrefix}-event-hours-reduction"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        placeholder="None"
+                        bind:value={shopItemForm.eventHoursReduction}
+                    />
+                    <p class="text-xs text-ds-text-placeholder m-0">
+                        Hours credited toward the event goal when purchased (shop slug must match event slug).
+                    </p>
+                </div>
+                <div class="space-y-2">
                     <label class="text-sm font-medium text-ds-text-secondary">Regions</label>
                     <div class="flex flex-wrap gap-3">
                         {#each AVAILABLE_REGIONS as region}
@@ -994,6 +1023,12 @@
                                                 <span
                                                     class="px-2 py-0.5 text-xs rounded bg-orange-500/20 border border-orange-400 text-orange-300"
                                                     >Max {item.maxPerUser}/user</span
+                                                >
+                                            {/if}
+                                            {#if item.eventHoursReduction}
+                                                <span
+                                                    class="px-2 py-0.5 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 dark:text-green-300"
+                                                    >+{item.eventHoursReduction}h event credit</span
                                                 >
                                             {/if}
                                             {#if item.variants && item.variants.length > 0}

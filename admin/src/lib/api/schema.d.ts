@@ -1141,6 +1141,22 @@ export interface paths {
         patch: operations["AdminController_updateUser"];
         trace?: never;
     };
+    "/api/admin/users/{id}/hours-adjustment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_adjustUserHours"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/import/csv": {
         parameters: {
             query?: never;
@@ -1980,7 +1996,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Check if a URL is reachable */
+        /** Check if a URL is reachable (forwarded to isolated worker) */
         get: operations["UrlCheckController_checkUrl"];
         put?: never;
         post?: never;
@@ -2139,7 +2155,7 @@ export interface components {
             repoUrl?: string;
             /** @description README URL */
             readmeUrl?: string;
-            /** @description Screenshot URL */
+            /** @description Screenshot URL (Hack Club CDN only) */
             screenshotUrl?: string;
             /** @description Linked Hackatime project names */
             nowHackatimeProjects?: string[];
@@ -2289,7 +2305,7 @@ export interface components {
             readmeUrl?: string;
             /**
              * Format: uri
-             * @description Screenshot URL
+             * @description Screenshot URL (Hack Club CDN only)
              */
             screenshotUrl?: string;
             /** @description Journal URL (for hardware projects) */
@@ -2321,6 +2337,8 @@ export interface components {
             };
             /** @description Hours tallied at the time of the last submission; null if never submitted */
             lastSubmittedHours?: number | null;
+            /** @description Hours tallied at the time of the most recent approved submission; null if never approved. Used by the ship gate to require an additional 3 hours per reship. */
+            lastApprovedHours?: number | null;
             /** @description Consecutive days the user has logged >=1 hour on linked Hackatime projects, with timezone-aware lazy decay applied */
             currentStreak: number;
             /** @description Longest streak ever achieved by the user */
@@ -2574,6 +2592,18 @@ export interface components {
             user: components["schemas"]["TimelineActorResponse"];
             timeline: components["schemas"]["TimelineEventResponse"][];
         };
+        ProjectManifestSummaryEntry: {
+            projectId: number;
+            /** @description Sum of hoursShipped across non-Horizons YSWS submissions registered for this project codeUrl on Manifest. */
+            priorYswsHoursShipped: number;
+            /** @description Names of the non-Horizons YSWS programs this codeUrl has been submitted to. */
+            priorYswsNames: string[];
+        };
+        ProjectManifestSummaryResponse: {
+            entries: components["schemas"]["ProjectManifestSummaryEntry"][];
+            /** @description True when Manifest is configured and reachable. False means the entries array is empty because the lookup was skipped. */
+            enabled: boolean;
+        };
         UpdateAdminProjectDto: {
             projectTitle?: string;
             /** @enum {string} */
@@ -2587,7 +2617,7 @@ export interface components {
             readmeUrl?: string | null;
             /** Format: uri */
             journalUrl?: string | null;
-            /** Format: uri */
+            /** @description Hack Club CDN URL only */
             screenshotUrl?: string | null;
             nowHackatimeProjects?: string[];
             adminComment?: string | null;
@@ -2884,16 +2914,6 @@ export interface components {
             /** Format: date-time */
             endDate: string | null;
         };
-        StatsSignupQualificationModeCounts: {
-            engaged: number;
-            rsvped: number;
-            qualified: number;
-        };
-        StatsSignupQualificationModes: {
-            approved: components["schemas"]["StatsSignupQualificationModeCounts"];
-            shipped: components["schemas"]["StatsSignupQualificationModeCounts"];
-            unshipped: components["schemas"]["StatsSignupQualificationModeCounts"];
-        };
         StatsSignupQualificationEntry: {
             eventId: number;
             title: string;
@@ -2993,13 +3013,6 @@ export interface components {
             totalDaysWritten: number;
             results: components["schemas"]["StreakBackfillEntry"][];
         };
-        TriggerReviewerLeaderboardResponse: {
-            posted: boolean;
-            dateLabel: string;
-            totalReviews: number;
-            reviewerCount: number;
-            message: string;
-        };
         EventStatsEventDetail: {
             eventId: number;
             slug: string;
@@ -3021,6 +3034,16 @@ export interface components {
         EventStatsPinnedTimelineEntry: {
             date: string;
             value: number;
+        };
+        StatsSignupQualificationModeCounts: {
+            engaged: number;
+            rsvped: number;
+            qualified: number;
+        };
+        StatsSignupQualificationModes: {
+            approved: components["schemas"]["StatsSignupQualificationModeCounts"];
+            shipped: components["schemas"]["StatsSignupQualificationModeCounts"];
+            unshipped: components["schemas"]["StatsSignupQualificationModeCounts"];
         };
         EventStatsQualification: {
             signedUp: number;
@@ -3064,12 +3087,14 @@ export interface components {
         LedgerEntryResponse: {
             transactionId: number;
             /** @enum {string} */
-            kind: "ShopItem" | "EventTicket";
+            kind: "ShopItem" | "EventTicket" | "AdminAdjustment";
             itemDescription: string;
             cost: number;
             isFulfilled: boolean;
             /** Format: date-time */
             fulfilledAt: string | null;
+            /** Format: date-time */
+            refundedAt: string | null;
             /** Format: date-time */
             createdAt: string;
             user: components["schemas"]["LedgerEntryUserSummary"];
@@ -3081,6 +3106,7 @@ export interface components {
             totalSpent: number;
             shopCount: number;
             ticketCount: number;
+            adminAdjustmentCount: number;
         };
         LedgerResponse: {
             entries: components["schemas"]["LedgerEntryResponse"][];
@@ -3096,6 +3122,13 @@ export interface components {
             total: number;
             /** Format: date-time */
             lastReviewedAt: string | null;
+        };
+        TriggerReviewerLeaderboardResponse: {
+            posted: boolean;
+            dateLabel: string;
+            totalReviews: number;
+            reviewerCount: number;
+            message: string;
         };
         ToggleFraudFlagDto: {
             isFraud: boolean;
@@ -3133,15 +3166,6 @@ export interface components {
             slackUserId?: string;
             displayName?: string;
             realName?: string;
-        };
-        ProjectManifestSummaryEntry: {
-            projectId: number;
-            priorYswsHoursShipped: number;
-            priorYswsNames: string[];
-        };
-        ProjectManifestSummaryResponse: {
-            entries: components["schemas"]["ProjectManifestSummaryEntry"][];
-            enabled: boolean;
         };
         PriorityUserResponse: {
             userId: number;
@@ -3190,6 +3214,23 @@ export interface components {
             /** Format: date-time */
             hackatimeStartDate: string | null;
             recalculatedProjects: number;
+        };
+        AdjustUserHoursDto: {
+            /** @description Hours to credit (positive) or deduct (negative) from the user. Cannot be zero. */
+            hours: number;
+            /** @description Reason for the adjustment. Stored as the transaction description and visible to the user in their transaction history. */
+            reason: string;
+        };
+        AdjustUserHoursResponse: {
+            transactionId: number;
+            userId: number;
+            /** @description Signed adjustment in hours: positive when hours were credited to the user, negative when deducted. */
+            hours: number;
+            reason: string;
+            /** @description New balance after the adjustment. */
+            newBalance: number;
+            /** Format: date-time */
+            createdAt: string;
         };
         ImportCsvSkipped: {
             row: number;
@@ -3448,6 +3489,11 @@ export interface components {
             submissionId: number;
             status: string;
         };
+        PreviewSlackMessageDto: {
+            userFeedback?: string;
+            approvedHours?: number;
+            approved?: boolean;
+        };
         QuickApproveDto: {
             userFeedback?: string;
             hoursJustification?: string;
@@ -3571,6 +3617,11 @@ export interface components {
             itemId: number;
             variantId: number | null;
             cost: number;
+            isFulfilled: boolean;
+            /** Format: date-time */
+            fulfilledAt: string | null;
+            /** Format: date-time */
+            refundedAt: string | null;
             /** Format: date-time */
             createdAt: string;
             item: components["schemas"]["TransactionItemSummary"];
@@ -3666,15 +3717,15 @@ export interface components {
             itemId: number;
             variantId: number | null;
             cost: number;
-            /** Format: date-time */
-            createdAt: string;
-            item: components["schemas"]["TransactionItemSummary"];
-            variant: components["schemas"]["TransactionVariantSummary"] | null;
             isFulfilled: boolean;
             /** Format: date-time */
             fulfilledAt: string | null;
             /** Format: date-time */
             refundedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            item: components["schemas"]["TransactionItemSummary"];
+            variant: components["schemas"]["TransactionVariantSummary"] | null;
             user: components["schemas"]["TransactionUserSummary"];
         };
         RefundResponse: {
@@ -3920,11 +3971,11 @@ export interface components {
         UrlCheckResponse: {
             /** @description Whether the URL is reachable */
             ok: boolean;
-            /** @description HTTP status code (0 if request failed) */
+            /** @description Status bucket: 200 (reachable), 400 (4xx), 500 (5xx), 0 (no response) */
             status: number;
             /** @description Error message if URL is not reachable */
             error?: string;
-            /** @description Favicon URL extracted from the page */
+            /** @description Favicon URL (e.g. origin/favicon.ico) */
             favicon?: string;
         };
         GitHubCommitResponse: {
@@ -4941,6 +4992,25 @@ export interface operations {
             };
         };
     };
+    AdminController_getProjectsManifestSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectManifestSummaryResponse"];
+                };
+            };
+        };
+    };
     AdminController_getProject: {
         parameters: {
             query?: never;
@@ -5298,9 +5368,10 @@ export interface operations {
     AdminController_getTransactionLedger: {
         parameters: {
             query?: {
-                kind?: "ShopItem" | "EventTicket";
+                kind?: "ShopItem" | "EventTicket" | "AdminAdjustment";
                 userId?: number;
                 fulfilled?: boolean;
+                refunded?: boolean;
                 limit?: number;
             };
             header?: never;
@@ -5470,25 +5541,6 @@ export interface operations {
             };
         };
     };
-    AdminController_getProjectsManifestSummary: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProjectManifestSummaryResponse"];
-                };
-            };
-        };
-    };
     AdminController_getPriorityUsers: {
         parameters: {
             query?: never;
@@ -5636,6 +5688,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateUserResponse"];
+                };
+            };
+        };
+    };
+    AdminController_adjustUserHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustUserHoursDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdjustUserHoursResponse"];
                 };
             };
         };
@@ -5892,6 +5969,36 @@ export interface operations {
             };
         };
     };
+    ReviewerController_previewSlackMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewSlackMessageDto"];
+            };
+        };
+        responses: {
+            /** @description Preview Slack DM sent to the requesting reviewer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ReviewerController_quickApproveSubmission: {
         parameters: {
             query?: never;
@@ -5914,39 +6021,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReviewResultResponse"];
                 };
-            };
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ReviewerController_previewSlackMessage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    userFeedback?: string;
-                    approvedHours?: number;
-                    approved?: boolean;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             201: {
                 headers: {
@@ -7189,7 +7263,7 @@ export interface operations {
             query: {
                 /** @description URL to check */
                 url: string;
-                /** @description Check type: "url" (default) or "repo" (verify git repository) */
+                /** @description Check type: "url" (default) or "repo" */
                 type?: string;
             };
             header?: never;

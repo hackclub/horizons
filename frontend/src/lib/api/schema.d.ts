@@ -645,6 +645,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/projects/manifest-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getProjectsManifestSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/projects/{id}": {
         parameters: {
             query?: never;
@@ -789,6 +805,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/projects/{id}/joe-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_resetJoeAndRequeue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats": {
         parameters: {
             query?: never;
@@ -895,6 +927,22 @@ export interface paths {
         get: operations["AdminController_getReviewerLeaderboard"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reviewer-leaderboard/trigger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_triggerReviewerLeaderboard"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1093,6 +1141,22 @@ export interface paths {
         patch: operations["AdminController_updateUser"];
         trace?: never;
     };
+    "/api/admin/users/{id}/hours-adjustment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_adjustUserHours"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/import/csv": {
         parameters: {
             query?: never;
@@ -1263,6 +1327,22 @@ export interface paths {
         get?: never;
         put: operations["ReviewerController_reviewSubmission"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviewer/submissions/{id}/preview-slack-message": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewerController_previewSlackMessage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1916,7 +1996,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Check if a URL is reachable */
+        /** Check if a URL is reachable (forwarded to isolated worker) */
         get: operations["UrlCheckController_checkUrl"];
         put?: never;
         post?: never;
@@ -2075,7 +2155,7 @@ export interface components {
             repoUrl?: string;
             /** @description README URL */
             readmeUrl?: string;
-            /** @description Screenshot URL */
+            /** @description Screenshot URL (Hack Club CDN only) */
             screenshotUrl?: string;
             /** @description Linked Hackatime project names */
             nowHackatimeProjects?: string[];
@@ -2225,7 +2305,7 @@ export interface components {
             readmeUrl?: string;
             /**
              * Format: uri
-             * @description Screenshot URL
+             * @description Screenshot URL (Hack Club CDN only)
              */
             screenshotUrl?: string;
             /** @description Journal URL (for hardware projects) */
@@ -2512,6 +2592,18 @@ export interface components {
             user: components["schemas"]["TimelineActorResponse"];
             timeline: components["schemas"]["TimelineEventResponse"][];
         };
+        ProjectManifestSummaryEntry: {
+            projectId: number;
+            /** @description Sum of hoursShipped across non-Horizons YSWS submissions registered for this project codeUrl on Manifest. */
+            priorYswsHoursShipped: number;
+            /** @description Names of the non-Horizons YSWS programs this codeUrl has been submitted to. */
+            priorYswsNames: string[];
+        };
+        ProjectManifestSummaryResponse: {
+            entries: components["schemas"]["ProjectManifestSummaryEntry"][];
+            /** @description True when Manifest is configured and reachable. False means the entries array is empty because the lookup was skipped. */
+            enabled: boolean;
+        };
         UpdateAdminProjectDto: {
             projectTitle?: string;
             /** @enum {string} */
@@ -2525,7 +2617,7 @@ export interface components {
             readmeUrl?: string | null;
             /** Format: uri */
             journalUrl?: string | null;
-            /** Format: uri */
+            /** @description Hack Club CDN URL only */
             screenshotUrl?: string | null;
             nowHackatimeProjects?: string[];
             adminComment?: string | null;
@@ -2740,6 +2832,10 @@ export interface components {
             /** @description True if a Slack DM was successfully dispatched. */
             slackSent: boolean;
         };
+        ResetJoeActionResponse: {
+            success: boolean;
+            project: components["schemas"]["FraudReviewQueueItemResponse"];
+        };
         StatsFunnelEventEntry: {
             eventId: number;
             title: string;
@@ -2750,6 +2846,7 @@ export interface components {
             linkedHackatimeProject: number;
             project10PlusHours: number;
             atLeast1Submission: number;
+            submitted10PlusHours: number;
             atLeast1ApprovedHour: number;
             approved10Plus: number;
             canBuyTicket: number;
@@ -2763,6 +2860,7 @@ export interface components {
             linkedHackatimeProject: number;
             project10PlusHours: number;
             atLeast1Submission: number;
+            submitted10PlusHours: number;
             atLeast1ApprovedHour: number;
             approved10Plus: number;
             canBuyTicket: number;
@@ -2816,25 +2914,14 @@ export interface components {
             /** Format: date-time */
             endDate: string | null;
         };
-        StatsSignupQualificationModeCounts: {
-            engaged: number;
-            rsvped: number;
-            qualified: number;
-        };
-        StatsSignupQualificationModes: {
-            approved: components["schemas"]["StatsSignupQualificationModeCounts"];
-            shipped: components["schemas"]["StatsSignupQualificationModeCounts"];
-            unshipped: components["schemas"]["StatsSignupQualificationModeCounts"];
-        };
         StatsSignupQualificationEntry: {
             eventId: number;
             title: string;
             slug: string;
             signedUp: number;
             engaged: number;
-            rsvped: number;
-            qualified: number;
-            modes: components["schemas"]["StatsSignupQualificationModes"];
+            canBuyTicket: number;
+            boughtTicket: number;
         };
         StatsSignupRoute: {
             originCountry: string;
@@ -2948,6 +3035,16 @@ export interface components {
             date: string;
             value: number;
         };
+        StatsSignupQualificationModeCounts: {
+            engaged: number;
+            rsvped: number;
+            qualified: number;
+        };
+        StatsSignupQualificationModes: {
+            approved: components["schemas"]["StatsSignupQualificationModeCounts"];
+            shipped: components["schemas"]["StatsSignupQualificationModeCounts"];
+            unshipped: components["schemas"]["StatsSignupQualificationModeCounts"];
+        };
         EventStatsQualification: {
             signedUp: number;
             engaged: number;
@@ -2990,12 +3087,14 @@ export interface components {
         LedgerEntryResponse: {
             transactionId: number;
             /** @enum {string} */
-            kind: "ShopItem" | "EventTicket";
+            kind: "ShopItem" | "EventTicket" | "AdminAdjustment";
             itemDescription: string;
             cost: number;
             isFulfilled: boolean;
             /** Format: date-time */
             fulfilledAt: string | null;
+            /** Format: date-time */
+            refundedAt: string | null;
             /** Format: date-time */
             createdAt: string;
             user: components["schemas"]["LedgerEntryUserSummary"];
@@ -3007,6 +3106,7 @@ export interface components {
             totalSpent: number;
             shopCount: number;
             ticketCount: number;
+            adminAdjustmentCount: number;
         };
         LedgerResponse: {
             entries: components["schemas"]["LedgerEntryResponse"][];
@@ -3022,6 +3122,13 @@ export interface components {
             total: number;
             /** Format: date-time */
             lastReviewedAt: string | null;
+        };
+        TriggerReviewerLeaderboardResponse: {
+            posted: boolean;
+            dateLabel: string;
+            totalReviews: number;
+            reviewerCount: number;
+            message: string;
         };
         ToggleFraudFlagDto: {
             isFraud: boolean;
@@ -3107,6 +3214,23 @@ export interface components {
             /** Format: date-time */
             hackatimeStartDate: string | null;
             recalculatedProjects: number;
+        };
+        AdjustUserHoursDto: {
+            /** @description Hours to credit (positive) or deduct (negative) from the user. Cannot be zero. */
+            hours: number;
+            /** @description Reason for the adjustment. Stored as the transaction description and visible to the user in their transaction history. */
+            reason: string;
+        };
+        AdjustUserHoursResponse: {
+            transactionId: number;
+            userId: number;
+            /** @description Signed adjustment in hours: positive when hours were credited to the user, negative when deducted. */
+            hours: number;
+            reason: string;
+            /** @description New balance after the adjustment. */
+            newBalance: number;
+            /** Format: date-time */
+            createdAt: string;
         };
         ImportCsvSkipped: {
             row: number;
@@ -3365,6 +3489,11 @@ export interface components {
             submissionId: number;
             status: string;
         };
+        PreviewSlackMessageDto: {
+            userFeedback?: string;
+            approvedHours?: number;
+            approved?: boolean;
+        };
         QuickApproveDto: {
             userFeedback?: string;
             hoursJustification?: string;
@@ -3472,7 +3601,6 @@ export interface components {
         PurchaseItemDto: {
             itemId: number;
             variantId?: number;
-            quantity?: number;
         };
         TransactionItemSummary: {
             itemId: number;
@@ -3843,11 +3971,11 @@ export interface components {
         UrlCheckResponse: {
             /** @description Whether the URL is reachable */
             ok: boolean;
-            /** @description HTTP status code (0 if request failed) */
+            /** @description Status bucket: 200 (reachable), 400 (4xx), 500 (5xx), 0 (no response) */
             status: number;
             /** @description Error message if URL is not reachable */
             error?: string;
-            /** @description Favicon URL extracted from the page */
+            /** @description Favicon URL (e.g. origin/favicon.ico) */
             favicon?: string;
         };
         GitHubCommitResponse: {
@@ -4864,6 +4992,25 @@ export interface operations {
             };
         };
     };
+    AdminController_getProjectsManifestSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectManifestSummaryResponse"];
+                };
+            };
+        };
+    };
     AdminController_getProject: {
         parameters: {
             query?: never;
@@ -5093,6 +5240,27 @@ export interface operations {
             };
         };
     };
+    AdminController_resetJoeAndRequeue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetJoeActionResponse"];
+                };
+            };
+        };
+    };
     AdminController_getStats: {
         parameters: {
             query?: never;
@@ -5200,9 +5368,10 @@ export interface operations {
     AdminController_getTransactionLedger: {
         parameters: {
             query?: {
-                kind?: "ShopItem" | "EventTicket";
+                kind?: "ShopItem" | "EventTicket" | "AdminAdjustment";
                 userId?: number;
                 fulfilled?: boolean;
+                refunded?: boolean;
                 limit?: number;
             };
             header?: never;
@@ -5236,6 +5405,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewerLeaderboardEntry"][];
+                };
+            };
+        };
+    };
+    AdminController_triggerReviewerLeaderboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TriggerReviewerLeaderboardResponse"];
                 };
             };
         };
@@ -5504,6 +5692,31 @@ export interface operations {
             };
         };
     };
+    AdminController_adjustUserHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustUserHoursDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdjustUserHoursResponse"];
+                };
+            };
+        };
+    };
     AdminController_importCsv: {
         parameters: {
             query?: never;
@@ -5753,6 +5966,36 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReviewResultResponse"];
                 };
+            };
+        };
+    };
+    ReviewerController_previewSlackMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewSlackMessageDto"];
+            };
+        };
+        responses: {
+            /** @description Preview Slack DM sent to the requesting reviewer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -7020,7 +7263,7 @@ export interface operations {
             query: {
                 /** @description URL to check */
                 url: string;
-                /** @description Check type: "url" (default) or "repo" (verify git repository) */
+                /** @description Check type: "url" (default) or "repo" */
                 type?: string;
             };
             header?: never;

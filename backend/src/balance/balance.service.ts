@@ -47,6 +47,7 @@ export class BalanceService {
     itemId?: number | null;
     variantId?: number | null;
     eventId?: number | null;
+    eventHoursCredit?: number | null;
     quantity?: number;
     enforceBalance?: boolean;
     preCheck?: (tx: Prisma.TransactionClient) => Promise<void>;
@@ -59,6 +60,7 @@ export class BalanceService {
       itemId = null,
       variantId = null,
       eventId = null,
+      eventHoursCredit = null,
       quantity = 1,
       enforceBalance = true,
       preCheck,
@@ -92,6 +94,7 @@ export class BalanceService {
         itemId,
         variantId,
         eventId,
+        eventHoursCredit,
         itemDescription,
         cost,
       };

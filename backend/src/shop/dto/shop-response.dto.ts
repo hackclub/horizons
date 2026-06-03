@@ -74,6 +74,14 @@ export class ShopItemResponse {
   @ApiProperty({ type: Number, nullable: true })
   maxPerUser: number | null;
 
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      'Hours credited toward the linked event hour goal when purchased (shop slug must match event slug)',
+  })
+  eventHoursReduction: number | null;
+
   @ApiProperty()
   isActive: boolean;
 
