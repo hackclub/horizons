@@ -102,6 +102,22 @@
 
 	let hasNextProject = $derived(findLongestWaitingIndex() !== -1);
 
+	// Same cutoff ManifestLookup uses to hide pre-Horizons entries from the UI.
+	// Without this, the "credited to other YSWS" notice double-counts hours from
+	// projects approved at another YSWS before Horizons existed (drafts have no
+	// approvedAt so they still count — a pending draft elsewhere is a real signal).
+	const HORIZONS_START_MS = Date.parse('2026-02-21T00:00:00Z');
+	function isRelevantOtherYswsSubmission(
+		s: { yswsName?: string | null; approvedAt?: string | null },
+	): boolean {
+		if ((s.yswsName ?? '').toLowerCase() === 'horizons') return false;
+		if (s.approvedAt) {
+			const approved = Date.parse(s.approvedAt);
+			if (Number.isFinite(approved) && approved < HORIZONS_START_MS) return false;
+		}
+		return true;
+	}
+
 	// Current submission detail + loading
 	let currentSubmission = $state<SubmissionDetail | null>(null);
 	let submissionLoading = $state(true);
@@ -760,10 +776,10 @@
 										&& new Date(s.createdAt) < new Date(currentSubmission!.createdAt),
 								)}
 								hasPriorYswsSubmission={(manifestLookup?.manifest?.submissions ?? []).some(
-									(s) => (s.yswsName ?? '').toLowerCase() !== 'horizons',
+									isRelevantOtherYswsSubmission,
 								)}
 								priorYswsHoursShipped={(manifestLookup?.manifest?.submissions ?? [])
-									.filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
+									.filter(isRelevantOtherYswsSubmission)
 									.reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0)}
 								priorReshipApprovedHours={(() => {
 									// Most recent OTHER approved submission for this project.
