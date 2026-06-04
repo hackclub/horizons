@@ -65,23 +65,22 @@
 	// is checked — the reject form is otherwise single-textarea.
 	let permRejectInternalNote = $state('');
 
-	// On a reship, surface the implied delta. Hours already credited =
-	// (prior Horizons approved) + (sum of hoursShipped for non-Horizons YSWS
-	// from Manifest). What we're actually granting is total cumulative minus
-	// that — same math the backend runs before sending to Airtable.
-	let alreadyCreditedHours = $derived(
-		Math.round(((priorReshipApprovedHours ?? 0) + priorYswsHoursShipped) * 10) /
-			10,
-	);
+	// Manifest dedupe math commented out — we no longer subtract prior YSWS
+	// hoursShipped from the granted credit, we just surface a notice that the
+	// project was credited elsewhere.
+	// let alreadyCreditedHours = $derived(
+	// 	Math.round(((priorReshipApprovedHours ?? 0) + priorYswsHoursShipped) * 10) /
+	// 		10,
+	// );
 	let hasReshipContext = $derived(
 		priorReshipApprovedHours != null || priorYswsHoursShipped > 0,
 	);
 	let reshipNoticeDismissed = $state(false);
-	let reshipDelta = $derived(
-		hasReshipContext
-			? Math.round((approvedHours - alreadyCreditedHours) * 10) / 10
-			: null,
-	);
+	// let reshipDelta = $derived(
+	// 	hasReshipContext
+	// 		? Math.round((approvedHours - alreadyCreditedHours) * 10) / 10
+	// 		: null,
+	// );
 
 	// Reset fields when submission changes. Autofill keys off the reviewer's own
 	// decision (reviewPassed), not approvalStatus — a reviewer-approved submission
@@ -337,45 +336,11 @@
 						</button>
 					{/if}
 				</div>
-				{#if hasReshipContext && reshipDelta != null && !reshipNoticeDismissed}
+				{#if priorYswsHoursShipped > 0}
 					<p class="mt-1 mb-0 text-[11px] text-rv-dim flex items-center gap-1.5">
 						<span>
-							Already credited:
-							{#if priorReshipApprovedHours != null}
-								<span class="font-semibold text-rv-text">{priorReshipApprovedHours.toFixed(1)}h</span> Horizons{#if priorYswsHoursShipped > 0}{' '}+{' '}{/if}
-							{/if}
-							{#if priorYswsHoursShipped > 0}
-								<span class="font-semibold text-rv-text">{priorYswsHoursShipped.toFixed(1)}h</span> other YSWS
-							{/if}
-							→ granting
-							<span class="font-semibold {reshipDelta < 0 ? 'text-rv-red' : 'text-rv-green'}">
-								{reshipDelta >= 0 ? '+' : ''}{reshipDelta.toFixed(1)}h
-							</span>
-							new
+							Notice: <span class="font-semibold text-rv-text">{priorYswsHoursShipped.toFixed(1)}h</span> credited to other YSWS
 						</span>
-						{#if priorYswsHoursShipped > 0}
-							<button
-								type="button"
-								class="text-rv-dim hover:text-rv-text text-[11px] underline cursor-pointer bg-transparent border-none p-0"
-								onclick={() => (reshipNoticeDismissed = true)}
-								title="Skip the other-YSWS dedupe on this approval"
-							>
-								ignore
-							</button>
-						{/if}
-					</p>
-				{:else if hasReshipContext && reshipNoticeDismissed && priorYswsHoursShipped > 0}
-					<p class="mt-1 mb-0 text-[11px] text-rv-dim flex items-center gap-1.5">
-						<span class="italic">
-							Ignoring <span class="font-semibold text-rv-text">{priorYswsHoursShipped.toFixed(1)}h</span> other YSWS dedupe on approval.
-						</span>
-						<button
-							type="button"
-							class="text-rv-dim hover:text-rv-text text-[11px] underline cursor-pointer bg-transparent border-none p-0"
-							onclick={() => (reshipNoticeDismissed = false)}
-						>
-							undo
-						</button>
 					</p>
 				{/if}
 			</div>
