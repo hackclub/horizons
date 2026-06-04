@@ -1443,17 +1443,19 @@ export class ReviewerService {
           );
           if (manifest) {
             // Mirrors ManifestLookup.svelte: drop our own YSWS and any
-            // pre-Horizons rows. Only `createdAt` is trustworthy per-row;
-            // shippedAt/approvedAt leak between submissions on the same
-            // project so we can't use them for the cutoff.
+            // pre-Horizons rows. Cutoff uses approvedAt — when the other YSWS
+            // actually approved the work, not when Manifest indexed the row.
+            // Drafts (no approvedAt) pass through.
             const horizonsStartMs = Date.parse(
               process.env.HACKATIME_CUTOFF_DATE || '2026-02-21T00:00:00Z',
             );
             const others = manifest.submissions.filter((s) => {
               if ((s.yswsName ?? '').toLowerCase() === 'horizons') return false;
-              const created = Date.parse(s.createdAt);
-              if (Number.isFinite(created) && created < horizonsStartMs)
-                return false;
+              if (s.approvedAt) {
+                const approved = Date.parse(s.approvedAt);
+                if (Number.isFinite(approved) && approved < horizonsStartMs)
+                  return false;
+              }
               return true;
             });
             crossSubmittedYswsNames = [

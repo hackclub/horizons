@@ -12,9 +12,9 @@
 
 	const submissions = $derived(lookup?.manifest?.submissions ?? []);
 
-	// Drop submissions whose record creation predates Horizons — manifest
-	// `shippedAt`/`approvedAt` leak between submissions on the same project,
-	// so we only trust `createdAt` (the per-row timestamp) for cutoff checks.
+	// Drop submissions approved at another YSWS before Horizons existed. Drafts
+	// have no `approvedAt` so they pass the cutoff and stay visible (a pending
+	// draft elsewhere is still a meaningful cross-submission signal).
 	const HORIZONS_START_MS = Date.parse('2026-02-21T00:00:00Z');
 
 	// Hide our own YSWS so reviewers only see *other* programs this codeUrl was
@@ -23,8 +23,10 @@
 	const otherSubmissions = $derived(
 		submissions.filter((s) => {
 			if ((s.yswsName ?? '').toLowerCase() === 'horizons') return false;
-			const created = Date.parse(s.createdAt);
-			if (Number.isFinite(created) && created < HORIZONS_START_MS) return false;
+			if (s.approvedAt) {
+				const approved = Date.parse(s.approvedAt);
+				if (Number.isFinite(approved) && approved < HORIZONS_START_MS) return false;
+			}
 			return true;
 		}),
 	);
@@ -78,11 +80,11 @@
 						</span>
 					</div>
 					<div class="text-[10px] text-rv-dim mt-0.5">
-						<!-- Manifest leaks shippedAt/approvedAt between submissions on the
-						     same project, so always anchor on createdAt (the row's own
-						     creation timestamp, which is per-submission and reliable). -->
-						{sub.shipStatus === 'shipped' ? 'shipped' : 'drafted'}
-						{fmtDate(sub.createdAt)}{#if sub.shipStatus === 'shipped' && sub.hoursShipped != null} · {sub.hoursShipped}h{/if}
+						{#if sub.shipStatus === 'shipped'}
+							shipped {sub.approvedAt ? fmtDate(sub.approvedAt) : '—'}{#if sub.hoursShipped != null} · {sub.hoursShipped}h{/if}
+						{:else}
+							drafted {fmtDate(sub.createdAt)}
+						{/if}
 					</div>
 				</li>
 			{/each}
