@@ -2490,6 +2490,7 @@ export interface components {
         AdminSubmissionResponse: {
             submissionId: number;
             approvalStatus: string;
+            airtableRecId: string | null;
             approvedHours: number | null;
             hoursJustification: string | null;
             description: string | null;
@@ -3474,6 +3475,7 @@ export interface components {
             submissionId: number;
             projectId: number;
             approvalStatus: string;
+            airtableRecId: string | null;
             reviewPassed: boolean | null;
             silentReject: boolean;
             /** Format: date-time */
@@ -3510,6 +3512,9 @@ export interface components {
             hoursJustification?: string;
             adminComment?: string;
             sendEmail?: boolean;
+            permReject?: boolean;
+            ignorePriorYswsCredit?: boolean;
+            deleteAirtableRecord?: boolean;
         };
         ReviewResultResponse: {
             success: boolean;

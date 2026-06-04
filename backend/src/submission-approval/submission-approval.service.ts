@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { SlackService } from '../slack/slack.service';
@@ -218,6 +218,174 @@ export class SubmissionApprovalService {
     if (submission.airtableRecId) {
       await this.updateAirtableRecord(submission, effective);
     }
+  }
+
+  /**
+   * Superadmin-only escape hatch: flip an already-finalized submission between
+   * approved and rejected. Bypasses the two-gate state machine — caller is
+   * responsible for role gating.
+   *
+   * Side effects:
+   *  - Recomputes Project.approvedHours from the latest remaining approved
+   *    submission (or null if none) so the user balance stays correct.
+   *  - On →approved, updates the existing Airtable record if one exists, else
+   *    creates a new one; on →rejected, leaves the per-project Airtable record
+   *    in place (no delete endpoint) — surface the audit log entry to clean up.
+   *  - Always re-syncs the user's Airtable stats so totals reflect the flip.
+   *  - Sends notifications only when dto.sendEmail is true.
+   */
+  async applySuperadminOverride(
+    submissionId: number,
+    actorUserId: number,
+    newStatus: 'approved' | 'rejected',
+    dto: ReviewSubmissionDto,
+  ): Promise<void> {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      include: { project: { include: { user: true } } },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+    const oldStatus = submission.approvalStatus;
+    if (oldStatus === 'pending') {
+      throw new BadRequestException(
+        'Superadmin override only applies to finalized submissions; use the normal review flow for pending ones',
+      );
+    }
+    if (oldStatus === newStatus) return;
+
+    const finalizedAt = new Date();
+    await this.prisma.submission.update({
+      where: { submissionId },
+      data: {
+        approvalStatus: newStatus,
+        reviewPassed: newStatus === 'approved',
+        silentReject: false,
+        reviewedBy: actorUserId.toString(),
+        reviewedAt: finalizedAt,
+        finalizedAt,
+        pendingSendEmail: dto.sendEmail === true,
+      },
+    });
+    submission.approvalStatus = newStatus;
+    submission.reviewPassed = newStatus === 'approved';
+    submission.silentReject = false;
+    submission.finalizedAt = finalizedAt;
+    submission.pendingSendEmail = dto.sendEmail === true;
+
+    await this.prisma.submissionAuditLog.create({
+      data: {
+        submissionId,
+        adminId: actorUserId,
+        action: AUDIT_ACTIONS.superadminOverride,
+        newStatus,
+        approvedHours: submission.approvedHours ?? null,
+        changes: {
+          previousStatus: oldStatus,
+          override: true,
+        } as any,
+      },
+    });
+
+    // Project.approvedHours is the source of truth for the user's balance
+    // (BalanceService sums it across projects). Recompute from the latest
+    // remaining approved submission so flipping this row doesn't strand stale
+    // credit or hide newly-restored credit.
+    const latestApproved = await this.prisma.submission.findFirst({
+      where: { projectId: submission.projectId, approvalStatus: 'approved' },
+      orderBy: { createdAt: 'desc' },
+      select: { approvedHours: true },
+    });
+    await this.prisma.project.update({
+      where: { projectId: submission.projectId },
+      data: { approvedHours: latestApproved?.approvedHours ?? null },
+    });
+
+    let airtableDeleted = false;
+    if (newStatus === 'approved') {
+      const reviewerId = Number(submission.reviewedBy);
+      const reviewer = Number.isFinite(reviewerId)
+        ? await this.prisma.user.findUnique({
+            where: { userId: reviewerId },
+            select: { slackUserId: true },
+          })
+        : null;
+      const fullJustification = buildFullJustification(
+        submission.reviewerAnalysis ?? '',
+        submission.hackatimeHours,
+        submission.approvedHours ?? 0,
+        submission.project.user.slackUserId,
+        submission.createdAt,
+        reviewer?.slackUserId ?? null,
+        this.buildFraudReviewInfo(submission.project),
+      );
+      if (submission.airtableRecId) {
+        await this.updateAirtableRecord(submission, {
+          approvedHours: submission.approvedHours ?? undefined,
+          hoursJustification: fullJustification,
+        });
+      } else {
+        await this.syncAirtable(submission, {
+          approvedHours: submission.approvedHours ?? undefined,
+          hoursJustification: fullJustification,
+        });
+      }
+    } else if (
+      newStatus === 'rejected' &&
+      dto.deleteAirtableRecord &&
+      submission.airtableRecId
+    ) {
+      // Failure here doesn't roll back the status flip — the flip already
+      // updated balance, and a stuck Airtable row is recoverable manually,
+      // while half-applied state would be more confusing.
+      try {
+        await this.airtableService.deleteApprovedProject(
+          submission.airtableRecId,
+        );
+        await this.prisma.submission.update({
+          where: { submissionId },
+          data: { airtableRecId: null },
+        });
+        submission.airtableRecId = null;
+        airtableDeleted = true;
+      } catch (err) {
+        console.error(
+          '[SubmissionApproval] Airtable delete failed during override:',
+          err,
+        );
+      }
+    }
+
+    if (airtableDeleted) {
+      await this.prisma.submissionAuditLog.create({
+        data: {
+          submissionId,
+          adminId: actorUserId,
+          action: AUDIT_ACTIONS.superadminOverride,
+          newStatus,
+          approvedHours: submission.approvedHours ?? null,
+          changes: { airtableDeleted: true } as any,
+        },
+      });
+    }
+
+    this.airtableService
+      .syncUserStats(submission.project.user.email)
+      .catch((err) =>
+        console.error(
+          '[SubmissionApproval] Airtable user-stats sync failed (override):',
+          err,
+        ),
+      );
+
+    await this.sendNotifications(submission, {
+      approved: newStatus === 'approved',
+      approvedHours: submission.approvedHours ?? undefined,
+      feedback: submission.hoursJustification,
+      sendEmail: dto.sendEmail === true,
+      finalizedAt,
+    });
   }
 
   /**

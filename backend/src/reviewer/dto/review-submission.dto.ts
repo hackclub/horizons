@@ -54,6 +54,14 @@ export class ReviewSubmissionDto {
   @IsBoolean()
   @IsOptional()
   ignorePriorYswsCredit?: boolean;
+
+  // Superadmin-only: when flipping an already-approved submission to rejected,
+  // also delete the per-project Airtable record in the Approved Projects table.
+  // Ignored on any other transition. Airtable has no soft-delete — this is
+  // unrecoverable, so it's opt-in via a separate UI button.
+  @IsBoolean()
+  @IsOptional()
+  deleteAirtableRecord?: boolean;
 }
 
 export class QuickApproveDto {

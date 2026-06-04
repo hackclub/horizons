@@ -220,6 +220,9 @@ export class SubmissionDetailResponse {
   @ApiProperty()
   approvalStatus: string;
 
+  @ApiProperty({ type: String, nullable: true })
+  airtableRecId: string | null;
+
   @ApiProperty({ type: Boolean, nullable: true })
   reviewPassed: boolean | null;
 

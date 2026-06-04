@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import {
@@ -284,6 +285,7 @@ export class ReviewerService {
       submissionId: submission.submissionId,
       projectId: submission.projectId,
       approvalStatus: submission.approvalStatus,
+      airtableRecId: submission.airtableRecId,
       reviewPassed: submission.reviewPassed,
       silentReject: submission.silentReject,
       finalizedAt: submission.finalizedAt,
@@ -487,6 +489,7 @@ export class ReviewerService {
     submissionId: number,
     dto: ReviewSubmissionDto,
     reviewerId: number,
+    reviewerRole?: string,
   ) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
@@ -495,6 +498,20 @@ export class ReviewerService {
 
     if (!submission) {
       throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+
+    // Status flips on already-finalized submissions (approved↔rejected) are
+    // a superadmin-only escape hatch. Block before applying any field updates
+    // so a non-superadmin can't half-edit a row that's about to be refused.
+    const isStatusFlip =
+      dto.approvalStatus !== undefined &&
+      submission.approvalStatus !== 'pending' &&
+      dto.approvalStatus !== submission.approvalStatus &&
+      (dto.approvalStatus === 'approved' || dto.approvalStatus === 'rejected');
+    if (isStatusFlip && reviewerRole !== 'superadmin') {
+      throw new ForbiddenException(
+        'Only superadmins can flip an already-finalized submission between approved and rejected',
+      );
     }
 
     if (dto.userFeedback !== undefined) {
@@ -583,14 +600,25 @@ export class ReviewerService {
           reviewerAnalysis: dto.hoursJustification ?? null,
           userFeedback: dto.userFeedback ?? null,
         });
+      } else if (isStatusFlip) {
+        // Superadmin override: flip approved↔rejected outside the state machine.
+        await this.submissionApprovalService.applySuperadminOverride(
+          submissionId,
+          reviewerId,
+          dto.approvalStatus as 'approved' | 'rejected',
+          dto,
+        );
       } else if (submission.approvalStatus === 'approved') {
+        // Status restated to 'approved' on an already-approved row — treat as
+        // an in-place edit (e.g. adjusting approvedHours).
         await this.submissionApprovalService.updateFinalizedSubmission(
           submissionId,
           reviewerId,
           dto,
         );
       }
-      // If already rejected, no edit path — reviewer decision is a no-op.
+      // Status restated to 'rejected' on an already-rejected row: no-op
+      // beyond the unconditional field updates above.
 
       // Permanent rejection. Only valid alongside a 'rejected' verdict — the
       // user-facing reason is `userFeedback`, which is already persisted to

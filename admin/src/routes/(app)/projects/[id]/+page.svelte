@@ -360,7 +360,11 @@
     }
 
     // --- Review actions ---
-    async function saveSubmission(submissionId: number, sendEmail?: boolean) {
+    async function saveSubmission(
+        submissionId: number,
+        sendEmail?: boolean,
+        opts?: { deleteAirtableRecord?: boolean },
+    ) {
         const draft = submissionDrafts[submissionId];
         if (!draft) return;
 
@@ -380,6 +384,7 @@
                     hoursJustification: draft.hoursJustification === '' ? undefined : draft.hoursJustification,
                     adminComment: draft.adminComment === '' ? undefined : draft.adminComment,
                     sendEmail: shouldSendEmail,
+                    ...(opts?.deleteAirtableRecord ? { deleteAirtableRecord: true } : {}),
                 },
             });
             if (error) {
@@ -439,6 +444,23 @@
             approvedHours: '0',
         };
         await saveSubmission(submissionId, submissionDrafts[submissionId].sendEmailNotification);
+    }
+
+    async function quickDenyAndDeleteAirtable(submissionId: number) {
+        const confirmed = window.confirm(
+            'Reject this submission AND permanently delete the Airtable record? Airtable has no undo — this cannot be recovered.',
+        );
+        if (!confirmed) return;
+        submissionDrafts[submissionId] = {
+            ...submissionDrafts[submissionId],
+            approvalStatus: 'rejected',
+            approvedHours: '0',
+        };
+        await saveSubmission(
+            submissionId,
+            submissionDrafts[submissionId].sendEmailNotification,
+            { deleteAirtableRecord: true },
+        );
     }
 
     async function recalculateSubmissionHours(submissionId: number) {
@@ -800,6 +822,7 @@
                 {@const deltaHours = sub.approvedHours != null && previousSubmission?.approvedHours != null
                     ? sub.approvedHours - previousSubmission.approvedHours
                     : null}
+                {@const canFlipStatus = sub.approvalStatus === 'pending' || isSuperadmin}
 
                 <Card class="p-6 space-y-4 backdrop-blur">
                     <!-- Submission selector -->
@@ -951,11 +974,14 @@
                             <div class="grid gap-4 md:grid-cols-3">
                                 <div class="space-y-2">
                                     <label class="text-sm font-medium text-ds-text-secondary" for="rv-status">Status</label>
-                                    <Select id="rv-status" class="w-full" bind:value={draft.approvalStatus}>
+                                    <Select id="rv-status" class="w-full" bind:value={draft.approvalStatus} disabled={!canFlipStatus}>
                                         {#each statusOptions as option}
                                             <option value={option}>{option}</option>
                                         {/each}
                                     </Select>
+                                    {#if !canFlipStatus}
+                                        <p class="text-xs text-ds-text-secondary">Superadmin only: flipping approved↔rejected.</p>
+                                    {/if}
                                 </div>
                                 <div class="space-y-2">
                                     <label class="text-sm font-medium text-ds-text-secondary" for="rv-hours">Approved Hours</label>
@@ -1005,14 +1031,24 @@
 
                             <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                 <div class="flex flex-wrap gap-2">
-                                    {#if sub.approvalStatus !== 'approved'}
+                                    {#if sub.approvalStatus !== 'approved' && (sub.approvalStatus === 'pending' || isSuperadmin)}
                                         <Button variant="approve" onclick={() => quickApprove(sub)} disabled={submissionSaving[sub.submissionId]}>
                                             Quick Approve
                                         </Button>
                                     {/if}
-                                    {#if sub.approvalStatus !== 'rejected'}
+                                    {#if sub.approvalStatus !== 'rejected' && (sub.approvalStatus === 'pending' || isSuperadmin)}
                                         <Button variant="reject" onclick={() => quickDeny(sub.submissionId)} disabled={submissionSaving[sub.submissionId]}>
                                             Quick Deny
+                                        </Button>
+                                    {/if}
+                                    {#if isSuperadmin && sub.approvalStatus === 'approved' && sub.airtableRecId}
+                                        <Button
+                                            variant="reject"
+                                            onclick={() => quickDenyAndDeleteAirtable(sub.submissionId)}
+                                            disabled={submissionSaving[sub.submissionId]}
+                                            title="Reject this submission and permanently delete the Airtable record (unrecoverable)"
+                                        >
+                                            Quick Deny + Delete Airtable
                                         </Button>
                                     {/if}
                                     <Button
