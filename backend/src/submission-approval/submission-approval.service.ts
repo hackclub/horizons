@@ -257,16 +257,20 @@ export class SubmissionApprovalService {
     codeUrl: string | null,
     ignorePriorYswsCredit: boolean,
   ): Promise<number> {
-    if (!rawHours) return rawHours;
-    if (ignorePriorYswsCredit) return rawHours;
-    if (!codeUrl || !this.manifestService.isEnabled()) return rawHours;
-
-    const manifest = await this.manifestService.lookup(codeUrl);
-    const priorYswsHoursShipped = (manifest?.submissions ?? [])
-      .filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
-      .reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0);
-
-    return Math.max(0, rawHours - priorYswsHoursShipped);
+    // Manifest dedupe math commented out — approvedHours now reflects the raw
+    // reviewer-entered amount. Other-YSWS credit is surfaced as a notice in the
+    // reviewer UI instead of being subtracted from the granted hours.
+    return rawHours;
+    // if (!rawHours) return rawHours;
+    // if (ignorePriorYswsCredit) return rawHours;
+    // if (!codeUrl || !this.manifestService.isEnabled()) return rawHours;
+    //
+    // const manifest = await this.manifestService.lookup(codeUrl);
+    // const priorYswsHoursShipped = (manifest?.submissions ?? [])
+    //   .filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
+    //   .reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0);
+    //
+    // return Math.max(0, rawHours - priorYswsHoursShipped);
   }
 
   /**
