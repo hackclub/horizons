@@ -10,6 +10,9 @@ export const AUDIT_ACTIONS = {
   noteUpdate: 'note_update',
   permReject: 'perm_reject',
   permRejectCleared: 'perm_reject_cleared',
+  // Superadmin-only out-of-band status flip on an already-finalized submission
+  // (approved↔rejected). Bypasses the two-gate state machine entirely.
+  superadminOverride: 'superadmin_override',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

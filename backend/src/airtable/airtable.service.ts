@@ -929,4 +929,62 @@ export class AirtableService {
       );
     }
   }
+
+  /**
+   * Delete an Approved Projects record. Used by the superadmin reject-override
+   * path to fully expunge a project from the YSWS table after it's flipped back
+   * to rejected — Airtable has no soft-delete, so this is unrecoverable.
+   *
+   * 404 from Airtable is treated as already-gone (idempotent) and resolves
+   * silently; other failures throw so callers can decide whether to surface.
+   */
+  async deleteApprovedProject(airtableRecId: string): Promise<void> {
+    if (!this.AIRTABLE_API_KEY) {
+      throw new HttpException(
+        'Airtable API key not configured for Unified YSWS',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.APPROVED_PROJECTS_TABLE_ID}/${airtableRecId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+          },
+        },
+      );
+
+      if (response.status === 404) {
+        console.log(
+          `Airtable record ${airtableRecId} already absent from Approved Projects — treating as deleted`,
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('Airtable delete error:', errorData);
+        throw new HttpException(
+          'Failed to delete Approved Projects record',
+          response.status || HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      console.log(
+        `Successfully deleted Airtable record ${airtableRecId} from Approved Projects table`,
+      );
+    } catch (error) {
+      console.error('Error deleting Approved Projects record:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

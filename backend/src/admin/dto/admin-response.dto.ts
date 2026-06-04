@@ -127,6 +127,9 @@ export class AdminSubmissionResponse {
   @ApiProperty()
   approvalStatus: string;
 
+  @ApiProperty({ type: String, nullable: true })
+  airtableRecId: string | null;
+
   @ApiProperty({ type: Number, nullable: true })
   approvedHours: number | null;
 

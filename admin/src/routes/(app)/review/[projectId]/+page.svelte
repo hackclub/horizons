@@ -31,6 +31,11 @@
 
 	let projectId = $derived(Number($page.params.projectId));
 
+	// Current user role — gates superadmin-only verdict overrides on finalized
+	// submissions (approved↔rejected flips).
+	let me = $state<{ role: string } | null>(null);
+	let isSuperadmin = $derived(me?.role === 'superadmin');
+
 	// Queue state (for next/prev)
 	let queue = $state<QueueItem[]>([]);
 	let currentIndex = $state(0);
@@ -224,12 +229,14 @@
 		// because silentReject submissions have no human reviewer and so don't
 		// appear in past-reviews — without it, opening a fraud-killed project
 		// from the gallery shows "not in the review system".
-		const [queueRes, pastRes, fraudRes] = await Promise.all([
+		const [queueRes, pastRes, fraudRes, meRes] = await Promise.all([
 			api.GET('/api/reviewer/queue'),
 			api.GET('/api/reviewer/past-reviews'),
 			api.GET('/api/reviewer/fraud-rejected'),
+			api.GET('/api/user/auth/me'),
 		]);
 		queue = queueRes.data ?? [];
+		if (meRes.data) me = { role: meRes.data.role };
 
 		if (pastRes.data) {
 			const myId = String(pastRes.data.currentReviewerId);
@@ -739,6 +746,9 @@
 						<div class="absolute inset-0" class:hidden={activeTab !== 'verdict'}>
 							<VerdictPanel
 								submissionId={currentSubmission.submissionId}
+								approvalStatus={currentSubmission.approvalStatus as 'pending' | 'approved' | 'rejected'}
+								isSuperadmin={isSuperadmin}
+								hasAirtableRecord={!!currentSubmission.airtableRecId}
 								hackatimeHours={currentSubmission.hackatimeHours}
 								joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
 								reviewPassed={currentSubmission.reviewPassed}

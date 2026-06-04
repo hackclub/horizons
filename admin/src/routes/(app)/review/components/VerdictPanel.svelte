@@ -5,6 +5,16 @@
 
 	interface Props {
 		submissionId: number;
+		/** Current finalized status of the submission. Drives the superadmin
+		 *  override gating — flipping approved↔rejected is superadmin-only. */
+		approvalStatus?: 'pending' | 'approved' | 'rejected';
+		/** Whether the active user is a superadmin. Required to flip a
+		 *  finalized submission's status (approved↔rejected). */
+		isSuperadmin?: boolean;
+		/** Whether the submission has a per-project Airtable record. Drives
+		 *  the optional "+ Delete Airtable" button on the approved→rejected
+		 *  override path. */
+		hasAirtableRecord?: boolean;
 		hackatimeHours: number | null;
 		joeFraudPassed?: boolean | null;
 		/** Reviewer's own decision — null when the reviewer hasn't voted yet. */
@@ -26,6 +36,9 @@
 
 	let {
 		submissionId,
+		approvalStatus = 'pending',
+		isSuperadmin = false,
+		hasAirtableRecord = false,
 		hackatimeHours,
 		joeFraudPassed = null,
 		reviewPassed = null,
@@ -40,7 +53,15 @@
 		onReviewComplete,
 	}: Props = $props();
 
-	let activeForm: 'approve' | 'changes' = $state('changes');
+	let activeForm = $state<'approve' | 'changes'>('changes');
+
+	// True when the active form would flip a finalized submission to the
+	// opposite status — the backend blocks this for non-superadmins.
+	let isStatusFlip = $derived(
+		(approvalStatus === 'approved' && activeForm === 'changes') ||
+			(approvalStatus === 'rejected' && activeForm === 'approve'),
+	);
+	let flipBlocked = $derived(isStatusFlip && !isSuperadmin);
 	let submitting = $state(false);
 	let savingDraft = $state(false);
 	let draftSavedFlash = $state(false);
@@ -140,7 +161,7 @@
 		}
 	}
 
-	async function submitChangesNeeded() {
+	async function submitChangesNeeded(opts: { deleteAirtableRecord?: boolean } = {}) {
 		if (!changesComment.trim()) {
 			toast.error('Please describe what needs to change.');
 			return;
@@ -149,6 +170,13 @@
 		if (permReject) {
 			const confirmed = window.confirm(
 				'Permanently reject this project? The user will see your reason and will NOT be able to resubmit or edit the project. This is final.',
+			);
+			if (!confirmed) return;
+		}
+
+		if (opts.deleteAirtableRecord) {
+			const confirmed = window.confirm(
+				'Reject this submission AND permanently delete the Airtable record? Airtable has no undo — this cannot be recovered.',
 			);
 			if (!confirmed) return;
 		}
@@ -168,6 +196,7 @@
 								...(internalNote ? { adminComment: internalNote } : {}),
 							}
 						: {}),
+					...(opts.deleteAirtableRecord ? { deleteAirtableRecord: true } : {}),
 				} as any,
 			});
 			if (error)
@@ -397,11 +426,23 @@
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-green text-white border-rv-green disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitApproval}
-					disabled={submitting || savingDraft || justSubmitted || readOnly}
+					disabled={submitting || savingDraft || justSubmitted || readOnly || flipBlocked}
+					title={flipBlocked ? 'Superadmin only: flipping a rejected submission to approved' : undefined}
 				>
-					{submitting ? 'Submitting...' : justSubmitted ? 'Submitted' : 'Submit Approval'}
+					{submitting
+						? 'Submitting...'
+						: justSubmitted
+							? 'Submitted'
+							: isStatusFlip && isSuperadmin
+								? 'Override → Approve'
+								: 'Submit Approval'}
 				</button>
 			</div>
+			{#if flipBlocked}
+				<p class="mt-2 text-right text-[11px] text-rv-dim">
+					This submission is already rejected. Only superadmins can flip it to approved.
+				</p>
+			{/if}
 		</div>
 	{/if}
 
@@ -472,12 +513,36 @@
 				</button>
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-red text-white border-rv-red disabled:opacity-50 disabled:cursor-not-allowed"
-					onclick={submitChangesNeeded}
-					disabled={submitting || savingDraft || justSubmitted || readOnly}
+					onclick={() => submitChangesNeeded()}
+					disabled={submitting || savingDraft || justSubmitted || readOnly || flipBlocked}
+					title={flipBlocked ? 'Superadmin only: flipping an approved submission to rejected' : undefined}
 				>
-					{submitting ? 'Submitting...' : justSubmitted ? 'Submitted' : permReject ? 'Permanently Reject' : 'Request Changes'}
+					{submitting
+						? 'Submitting...'
+						: justSubmitted
+							? 'Submitted'
+							: permReject
+								? 'Permanently Reject'
+								: isStatusFlip && isSuperadmin
+									? 'Override → Reject'
+									: 'Request Changes'}
 				</button>
+				{#if isStatusFlip && isSuperadmin && hasAirtableRecord}
+					<button
+						class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-red text-white border-rv-red disabled:opacity-50 disabled:cursor-not-allowed"
+						onclick={() => submitChangesNeeded({ deleteAirtableRecord: true })}
+						disabled={submitting || savingDraft || justSubmitted || readOnly}
+						title="Reject and permanently delete the Airtable record (unrecoverable)"
+					>
+						{submitting ? 'Submitting...' : 'Override → Reject + Delete Airtable'}
+					</button>
+				{/if}
 			</div>
+			{#if flipBlocked}
+				<p class="mt-2 text-right text-[11px] text-rv-dim">
+					This submission is already approved. Only superadmins can flip it to rejected.
+				</p>
+			{/if}
 		</div>
 	{/if}
 </div>

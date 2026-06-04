@@ -154,7 +154,12 @@ export class ReviewerController {
     @Body() dto: ReviewSubmissionDto,
     @Req() req: Request,
   ) {
-    return this.reviewerService.reviewSubmission(id, dto, req.user.userId);
+    return this.reviewerService.reviewSubmission(
+      id,
+      dto,
+      req.user.userId,
+      req.user.role,
+    );
   }
 
   /** Send a preview Slack DM to the reviewer to preview the message (e.g. their username shows up, double-checking Slack formatting). */
