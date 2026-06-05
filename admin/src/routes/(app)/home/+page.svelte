@@ -71,6 +71,8 @@
 		canBuyTicket: true,
 		boughtTicket: true,
 	});
+	type ParticipationPieMetric = Extract<ParticipationField, 'signedUp' | 'boughtTicket'>;
+	let participationPieMetric = $state<ParticipationPieMetric>('signedUp');
 	let utmEl = $state<HTMLDivElement | null>(null);
 	let hoursDistributionEl = $state<HTMLDivElement | null>(null);
 	let userHoursDistributionEl = $state<HTMLDivElement | null>(null);
@@ -910,43 +912,20 @@
 		});
 	}
 
-	// First enabled metric — the pie always slices by exactly one field, so the
-	// toggles double as a "what to show in the pie" selector.
-	const participationPrimaryField = $derived<ParticipationField | null>(
-		participationFieldOrder.find((f) => participationFieldsVisible[f]) ?? null,
-	);
-
 	const participationByCountrySorted = $derived(
 		stats
 			? [...((stats.signups as any).participationByCountry ?? [])].sort(
-					(a: any, b: any) => {
-						const f = participationPrimaryField;
-						if (!f) return b.signedUp - a.signedUp;
-						return b[f] - a[f];
-					},
+					(a: any, b: any) => b[participationPieMetric] - a[participationPieMetric],
 				)
 			: [],
 	);
 
 	function renderParticipationCountryPie() {
 		if (!participationCountryPieEl) return;
-		const field = participationPrimaryField;
+		const field = participationPieMetric;
 		const chart = initChart(participationCountryPieEl);
 		if (!chart) return;
 		const dark = isDark();
-
-		if (!field) {
-			chart.setOption({
-				backgroundColor: bgColor(),
-				title: {
-					text: 'No field selected',
-					left: 'center',
-					top: 'center',
-					textStyle: { color: dimColor(), fontSize: 12, fontWeight: 'normal' },
-				},
-			});
-			return;
-		}
 
 		const rows = participationByCountrySorted as Array<{
 			country: string;
@@ -1176,12 +1155,9 @@
 		if (stats) tick().then(() => renderSignupMap());
 	});
 
-	// Re-render the participation pie when toggle state changes.
+	// Re-render the participation pie when its metric selector changes.
 	$effect(() => {
-		participationFieldsVisible.signedUp;
-		participationFieldsVisible.couldBuyTicket;
-		participationFieldsVisible.canBuyTicket;
-		participationFieldsVisible.boughtTicket;
+		participationPieMetric;
 		if (stats) tick().then(() => renderParticipationCountryPie());
 	});
 
@@ -1541,22 +1517,44 @@
 				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
 					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Participation by Country Breakdown</p>
-						<div class="flex flex-wrap gap-1">
-							{#each participationFieldOrder as field}
-								{@const meta = participationFieldMeta[field]}
-								{@const active = participationFieldsVisible[field]}
-								<button
-									type="button"
-									onclick={() => (participationFieldsVisible[field] = !active)}
-									title={active ? `Hide ${meta.label}` : `Show ${meta.label}`}
-									class="rounded-md border px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors"
-									style={active
-										? `background-color: ${meta.color}; border-color: ${meta.color}; color: #fff;`
-										: `border-color: ${meta.color}; color: ${meta.color};`}
-								>
-									{meta.label}
-								</button>
-							{/each}
+						<div class="flex flex-wrap items-center gap-3">
+							<div class="flex items-center gap-1">
+								<span class="text-[10px] uppercase tracking-wide text-ds-text-secondary mr-1">Columns:</span>
+								{#each participationFieldOrder as field}
+									{@const meta = participationFieldMeta[field]}
+									{@const active = participationFieldsVisible[field]}
+									<button
+										type="button"
+										onclick={() => (participationFieldsVisible[field] = !active)}
+										title={active ? `Hide ${meta.label}` : `Show ${meta.label}`}
+										class="rounded-md border px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors"
+										style={active
+											? `background-color: ${meta.color}; border-color: ${meta.color}; color: #fff;`
+											: `border-color: ${meta.color}; color: ${meta.color};`}
+									>
+										{meta.label}
+									</button>
+								{/each}
+							</div>
+							<div class="flex items-center gap-1">
+								<span class="text-[10px] uppercase tracking-wide text-ds-text-secondary mr-1">Pie:</span>
+								<div class="inline-flex overflow-hidden rounded-md border border-ds-border">
+									<button
+										type="button"
+										onclick={() => (participationPieMetric = 'signedUp')}
+										class="px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors {participationPieMetric === 'signedUp' ? 'bg-ds-accent text-white' : 'text-ds-text-secondary hover:text-ds-text'}"
+									>
+										Signups
+									</button>
+									<button
+										type="button"
+										onclick={() => (participationPieMetric = 'boughtTicket')}
+										class="px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors border-l border-ds-border {participationPieMetric === 'boughtTicket' ? 'bg-ds-accent text-white' : 'text-ds-text-secondary hover:text-ds-text'}"
+									>
+										Bought Tickets
+									</button>
+								</div>
+							</div>
 						</div>
 					</div>
 					{#if participationByCountrySorted.length > 0}
