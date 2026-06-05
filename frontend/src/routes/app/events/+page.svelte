@@ -327,10 +327,13 @@
 			const ok = (res as any).response?.ok;
 			if (!ok) {
 				const status = (res as any).response?.status;
-				const errBody = (res as any).error as { message?: string | string[] } | undefined;
-				const msg = Array.isArray(errBody?.message)
-					? errBody!.message!.join(' ')
-					: errBody?.message;
+				// AllExceptionsFilter shape is { success: false, error: string | string[] };
+				// fall back to `message` for anything that bypasses the filter.
+				const errBody = (res as any).error as
+					| { error?: string | string[]; message?: string | string[] }
+					| undefined;
+				const raw = errBody?.error ?? errBody?.message;
+				const msg = Array.isArray(raw) ? raw.join(' ') : raw;
 				purchaseError = msg ?? `Purchase failed (${status ?? 'network error'})`;
 				triggerShake('ticket');
 				return;
