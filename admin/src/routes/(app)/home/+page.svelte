@@ -47,6 +47,30 @@
 	let signupsEl = $state<HTMLDivElement | null>(null);
 	let signupMapEl = $state<HTMLDivElement | null>(null);
 	let signupQualificationEl = $state<HTMLDivElement | null>(null);
+	let participationCountryPieEl = $state<HTMLDivElement | null>(null);
+
+	type ParticipationField = 'signedUp' | 'couldBuyTicket' | 'canBuyTicket' | 'boughtTicket';
+	const participationFieldOrder: ParticipationField[] = [
+		'signedUp',
+		'couldBuyTicket',
+		'canBuyTicket',
+		'boughtTicket',
+	];
+	const participationFieldMeta: Record<
+		ParticipationField,
+		{ label: string; color: string }
+	> = {
+		signedUp: { label: 'Signups', color: '#22c55e' },
+		couldBuyTicket: { label: 'Could Buy Tickets', color: '#7c3aed' },
+		canBuyTicket: { label: 'Can Buy Tickets', color: '#3b82f6' },
+		boughtTicket: { label: 'Bought Tickets', color: '#16a34a' },
+	};
+	let participationFieldsVisible = $state<Record<ParticipationField, boolean>>({
+		signedUp: true,
+		couldBuyTicket: true,
+		canBuyTicket: true,
+		boughtTicket: true,
+	});
 	let utmEl = $state<HTMLDivElement | null>(null);
 	let hoursDistributionEl = $state<HTMLDivElement | null>(null);
 	let userHoursDistributionEl = $state<HTMLDivElement | null>(null);
@@ -313,6 +337,7 @@
 		renderLineChart(signupsEl, stats.historical.newSignups, '#22c55e', 'rgba(34,197,94,0.15)');
 		renderSignupQualificationChart();
 		renderSignupMap();
+		renderParticipationCountryPie();
 		renderUtmChart();
 		renderHoursDistribution();
 		renderUserHoursDistribution();
@@ -885,6 +910,97 @@
 		});
 	}
 
+	// First enabled metric — the pie always slices by exactly one field, so the
+	// toggles double as a "what to show in the pie" selector.
+	const participationPrimaryField = $derived<ParticipationField | null>(
+		participationFieldOrder.find((f) => participationFieldsVisible[f]) ?? null,
+	);
+
+	const participationByCountrySorted = $derived(
+		stats
+			? [...((stats.signups as any).participationByCountry ?? [])].sort(
+					(a: any, b: any) => {
+						const f = participationPrimaryField;
+						if (!f) return b.signedUp - a.signedUp;
+						return b[f] - a[f];
+					},
+				)
+			: [],
+	);
+
+	function renderParticipationCountryPie() {
+		if (!participationCountryPieEl) return;
+		const field = participationPrimaryField;
+		const chart = initChart(participationCountryPieEl);
+		if (!chart) return;
+		const dark = isDark();
+
+		if (!field) {
+			chart.setOption({
+				backgroundColor: bgColor(),
+				title: {
+					text: 'No field selected',
+					left: 'center',
+					top: 'center',
+					textStyle: { color: dimColor(), fontSize: 12, fontWeight: 'normal' },
+				},
+			});
+			return;
+		}
+
+		const rows = participationByCountrySorted as Array<{
+			country: string;
+			signedUp: number;
+			couldBuyTicket: number;
+			canBuyTicket: number;
+			boughtTicket: number;
+		}>;
+		// Collapse the long tail so the legend stays readable on small dashboards.
+		const TOP_N = 8;
+		const top = rows.slice(0, TOP_N).filter((r) => r[field] > 0);
+		const rest = rows.slice(TOP_N).reduce((sum, r) => sum + r[field], 0);
+		const data = [
+			...top.map((r) => ({ name: r.country, value: r[field] })),
+			...(rest > 0 ? [{ name: 'Other', value: rest }] : []),
+		];
+		const total = rows.reduce((sum, r) => sum + r[field], 0);
+
+		chart.setOption({
+			backgroundColor: bgColor(),
+			tooltip: {
+				trigger: 'item',
+				formatter: (p: any) => {
+					const pct = total ? ((p.value / total) * 100).toFixed(1) : '0.0';
+					return `<b>${p.name}</b><br/>${participationFieldMeta[field].label}: ${p.value} (${pct}%)`;
+				},
+			},
+			legend: {
+				type: 'scroll',
+				orient: 'vertical',
+				right: 0,
+				top: 'middle',
+				textStyle: { color: dimColor(), fontSize: 10 },
+				itemWidth: 10,
+				itemHeight: 8,
+			},
+			series: [
+				{
+					type: 'pie',
+					radius: ['38%', '68%'],
+					center: ['35%', '50%'],
+					avoidLabelOverlap: true,
+					itemStyle: {
+						borderColor: dark ? '#0f172a' : '#ffffff',
+						borderWidth: 1,
+					},
+					label: { show: false },
+					labelLine: { show: false },
+					data,
+				},
+			],
+		});
+	}
+
 	function renderUtmChart() {
 		if (!stats || stats.utm.sources.length === 0) return;
 		const chart = initChart(utmEl);
@@ -1058,6 +1174,15 @@
 	$effect(() => {
 		selectedEventFilter;
 		if (stats) tick().then(() => renderSignupMap());
+	});
+
+	// Re-render the participation pie when toggle state changes.
+	$effect(() => {
+		participationFieldsVisible.signedUp;
+		participationFieldsVisible.couldBuyTicket;
+		participationFieldsVisible.canBuyTicket;
+		participationFieldsVisible.boughtTicket;
+		if (stats) tick().then(() => renderParticipationCountryPie());
 	});
 
 	// Re-render only the funnel when its event filter changes.
@@ -1411,6 +1536,63 @@
 								{/if}
 							</ul>
 						</div>
+					{/if}
+				</div>
+				<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)] mt-3">
+					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Participation by Country Breakdown</p>
+						<div class="flex flex-wrap gap-1">
+							{#each participationFieldOrder as field}
+								{@const meta = participationFieldMeta[field]}
+								{@const active = participationFieldsVisible[field]}
+								<button
+									type="button"
+									onclick={() => (participationFieldsVisible[field] = !active)}
+									title={active ? `Hide ${meta.label}` : `Show ${meta.label}`}
+									class="rounded-md border px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors"
+									style={active
+										? `background-color: ${meta.color}; border-color: ${meta.color}; color: #fff;`
+										: `border-color: ${meta.color}; color: ${meta.color};`}
+								>
+									{meta.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+					{#if participationByCountrySorted.length > 0}
+						<div class="grid gap-4 lg:grid-cols-[320px_1fr]">
+							<div bind:this={participationCountryPieEl} style="height: 280px;"></div>
+							<div class="max-h-[280px] overflow-y-auto">
+								<table class="w-full text-xs">
+									<thead class="sticky top-0 bg-ds-surface">
+										<tr class="text-left text-ds-text-secondary">
+											<th class="py-1.5 pr-2 font-medium">Country</th>
+											{#each participationFieldOrder as field}
+												{#if participationFieldsVisible[field]}
+													<th class="py-1.5 px-2 text-right font-medium">
+														<span style="color: {participationFieldMeta[field].color}">{participationFieldMeta[field].label}</span>
+													</th>
+												{/if}
+											{/each}
+										</tr>
+									</thead>
+									<tbody>
+										{#each participationByCountrySorted as row}
+											<tr class="border-t border-ds-border text-ds-text">
+												<td class="py-1.5 pr-2">{row.country}</td>
+												{#each participationFieldOrder as field}
+													{#if participationFieldsVisible[field]}
+														<td class="py-1.5 px-2 text-right tabular-nums">{formatCount(row[field])}</td>
+													{/if}
+												{/each}
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+						</div>
+					{:else}
+						<p class="text-[11px] text-ds-text-secondary">No country data yet.</p>
 					{/if}
 				</div>
 			</section>
