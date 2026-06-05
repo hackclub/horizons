@@ -1090,6 +1090,68 @@ export class AdminService {
     ]);
     const signupsMissingOrigin = Number(signupsMissingOriginRow[0]?.count ?? 0);
 
+    // Per-country participation breakdown. Same nesting rules as the per-event
+    // qualification funnel, but grouped by the user's origin country instead
+    // of by event. Each row counts pinned (user, event) pairs: a user pinned
+    // to two events contributes to their country's signedUp twice, and to
+    // canBuy/couldBuy/bought once per event that gates clear.
+    const participationByCountryResult = await this.prisma.$queryRaw<
+      Array<{
+        country: string;
+        signed_up: bigint;
+        could_buy_ticket: bigint;
+        can_buy_ticket: bigint;
+        bought_ticket: bigint;
+      }>
+    >`
+      SELECT
+        u.country,
+        COUNT(pe.id) AS signed_up,
+        COUNT(*) FILTER (
+          WHERE e.rsvp_cost IS NULL
+            OR COALESCE(ut.could_total, 0) >= e.rsvp_cost
+        ) AS could_buy_ticket,
+        COUNT(*) FILTER (
+          WHERE e.rsvp_cost IS NULL
+            OR COALESCE(ut.approved_total, 0) >= e.rsvp_cost
+        ) AS can_buy_ticket,
+        COUNT(*) FILTER (WHERE et.user_id IS NOT NULL) AS bought_ticket
+      FROM pinned_events pe
+      INNER JOIN users u ON u.user_id = pe.user_id
+      INNER JOIN events e ON e.event_id = pe.event_id
+      LEFT JOIN (
+        SELECT
+          p.user_id,
+          SUM(COALESCE(p.approved_hours, 0)) AS approved_total,
+          SUM(
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM submissions s
+                WHERE s.project_id = p.project_id
+                  AND s.approval_status = 'rejected'
+                  AND s.created_at = (
+                    SELECT MAX(s2.created_at) FROM submissions s2
+                    WHERE s2.project_id = p.project_id
+                  )
+              )
+              THEN COALESCE(p.approved_hours, 0)
+              ELSE COALESCE(p.now_hackatime_hours, 0)
+            END
+          ) AS could_total
+        FROM projects p
+        WHERE p.deleted_at IS NULL
+        GROUP BY p.user_id
+      ) ut ON ut.user_id = pe.user_id
+      LEFT JOIN (
+        SELECT DISTINCT user_id, event_id
+        FROM transactions
+        WHERE kind = 'EventTicket' AND event_id IS NOT NULL
+      ) et ON et.user_id = pe.user_id AND et.event_id = e.event_id
+      WHERE u.country IS NOT NULL AND u.country != ''
+      GROUP BY u.country
+      ORDER BY signed_up DESC
+    `;
+
     return {
       total,
       perEvent: perEventResult.map((r) => ({
@@ -1113,6 +1175,13 @@ export class AdminService {
         boughtTicket: Number(r.bought_ticket),
       })),
       routes,
+      participationByCountry: participationByCountryResult.map((r) => ({
+        country: r.country,
+        signedUp: Number(r.signed_up),
+        couldBuyTicket: Number(r.could_buy_ticket),
+        canBuyTicket: Number(r.can_buy_ticket),
+        boughtTicket: Number(r.bought_ticket),
+      })),
       signupsMissingOrigin,
       eventsMissingCountry: eventsMissingCountry.map((e) => e.title),
     };

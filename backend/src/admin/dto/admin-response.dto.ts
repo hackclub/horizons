@@ -962,6 +962,23 @@ class StatsSignupQualificationEntry {
   boughtTicket: number;
 }
 
+class StatsSignupCountryEntry {
+  @ApiProperty()
+  country: string;
+
+  @ApiProperty()
+  signedUp: number;
+
+  @ApiProperty()
+  couldBuyTicket: number;
+
+  @ApiProperty()
+  canBuyTicket: number;
+
+  @ApiProperty()
+  boughtTicket: number;
+}
+
 class StatsSignups {
   @ApiProperty()
   total: number;
@@ -974,6 +991,9 @@ class StatsSignups {
 
   @ApiProperty({ type: [StatsSignupRoute] })
   routes: StatsSignupRoute[];
+
+  @ApiProperty({ type: [StatsSignupCountryEntry] })
+  participationByCountry: StatsSignupCountryEntry[];
 
   @ApiProperty()
   signupsMissingOrigin: number;

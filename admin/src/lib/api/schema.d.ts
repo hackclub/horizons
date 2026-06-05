@@ -2965,11 +2965,19 @@ export interface components {
             eventTitle: string;
             count: number;
         };
+        StatsSignupCountryEntry: {
+            country: string;
+            signedUp: number;
+            couldBuyTicket: number;
+            canBuyTicket: number;
+            boughtTicket: number;
+        };
         StatsSignups: {
             total: number;
             perEvent: components["schemas"]["StatsSignupEventEntry"][];
             qualification: components["schemas"]["StatsSignupQualificationEntry"][];
             routes: components["schemas"]["StatsSignupRoute"][];
+            participationByCountry: components["schemas"]["StatsSignupCountryEntry"][];
             signupsMissingOrigin: number;
             eventsMissingCountry: string[];
         };
