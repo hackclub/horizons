@@ -126,8 +126,11 @@
 			let message = response.statusText || 'Purchase failed.';
 			try {
 				const body = await response.json();
-				if (body?.message) {
-					message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
+				// AllExceptionsFilter shape is { success: false, error: string | string[] };
+				// fall back to `message` for anything that bypasses the filter.
+				const raw = body?.error ?? body?.message;
+				if (raw) {
+					message = Array.isArray(raw) ? raw.join(', ') : raw;
 				}
 			} catch {}
 			purchaseError = message;
