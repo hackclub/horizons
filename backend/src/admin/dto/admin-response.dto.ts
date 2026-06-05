@@ -1218,6 +1218,20 @@ export class TriggerReviewerLeaderboardResponse {
   message: string;
 }
 
+export class TriggerAirtableHoursSyncResponse {
+  @ApiProperty()
+  updated: number;
+
+  @ApiProperty()
+  skipped: number;
+
+  @ApiProperty()
+  failed: number;
+
+  @ApiProperty()
+  message: string;
+}
+
 // --- Event Stats DTOs ---
 
 class EventStatsEventDetail {

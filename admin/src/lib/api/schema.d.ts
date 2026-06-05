@@ -949,6 +949,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/airtable/sync-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminController_triggerAirtableHoursSync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/{id}/fraud-flag": {
         parameters: {
             query?: never;
@@ -3149,6 +3165,12 @@ export interface components {
             dateLabel: string;
             totalReviews: number;
             reviewerCount: number;
+            message: string;
+        };
+        TriggerAirtableHoursSyncResponse: {
+            updated: number;
+            skipped: number;
+            failed: number;
             message: string;
         };
         ToggleFraudFlagDto: {
@@ -5456,6 +5478,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TriggerReviewerLeaderboardResponse"];
+                };
+            };
+        };
+    };
+    AdminController_triggerAirtableHoursSync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TriggerAirtableHoursSyncResponse"];
                 };
             };
         };

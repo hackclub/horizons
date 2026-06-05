@@ -12,6 +12,7 @@ import { HackatimeModule } from '../hackatime/hackatime.module';
 import { LoopsModule } from '../loops/loops.module';
 import { BalanceModule } from '../balance/balance.module';
 import { ReviewerModule } from '../reviewer/reviewer.module';
+import { AirtableModule } from '../airtable/airtable.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ReviewerModule } from '../reviewer/reviewer.module';
     LoopsModule,
     BalanceModule,
     ReviewerModule,
+    AirtableModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, MetricsSnapshotService, PrismaService],

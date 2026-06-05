@@ -41,6 +41,11 @@
     let leaderboardSendMessage = $state('');
     let leaderboardSendError = $state('');
 
+    // Airtable hours sync (superadmin only)
+    let airtableSyncBusy = $state(false);
+    let airtableSyncMessage = $state('');
+    let airtableSyncError = $state('');
+
     // Priority users state
     let priorityUsers = $state<PriorityUserResponse[]>([]);
     let priorityUsersLoading = $state(false);
@@ -188,6 +193,28 @@
         }
     }
 
+    async function triggerAirtableHoursSync() {
+        if (airtableSyncBusy) return;
+        if (!confirm('Sync hours fields to Airtable for all users now? This may take several minutes.')) return;
+        airtableSyncBusy = true;
+        airtableSyncMessage = '';
+        airtableSyncError = '';
+        try {
+            const { data, error } = await api.POST('/api/admin/airtable/sync-hours');
+            if (error) {
+                airtableSyncError =
+                    (error as { message?: string })?.message ?? 'Failed to sync hours to Airtable';
+                return;
+            }
+            airtableSyncMessage = data?.message ?? 'Sync complete.';
+        } catch (err) {
+            airtableSyncError =
+                err instanceof Error ? err.message : 'Failed to sync hours to Airtable';
+        } finally {
+            airtableSyncBusy = false;
+        }
+    }
+
     async function recalculateAllProjects() {
         if (recalcAllBusy) return;
         recalcAllBusy = true;
@@ -300,6 +327,26 @@
             Recalculates Hackatime hours for all projects by fetching the latest data from the Hackatime API.
         </p>
     </Card>
+
+    {#if isSuperadmin}
+        <!-- Airtable Hours Sync (superadmin only) -->
+        <Card class="p-6 space-y-4">
+            <h2 class="text-xl font-semibold">Airtable Hours Sync</h2>
+            <div class="flex items-center gap-3">
+                <Button onclick={triggerAirtableHoursSync} disabled={airtableSyncBusy}>
+                    {airtableSyncBusy ? 'Syncing...' : 'Sync hours to Airtable'}
+                </Button>
+                {#if airtableSyncError}
+                    <span class="text-xs text-ds-red">{airtableSyncError}</span>
+                {:else if airtableSyncMessage}
+                    <span class="text-xs text-ds-green">{airtableSyncMessage}</span>
+                {/if}
+            </div>
+            <p class="text-sm text-ds-text-secondary">
+                Pushes approved, in-review, and unsubmitted hours (plus chosen event) to Airtable for every user with an Airtable record. Runs nightly automatically — use this to fix drift sooner. May take several minutes.
+            </p>
+        </Card>
+    {/if}
 
     <!-- Metrics Backfill -->
     <Card class="p-6 space-y-4">

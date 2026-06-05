@@ -25,6 +25,7 @@ import { AdminService } from './admin.service';
 import { MetricsSnapshotService } from './metrics-snapshot.service';
 import { StreakService } from '../streaks/streak.service';
 import { ReviewerLeaderboardCronService } from '../reviewer/reviewer-leaderboard-cron.service';
+import { AirtableService } from '../airtable/airtable.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -62,6 +63,7 @@ import {
   PermRejectActionResponse,
   ResetJoeActionResponse,
   TriggerReviewerLeaderboardResponse,
+  TriggerAirtableHoursSyncResponse,
 } from './dto/admin-response.dto';
 import {
   ToggleFraudFlagDto,
@@ -83,6 +85,7 @@ export class AdminController {
     private metricsSnapshotService: MetricsSnapshotService,
     private streakService: StreakService,
     private reviewerLeaderboardCron: ReviewerLeaderboardCronService,
+    private airtableService: AirtableService,
   ) {}
 
   @Get('submissions')
@@ -362,6 +365,18 @@ export class AdminController {
   @ApiCreatedResponse({ type: TriggerReviewerLeaderboardResponse })
   async triggerReviewerLeaderboard(): Promise<TriggerReviewerLeaderboardResponse> {
     return this.reviewerLeaderboardCron.triggerNow();
+  }
+
+  @Post('airtable/sync-hours')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiCreatedResponse({ type: TriggerAirtableHoursSyncResponse })
+  async triggerAirtableHoursSync(): Promise<TriggerAirtableHoursSyncResponse> {
+    const result = await this.airtableService.syncAllUserStats();
+    return {
+      ...result,
+      message: `Synced hours for ${result.updated} user${result.updated === 1 ? '' : 's'} (${result.skipped} skipped, ${result.failed} failed).`,
+    };
   }
 
   @Put('users/:id/fraud-flag')
