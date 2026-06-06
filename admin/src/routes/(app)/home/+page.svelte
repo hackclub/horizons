@@ -1318,6 +1318,43 @@
 				{/if}
 			</section>
 
+			<!-- 8. Tickets Bought per Event -->
+			{#if stats.signups.qualification.length > 0}
+			<section>
+				<div class="mb-2 flex items-center justify-between gap-2">
+					<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary">Tickets Bought by Event</h2>
+					<button
+						onclick={() => {
+							const rows = [...stats.signups.qualification]
+								.sort((a, b) => a.title.localeCompare(b.title))
+								.map(e => `${e.title}\t${e.boughtTicket}`)
+								.join('\n');
+							navigator.clipboard.writeText(`Event\tTickets Bought\n${rows}`);
+						}}
+						class="rounded-md border border-ds-border bg-ds-surface px-2.5 py-1 text-[11px] text-ds-text-secondary hover:text-ds-text hover:bg-ds-surface-raised transition-colors cursor-pointer"
+					>Copy</button>
+				</div>
+				<div class="rounded-lg border border-ds-border bg-ds-surface shadow-[var(--color-ds-shadow)] overflow-hidden">
+					<table class="w-full text-sm">
+						<thead>
+							<tr class="border-b border-ds-border text-ds-text-secondary text-[11px] uppercase tracking-wide">
+								<th class="text-left px-4 py-2.5">Event</th>
+								<th class="text-right px-4 py-2.5 w-32">Tickets Bought</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each [...stats.signups.qualification].sort((a, b) => a.title.localeCompare(b.title)) as event}
+							<tr class="border-b border-ds-border last:border-b-0">
+								<td class="px-4 py-2.5 text-ds-text">{event.title}</td>
+								<td class="px-4 py-2.5 text-right font-mono font-bold text-ds-text">{formatCount(event.boughtTicket)}</td>
+							</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</section>
+			{/if}
+
 			{/if}
 
 			<!-- Action bar -->
