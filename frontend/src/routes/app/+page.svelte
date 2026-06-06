@@ -118,6 +118,7 @@
 	let pinnedTicketCost = $state<number | null>(null);
 	let pinnedTicketEnabled = $state(false);
 	let pinnedHasTicket = $state(false);
+	let pinnedEventHoursCredit = $state(0);
 
 	// #horizons huddle state — populated by polling /api/huddles/status. When `huddleActive`
 	// is true, a LiveHuddleCard is rendered beneath the community-events card.
@@ -302,10 +303,14 @@
 			return { completed: debugCompleted, approved: debugApproved, pending: debugPending };
 		}
 		// Live values: treat unapproved completed hours as pending until per-event ship lookup is wired.
+		const creditedCompleted = Math.min(
+			targetHours,
+			Math.round((completedHours + pinnedEventHoursCredit) * 10) / 10
+		);
 		return {
-			completed: completedHours,
+			completed: creditedCompleted,
 			approved: approvedHours,
-			pending: Math.max(0, completedHours - approvedHours),
+			pending: Math.max(0, creditedCompleted - approvedHours),
 		};
 	});
 
@@ -340,9 +345,11 @@
 					ticketCost: number | null;
 					ticketEnabled: boolean;
 					hasTicket: boolean;
+					eventHoursCredit?: number;
 				}
 			| undefined;
 		if (!data) return;
+		pinnedEventHoursCredit = Math.round((data.eventHoursCredit ?? 0) * 10) / 10;
 		pinnedTicketThreshold = data.ticketThreshold;
 		pinnedTicketCost = data.ticketCost;
 		pinnedTicketEnabled = data.ticketEnabled;
@@ -775,6 +782,7 @@
 						ticketCost={eventColumnTicketCost}
 						ticketEnabled={eventColumnTicketEnabled}
 						hasTicket={eventColumnHasTicket}
+						eventHoursCredit={pinnedEventHoursCredit}
 						selected={nav.isSelected(COL_PINNED_EVENT, 0)}
 						onmouseenter={() => handleCardHover(COL_PINNED_EVENT, 0)}
 						onclick={(e) => { e.preventDefault(); navigateTo('/app/events'); }}

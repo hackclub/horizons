@@ -158,6 +158,7 @@ export class ShopService {
         imageUrl: createItemDto.imageUrl,
         cost: createItemDto.cost,
         regions: createItemDto.regions ?? [],
+        eventHoursReduction: createItemDto.eventHoursReduction ?? null,
       },
       include: {
         shop: { select: { slug: true } },
@@ -338,8 +339,21 @@ export class ShopService {
       description += ` - ${item.description}`;
     }
 
+    let eventHoursCredit: number | null = null;
+    let linkedEventId: number | null = null;
+    if (item.eventHoursReduction != null && item.eventHoursReduction > 0) {
+      const linkedEvent = await this.prisma.event.findUnique({
+        where: { slug: item.shop.slug },
+        select: { eventId: true },
+      });
+      if (linkedEvent) {
+        eventHoursCredit = item.eventHoursReduction;
+        linkedEventId = linkedEvent.eventId;
+      }
+    }
+
     console.log(
-      `[Shop Purchase] Creating transaction for userId: ${userId}, itemId: ${itemId}, unitCost: ${cost}, quantity: ${quantity}, total: ${cost * quantity}`,
+      `[Shop Purchase] Creating transaction for userId: ${userId}, itemId: ${itemId}, unitCost: ${cost}, quantity: ${quantity}, total: ${cost * quantity}, eventHoursCredit: ${eventHoursCredit ?? 'none'}`,
     );
     const transaction = await this.balanceService.processPurchase({
       userId,
@@ -349,6 +363,7 @@ export class ShopService {
       itemDescription: description,
       itemId,
       variantId: variant?.variantId ?? null,
+      eventId: linkedEventId,
       preCheck: async (tx) => {
         if (maxPerUser !== null && maxPerUser > 0) {
           const count = await tx.transaction.count({

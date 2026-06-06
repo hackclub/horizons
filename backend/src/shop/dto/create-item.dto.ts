@@ -33,4 +33,9 @@ export class CreateItemDto {
   @IsOptional()
   @Min(1)
   maxPerUser?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  eventHoursReduction?: number;
 }

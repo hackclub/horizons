@@ -317,6 +317,8 @@ model ShopItem {
   cost         Float
   regions      String[]          @default([])
   maxPerUser   Int?              @map("max_per_user")
+  /// Hours credited toward the linked event's hour goal when a user buys this item (shop slug must match event slug).
+  eventHoursReduction Float?     @map("event_hours_reduction")
   isActive     Boolean           @default(true) @map("is_active")
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
@@ -353,6 +355,8 @@ model Transaction {
   eventId         Int?             @map("event_id")
   itemDescription String           @map("item_description") @db.VarChar(500)
   cost            Float
+  /// Hours credited toward the linked event goal at purchase time (from shop item eventHoursReduction).
+  eventHoursCredit Float?          @map("event_hours_credit")
   isFulfilled     Boolean          @default(false) @map("is_fulfilled")
   fulfilledAt     DateTime?        @map("fulfilled_at")
   refundedAt      DateTime?        @map("refunded_at")

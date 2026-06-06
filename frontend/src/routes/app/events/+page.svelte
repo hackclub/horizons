@@ -61,6 +61,7 @@
 	let purchasing = $state<ItemKey | null>(null);
 	let purchaseError = $state<string | null>(null);
 	let hasEventShopItems = $state(false);
+	let eventHoursCredit = $state(0);
 
 	let showConfirmModal = $state(false);
 	let confirmText = $state('');
@@ -94,8 +95,18 @@
 	const effectiveBalance = $derived(
 		debugApprovedState === '' ? balance : effectiveApprovedHours
 	);
+	const effectiveEventHoursCredit = $derived(
+		debugApprovedState === '' ? eventHoursCredit : 0
+	);
 	const effectiveCompletedHours = $derived(
-		debugApprovedState === '' ? completedHours : Math.max(effectiveApprovedHours, completedHours)
+		debugApprovedState === ''
+			? effectiveHasTicket
+				? targetHours
+				: Math.min(
+						targetHours,
+						Math.round((completedHours + effectiveEventHoursCredit) * 10) / 10
+					)
+			: Math.max(effectiveApprovedHours, completedHours)
 	);
 
 	// Confirmation modal — activated when the user picks "Buy Ticket". The user
@@ -130,9 +141,11 @@
 					hasTicket: boolean;
 					balance: number;
 					approvedHours: number;
+					eventHoursCredit?: number;
 				}
 			| undefined;
 		if (!data) return;
+		eventHoursCredit = Math.round((data.eventHoursCredit ?? 0) * 10) / 10;
 		ticketThreshold = data.ticketThreshold;
 		ticketCost = data.ticketCost;
 		hasTicket = data.hasTicket;

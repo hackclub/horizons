@@ -425,9 +425,9 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 | Model | Key Fields | Purpose |
 |-------|------------|---------|
 | **Shop** | slug, description, isActive, isPublic | Shop containers |
-| **ShopItem** | shopId, name, cost, maxPerUser, isActive, imageUrl | Purchasable items |
+| **ShopItem** | shopId, name, cost, maxPerUser, eventHoursReduction, isActive, imageUrl | Purchasable items (`eventHoursReduction` credits hours toward the event whose slug matches the shop slug) |
 | **ShopItemVariant** | itemId, name, cost, isActive | Item variants |
-| **Transaction** | userId, itemId, variantId, cost, isFulfilled | Purchase records |
+| **Transaction** | userId, itemId, variantId, cost, eventHoursCredit, isFulfilled | Purchase records (`eventHoursCredit` stores per-purchase event goal credit from shop items) |
 | **PinnedItem** | userId, itemId | User's pinned shop item |
 
 ### Other Models

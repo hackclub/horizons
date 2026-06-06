@@ -185,6 +185,22 @@ export class EventsService {
     }
   }
 
+  // ── Event hour progress ──
+
+  async getEventHoursCredit(userId: number, eventSlug: string): Promise<number> {
+    const result = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        kind: 'ShopItem',
+        refundedAt: null,
+        eventHoursCredit: { not: null },
+        item: { shop: { slug: eventSlug } },
+      },
+      _sum: { eventHoursCredit: true },
+    });
+    return Math.round((result._sum.eventHoursCredit ?? 0) * 10) / 10;
+  }
+
   // ── Ticketing ──
 
   async getTicketStatus(userId: number, slug: string) {
@@ -204,8 +220,11 @@ export class EventsService {
       select: { transactionId: true },
     });
 
-    const { balance, totalApprovedHours } =
-      await this.balanceService.getUserBalance(userId);
+    const [{ balance, totalApprovedHours }, eventHoursCredit] =
+      await Promise.all([
+        this.balanceService.getUserBalance(userId),
+        this.getEventHoursCredit(userId, event.slug),
+      ]);
 
     return {
       slug: event.slug,
@@ -215,6 +234,7 @@ export class EventsService {
       hasTicket: !!hasTicketTxn,
       balance,
       approvedHours: Math.round(totalApprovedHours * 10) / 10,
+      eventHoursCredit,
     };
   }
 
@@ -245,11 +265,40 @@ export class EventsService {
     if (event.ticketThreshold !== null) {
       const { totalApprovedHours } =
         await this.balanceService.getUserBalance(userId);
-      if (totalApprovedHours < event.ticketThreshold) {
+      const eventHoursCredit = await this.getEventHoursCredit(
+        userId,
+        event.slug,
+      );
+      const totalEligibleHours = totalApprovedHours + eventHoursCredit;
+      if (totalEligibleHours < event.ticketThreshold) {
         throw new BadRequestException(
-          `You need ${event.ticketThreshold} approved hours to buy a ticket. You have ${Math.round(totalApprovedHours * 10) / 10}.`,
+          `You need ${event.ticketThreshold} approved hours to buy a ticket. You have ${Math.round(totalEligibleHours * 10) / 10}.`,
         );
       }
+    }
+
+    // Sum up all event hours credits for this specific event and reduce the ticket cost
+    const eventHoursCredits = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        eventId: event.eventId,
+        eventHoursCredit: { not: null },
+        refundedAt: null,
+      },
+      select: { eventHoursCredit: true },
+    });
+    const totalEventHoursCredit = eventHoursCredits.reduce(
+      (sum, txn) => sum + (txn.eventHoursCredit ?? 0),
+      0,
+    );
+    const netTicketCost = Math.max(0, event.ticketCost! - totalEventHoursCredit);
+
+    // Verify the user has sufficient balance to pay for the ticket
+    const { balance } = await this.balanceService.getUserBalance(userId);
+    if (balance < netTicketCost) {
+      throw new BadRequestException(
+        `Insufficient balance. You need ${netTicketCost} hours to buy a ticket, but you have ${Math.round(balance * 10) / 10} hours.`,
+      );
     }
 
     let transaction;
@@ -261,7 +310,7 @@ export class EventsService {
             eventId: event.eventId,
             kind: 'EventTicket',
             itemDescription: `Ticket — ${event.title}`,
-            cost: event.ticketCost!,
+            cost: netTicketCost,
           },
         });
         await tx.pinnedEvent.upsert({

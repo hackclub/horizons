@@ -19,6 +19,8 @@
 		/** Whether ticket purchase is currently open. */
 		ticketEnabled?: boolean;
 		hasTicket?: boolean;
+		/** Hours credited toward the event goal from shop item purchases. */
+		eventHoursCredit?: number;
 		onclick?: (e: MouseEvent) => void;
 		onmouseenter?: () => void;
 		selected?: boolean;
@@ -38,6 +40,7 @@
 		ticketCost = null,
 		ticketEnabled = false,
 		hasTicket = false,
+		eventHoursCredit = 0,
 		onclick,
 		onmouseenter,
 		selected = false,
@@ -64,11 +67,12 @@
 		// Threshold of approved hours hit and the purchase window is open.
 		// Null threshold means no eligibility gate; only ticketCost+ticketEnabled
 		// need to be set for the purchase prompt to show.
+		// Include eventHoursCredit from shop items in the eligibility calculation.
 		if (
 			ticketCost !== null &&
 			ticketEnabled &&
 			!hasTicket &&
-			(ticketThreshold === null || approvedDisplay >= ticketThreshold)
+			(ticketThreshold === null || (approvedDisplay + eventHoursCredit) >= ticketThreshold)
 		) {
 			return 'buy-ticket';
 		}
