@@ -39,6 +39,7 @@
         cost: string;
         regions: string[];
         maxPerUser: string;
+        enableDebt: boolean;
     }>({
         shopId: null,
         name: '',
@@ -46,7 +47,8 @@
         imageUrl: '',
         cost: '',
         regions: [],
-        maxPerUser: ''
+        maxPerUser: '',
+        enableDebt: false
     });
     let editingItemId = $state<number | null>(null);
     let shopItemSaving = $state(false);
@@ -322,7 +324,8 @@
             imageUrl: '',
             cost: '',
             regions: [],
-            maxPerUser: ''
+            maxPerUser: '',
+            enableDebt: false
         };
         editingItemId = null;
         shopItemError = '';
@@ -338,7 +341,8 @@
             imageUrl: item.imageUrl || '',
             cost: item.cost.toString(),
             regions: item.regions ?? [],
-            maxPerUser: item.maxPerUser?.toString() || ''
+            maxPerUser: item.maxPerUser?.toString() || '',
+            enableDebt: item.enableDebt ?? false
         };
         shopItemError = '';
         shopItemSuccess = '';
@@ -362,7 +366,8 @@
             imageUrl: shopItemForm.imageUrl || undefined,
             cost: parseFloat(shopItemForm.cost),
             regions: shopItemForm.regions.length > 0 ? shopItemForm.regions : undefined,
-            maxPerUser: shopItemForm.maxPerUser ? parseInt(shopItemForm.maxPerUser) : undefined
+            maxPerUser: shopItemForm.maxPerUser ? parseInt(shopItemForm.maxPerUser) : undefined,
+            enableDebt: shopItemForm.enableDebt
         };
 
         try {
@@ -904,6 +909,18 @@
                         bind:value={shopItemForm.description}
                     />
                 </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-ds-text-secondary">Debt</label>
+                    <label class="flex items-start gap-2 text-sm text-ds-text-primary cursor-pointer">
+                        <Checkbox bind:checked={shopItemForm.enableDebt} />
+                        <span>
+                            Enable debt
+                            <span class="block text-xs text-ds-text-secondary">
+                                Lets users purchase this item even without enough hours, sending their balance negative.
+                            </span>
+                        </span>
+                    </label>
+                </div>
             </div>
 
             <div class="flex flex-wrap gap-3 items-center">
@@ -994,6 +1011,12 @@
                                                 <span
                                                     class="px-2 py-0.5 text-xs rounded bg-orange-500/20 border border-orange-400 text-orange-300"
                                                     >Max {item.maxPerUser}/user</span
+                                                >
+                                            {/if}
+                                            {#if item.enableDebt}
+                                                <span
+                                                    class="px-2 py-0.5 text-xs rounded bg-pink-500/20 border border-pink-400 text-pink-700 dark:text-pink-300"
+                                                    >Debt allowed</span
                                                 >
                                             {/if}
                                             {#if item.variants && item.variants.length > 0}

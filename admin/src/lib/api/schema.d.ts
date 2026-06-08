@@ -3542,9 +3542,6 @@ export interface components {
             hoursJustification?: string;
             adminComment?: string;
             sendEmail?: boolean;
-            permReject?: boolean;
-            ignorePriorYswsCredit?: boolean;
-            deleteAirtableRecord?: boolean;
         };
         ReviewResultResponse: {
             success: boolean;
@@ -3648,6 +3645,7 @@ export interface components {
             cost: number;
             regions: string[];
             maxPerUser: number | null;
+            enableDebt: boolean;
             isActive: boolean;
             /** Format: date-time */
             createdAt: string;

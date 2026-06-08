@@ -158,6 +158,7 @@ export class ShopService {
         imageUrl: createItemDto.imageUrl,
         cost: createItemDto.cost,
         regions: createItemDto.regions ?? [],
+        enableDebt: createItemDto.enableDebt ?? false,
       },
       include: {
         shop: { select: { slug: true } },
@@ -349,6 +350,7 @@ export class ShopService {
       itemDescription: description,
       itemId,
       variantId: variant?.variantId ?? null,
+      enforceBalance: !item.enableDebt,
       preCheck: async (tx) => {
         if (maxPerUser !== null && maxPerUser > 0) {
           const count = await tx.transaction.count({

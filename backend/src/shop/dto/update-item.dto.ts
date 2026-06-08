@@ -47,5 +47,9 @@ export class UpdateItemDto {
 
   @IsBoolean()
   @IsOptional()
+  enableDebt?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
   isActive?: boolean;
 }
