@@ -75,6 +75,9 @@ export class ShopItemResponse {
   maxPerUser: number | null;
 
   @ApiProperty()
+  enableDebt: boolean;
+
+  @ApiProperty()
   isActive: boolean;
 
   @ApiProperty()

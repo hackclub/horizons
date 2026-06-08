@@ -3,6 +3,7 @@ import {
   IsNumber,
   IsOptional,
   IsInt,
+  IsBoolean,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -33,4 +34,8 @@ export class CreateItemDto {
   @IsOptional()
   @Min(1)
   maxPerUser?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  enableDebt?: boolean;
 }

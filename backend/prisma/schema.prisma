@@ -317,6 +317,7 @@ model ShopItem {
   cost         Float
   regions      String[]          @default([])
   maxPerUser   Int?              @map("max_per_user")
+  enableDebt   Boolean           @default(false) @map("enable_debt")
   isActive     Boolean           @default(true) @map("is_active")
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
