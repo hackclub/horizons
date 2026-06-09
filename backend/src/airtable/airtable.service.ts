@@ -183,6 +183,7 @@ export class AirtableService {
     unsubmittedHours: number;
     chosenEventSlug: string | null;
     country: string | null;
+    slackUserId: string | null;
   }> {
     const [
       approvedAgg,
@@ -224,7 +225,7 @@ export class AirtableService {
       }),
       this.prisma.user.findUnique({
         where: { userId },
-        select: { country: true },
+        select: { country: true, slackUserId: true },
       }),
     ]);
 
@@ -237,6 +238,7 @@ export class AirtableService {
         Math.round((unsubmittedAgg._sum.nowHackatimeHours ?? 0) * 10) / 10,
       chosenEventSlug: pinnedEvent?.event?.slug ?? null,
       country: userProfile?.country ?? null,
+      slackUserId: userProfile?.slackUserId ?? null,
     };
   }
 
@@ -246,6 +248,7 @@ export class AirtableService {
     unsubmittedHours: number;
     chosenEventSlug: string | null;
     country: string | null;
+    slackUserId: string | null;
   }): Record<string, any> {
     return {
       'Approved Hours': stats.approvedHours,
@@ -253,6 +256,7 @@ export class AirtableService {
       'Unsubmitted Hours': stats.unsubmittedHours,
       'Chosen Event': stats.chosenEventSlug ?? '',
       Country: stats.country ?? '',
+      'Slack ID': stats.slackUserId ?? '',
     };
   }
 
