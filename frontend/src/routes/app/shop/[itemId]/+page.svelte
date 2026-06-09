@@ -107,7 +107,7 @@
 		purchasing = true;
 		purchaseError = null;
 		try {
-			const { data, response } = await api.POST('/api/shop/auth/purchase', {
+			const { data, error, response } = await api.POST('/api/shop/auth/purchase', {
 				body: {
 					itemId: item.itemId,
 					variantId: needsVariant ? (selectedVariantId ?? undefined) : undefined,
@@ -123,17 +123,16 @@
 				return;
 			}
 
-			let message = response.statusText || 'Purchase failed.';
-			try {
-				const body = await response.json();
-				// AllExceptionsFilter shape is { success: false, error: string | string[] };
-				// fall back to `message` for anything that bypasses the filter.
-				const raw = body?.error ?? body?.message;
-				if (raw) {
-					message = Array.isArray(raw) ? raw.join(', ') : raw;
-				}
-			} catch {}
-			purchaseError = message;
+			// openapi-fetch already parsed the error body into `error`; reading
+			// `response.json()` after that throws because the stream is consumed,
+			// and HTTP/2 in prod leaves statusText empty — that's the silent
+			// "Purchase failed." path.
+			const errBody = error as
+				| { error?: string | string[]; message?: string | string[] }
+				| undefined;
+			const raw = errBody?.error ?? errBody?.message;
+			const parsed = Array.isArray(raw) ? raw.join(', ') : raw;
+			purchaseError = parsed || response.statusText || 'Purchase failed.';
 		} catch {
 			purchaseError = 'Purchase failed. Please try again.';
 		} finally {
