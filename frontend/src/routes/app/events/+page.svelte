@@ -492,7 +492,7 @@
 				</div>
 				<div class="progress-bar">
 					<p class="progress-text-primary font-cook text-[16px] m-0 leading-normal whitespace-nowrap">
-						{loading && !debugMode ? '— / —' : `${round1(effectiveCompletedHours)}/${round1(targetHours)}`} hours completed
+						{loading && !debugMode ? '— / —' : `${round1(effectiveApprovedHours)}/${round1(targetHours)}`} hours approved
 					</p>
 					{#if !loading || debugMode}
 						<p class="progress-text-muted font-cook text-[12px] m-0 leading-normal whitespace-nowrap">
