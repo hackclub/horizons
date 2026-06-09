@@ -16,6 +16,7 @@
 		regions: string[];
 		isActive: boolean;
 		maxPerUser: number | null;
+		enableDebt: boolean;
 		variants: { variantId: number; name: string; cost: number }[];
 	}
 
@@ -41,7 +42,9 @@
 	const allowsQuantity = $derived(!item?.maxPerUser);
 	const totalCost = $derived(unitCost * (allowsQuantity ? quantity : 1));
 	const needsVariant = $derived((item?.variants.length ?? 0) > 0);
-	const canAfford = $derived(balance !== null && balance >= totalCost);
+	const canAfford = $derived(
+		item?.enableDebt || (balance !== null && balance >= totalCost)
+	);
 	const purchaseDisabled = $derived(
 		!item ||
 			!item.isActive ||
