@@ -2967,6 +2967,9 @@ export interface components {
         };
         StatsSignupCountryEntry: {
             country: string;
+            eventId: number;
+            eventTitle: string;
+            eventSlug: string;
             signedUp: number;
             couldBuyTicket: number;
             canBuyTicket: number;

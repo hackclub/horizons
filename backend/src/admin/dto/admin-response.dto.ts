@@ -967,6 +967,15 @@ class StatsSignupCountryEntry {
   country: string;
 
   @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  eventTitle: string;
+
+  @ApiProperty()
+  eventSlug: string;
+
+  @ApiProperty()
   signedUp: number;
 
   @ApiProperty()

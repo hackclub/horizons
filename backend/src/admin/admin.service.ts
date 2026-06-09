@@ -1090,14 +1090,16 @@ export class AdminService {
     ]);
     const signupsMissingOrigin = Number(signupsMissingOriginRow[0]?.count ?? 0);
 
-    // Per-country participation breakdown. Same nesting rules as the per-event
-    // qualification funnel, but grouped by the user's origin country instead
-    // of by event. Each row counts pinned (user, event) pairs: a user pinned
-    // to two events contributes to their country's signedUp twice, and to
-    // canBuy/couldBuy/bought once per event that gates clear.
+    // Per-country participation breakdown, further split by event so the
+    // frontend can filter the country pie/table down to a single event. Same
+    // nesting rules as the per-event qualification funnel. Each row counts
+    // pinned (user, event) pairs for one (country, event) combination.
     const participationByCountryResult = await this.prisma.$queryRaw<
       Array<{
         country: string;
+        event_id: number;
+        event_title: string;
+        event_slug: string;
         signed_up: bigint;
         could_buy_ticket: bigint;
         can_buy_ticket: bigint;
@@ -1106,6 +1108,9 @@ export class AdminService {
     >`
       SELECT
         u.country,
+        e.event_id,
+        e.title AS event_title,
+        e.slug AS event_slug,
         COUNT(pe.id) AS signed_up,
         COUNT(*) FILTER (
           WHERE e.rsvp_cost IS NULL
@@ -1148,7 +1153,7 @@ export class AdminService {
         WHERE kind = 'EventTicket' AND event_id IS NOT NULL
       ) et ON et.user_id = pe.user_id AND et.event_id = e.event_id
       WHERE u.country IS NOT NULL AND u.country != ''
-      GROUP BY u.country
+      GROUP BY u.country, e.event_id, e.title, e.slug
       ORDER BY signed_up DESC
     `;
 
@@ -1177,6 +1182,9 @@ export class AdminService {
       routes,
       participationByCountry: participationByCountryResult.map((r) => ({
         country: r.country,
+        eventId: r.event_id,
+        eventTitle: r.event_title,
+        eventSlug: r.event_slug,
         signedUp: Number(r.signed_up),
         couldBuyTicket: Number(r.could_buy_ticket),
         canBuyTicket: Number(r.can_buy_ticket),

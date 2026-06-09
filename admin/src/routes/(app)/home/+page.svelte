@@ -23,6 +23,7 @@
 	let selectedEventFilter = $state<string>('all');
 	let selectedFunnelEvent = $state<string>('all');
 	let selectedUserHoursEvent = $state<string>('all');
+	let selectedParticipationEvent = $state<string>('all');
 	let userHoursDist = $state<UserHoursDistribution | null>(null);
 	let userHoursLoading = $state(false);
 	let unmatchedOriginCountries = $state<string[]>([]);
@@ -912,13 +913,51 @@
 		});
 	}
 
-	const participationByCountrySorted = $derived(
-		stats
-			? [...((stats.signups as any).participationByCountry ?? [])].sort(
-					(a: any, b: any) => b[participationPieMetric] - a[participationPieMetric],
-				)
-			: [],
-	);
+	// Backend returns one row per (country, event). When "all events" is
+	// selected we sum across events per country; otherwise we keep only rows
+	// for the selected event slug.
+	const participationByCountrySorted = $derived.by(() => {
+		if (!stats) return [];
+		const rows = (stats.signups as any).participationByCountry as Array<{
+			country: string;
+			eventSlug: string;
+			signedUp: number;
+			couldBuyTicket: number;
+			canBuyTicket: number;
+			boughtTicket: number;
+		}>;
+		const filtered =
+			selectedParticipationEvent === 'all'
+				? rows
+				: rows.filter((r) => r.eventSlug === selectedParticipationEvent);
+		const byCountry = new Map<
+			string,
+			{
+				country: string;
+				signedUp: number;
+				couldBuyTicket: number;
+				canBuyTicket: number;
+				boughtTicket: number;
+			}
+		>();
+		for (const r of filtered) {
+			const agg = byCountry.get(r.country) ?? {
+				country: r.country,
+				signedUp: 0,
+				couldBuyTicket: 0,
+				canBuyTicket: 0,
+				boughtTicket: 0,
+			};
+			agg.signedUp += r.signedUp;
+			agg.couldBuyTicket += r.couldBuyTicket;
+			agg.canBuyTicket += r.canBuyTicket;
+			agg.boughtTicket += r.boughtTicket;
+			byCountry.set(r.country, agg);
+		}
+		return [...byCountry.values()].sort(
+			(a, b) => b[participationPieMetric] - a[participationPieMetric],
+		);
+	});
 
 	function renderParticipationCountryPie() {
 		if (!participationCountryPieEl) return;
@@ -1155,9 +1194,10 @@
 		if (stats) tick().then(() => renderSignupMap());
 	});
 
-	// Re-render the participation pie when its metric selector changes.
+	// Re-render the participation pie when its metric or event filter changes.
 	$effect(() => {
 		participationPieMetric;
+		selectedParticipationEvent;
 		if (stats) tick().then(() => renderParticipationCountryPie());
 	});
 
@@ -1169,6 +1209,10 @@
 
 	const eventFilterOptions = $derived(
 		stats ? stats.signups.perEvent.map((e) => e.title) : [],
+	);
+
+	const participationEventOptions = $derived(
+		stats ? stats.signups.perEvent.map((e) => ({ slug: e.slug, title: e.title })) : [],
 	);
 
 	// Backend exposes a fresh `stats.projects` field with hackatime-link counts.
@@ -1518,6 +1562,17 @@
 					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
 						<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Participation by Country Breakdown</p>
 						<div class="flex flex-wrap items-center gap-3">
+							{#if participationEventOptions.length > 0}
+								<select
+									bind:value={selectedParticipationEvent}
+									class="rounded-md border border-ds-border bg-ds-surface px-2 py-1 text-xs text-ds-text"
+								>
+									<option value="all">All events</option>
+									{#each participationEventOptions as event}
+										<option value={event.slug}>{event.title}</option>
+									{/each}
+								</select>
+							{/if}
 							<div class="flex items-center gap-1">
 								<span class="text-[10px] uppercase tracking-wide text-ds-text-secondary mr-1">Columns:</span>
 								{#each participationFieldOrder as field}
