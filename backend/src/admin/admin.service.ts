@@ -13,6 +13,7 @@ import { StreakService } from '../streaks/streak.service';
 import { HackatimeService } from '../hackatime/hackatime.service';
 import { LoopsService } from '../loops/loops.service';
 import { BalanceService } from '../balance/balance.service';
+import { AirtableService } from '../airtable/airtable.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 import * as Papa from 'papaparse';
 
@@ -58,6 +59,7 @@ export class AdminService {
     private hackatimeService: HackatimeService,
     private loopsService: LoopsService,
     private balanceService: BalanceService,
+    private airtableService: AirtableService,
   ) {}
 
   async getAllSubmissions() {
@@ -3150,6 +3152,12 @@ export class AdminService {
     console.log(
       `[AdminAdjustment] user_id=${targetUserId} email=${user.email} hours=${hours} reason="${reason}" by_admin=${requestingUserId} new_balance=${result.balance}`,
     );
+
+    void this.airtableService
+      .syncTransaction(result.txn.transactionId)
+      .catch((err) =>
+        console.error('[AdminAdjustment] Airtable txn sync failed:', err),
+      );
 
     return {
       transactionId: result.txn.transactionId,

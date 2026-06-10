@@ -394,6 +394,10 @@ Syncs data to Airtable. No controller — used internally by other modules.
 - `syncUserEvent(userId, eventName)` — creates/updates User record with event timestamps (signUp, firstProjectCreated, firstSubmit, onboardingCompleted)
 - `createApprovedProject(submission)` — creates Approved Projects record on first approval (with delta hours calculation)
 - `updateApprovedProject(submission)` — updates existing record when re-editing an approval
+- `syncTransaction(transactionId)` — mirrors one transaction to the Transactions table (creates when `airtableRecId` is null, PATCHes otherwise); fired after every transaction create/refund/fulfill/unfulfill
+- `syncAllTransactions()` — catch-up sweep creating records for all transactions with null `airtableRecId` (startup + hourly cron in `AirtableSyncService`)
+
+Table field configs live in [`airtable/SCHEMA.md`](../airtable/SCHEMA.md); flow docs in [`docs/airtable-sync.md`](../docs/airtable-sync.md).
 
 ---
 
@@ -427,7 +431,7 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 | **Shop** | slug, description, isActive, isPublic | Shop containers |
 | **ShopItem** | shopId, name, cost, maxPerUser, isActive, imageUrl | Purchasable items |
 | **ShopItemVariant** | itemId, name, cost, isActive | Item variants |
-| **Transaction** | userId, itemId, variantId, cost, isFulfilled | Purchase records |
+| **Transaction** | userId, kind, itemId, variantId, eventId, cost, isFulfilled, refundedAt, airtableRecId | Purchase records (mirrored to Airtable) |
 | **PinnedItem** | userId, itemId | User's pinned shop item |
 
 ### Other Models
@@ -479,7 +483,7 @@ The backend never makes outbound HTTP requests against user-supplied URLs. The o
 |---------|---------|--------|
 | **Hack Club Auth** | OAuth login (OpenID Connect) | `HACKCLUB_CLIENT_ID`, `HACKCLUB_CLIENT_SECRET`, `HACKCLUB_REDIRECT_URI` |
 | **Hackatime** | Time tracking OAuth + hours API | `HACKATIME_CLIENT_ID`, `HACKATIME_CLIENT_SECRET`, `HACKATIME_API_KEY` |
-| **Airtable** | Record sync for users and approved projects | `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID` |
+| **Airtable** | Record sync for users, approved projects, and transactions | `YSWS_AIRTABLE_API_KEY`, `YSWS_BASE_ID`, `YSWS_USERS_TABLE_ID`, `YSWS_APPROVED_PROJECTS_TABLE_ID`, `YSWS_TRANSACTIONS_TABLE_ID` |
 | **Slack** | DM notifications to students; daily reviewer leaderboard (UTC midnight) | `SLACK_BOT_TOKEN`, `SLACK_REVIEWER_LEADERBOARD_CHANNEL` (optional — channel ID; leaderboard cron no-ops if unset) |
 | **Loops** | Transactional emails (submission reviewed) | `LOOPS_API_KEY`, `LOOPS_TID_SUBMISSION_APPROVED`, `LOOPS_TID_SUBMISSION_DENIED` |
 | **GitHub** | Repo info and README for reviewers | `GITHUB_TOKENS` (comma-separated pool) |
