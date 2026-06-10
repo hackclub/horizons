@@ -1009,10 +1009,9 @@ export class AirtableService {
   private static readonly TXN_INCLUDE = {
     user: {
       select: {
-        email: true,
         firstName: true,
         lastName: true,
-        slackUserId: true,
+        airtableRecId: true,
       },
     },
     item: { select: { name: true } },
@@ -1032,10 +1031,9 @@ export class AirtableService {
     refundedAt: Date | null;
     createdAt: Date;
     user: {
-      email: string;
       firstName: string;
       lastName: string;
-      slackUserId: string | null;
+      airtableRecId: string | null;
     };
     item: { name: string } | null;
     variant: { name: string } | null;
@@ -1043,10 +1041,11 @@ export class AirtableService {
   }): Record<string, any> {
     return {
       'Transaction ID': txn.transactionId,
-      Email: txn.user.email,
+      // Link to the Users table row (drives lookup fields). Empty until the
+      // user has been synced to Airtable and has an airtableRecId.
+      User: txn.user.airtableRecId ? [txn.user.airtableRecId] : [],
       'First Name': txn.user.firstName,
       'Last Name': txn.user.lastName,
-      'Slack ID': txn.user.slackUserId ?? '',
       Kind: txn.kind,
       'Item Description': txn.itemDescription,
       'Item Name': txn.item?.name ?? '',
