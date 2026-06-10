@@ -11,6 +11,7 @@ import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { debugLog } from '../utils/debug-log';
 import { BalanceService } from '../balance/balance.service';
+import { AirtableService } from '../airtable/airtable.service';
 
 @Injectable()
 export class ShopService {
@@ -18,6 +19,7 @@ export class ShopService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private balanceService: BalanceService,
+    private airtableService: AirtableService,
   ) {}
 
   // ── Shop CRUD ──
@@ -515,6 +517,8 @@ export class ShopService {
   async getUserTransactions(userId: number) {
     return this.prisma.transaction.findMany({
       where: { userId },
+      // Internal sync pointer — never exposed to regular users.
+      omit: { airtableRecId: true },
       include: {
         item: {
           select: {
@@ -594,6 +598,12 @@ export class ShopService {
       data: { refundedAt: new Date() },
     });
 
+    void this.airtableService
+      .syncTransaction(transactionId)
+      .catch((err) =>
+        console.error('[Shop] Airtable txn sync failed (refund):', err),
+      );
+
     const baseName = transaction.item?.name ?? transaction.itemDescription;
     const itemName = transaction.variant
       ? `${baseName} (${transaction.variant.name})`
@@ -664,6 +674,12 @@ export class ShopService {
       },
     });
 
+    void this.airtableService
+      .syncTransaction(transactionId)
+      .catch((err) =>
+        console.error('[Shop] Airtable txn sync failed (fulfill):', err),
+      );
+
     const baseName = transaction.item?.name ?? transaction.itemDescription;
     const itemName = transaction.variant
       ? `${baseName} (${transaction.variant.name})`
@@ -723,6 +739,12 @@ export class ShopService {
         },
       },
     });
+
+    void this.airtableService
+      .syncTransaction(transactionId)
+      .catch((err) =>
+        console.error('[Shop] Airtable txn sync failed (unfulfill):', err),
+      );
 
     const baseName = transaction.item?.name ?? transaction.itemDescription;
     const itemName = transaction.variant

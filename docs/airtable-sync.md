@@ -1,6 +1,8 @@
 # Airtable (YSWS) Sync
 
-The backend syncs data one-way (Horizon → Airtable) to two tables in the YSWS Airtable base: a **Users** table for lifecycle events and an **Approved Projects** table for approved submissions.
+The backend syncs data one-way (Horizon → Airtable) to three tables in the YSWS Airtable base: a **Users** table for lifecycle events, an **Approved Projects** table for approved submissions, and a **Transactions** table mirroring the shop/event/adjustment ledger.
+
+Canonical table field configs (names, types, select options) live in [`airtable/SCHEMA.md`](../airtable/SCHEMA.md) — follow that file when creating tables.
 
 Flow:
 1. Someone builds a project and logs hours via Hackatime.
@@ -18,6 +20,7 @@ YSWS_AIRTABLE_API_KEY              # Airtable API key
 YSWS_BASE_ID                       # Airtable base ID
 YSWS_APPROVED_PROJECTS_TABLE_ID    # Table ID for approved projects
 YSWS_USERS_TABLE_ID                # Table ID for user events
+YSWS_TRANSACTIONS_TABLE_ID         # Table ID for the transactions mirror
 ```
 
 All are optional. If any are missing, syncs silently return without error.
@@ -125,6 +128,31 @@ const delta = Math.max(0, currentApprovedHours - previousHours);
 | 3rd (resubmit) | 30 | 25 | 5 |
 
 `Math.max(0, ...)` ensures delta is never negative (e.g., if an admin reduces hours).
+
+## Transactions Table
+
+Mirrors every `Transaction` row (all kinds: `ShopItem`, `EventTicket`, `EventRsvp`, `AdminAdjustment`) — one Airtable record per transaction. Field config in [`airtable/SCHEMA.md`](../airtable/SCHEMA.md#transactions). Identity fields are limited to email, name, and Slack ID — no address PII.
+
+### Sync Behavior
+
+- **Create**: when a transaction has no `airtableRecId`, `syncTransaction()` POSTs a new record and stores the returned record ID on the row (`transaction.airtableRecId`)
+- **Update**: when `airtableRecId` is set, the record is PATCHed with the full current row state (explicit `null`s clear fields, so unfulfilling clears `Fulfilled At`)
+- **404 healing**: if the Airtable record was deleted, the PATCH 404 nulls out `airtableRecId` and the next sweep recreates it
+- **Catch-up sweep**: on startup and hourly (`AirtableSyncService`), every row with a null `airtableRecId` is batch-created (10 records/request, 250ms pacing). This covers the one-time backfill of pre-feature rows and any live sync that failed
+
+### Trigger Points
+
+| Event | Triggered By | Location |
+|-------|-------------|----------|
+| Shop purchase (per unit, incl. quantity > 1) | `processPurchase()` after commit | `balance.service.ts` |
+| Event ticket purchase | `buyTicket()` after commit | `events.service.ts` |
+| Admin balance adjustment | `adjustUserHours()` after commit | `admin.service.ts` |
+| Refund / fulfill / unfulfill | after the status update | `shop.service.ts` |
+| Backfill + missed syncs | startup + hourly cron | `airtable-sync.service.ts` |
+
+`EventRsvp` rows are legacy — nothing creates them anymore; existing rows are picked up by the sweep. All live syncs are fire-and-forget: failures are logged and healed by the sweep (creates) or retried on the next status change (updates).
+
+`airtableRecId` is an internal pointer and is omitted from user-facing transaction responses (`getUserTransactions`).
 
 ## Backfill Service
 

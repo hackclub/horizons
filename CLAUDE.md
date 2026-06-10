@@ -32,7 +32,7 @@ The backend is organized into NestJS feature modules under `backend/src/`:
 - `uploads/` — Image upload to Hack Club CDN
 - `loops/` — Loops transactional email client (replaces archived `mail/` module; see `backend/archive/mail/`)
 - `slack/` — Slack DM notifications (internal service, no controller)
-- `airtable/` — Airtable record sync for users and approved projects (internal service)
+- `airtable/` — Airtable record sync for users, approved projects, and transactions (internal service; table schemas in root `airtable/SCHEMA.md`)
 - `health/` — Health check endpoint
 - `integrations/` — Public-facing endpoints for external tools/dashboards (referral lookups, per-sub-event stats for graphs)
 

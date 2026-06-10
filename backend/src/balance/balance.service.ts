@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../../generated/prisma/client';
 import { TransactionKind } from '../../generated/prisma/enums';
 import { PrismaService } from '../prisma.service';
+import { AirtableService } from '../airtable/airtable.service';
 import { debugLog } from '../utils/debug-log';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class BalanceService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private airtableService: AirtableService,
   ) {}
 
   async getUserBalance(userId: number, client?: Prisma.TransactionClient) {
@@ -70,44 +72,61 @@ export class BalanceService {
 
     const totalCost = cost * quantity;
 
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT 1 FROM users WHERE user_id = ${userId} FOR UPDATE`;
+    const { lastTxn, createdIds } = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM users WHERE user_id = ${userId} FOR UPDATE`;
 
-      if (preCheck) {
-        await preCheck(tx);
-      }
-
-      if (enforceBalance) {
-        const { balance } = await this.getUserBalance(userId, tx);
-        if (balance < totalCost) {
-          throw new BadRequestException(
-            `Insufficient balance. You have ${balance} hours but this costs ${totalCost} hours.`,
-          );
+        if (preCheck) {
+          await preCheck(tx);
         }
-      }
 
-      const data = {
-        userId,
-        kind,
-        itemId,
-        variantId,
-        eventId,
-        itemDescription,
-        cost,
-      };
+        if (enforceBalance) {
+          const { balance } = await this.getUserBalance(userId, tx);
+          if (balance < totalCost) {
+            throw new BadRequestException(
+              `Insufficient balance. You have ${balance} hours but this costs ${totalCost} hours.`,
+            );
+          }
+        }
 
-      let lastTxn = null;
-      for (let i = 0; i < quantity; i++) {
-        lastTxn = await tx.transaction.create({
-          data,
-          include: {
-            item: true,
-            variant: true,
-          },
-        });
-      }
-      return lastTxn!;
-    });
+        const data = {
+          userId,
+          kind,
+          itemId,
+          variantId,
+          eventId,
+          itemDescription,
+          cost,
+        };
+
+        const ids: number[] = [];
+        let last = null;
+        for (let i = 0; i < quantity; i++) {
+          last = await tx.transaction.create({
+            data,
+            omit: { airtableRecId: true },
+            include: {
+              item: true,
+              variant: true,
+            },
+          });
+          ids.push(last.transactionId);
+        }
+        return { lastTxn: last!, createdIds: ids };
+      },
+    );
+
+    // Mirror to Airtable only after the db commit; fire-and-forget so a slow
+    // or failing sync never blocks the purchase (the hourly sweep heals gaps).
+    for (const id of createdIds) {
+      void this.airtableService
+        .syncTransaction(id)
+        .catch((err) =>
+          console.error(`[Balance] Airtable txn sync failed for ${id}:`, err),
+        );
+    }
+
+    return lastTxn;
   }
 
   async verifyEligibility(userId: number, context: string): Promise<void> {

@@ -8,6 +8,10 @@ import { AirtableService } from './airtable.service';
  * also drift via paths that don't trigger a sync (Hackatime recalc, manual
  * project edits). This cron walks every user with an Airtable record and
  * rewrites the four computed fields.
+ *
+ * Also hosts the hourly Transactions sweep: live hooks mirror each
+ * transaction on create/fulfill/refund, and syncAllTransactions backfills
+ * any row whose airtableRecId is still null.
  */
 @Injectable()
 export class AirtableSyncService implements OnModuleInit {
@@ -20,11 +24,22 @@ export class AirtableSyncService implements OnModuleInit {
     this.runSync('startup').catch((err) =>
       this.logger.error('Startup Airtable user-stats sync threw:', err),
     );
+    this.runTransactionSync('startup').catch((err) =>
+      this.logger.error('Startup Airtable transaction sync threw:', err),
+    );
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleDailyUserStatsSync() {
     await this.runSync('daily');
+  }
+
+  // Catch-up for transactions whose live sync failed (plus the one-time
+  // backfill on first deploy). Cheap no-op query when nothing is pending, so
+  // hourly keeps Airtable from lagging a full day behind.
+  @Cron(CronExpression.EVERY_HOUR)
+  async handleHourlyTransactionSync() {
+    await this.runTransactionSync('hourly');
   }
 
   private async runSync(trigger: 'startup' | 'daily') {
@@ -36,6 +51,18 @@ export class AirtableSyncService implements OnModuleInit {
       );
     } catch (err) {
       this.logger.error(`${trigger} Airtable user-stats sync threw:`, err);
+    }
+  }
+
+  private async runTransactionSync(trigger: 'startup' | 'hourly') {
+    this.logger.log(`Starting ${trigger} Airtable transaction sync`);
+    try {
+      const result = await this.airtableService.syncAllTransactions();
+      this.logger.log(
+        `${trigger} Airtable transaction sync complete: ${result.created} created, ${result.failed} failed`,
+      );
+    } catch (err) {
+      this.logger.error(`${trigger} Airtable transaction sync threw:`, err);
     }
   }
 }

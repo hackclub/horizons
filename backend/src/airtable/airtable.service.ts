@@ -15,6 +15,8 @@ export class AirtableService {
   private readonly APPROVED_PROJECTS_TABLE_ID =
     process.env.YSWS_APPROVED_PROJECTS_TABLE_ID;
   private readonly USERS_TABLE_ID = process.env.YSWS_USERS_TABLE_ID;
+  private readonly TRANSACTIONS_TABLE_ID =
+    process.env.YSWS_TRANSACTIONS_TABLE_ID;
 
   // async createYSWSSubmission(data: {
   //   user: {
@@ -990,5 +992,221 @@ export class AirtableService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Transactions table sync
+  //
+  // Every Transaction row is mirrored to the YSWS Transactions table (schema in
+  // airtable/SCHEMA.md). Live hooks fire syncTransaction after each create or
+  // status change; syncAllTransactions is the catch-up sweep that backfills any
+  // row whose airtableRecId is still null (missed live syncs, pre-feature rows).
+
+  private static readonly TXN_INCLUDE = {
+    user: {
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        slackUserId: true,
+      },
+    },
+    item: { select: { name: true } },
+    variant: { select: { name: true } },
+    event: { select: { title: true } },
+  } as const;
+
+  // Always emits the full field set with explicit nulls — Airtable clears a
+  // field when PATCHed with null, which unfulfill relies on for 'Fulfilled At'.
+  private transactionToFields(txn: {
+    transactionId: number;
+    kind: string;
+    itemDescription: string;
+    cost: number;
+    isFulfilled: boolean;
+    fulfilledAt: Date | null;
+    refundedAt: Date | null;
+    createdAt: Date;
+    user: {
+      email: string;
+      firstName: string;
+      lastName: string;
+      slackUserId: string | null;
+    };
+    item: { name: string } | null;
+    variant: { name: string } | null;
+    event: { title: string } | null;
+  }): Record<string, any> {
+    return {
+      'Transaction ID': txn.transactionId,
+      Email: txn.user.email,
+      'First Name': txn.user.firstName,
+      'Last Name': txn.user.lastName,
+      'Slack ID': txn.user.slackUserId ?? '',
+      Kind: txn.kind,
+      'Item Description': txn.itemDescription,
+      'Item Name': txn.item?.name ?? '',
+      'Variant Name': txn.variant?.name ?? '',
+      'Event Name': txn.event?.title ?? '',
+      'Cost (Hours)': txn.cost,
+      Fulfilled: txn.isFulfilled,
+      'Fulfilled At': txn.fulfilledAt ? txn.fulfilledAt.toISOString() : null,
+      'Refunded At': txn.refundedAt ? txn.refundedAt.toISOString() : null,
+      'Created At': txn.createdAt.toISOString(),
+    };
+  }
+
+  /**
+   * Mirror one transaction to the Transactions table: creates the record when
+   * the row has no airtableRecId yet, otherwise PATCHes the existing record
+   * with the current row state. Callers fire-and-forget this after the db
+   * commit; failures are logged and left for the hourly sweep (creates) to
+   * heal. No-op when Airtable isn't configured.
+   */
+  async syncTransaction(transactionId: number): Promise<void> {
+    if (
+      !this.AIRTABLE_API_KEY ||
+      !this.YSWS_BASE_ID ||
+      !this.TRANSACTIONS_TABLE_ID
+    ) {
+      return;
+    }
+
+    const txn = await this.prisma.transaction.findUnique({
+      where: { transactionId },
+      include: AirtableService.TXN_INCLUDE,
+    });
+    // Row can vanish between commit and sync (user cascade delete).
+    if (!txn) return;
+
+    const fields = this.transactionToFields(txn);
+    const headers = {
+      Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    };
+
+    if (txn.airtableRecId) {
+      const response = await fetch(
+        `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.TRANSACTIONS_TABLE_ID}/${txn.airtableRecId}`,
+        { method: 'PATCH', headers, body: JSON.stringify({ fields }) },
+      );
+      if (response.status === 404) {
+        // Record was deleted in Airtable — drop the pointer so the sweep
+        // recreates it.
+        await this.prisma.transaction.updateMany({
+          where: { transactionId },
+          data: { airtableRecId: null },
+        });
+      } else if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        console.error(
+          `Airtable transaction PATCH failed (${response.status}) for txn ${transactionId}:`,
+          errorText,
+        );
+      }
+      return;
+    }
+
+    const response = await fetch(
+      `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.TRANSACTIONS_TABLE_ID}`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ records: [{ fields }] }),
+      },
+    );
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error(
+        `Airtable transaction create failed (${response.status}) for txn ${transactionId}:`,
+        errorText,
+      );
+      return;
+    }
+    const result = await response.json();
+    // updateMany, not update: the row may be cascade-deleted mid-flight, and
+    // the null-guard keeps us from clobbering a concurrent sweep's write.
+    await this.prisma.transaction.updateMany({
+      where: { transactionId, airtableRecId: null },
+      data: { airtableRecId: result.records[0].id },
+    });
+  }
+
+  /**
+   * Catch-up sweep: create Airtable records for every transaction that has no
+   * airtableRecId (backfill of pre-feature rows + any live sync that failed).
+   * Batches 10 records per create request — the Airtable maximum — and paces
+   * requests to stay under the 5 req/sec base limit.
+   */
+  async syncAllTransactions(): Promise<{ created: number; failed: number }> {
+    if (
+      !this.AIRTABLE_API_KEY ||
+      !this.YSWS_BASE_ID ||
+      !this.TRANSACTIONS_TABLE_ID
+    ) {
+      return { created: 0, failed: 0 };
+    }
+
+    const txns = await this.prisma.transaction.findMany({
+      where: { airtableRecId: null },
+      include: AirtableService.TXN_INCLUDE,
+      orderBy: { transactionId: 'asc' },
+    });
+
+    let created = 0;
+    let failed = 0;
+    const BATCH_SIZE = 10;
+
+    for (let i = 0; i < txns.length; i += BATCH_SIZE) {
+      const chunk = txns.slice(i, i + BATCH_SIZE);
+      try {
+        const response = await fetch(
+          `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.TRANSACTIONS_TABLE_ID}`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              records: chunk.map((t) => ({
+                fields: this.transactionToFields(t),
+              })),
+            }),
+          },
+        );
+        if (response.ok) {
+          const result = await response.json();
+          // Airtable returns records in request order — map ids back by index.
+          for (let j = 0; j < chunk.length; j++) {
+            await this.prisma.transaction.updateMany({
+              where: {
+                transactionId: chunk[j].transactionId,
+                airtableRecId: null,
+              },
+              data: { airtableRecId: result.records[j].id },
+            });
+          }
+          created += chunk.length;
+        } else {
+          failed += chunk.length;
+          const errorText = await response.text().catch(() => '');
+          console.error(
+            `Airtable transaction batch create failed (${response.status}):`,
+            errorText,
+          );
+        }
+      } catch (err) {
+        failed += chunk.length;
+        console.error('Airtable transaction batch create threw:', err);
+      }
+
+      // Pace batches: 5 req/sec base limit. 250ms keeps us at 4 req/sec.
+      if (i + BATCH_SIZE < txns.length) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    }
+
+    return { created, failed };
   }
 }

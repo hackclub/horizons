@@ -295,6 +295,9 @@ export class EventsService {
     // ticket-purchase email cohort. Lookup email first since syncUserEvent
     // is keyed on it; failures are non-fatal.
     void this.syncTicketPurchaseToAirtable(userId);
+    void this.airtableService
+      .syncTransaction(transaction.transactionId)
+      .catch((err) => console.error('[Events] Airtable txn sync failed:', err));
 
     const newBalance = await this.balanceService.getUserBalance(userId);
     return {
