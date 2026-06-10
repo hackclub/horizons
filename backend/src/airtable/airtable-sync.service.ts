@@ -36,10 +36,10 @@ export class AirtableSyncService implements OnModuleInit {
 
   // Catch-up for transactions whose live sync failed (plus the one-time
   // backfill on first deploy). Cheap no-op query when nothing is pending, so
-  // hourly keeps Airtable from lagging a full day behind.
-  @Cron(CronExpression.EVERY_HOUR)
-  async handleHourlyTransactionSync() {
-    await this.runTransactionSync('hourly');
+  // running every 10 minutes keeps Airtable from lagging behind.
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async handleTransactionSync() {
+    await this.runTransactionSync('interval');
   }
 
   private async runSync(trigger: 'startup' | 'daily') {
@@ -54,7 +54,7 @@ export class AirtableSyncService implements OnModuleInit {
     }
   }
 
-  private async runTransactionSync(trigger: 'startup' | 'hourly') {
+  private async runTransactionSync(trigger: 'startup' | 'interval') {
     this.logger.log(`Starting ${trigger} Airtable transaction sync`);
     try {
       const result = await this.airtableService.syncAllTransactions();
