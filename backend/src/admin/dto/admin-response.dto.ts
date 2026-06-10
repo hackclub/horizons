@@ -1699,6 +1699,88 @@ export class FraudReviewQueueResponse {
   permRejected: FraudReviewQueueItemResponse[];
 }
 
+class FraudGalleryUserResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty({ type: String, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  slackUserId: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "Slug of the user's pinned event, for cohort scoping.",
+  })
+  eventSlug: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  eventTitle: string | null;
+}
+
+/**
+ * One project in the admin fraud-review gallery. Mirrors the reviewer queue's
+ * shape (type/event/hours for filtering and sorting) but additionally exposes
+ * `joeProjectId` so the UI can deep-link to Joe, and the latest submission's
+ * `approvalStatus`/`reviewed` so admins can filter reviewed vs unreviewed.
+ */
+export class FraudGalleryItemResponse {
+  @ApiProperty()
+  projectId: number;
+
+  @ApiProperty()
+  projectTitle: string;
+
+  @ApiProperty()
+  projectType: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "Joe's project UUID, used to deep-link to the fraud-review platform. Null until the project has been pushed to Joe.",
+  })
+  joeProjectId: string | null;
+
+  @ApiProperty({
+    type: Boolean,
+    nullable: true,
+    description: 'null = not yet fraud-reviewed; true = passed; false = flagged.',
+  })
+  joeFraudPassed: boolean | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  nowHackatimeHours: number | null;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  latestSubmissionCreatedAt: Date | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "Latest submission's approval status (pending | approved | rejected), or null if none.",
+  })
+  approvalStatus: string | null;
+
+  @ApiProperty({
+    description:
+      'True when the latest submission has been finalized (approved or rejected).',
+  })
+  reviewed: boolean;
+
+  @ApiProperty({ type: FraudGalleryUserResponse })
+  user: FraudGalleryUserResponse;
+}
+
 export class PermRejectActionResponse {
   @ApiProperty()
   success: boolean;

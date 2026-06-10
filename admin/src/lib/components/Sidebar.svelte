@@ -14,6 +14,7 @@
 		Receipt,
 		Settings,
 		ShieldCheck,
+		ShieldAlert,
 		Upload,
 		PanelLeftClose,
 		PanelLeftOpen,
@@ -25,7 +26,7 @@
 		href: string;
 		label: string;
 		icon: typeof Home;
-		tint?: 'accent' | 'settings';
+		tint?: 'accent' | 'settings' | 'lilac';
 	};
 
 	type Props = {
@@ -39,6 +40,7 @@
 	const allNavItems: NavItem[] = [
 		{ href: '/home', label: 'Home', icon: Home },
 		{ href: '/review', label: 'Review', icon: PlaySquare, tint: 'accent' },
+		{ href: '/fraud-review', label: 'Fraud Gallery', icon: ShieldAlert, tint: 'lilac' },
 		{ href: '/projects', label: 'Projects', icon: FolderKanban },
 		{ href: '/users', label: 'Users', icon: Users },
 		{ href: '/shop', label: 'Shop', icon: ShoppingBag },
@@ -78,6 +80,8 @@
 		const base = 'border border-transparent';
 		if (active) return base + ' border-ds-border! bg-ds-surface font-medium text-ds-text shadow-(--color-ds-shadow)';
 		if (tint === 'accent') return base + ' border-ds-accent-bg! text-ds-accent hover:bg-ds-surface2';
+		// Purple lilac, matching the Fraud Gallery page accent.
+		if (tint === 'lilac') return base + ' border-[rgba(183,148,246,0.4)]! text-[#b794f6] hover:bg-ds-surface2';
 		return base + ' text-ds-text-secondary hover:bg-ds-surface2';
 	}
 </script>

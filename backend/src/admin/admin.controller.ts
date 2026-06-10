@@ -60,6 +60,7 @@ import {
   FraudQueueResponse,
   LedgerResponse,
   FraudReviewQueueResponse,
+  FraudGalleryItemResponse,
   PermRejectActionResponse,
   ResetJoeActionResponse,
   TriggerReviewerLeaderboardResponse,
@@ -223,6 +224,14 @@ export class AdminController {
   @ApiOkResponse({ type: FraudReviewQueueResponse })
   async getFraudReviewQueue() {
     return this.adminService.getFraudReviewQueue();
+  }
+
+  @Get('fraud-review/gallery')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: [FraudGalleryItemResponse] })
+  async getFraudReviewGallery() {
+    return this.adminService.getFraudReviewGallery();
   }
 
   @Post('fraud-review/:projectId/perm-reject')

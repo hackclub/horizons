@@ -3309,6 +3309,71 @@ export class AdminService {
     return { pendingPermReject, permRejected };
   }
 
+  /**
+   * Flat list of every submitted, non-deleted project for the admin
+   * fraud-review gallery. Shaped like the reviewer queue (type/event/hours)
+   * so the UI can reuse the same filters, plus `joeProjectId` for deep-linking
+   * to Joe and the latest submission's status for the reviewed/unreviewed
+   * filter. Returns reviewed and unreviewed projects alike.
+   */
+  async getFraudReviewGallery() {
+    const projects = await this.prisma.project.findMany({
+      where: { deletedAt: null, submissions: { some: {} } },
+      select: {
+        projectId: true,
+        projectTitle: true,
+        projectType: true,
+        joeProjectId: true,
+        joeFraudPassed: true,
+        nowHackatimeHours: true,
+        createdAt: true,
+        user: {
+          select: {
+            userId: true,
+            firstName: true,
+            lastName: true,
+            slackUserId: true,
+            pinnedEvent: {
+              select: { event: { select: { slug: true, title: true } } },
+            },
+          },
+        },
+        submissions: {
+          orderBy: { createdAt: 'desc' as const },
+          take: 1,
+          select: { approvalStatus: true, createdAt: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return projects.map((p) => {
+      const latest = p.submissions[0] ?? null;
+      const approvalStatus = latest?.approvalStatus ?? null;
+      return {
+        projectId: p.projectId,
+        projectTitle: p.projectTitle,
+        projectType: p.projectType,
+        joeProjectId: p.joeProjectId,
+        joeFraudPassed: p.joeFraudPassed,
+        nowHackatimeHours: p.nowHackatimeHours,
+        createdAt: p.createdAt,
+        latestSubmissionCreatedAt: latest?.createdAt ?? null,
+        approvalStatus,
+        reviewed:
+          approvalStatus === 'approved' || approvalStatus === 'rejected',
+        user: {
+          userId: p.user.userId,
+          firstName: p.user.firstName,
+          lastName: p.user.lastName,
+          slackUserId: p.user.slackUserId,
+          eventSlug: p.user.pinnedEvent?.event.slug ?? null,
+          eventTitle: p.user.pinnedEvent?.event.title ?? null,
+        },
+      };
+    });
+  }
+
   async permRejectProject(
     projectId: number,
     adminUserId: number,

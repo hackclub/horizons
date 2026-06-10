@@ -789,6 +789,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/fraud-review/gallery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getFraudReviewGallery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/fraud-review/{projectId}/perm-reject": {
         parameters: {
             query?: never;
@@ -2845,6 +2861,34 @@ export interface components {
         FraudReviewQueueResponse: {
             pendingPermReject: components["schemas"]["FraudReviewQueueItemResponse"][];
             permRejected: components["schemas"]["FraudReviewQueueItemResponse"][];
+        };
+        FraudGalleryUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            slackUserId: string | null;
+            /** @description Slug of the user's pinned event, for cohort scoping. */
+            eventSlug: string | null;
+            eventTitle: string | null;
+        };
+        FraudGalleryItemResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            /** @description Joe's project UUID, used to deep-link to the fraud-review platform. Null until the project has been pushed to Joe. */
+            joeProjectId: string | null;
+            /** @description null = not yet fraud-reviewed; true = passed; false = flagged. */
+            joeFraudPassed: boolean | null;
+            nowHackatimeHours: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            latestSubmissionCreatedAt: string | null;
+            /** @description Latest submission's approval status (pending | approved | rejected), or null if none. */
+            approvalStatus: string | null;
+            /** @description True when the latest submission has been finalized (approved or rejected). */
+            reviewed: boolean;
+            user: components["schemas"]["FraudGalleryUserResponse"];
         };
         PermRejectProjectDto: {
             /** @description User-facing rejection reason. Shown to the project owner and embedded in the email/Slack DM. */
@@ -5274,6 +5318,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FraudReviewQueueResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getFraudReviewGallery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FraudGalleryItemResponse"][];
                 };
             };
         };
