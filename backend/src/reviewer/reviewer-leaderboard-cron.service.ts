@@ -28,10 +28,11 @@ export class ReviewerLeaderboardCronService {
   ) {}
 
   /**
-   * Post the reviewer leaderboard for the most recent 6-hour UTC window to
-   * Slack. Fires at 00:00, 06:00, 12:00, 18:00 UTC. Skips silently if the
-   * channel env var is unset (e.g. local dev) or no reviews landed in the
-   * window.
+   * Post the day-to-date reviewer leaderboard to Slack. Fires at 00:00, 06:00,
+   * 12:00, 18:00 UTC; each post covers the current UTC day from 00:00 up to the
+   * fire time (the 00:00 fire summarises the full day that just ended). Skips
+   * silently if the channel env var is unset (e.g. local dev) or no reviews
+   * landed in the window.
    */
   @Cron('0 0,6,12,18 * * *', { timeZone: 'UTC' })
   async handleSixHourly() {
@@ -43,13 +44,13 @@ export class ReviewerLeaderboardCronService {
       return;
     }
 
-    const { start, end } = this.previousSixHourWindow();
+    const { start, end } = this.dayToDateWindow();
     await this.postLeaderboard(channelId, start, end);
   }
 
   /**
-   * Manually trigger the same leaderboard the cron would post (the most recent
-   * completed 6-hour UTC window). Throws if the Slack channel env var isn't
+   * Manually trigger the same leaderboard the cron would post (the day-to-date
+   * window for the current UTC day). Throws if the Slack channel env var isn't
    * configured.
    */
   async triggerNow(): Promise<LeaderboardPostResult> {
@@ -59,17 +60,24 @@ export class ReviewerLeaderboardCronService {
         'SLACK_REVIEWER_LEADERBOARD_CHANNEL is not configured.',
       );
     }
-    const { start, end } = this.previousSixHourWindow();
+    const { start, end } = this.dayToDateWindow();
     return this.postLeaderboard(channelId, start, end);
   }
 
-  private previousSixHourWindow() {
+  /**
+   * Day-to-date UTC window: from the start of the day (00:00) up to the most
+   * recent 6-hour boundary. At the 00:00 fire `end` lands on midnight, so the
+   * window rolls back to cover the full day that just ended.
+   */
+  private dayToDateWindow() {
     const now = new Date();
     const end = new Date(now);
     end.setUTCMinutes(0, 0, 0);
     end.setUTCHours(Math.floor(end.getUTCHours() / 6) * 6);
-    const start = new Date(end);
-    start.setUTCHours(start.getUTCHours() - 6);
+    // Start of the UTC day the window reports on. Subtracting 1ms keeps the
+    // 00:00 fire pointed at the prior day rather than an empty window.
+    const start = new Date(end.getTime() - 1);
+    start.setUTCHours(0, 0, 0, 0);
     return { start, end };
   }
 
