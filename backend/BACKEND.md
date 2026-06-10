@@ -166,6 +166,11 @@ Full administrative operations. Accessible to `admin` role only.
 | POST | `/projects/recalculate-all` | Admin | Bulk recalculate all projects |
 | PUT | `/projects/:id/unlock` | Admin | Unlock a locked project |
 | DELETE | `/projects/:id` | Admin | Delete a project |
+| **Fraud review** |||
+| GET | `/fraud-review/queue` | Admin | Silently-rejected projects awaiting a perm-reject decision (+ already perm-rejected) |
+| GET | `/fraud-review/gallery` | Admin | All submitted projects in review-gallery shape (type/event/hours + `joeProjectId`, `joeFraudPassed`, latest `approvalStatus`/`reviewed`) — powers `/admin/fraud-review` |
+| POST | `/fraud-review/:projectId/perm-reject` | Admin | Permanently reject a silently-rejected project |
+| POST | `/projects/:id/joe-reset` | Admin | Reset Joe state and re-enqueue for fraud review |
 | **Users** |||
 | GET | `/users` | Admin | All users with projects and submissions |
 | PUT | `/users/:id/fraud-flag` | Admin | Toggle `isFraud` flag |

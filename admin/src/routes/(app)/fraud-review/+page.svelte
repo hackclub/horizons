@@ -1,0 +1,565 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
+	import { api, type components } from '$lib/api';
+	import { Skeleton } from '$lib/components';
+	import { LayoutGrid, List, ExternalLink } from 'lucide-svelte';
+
+	type FraudGalleryItem = components['schemas']['FraudGalleryItemResponse'];
+	type EventResponse = components['schemas']['EventResponse'];
+
+	// Human-facing Joe fraud-review platform. Each project deep-links here by its
+	// joeProjectId so admins can jump straight to Joe's review UI.
+	const JOE_BASE_URL = 'https://joe.fraud.hackclub.com/ysws/horizons/projects';
+
+	const PROJECT_TYPES = [
+		'windows_playable',
+		'mac_playable',
+		'linux_playable',
+		'web_playable',
+		'cross_platform_playable',
+		'hardware',
+		'mobile_app',
+	];
+
+	// "__none__" sentinel matches users without a pinned event so they can be
+	// triaged separately from cohort-tagged submissions.
+	const NO_EVENT_SENTINEL = '__none__';
+
+	// Filter state is persisted in sessionStorage (distinct keys from the review
+	// gallery) so admins keep their scope across navigation round-trips.
+	const TYPE_FILTER_STORAGE_KEY = 'horizons-fraud-review-type-filter';
+	const EVENT_FILTER_STORAGE_KEY = 'horizons-fraud-review-event-filter';
+	const VIEW_MODE_STORAGE_KEY = 'horizons-fraud-review-view-mode';
+	const SORT_ORDER_STORAGE_KEY = 'horizons-fraud-review-sort-order';
+	const FRAUD_FILTER_STORAGE_KEY = 'horizons-fraud-review-fraud-filter';
+	const REVIEW_FILTER_STORAGE_KEY = 'horizons-fraud-review-review-filter';
+
+	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
+	const SORT_ORDERS: readonly SortOrder[] = [
+		'longest-wait',
+		'shortest-wait',
+		'most-hours',
+		'least-hours',
+	];
+	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
+	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
+	type ReviewFilter = 'all' | 'reviewed' | 'unreviewed';
+	const REVIEW_FILTERS: readonly ReviewFilter[] = ['all', 'reviewed', 'unreviewed'];
+
+	function loadStringSet(key: string): Set<string> {
+		if (typeof sessionStorage === 'undefined') return new Set();
+		try {
+			const raw = sessionStorage.getItem(key);
+			if (!raw) return new Set();
+			const parsed = JSON.parse(raw);
+			if (!Array.isArray(parsed)) return new Set();
+			return new Set(parsed.filter((s): s is string => typeof s === 'string'));
+		} catch {
+			return new Set();
+		}
+	}
+
+	function loadEnum<T extends string>(
+		key: string,
+		allowed: readonly T[],
+		fallback: T,
+	): T {
+		if (typeof sessionStorage === 'undefined') return fallback;
+		try {
+			const raw = sessionStorage.getItem(key);
+			if (raw && (allowed as readonly string[]).includes(raw)) return raw as T;
+		} catch {
+			// sessionStorage can throw (private mode, quota); fall back to default.
+		}
+		return fallback;
+	}
+
+	let selectedTypes = $state<Set<string>>(loadStringSet(TYPE_FILTER_STORAGE_KEY));
+	let selectedEvents = $state<Set<string>>(loadStringSet(EVENT_FILTER_STORAGE_KEY));
+	let viewMode = $state<'grid' | 'list'>(
+		loadEnum(VIEW_MODE_STORAGE_KEY, ['grid', 'list'] as const, 'grid'),
+	);
+	let searchQuery = $state('');
+	let sortOrder = $state<SortOrder>(
+		loadEnum(SORT_ORDER_STORAGE_KEY, SORT_ORDERS, 'longest-wait'),
+	);
+	let fraudFilter = $state<FraudFilter>(
+		loadEnum(FRAUD_FILTER_STORAGE_KEY, FRAUD_FILTERS, 'all'),
+	);
+	let reviewFilter = $state<ReviewFilter>(
+		loadEnum(REVIEW_FILTER_STORAGE_KEY, REVIEW_FILTERS, 'all'),
+	);
+
+	function persist(key: string, value: string) {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(key, value);
+		} catch {
+			// in-memory state still works for the rest of the page lifecycle
+		}
+	}
+
+	$effect(() => persist(TYPE_FILTER_STORAGE_KEY, JSON.stringify([...selectedTypes])));
+	$effect(() => persist(EVENT_FILTER_STORAGE_KEY, JSON.stringify([...selectedEvents])));
+	$effect(() => persist(VIEW_MODE_STORAGE_KEY, viewMode));
+	$effect(() => persist(SORT_ORDER_STORAGE_KEY, sortOrder));
+	$effect(() => persist(FRAUD_FILTER_STORAGE_KEY, fraudFilter));
+	$effect(() => persist(REVIEW_FILTER_STORAGE_KEY, reviewFilter));
+
+	let items = $state<FraudGalleryItem[]>([]);
+	let events = $state<EventResponse[]>([]);
+	let loading = $state(true);
+	let refreshing = $state(false);
+	let error = $state<string | null>(null);
+
+	async function load() {
+		const [{ data, error: err }, { data: eventsData }] = await Promise.all([
+			api.GET('/api/admin/fraud-review/gallery'),
+			api.GET('/api/events'),
+		]);
+		if (err) {
+			error = 'Failed to load fraud-review gallery. Admin role required.';
+			items = [];
+			return;
+		}
+		error = null;
+		items = data ?? [];
+		if (eventsData) events = eventsData;
+	}
+
+	onMount(async () => {
+		const { data: me } = await api.GET('/api/user/auth/me');
+		if (me && me.role !== 'admin' && me.role !== 'superadmin') {
+			window.location.href = `${base}/review`;
+			return;
+		}
+		try {
+			await load();
+		} finally {
+			loading = false;
+		}
+	});
+
+	async function refresh() {
+		refreshing = true;
+		try {
+			await load();
+		} finally {
+			refreshing = false;
+		}
+	}
+
+	function userLabel(u: FraudGalleryItem['user']): string {
+		const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+		return name || (u.slackUserId ? `@${u.slackUserId}` : 'Anonymous');
+	}
+
+	function formatTypeName(type: string): string {
+		return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+	}
+
+	function joeUrl(joeProjectId: string): string {
+		return `${JOE_BASE_URL}/${joeProjectId}`;
+	}
+
+	function matchesFilters(item: FraudGalleryItem): boolean {
+		const matchesType =
+			selectedTypes.size === 0 || selectedTypes.has(item.projectType);
+		const matchesEvent =
+			selectedEvents.size === 0 ||
+			selectedEvents.has(item.user.eventSlug ?? NO_EVENT_SENTINEL);
+		const q = searchQuery.toLowerCase().trim();
+		const matchesSearch =
+			q === '' ||
+			item.projectTitle.toLowerCase().includes(q) ||
+			userLabel(item.user).toLowerCase().includes(q);
+		return matchesType && matchesEvent && matchesSearch;
+	}
+
+	function matchesFraudFilter(joeFraudPassed: boolean | null): boolean {
+		if (fraudFilter === 'all') return true;
+		if (fraudFilter === 'reviewed') return joeFraudPassed !== null;
+		return joeFraudPassed === null;
+	}
+
+	function matchesReviewFilter(reviewed: boolean): boolean {
+		if (reviewFilter === 'all') return true;
+		if (reviewFilter === 'reviewed') return reviewed;
+		return !reviewed;
+	}
+
+	// Sort by the latest submission timestamp (wait time) so the freshest /
+	// stalest submissions surface; fall back to project createdAt if a project
+	// somehow has no submission timestamp.
+	function waitTime(item: FraudGalleryItem): number {
+		return new Date(
+			item.latestSubmissionCreatedAt ?? item.createdAt,
+		).getTime();
+	}
+
+	let filteredItems = $derived(
+		items
+			.filter(
+				(item) =>
+					matchesFilters(item) &&
+					matchesFraudFilter(item.joeFraudPassed) &&
+					matchesReviewFilter(item.reviewed),
+			)
+			.sort((a, b) => {
+				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
+					const aH = a.nowHackatimeHours;
+					const bH = b.nowHackatimeHours;
+					if (aH == null && bH == null) return 0;
+					if (aH == null) return 1;
+					if (bH == null) return -1;
+					return sortOrder === 'most-hours' ? bH - aH : aH - bH;
+				}
+				const aT = waitTime(a);
+				const bT = waitTime(b);
+				return sortOrder === 'longest-wait' ? aT - bT : bT - aT;
+			}),
+	);
+
+	function toggleType(type: string) {
+		const next = new Set(selectedTypes);
+		if (next.has(type)) next.delete(type);
+		else next.add(type);
+		selectedTypes = next;
+	}
+
+	function toggleEvent(slug: string) {
+		const next = new Set(selectedEvents);
+		if (next.has(slug)) next.delete(slug);
+		else next.add(slug);
+		selectedEvents = next;
+	}
+</script>
+
+<!--
+	Recolor the gallery's accent from the review tool's amber to a purple lilac
+	so the Fraud Gallery reads as visually distinct. Every accent utility on this
+	page resolves these two custom properties, so overriding them here cascades
+	to the whole page (title, active filter chips, hovers, type/tag badges).
+-->
+<div
+	class="flex h-screen flex-col overflow-hidden"
+	style="--color-rv-accent: #b794f6; --color-rv-tag-bg: rgba(183, 148, 246, 0.16);"
+>
+	<div
+		class="flex shrink-0 items-center justify-between border-b border-rv-border bg-rv-surface px-6 py-4"
+	>
+		<div class="flex items-center gap-3">
+			<a
+				href="{base}/review"
+				class="text-[13px] text-rv-dim no-underline hover:text-rv-text"
+			>
+				← Back to review
+			</a>
+			<div class="text-[18px] font-bold text-rv-accent">
+				HORIZONS
+				<span class="ml-2 text-[13px] font-normal text-rv-text">Fraud Gallery</span>
+			</div>
+		</div>
+		<div class="flex items-center gap-3">
+			{#if loading}
+				<Skeleton class="h-4 w-32" />
+			{:else}
+				<p class="m-0 text-[13px] text-rv-dim">
+					{filteredItems.length} of {items.length} projects
+				</p>
+			{/if}
+			<button
+				class="cursor-pointer rounded-md border border-rv-border bg-rv-surface2 px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim transition-all duration-150 hover:border-rv-accent hover:text-rv-text disabled:cursor-not-allowed disabled:opacity-40"
+				onclick={refresh}
+				disabled={refreshing}
+			>
+				{refreshing ? 'Refreshing…' : 'Refresh'}
+			</button>
+		</div>
+	</div>
+
+	<div class="flex shrink-0 flex-col gap-3 border-b border-rv-border bg-rv-surface px-6 py-4">
+		<input
+			type="text"
+			class="w-full rounded-lg border border-rv-border bg-rv-bg px-3.5 py-2.5 font-inherit text-sm text-rv-text outline-none transition-all duration-150 placeholder:text-rv-dim focus:border-rv-accent"
+			placeholder="Search by project or author name..."
+			bind:value={searchQuery}
+		/>
+
+		<div class="flex flex-wrap items-center gap-2">
+			{#each PROJECT_TYPES as type}
+				<button
+					class="cursor-pointer rounded-[20px] border border-rv-border bg-rv-surface2 px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim transition-all duration-150 hover:border-rv-accent hover:text-rv-text {selectedTypes.has(type) ? 'bg-rv-tag-bg border-rv-accent! text-rv-accent!' : ''}"
+					onclick={() => toggleType(type)}
+				>
+					{formatTypeName(type)}
+				</button>
+			{/each}
+			{#if selectedTypes.size > 0}
+				<button
+					class="cursor-pointer rounded-[20px] border border-rv-border bg-transparent px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim underline hover:text-rv-text"
+					onclick={() => (selectedTypes = new Set())}
+				>
+					Clear filters
+				</button>
+			{/if}
+		</div>
+
+		{#if events.length > 0}
+			<div class="flex flex-wrap items-center gap-2">
+				<span class="mr-1 text-[11px] text-rv-dim">Event</span>
+				{#each events as event (event.slug)}
+					<button
+						class="cursor-pointer rounded-[20px] border border-rv-border bg-rv-surface2 px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim transition-all duration-150 hover:border-rv-accent hover:text-rv-text {selectedEvents.has(event.slug) ? 'bg-rv-tag-bg border-rv-accent! text-rv-accent!' : ''}"
+						onclick={() => toggleEvent(event.slug)}
+					>
+						{event.title}
+					</button>
+				{/each}
+				<button
+					class="cursor-pointer rounded-[20px] border border-rv-border bg-rv-surface2 px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim transition-all duration-150 hover:border-rv-accent hover:text-rv-text {selectedEvents.has(NO_EVENT_SENTINEL) ? 'bg-rv-tag-bg border-rv-accent! text-rv-accent!' : ''}"
+					onclick={() => toggleEvent(NO_EVENT_SENTINEL)}
+					title="Projects from users who haven't picked an event"
+				>
+					No event
+				</button>
+				{#if selectedEvents.size > 0}
+					<button
+						class="cursor-pointer rounded-[20px] border border-rv-border bg-transparent px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim underline hover:text-rv-text"
+						onclick={() => (selectedEvents = new Set())}
+					>
+						Clear event filter
+					</button>
+				{/if}
+			</div>
+		{/if}
+	</div>
+
+	<div class="flex-1 overflow-y-auto">
+		<section class="px-6 pt-6 pb-2">
+			<div class="mb-3 flex items-center justify-between">
+				<h2 class="m-0 text-[13px] font-semibold uppercase tracking-wider text-rv-dim">
+					Projects
+					{#if loading}
+						<span class="ml-1 inline-block align-middle"><Skeleton class="inline-block h-3 w-8" /></span>
+					{:else}
+						<span class="ml-1 font-normal normal-case text-rv-text/60">({filteredItems.length})</span>
+					{/if}
+				</h2>
+
+				<div class="flex shrink-0 select-none items-center rounded-lg border border-rv-border bg-rv-surface2 p-0.5">
+					<button
+						class="cursor-pointer rounded-md p-1 transition-all duration-150 {viewMode === 'grid' ? 'border border-rv-border/30 bg-rv-surface text-rv-accent' : 'border border-transparent text-rv-dim hover:text-rv-text'}"
+						onclick={() => (viewMode = 'grid')}
+						title="Grid View"
+						aria-label="Grid View"
+					>
+						<LayoutGrid class="h-4 w-4" />
+					</button>
+					<button
+						class="cursor-pointer rounded-md p-1 transition-all duration-150 {viewMode === 'list' ? 'border border-rv-border/30 bg-rv-surface text-rv-accent' : 'border border-transparent text-rv-dim hover:text-rv-text'}"
+						onclick={() => (viewMode = 'list')}
+						title="List View"
+						aria-label="List View"
+					>
+						<List class="h-4 w-4" />
+					</button>
+				</div>
+			</div>
+
+			<div class="mb-3 flex flex-wrap items-center gap-2">
+				<span class="text-[11px] text-rv-dim">Sort</span>
+				{#each [['longest-wait', 'Longest wait'], ['shortest-wait', 'Shortest wait'], ['most-hours', 'Most hours'], ['least-hours', 'Least hours']] as [value, label]}
+					<button
+						class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {sortOrder === value ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+						onclick={() => (sortOrder = value as SortOrder)}
+					>
+						{label}
+					</button>
+				{/each}
+
+				<span class="ml-3 text-[11px] text-rv-dim">Fraud</span>
+				{#each [['all', 'All'], ['reviewed', 'Reviewed'], ['unreviewed', 'Unreviewed']] as [value, label]}
+					<button
+						class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {fraudFilter === value ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+						onclick={() => (fraudFilter = value as FraudFilter)}
+					>
+						{label}
+					</button>
+				{/each}
+
+				<span class="ml-3 text-[11px] text-rv-dim">Project</span>
+				{#each [['all', 'All'], ['reviewed', 'Reviewed'], ['unreviewed', 'Unreviewed']] as [value, label]}
+					<button
+						class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {reviewFilter === value ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+						onclick={() => (reviewFilter = value as ReviewFilter)}
+					>
+						{label}
+					</button>
+				{/each}
+			</div>
+
+			{#if error}
+				<p class="py-6 text-sm text-red-500">{error}</p>
+			{:else if viewMode === 'grid'}
+				<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
+					{#if loading}
+						{#each Array(12) as _}
+							<div class="flex flex-col gap-2 rounded-[10px] border border-rv-border bg-rv-surface p-5">
+								<Skeleton class="h-4 w-3/4" />
+								<Skeleton class="h-3 w-1/2" />
+								<div class="mt-1 flex flex-wrap items-center gap-1.5">
+									<Skeleton class="h-5 w-20 rounded-xl" />
+									<Skeleton class="h-5 w-12 rounded-xl" />
+								</div>
+							</div>
+						{/each}
+					{:else}
+						{#each filteredItems as item (item.projectId)}
+							{@const href = item.joeProjectId ? joeUrl(item.joeProjectId) : null}
+							<svelte:element
+								this={href ? 'a' : 'div'}
+								href={href ?? undefined}
+								target={href ? '_blank' : undefined}
+								rel={href ? 'noopener noreferrer' : undefined}
+								class="flex flex-col gap-1.5 rounded-[10px] border border-rv-border bg-rv-surface p-5 font-inherit no-underline transition-all duration-150 {href ? 'cursor-pointer hover:border-rv-accent hover:bg-rv-surface2' : 'cursor-default opacity-70'}"
+								title={href ? 'Open in Joe fraud review' : 'No Joe record — not yet pushed to fraud review'}
+							>
+								<div class="flex items-start justify-between gap-2">
+									<p class="m-0 text-[15px] font-semibold text-rv-text">{item.projectTitle}</p>
+									{#if href}
+										<ExternalLink class="mt-0.5 h-3.5 w-3.5 shrink-0 text-rv-dim" />
+									{/if}
+								</div>
+								<p class="m-0 text-[13px] text-rv-dim">{userLabel(item.user)}</p>
+								<div class="mt-1 flex flex-wrap items-center gap-1.5">
+									<span class="inline-block rounded-xl bg-rv-tag-bg px-2.5 py-0.75 text-[11px] text-rv-accent">
+										{formatTypeName(item.projectType)}
+									</span>
+									{#if item.nowHackatimeHours != null}
+										<span class="inline-flex items-center gap-1 rounded-xl border border-rv-border bg-rv-tag-bg px-2 py-0.5 text-[11px] text-rv-dim">
+											{item.nowHackatimeHours.toFixed(1)}h
+										</span>
+									{/if}
+									{#if item.joeFraudPassed === false}
+										<span class="inline-flex items-center rounded-xl border border-red-500/40 bg-red-500/15 px-2 py-0.5 text-[11px] font-semibold text-red-500">
+											Flagged
+										</span>
+									{:else if item.joeFraudPassed === true}
+										<span class="inline-flex items-center rounded-xl border border-green-500/40 bg-green-500/15 px-2 py-0.5 text-[11px] font-semibold text-green-500">
+											Passed
+										</span>
+									{:else}
+										<span class="inline-flex items-center rounded-xl border border-rv-border bg-rv-surface2 px-2 py-0.5 text-[11px] text-rv-dim">
+											No fraud review
+										</span>
+									{/if}
+									{#if item.reviewed}
+										<span class="inline-flex items-center rounded-xl border border-rv-border bg-rv-surface2 px-2 py-0.5 text-[11px] text-rv-dim">
+											{item.approvalStatus === 'approved' ? 'Approved' : 'Rejected'}
+										</span>
+									{:else}
+										<span class="inline-flex items-center rounded-xl border border-yellow-500/40 bg-yellow-500/15 px-2 py-0.5 text-[11px] text-yellow-600">
+											Unreviewed
+										</span>
+									{/if}
+								</div>
+							</svelte:element>
+						{:else}
+							<p class="col-span-full py-6 text-center text-sm text-rv-dim">No projects match your filters.</p>
+						{/each}
+					{/if}
+				</div>
+			{:else}
+				<div class="flex flex-col overflow-x-auto rounded-[10px] border border-rv-border bg-rv-surface">
+					<div class="grid min-w-[800px] grid-cols-[minmax(150px,2fr)_minmax(100px,1.5fr)_minmax(100px,1fr)_minmax(100px,1.2fr)_80px_minmax(110px,1.2fr)_minmax(110px,1.2fr)] items-center gap-3 border-b border-rv-border p-3 text-[11px] font-semibold uppercase tracking-wider text-rv-dim">
+						<div>Project</div>
+						<div>Author</div>
+						<div>Event</div>
+						<div>Type</div>
+						<div>Hours</div>
+						<div>Fraud</div>
+						<div>Project status</div>
+					</div>
+					{#if loading}
+						{#each Array(8) as _}
+							<div class="grid min-w-[800px] grid-cols-[minmax(150px,2fr)_minmax(100px,1.5fr)_minmax(100px,1fr)_minmax(100px,1.2fr)_80px_minmax(110px,1.2fr)_minmax(110px,1.2fr)] gap-3 border-b border-rv-border p-3">
+								<Skeleton class="h-4 w-3/4" />
+								<Skeleton class="h-4 w-1/2" />
+								<Skeleton class="h-4 w-2/3" />
+								<Skeleton class="h-4 w-1/2" />
+								<Skeleton class="h-4 w-8" />
+								<Skeleton class="h-4 w-1/2" />
+								<Skeleton class="h-4 w-1/2" />
+							</div>
+						{/each}
+					{:else}
+						<div class="flex min-w-[800px] flex-col">
+							{#each filteredItems as item (item.projectId)}
+								{@const href = item.joeProjectId ? joeUrl(item.joeProjectId) : null}
+								<svelte:element
+									this={href ? 'a' : 'div'}
+									href={href ?? undefined}
+									target={href ? '_blank' : undefined}
+									rel={href ? 'noopener noreferrer' : undefined}
+									class="grid min-w-[800px] grid-cols-[minmax(150px,2fr)_minmax(100px,1.5fr)_minmax(100px,1fr)_minmax(100px,1.2fr)_80px_minmax(110px,1.2fr)_minmax(110px,1.2fr)] items-center gap-3 border-b border-rv-border p-3 text-inherit no-underline transition-all duration-150 last:border-b-0 {href ? 'cursor-pointer hover:bg-rv-surface2' : 'cursor-default opacity-70'}"
+									title={href ? 'Open in Joe fraud review' : 'No Joe record — not yet pushed to fraud review'}
+								>
+									<div class="flex min-w-0 items-center gap-1.5">
+										<span class="truncate text-[14px] font-semibold text-rv-text">{item.projectTitle}</span>
+										{#if href}
+											<ExternalLink class="h-3 w-3 shrink-0 text-rv-dim" />
+										{/if}
+									</div>
+									<div class="truncate text-[13px] text-rv-dim">{userLabel(item.user)}</div>
+									<div class="truncate">
+										{#if item.user.eventTitle}
+											<span class="inline-block max-w-full truncate rounded border border-rv-border bg-rv-surface2 px-2 py-0.5 text-[11px] text-rv-dim">
+												{item.user.eventTitle}
+											</span>
+										{:else}
+											<span class="text-[11px] text-rv-dim/50">—</span>
+										{/if}
+									</div>
+									<div class="truncate">
+										<span class="inline-block max-w-full truncate rounded-xl bg-rv-tag-bg px-2 py-0.5 text-[11px] text-rv-accent">
+											{formatTypeName(item.projectType)}
+										</span>
+									</div>
+									<div class="truncate text-[12px] text-rv-text">
+										{#if item.nowHackatimeHours != null}
+											{item.nowHackatimeHours.toFixed(1)}h
+										{:else}
+											<span class="text-[11px] text-rv-dim/50">—</span>
+										{/if}
+									</div>
+									<div class="truncate">
+										{#if item.joeFraudPassed === false}
+											<span class="inline-flex items-center rounded-xl border border-red-500/40 bg-red-500/15 px-2 py-0.5 text-[11px] font-semibold text-red-500">Flagged</span>
+										{:else if item.joeFraudPassed === true}
+											<span class="inline-flex items-center rounded-xl border border-green-500/40 bg-green-500/15 px-2 py-0.5 text-[11px] font-semibold text-green-500">Passed</span>
+										{:else}
+											<span class="text-[11px] text-rv-dim/50">—</span>
+										{/if}
+									</div>
+									<div class="truncate">
+										{#if item.reviewed}
+											<span class="inline-flex items-center rounded-xl border border-rv-border bg-rv-surface2 px-2 py-0.5 text-[11px] text-rv-dim">
+												{item.approvalStatus === 'approved' ? 'Approved' : 'Rejected'}
+											</span>
+										{:else}
+											<span class="inline-flex items-center rounded-xl border border-yellow-500/40 bg-yellow-500/15 px-2 py-0.5 text-[11px] text-yellow-600">Unreviewed</span>
+										{/if}
+									</div>
+								</svelte:element>
+							{:else}
+								<div class="p-6 text-center text-sm text-rv-dim">No projects match your filters.</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</section>
+	</div>
+</div>
