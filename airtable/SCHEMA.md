@@ -45,8 +45,21 @@ Notes:
 ## Users
 
 Lifecycle/engagement table — one row per user, looked up by email. Env var:
-`YSWS_USERS_TABLE_ID`. Fields documented in
+`YSWS_USERS_TABLE_ID`. Lifecycle (Loops) fields documented in
 [`docs/airtable-sync.md`](../docs/airtable-sync.md#users-table).
+
+Computed stats fields, rewritten by `syncUserStats` (live hooks) and the daily
+sweep:
+
+| Field name | Airtable type | Source |
+|---|---|---|
+| Approved Hours | Number, 1 decimal | sum of approved project hours |
+| Hours in Review | Number, 1 decimal | hours on projects with a pending latest submission |
+| Unsubmitted Hours | Number, 1 decimal | Hackatime hours on never-submitted projects |
+| Chosen Event | Single line text | pinned event slug |
+| Country | Single line text | `user.country` |
+| Slack ID | Single line text | `user.slackUserId` |
+| Slack Username | Single line text | `user.slackUsername` (Slack display name, cached from Slack API) |
 
 ## Approved Projects
 
