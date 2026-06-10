@@ -187,6 +187,7 @@ export class AirtableService {
     country: string | null;
     slackUserId: string | null;
     slackUsername: string | null;
+    birthday: Date | null;
   }> {
     const [
       approvedAgg,
@@ -228,7 +229,12 @@ export class AirtableService {
       }),
       this.prisma.user.findUnique({
         where: { userId },
-        select: { country: true, slackUserId: true, slackUsername: true },
+        select: {
+          country: true,
+          slackUserId: true,
+          slackUsername: true,
+          birthday: true,
+        },
       }),
     ]);
 
@@ -243,6 +249,7 @@ export class AirtableService {
       country: userProfile?.country ?? null,
       slackUserId: userProfile?.slackUserId ?? null,
       slackUsername: userProfile?.slackUsername ?? null,
+      birthday: userProfile?.birthday ?? null,
     };
   }
 
@@ -254,6 +261,7 @@ export class AirtableService {
     country: string | null;
     slackUserId: string | null;
     slackUsername: string | null;
+    birthday: Date | null;
   }): Record<string, any> {
     return {
       'Approved Hours': stats.approvedHours,
@@ -263,6 +271,9 @@ export class AirtableService {
       Country: stats.country ?? '',
       'Slack ID': stats.slackUserId ?? '',
       'Slack Username': stats.slackUsername ?? '',
+      Birthday: stats.birthday
+        ? stats.birthday.toISOString().split('T')[0]
+        : '',
     };
   }
 

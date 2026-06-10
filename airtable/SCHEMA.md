@@ -61,6 +61,7 @@ sweep:
 | Country | Single line text | `user.country` |
 | Slack ID | Single line text | `user.slackUserId` |
 | Slack Username | Single line text | `user.slackUsername` (Slack display name, cached from Slack API) |
+| Birthday | Date | `user.birthday` (date only, sent as `YYYY-MM-DD`; empty if unset) |
 
 ## Approved Projects
 
