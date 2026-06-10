@@ -2728,6 +2728,7 @@ export class AdminService {
         user: {
           select: {
             userId: true,
+            email: true,
             firstName: true,
             lastName: true,
             slackUserId: true,
