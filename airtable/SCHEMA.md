@@ -18,10 +18,11 @@ Env var: `YSWS_TRANSACTIONS_TABLE_ID`
 | Field name | Airtable type | Config | Source |
 |---|---|---|---|
 | Transaction ID | Number | Integer precision | `transactionId` |
-| Email | Email | | `user.email` |
+| User | Link to another record | Link to the **Users** table (single record). Empty until the user has an `airtableRecId` (i.e. has synced to the Users table). | `user.airtableRecId` |
+| Email | Lookup | Lookup via the **User** link → Users `Email`. Read-only; not written by the sync. | (lookup) |
+| Slack ID | Lookup | Lookup via the **User** link → Users `Slack ID`. Read-only; not written by the sync. | (lookup) |
 | First Name | Single line text | | `user.firstName` |
 | Last Name | Single line text | | `user.lastName` |
-| Slack ID | Single line text | | `user.slackUserId` (empty string if unlinked) |
 | Kind | Single select | Options (pre-create all four, exact spelling): `ShopItem`, `EventTicket`, `EventRsvp`, `AdminAdjustment` | `kind` |
 | Item Description | Long text | | `itemDescription` (up to 500 chars) |
 | Item Name | Single line text | | `item.name` (empty for non-shop kinds) |
