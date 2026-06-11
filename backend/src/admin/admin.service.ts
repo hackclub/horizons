@@ -3342,7 +3342,7 @@ export class AdminService {
         submissions: {
           orderBy: { createdAt: 'desc' as const },
           take: 1,
-          select: { approvalStatus: true, createdAt: true },
+          select: { approvalStatus: true, reviewPassed: true, createdAt: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -3356,6 +3356,21 @@ export class AdminService {
     return projects.map((p) => {
       const latest = p.submissions[0] ?? null;
       const approvalStatus = latest?.approvalStatus ?? null;
+      // The reviewer's gate, independent of fraud reconciliation — a reviewer
+      // can approve before Joe has returned a verdict, and the gallery filters
+      // on that decision rather than the finalized two-gate approvalStatus.
+      // reviewPassed is null on rows finalized before the two-gate flow (and
+      // on fraud-only silent rejections), so fall back to the terminal status.
+      const reviewerVerdict =
+        latest === null
+          ? null
+          : latest.reviewPassed === true
+            ? 'approved'
+            : latest.reviewPassed === false
+              ? 'rejected'
+              : latest.approvalStatus === 'pending'
+                ? null
+                : latest.approvalStatus;
       const ticket = ticketStatuses.get(p.user.userId);
       return {
         projectId: p.projectId,
@@ -3367,8 +3382,8 @@ export class AdminService {
         createdAt: p.createdAt,
         latestSubmissionCreatedAt: latest?.createdAt ?? null,
         approvalStatus,
-        reviewed:
-          approvalStatus === 'approved' || approvalStatus === 'rejected',
+        reviewerVerdict,
+        reviewed: reviewerVerdict !== null,
         boughtTicket: ticket?.boughtTicket ?? false,
         canBuyTicketIfApproved: ticket?.canBuyTicketIfApproved ?? false,
         user: {

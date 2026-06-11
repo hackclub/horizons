@@ -2884,9 +2884,14 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             latestSubmissionCreatedAt: string | null;
-            /** @description Latest submission's approval status (pending | approved | rejected), or null if none. */
+            /** @description Latest submission's finalized two-gate approval status (pending | approved | rejected), or null if none. */
             approvalStatus: string | null;
-            /** @description True when the latest submission has been finalized (approved or rejected). */
+            /**
+             * @description The reviewer gate's verdict on the latest submission, independent of fraud reconciliation — set as soon as a reviewer decides, even while Joe's verdict is still pending. Null when no reviewer has decided yet.
+             * @enum {string|null}
+             */
+            reviewerVerdict: "approved" | "rejected" | null;
+            /** @description True when a reviewer has decided on the latest submission (reviewerVerdict is set), even if fraud reconciliation is still pending. */
             reviewed: boolean;
             /** @description True when the project owner holds an EventTicket transaction for their pinned event. */
             boughtTicket: boolean;

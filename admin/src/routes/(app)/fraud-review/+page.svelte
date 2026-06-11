@@ -204,9 +204,11 @@
 		return joeFraudPassed === null;
 	}
 
+	// The reviewer gate's verdict, independent of fraud — a reviewer-approved
+	// project counts as 'approved' even while Joe's fraud verdict is pending,
+	// so "Fraud: Unreviewed + Project: Approved" surfaces the awaiting-Joe set.
 	function reviewStatus(item: FraudGalleryItem): ReviewStatus {
-		if (!item.reviewed) return 'unreviewed';
-		return item.approvalStatus === 'approved' ? 'approved' : 'rejected';
+		return item.reviewerVerdict ?? 'unreviewed';
 	}
 
 	function matchesReviewFilter(item: FraudGalleryItem): boolean {
@@ -500,7 +502,7 @@
 									{/if}
 									{#if item.reviewed}
 										<span class="inline-flex items-center rounded-xl border border-rv-border bg-rv-surface2 px-2 py-0.5 text-[11px] text-rv-dim">
-											{item.approvalStatus === 'approved' ? 'Approved' : 'Rejected'}
+											{item.reviewerVerdict === 'approved' ? 'Approved' : 'Rejected'}
 										</span>
 									{:else}
 										<span class="inline-flex items-center rounded-xl border border-yellow-500/40 bg-yellow-500/15 px-2 py-0.5 text-[11px] text-yellow-600">
@@ -589,7 +591,7 @@
 									<div class="truncate">
 										{#if item.reviewed}
 											<span class="inline-flex items-center rounded-xl border border-rv-border bg-rv-surface2 px-2 py-0.5 text-[11px] text-rv-dim">
-												{item.approvalStatus === 'approved' ? 'Approved' : 'Rejected'}
+												{item.reviewerVerdict === 'approved' ? 'Approved' : 'Rejected'}
 											</span>
 										{:else}
 											<span class="inline-flex items-center rounded-xl border border-yellow-500/40 bg-yellow-500/15 px-2 py-0.5 text-[11px] text-yellow-600">Unreviewed</span>
