@@ -158,7 +158,7 @@ pnpm --filter admin generate:api
 
 The review page at `/admin/review` is a specialized interface for processing submissions:
 
-- **Gallery view**: Grid of pending submissions, click to select
+- **Gallery view**: Grid of pending submissions, click to select. Search/type/event filters, sort order, a fraud-review filter, and a ticket filter (`all` / `bought` / `not-bought`, based on whether the submitter bought a ticket for their pinned event) all persist in `sessionStorage`. **Note (temporary, revert after the event):** the gallery defaults to the Nexus event filter and most-hours sort — see the `DEFAULT_EVENT_FILTER` / `loadSortOrderFromStorage` markers in `ProjectGallery.svelte`.
 - **Detail view**: Multi-panel layout showing:
   - User info and profile data
   - Project screenshots gallery

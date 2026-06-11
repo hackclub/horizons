@@ -38,7 +38,9 @@ const SCOPED_USER_SELECT = {
   hackatimeStartDate: true,
   country: true,
   pinnedEvent: {
-    select: { event: { select: { slug: true, title: true } } },
+    // eventId is used internally to match ticket purchases; it is never sent
+    // to the client (scopeUserData only emits slug/title).
+    select: { event: { select: { eventId: true, slug: true, title: true } } },
   },
 } as const;
 
@@ -137,6 +139,10 @@ export class ReviewerService {
       submissions.map((s) => s.project.user),
     );
 
+    const boughtTicketUserIds = await this.fetchBoughtTicketUserIds(
+      submissions.map((s) => s.project.user),
+    );
+
     return submissions.map((submission) => ({
       submissionId: submission.submissionId,
       projectId: submission.projectId,
@@ -144,10 +150,54 @@ export class ReviewerService {
       createdAt: submission.createdAt,
       project: {
         ...submission.project,
-        user: this.scopeUserData(submission.project.user, displayNameMap),
+        user: this.scopeUserData(
+          submission.project.user,
+          displayNameMap,
+          boughtTicketUserIds.has(submission.project.user.userId),
+        ),
       },
       claim: this.buildClaimInfo(submission, viewerId),
     }));
+  }
+
+  /**
+   * Of the given users, return the set of userIds who have purchased a ticket
+   * for their own pinned event. Mirrors the admin "Tickets Bought by Event"
+   * metric: an EventTicket transaction whose event_id matches the user's
+   * pinned event. Users with no pinned event can't have bought a ticket here.
+   */
+  private async fetchBoughtTicketUserIds(
+    users: Array<{
+      userId: number;
+      pinnedEvent: { event: { eventId: number } } | null;
+    }>,
+  ): Promise<Set<number>> {
+    const pinnedEventByUser = new Map<number, number>();
+    for (const user of users) {
+      if (user.pinnedEvent) {
+        pinnedEventByUser.set(user.userId, user.pinnedEvent.event.eventId);
+      }
+    }
+    if (pinnedEventByUser.size === 0) return new Set();
+
+    const tickets = await this.prisma.transaction.findMany({
+      where: {
+        kind: 'EventTicket',
+        userId: { in: [...pinnedEventByUser.keys()] },
+        eventId: { in: [...new Set(pinnedEventByUser.values())] },
+      },
+      select: { userId: true, eventId: true },
+    });
+
+    // Only count a ticket when its event matches the user's *pinned* event, so
+    // a ticket bought for a different event doesn't flag them here.
+    const boughtTicketUserIds = new Set<number>();
+    for (const ticket of tickets) {
+      if (pinnedEventByUser.get(ticket.userId) === ticket.eventId) {
+        boughtTicketUserIds.add(ticket.userId);
+      }
+    }
+    return boughtTicketUserIds;
   }
 
   /**
@@ -1279,6 +1329,9 @@ export class ReviewerService {
       } | null;
     },
     displayNameMap: Map<string, string>,
+    // Null when the caller hasn't computed ticket purchases (only the review
+    // queue does); the gallery's "bought ticket" filter treats null as unknown.
+    boughtTicket: boolean | null = null,
   ) {
     let age: number | null = null;
     if (user.birthday) {
@@ -1305,6 +1358,7 @@ export class ReviewerService {
       country: user.country,
       eventSlug: user.pinnedEvent?.event.slug ?? null,
       eventTitle: user.pinnedEvent?.event.title ?? null,
+      boughtTicket,
     };
   }
 

@@ -68,16 +68,21 @@
 	// re-pick after every round trip into a project.
 	const EVENT_FILTER_STORAGE_KEY = 'horizons-review-gallery-event-filter';
 
+	// TEMPORARY (revert after the event): scope the gallery to the Nexus cohort
+	// by default. After the event, restore the default to an empty Set (no event
+	// filter) by replacing `DEFAULT_EVENT_FILTER` with `new Set()`.
+	const DEFAULT_EVENT_FILTER = () => new Set(['nexus']);
+
 	function loadSelectedEventsFromStorage(): Set<string> {
-		if (typeof sessionStorage === 'undefined') return new Set();
+		if (typeof sessionStorage === 'undefined') return DEFAULT_EVENT_FILTER();
 		try {
 			const raw = sessionStorage.getItem(EVENT_FILTER_STORAGE_KEY);
-			if (!raw) return new Set();
+			if (!raw) return DEFAULT_EVENT_FILTER();
 			const parsed = JSON.parse(raw);
-			if (!Array.isArray(parsed)) return new Set();
+			if (!Array.isArray(parsed)) return DEFAULT_EVENT_FILTER();
 			return new Set(parsed.filter((s): s is string => typeof s === 'string'));
 		} catch {
-			return new Set();
+			return DEFAULT_EVENT_FILTER();
 		}
 	}
 
@@ -131,13 +136,22 @@
 	];
 	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
 	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
+	// Filter by whether the submitter has bought a ticket for their pinned event
+	// (mirrors the admin "Tickets Bought by Event" metric — an EventTicket
+	// transaction for the pinned event).
+	type TicketFilter = 'all' | 'bought' | 'not-bought';
+	const TICKET_FILTERS: readonly TicketFilter[] = ['all', 'bought', 'not-bought'];
 
 	const SORT_ORDER_STORAGE_KEY = 'horizons-review-gallery-sort-order';
 	const FRAUD_FILTER_STORAGE_KEY = 'horizons-review-gallery-fraud-filter';
+	const TICKET_FILTER_STORAGE_KEY = 'horizons-review-gallery-ticket-filter';
 
+	// TEMPORARY (revert after the event): default sort is 'most-hours' so
+	// reviewers see the highest-hour submissions first during the event push.
+	// After the event, restore the default to 'longest-wait' (both the early
+	// return and the trailing return below).
 	function loadSortOrderFromStorage(): SortOrder {
-		// Default to longest wait so reviewers triage the most-stale submissions first.
-		if (typeof sessionStorage === 'undefined') return 'longest-wait';
+		if (typeof sessionStorage === 'undefined') return 'most-hours';
 		try {
 			const raw = sessionStorage.getItem(SORT_ORDER_STORAGE_KEY);
 			if (raw && (SORT_ORDERS as readonly string[]).includes(raw)) {
@@ -146,7 +160,7 @@
 		} catch {
 			// see TYPE_FILTER_STORAGE_KEY effect for rationale
 		}
-		return 'longest-wait';
+		return 'most-hours';
 	}
 
 	function loadFraudFilterFromStorage(): FraudFilter {
@@ -162,8 +176,22 @@
 		return 'all';
 	}
 
+	function loadTicketFilterFromStorage(): TicketFilter {
+		if (typeof sessionStorage === 'undefined') return 'all';
+		try {
+			const raw = sessionStorage.getItem(TICKET_FILTER_STORAGE_KEY);
+			if (raw && (TICKET_FILTERS as readonly string[]).includes(raw)) {
+				return raw as TicketFilter;
+			}
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+		return 'all';
+	}
+
 	let sortOrder = $state<SortOrder>(loadSortOrderFromStorage());
 	let fraudFilter = $state<FraudFilter>(loadFraudFilterFromStorage());
+	let ticketFilter = $state<TicketFilter>(loadTicketFilterFromStorage());
 
 	$effect(() => {
 		if (typeof sessionStorage === 'undefined') return;
@@ -178,6 +206,15 @@
 		if (typeof sessionStorage === 'undefined') return;
 		try {
 			sessionStorage.setItem(FRAUD_FILTER_STORAGE_KEY, fraudFilter);
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+	});
+
+	$effect(() => {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(TICKET_FILTER_STORAGE_KEY, ticketFilter);
 		} catch {
 			// see TYPE_FILTER_STORAGE_KEY effect for rationale
 		}
@@ -244,6 +281,14 @@
 		return joeFraudPassed === null;
 	}
 
+	// boughtTicket is true/false when the queue computed it, null otherwise.
+	// Treat null as "not bought" so the filter degrades safely.
+	function matchesTicketFilter(boughtTicket: boolean | null | undefined): boolean {
+		if (ticketFilter === 'all') return true;
+		if (ticketFilter === 'bought') return boughtTicket === true;
+		return boughtTicket !== true;
+	}
+
 	function userLabel(u: { displayName: string | null; slackUserId: string | null }): string {
 		return u.displayName ?? (u.slackUserId ? `@${u.slackUserId}` : 'Anonymous');
 	}
@@ -279,7 +324,11 @@
 						item.project.projectType,
 						userLabel(item.project.user),
 						item.project.user.eventSlug,
-					) && matchesFraudFilter(item.project.joeFraudPassed),
+					) &&
+					matchesFraudFilter(item.project.joeFraudPassed) &&
+					// boughtTicket isn't in the generated schema until `generate:api`
+					// runs after the backend change; cast until then.
+					matchesTicketFilter((item.project.user as any).boughtTicket),
 			)
 			.sort((a, b) => {
 				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
@@ -585,6 +634,26 @@
 					onclick={() => (fraudFilter = 'unreviewed')}
 				>
 					Unreviewed
+				</button>
+
+				<span class="text-[11px] text-rv-dim ml-3" title="Whether the submitter bought a ticket for their pinned event">Ticket</span>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {ticketFilter === 'all' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (ticketFilter = 'all')}
+				>
+					All
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {ticketFilter === 'bought' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (ticketFilter = 'bought')}
+				>
+					Bought
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {ticketFilter === 'not-bought' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (ticketFilter = 'not-bought')}
+				>
+					Not bought
 				</button>
 
 			</div>

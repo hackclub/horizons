@@ -1628,10 +1628,10 @@
                                         </div>
                                         <div class="text-right">
                                             <p class="text-ds-text-secondary">
-                                                Money Cost (only leo should use this - guesstimate)
+                                                Money Cost (only evan should use this - guesstimate)
                                             </p>
                                             <p class="text-lg font-bold text-ds-green">
-                                                ${(userGroup.totalCost * 10).toFixed(2)}
+                                                ${(userGroup.totalCost * 8.5).toFixed(2)}
                                             </p>
                                         </div>
                                     </div>

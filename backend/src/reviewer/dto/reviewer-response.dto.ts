@@ -34,6 +34,15 @@ export class ScopedUserResponse {
   /** Human-readable title for the pinned event; pairs with `eventSlug`. */
   @ApiProperty({ type: String, nullable: true })
   eventTitle: string | null;
+
+  /**
+   * Whether the user has purchased a ticket for their pinned event. Mirrors
+   * the admin "Tickets Bought by Event" metric (an EventTicket transaction
+   * matching the pinned event). Null when not computed for this endpoint —
+   * only the review queue populates it, so other views leave it null.
+   */
+  @ApiProperty({ type: Boolean, nullable: true })
+  boughtTicket: boolean | null;
 }
 
 class QueueProjectResponse {
