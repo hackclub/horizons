@@ -2888,6 +2888,10 @@ export interface components {
             approvalStatus: string | null;
             /** @description True when the latest submission has been finalized (approved or rejected). */
             reviewed: boolean;
+            /** @description True when the project owner holds an EventTicket transaction for their pinned event. */
+            boughtTicket: boolean;
+            /** @description True when the owner hasn't bought yet but their approved+pending hours would clear the pinned event's ticket threshold. */
+            canBuyTicketIfApproved: boolean;
             user: components["schemas"]["FraudGalleryUserResponse"];
         };
         PermRejectProjectDto: {
@@ -3507,6 +3511,10 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             project: components["schemas"]["QueueProjectResponse"];
+            /** @description True when the project owner holds an EventTicket transaction for their pinned event. */
+            boughtTicket: boolean;
+            /** @description True when the owner hasn't bought yet but their approved+pending hours would clear the pinned event's ticket threshold. */
+            canBuyTicketIfApproved: boolean;
             claim: components["schemas"]["ClaimInfoResponse"] | null;
         };
         SubmissionProjectResponse: {

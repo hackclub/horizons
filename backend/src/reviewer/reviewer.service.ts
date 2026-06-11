@@ -25,6 +25,7 @@ import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 import { SlackService } from '../slack/slack.service';
 import { HackatimeService } from '../hackatime/hackatime.service';
 import { MetricsService } from '../metrics/metrics.service';
+import { computeUserTicketStatuses } from '../utils/ticket-status';
 
 // Scoped user fields — no PII like email, street address, birthday, or real name.
 // Country is exposed because reviewers use it for context (shipping eligibility,
@@ -137,17 +138,27 @@ export class ReviewerService {
       submissions.map((s) => s.project.user),
     );
 
-    return submissions.map((submission) => ({
-      submissionId: submission.submissionId,
-      projectId: submission.projectId,
-      hackatimeHours: submission.hackatimeHours,
-      createdAt: submission.createdAt,
-      project: {
-        ...submission.project,
-        user: this.scopeUserData(submission.project.user, displayNameMap),
-      },
-      claim: this.buildClaimInfo(submission, viewerId),
-    }));
+    const ticketStatuses = await computeUserTicketStatuses(
+      this.prisma,
+      [...new Set(submissions.map((s) => s.project.user.userId))],
+    );
+
+    return submissions.map((submission) => {
+      const ticket = ticketStatuses.get(submission.project.user.userId);
+      return {
+        submissionId: submission.submissionId,
+        projectId: submission.projectId,
+        hackatimeHours: submission.hackatimeHours,
+        createdAt: submission.createdAt,
+        project: {
+          ...submission.project,
+          user: this.scopeUserData(submission.project.user, displayNameMap),
+        },
+        boughtTicket: ticket?.boughtTicket ?? false,
+        canBuyTicketIfApproved: ticket?.canBuyTicketIfApproved ?? false,
+        claim: this.buildClaimInfo(submission, viewerId),
+      };
+    });
   }
 
   /**

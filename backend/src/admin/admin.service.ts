@@ -15,6 +15,7 @@ import { LoopsService } from '../loops/loops.service';
 import { BalanceService } from '../balance/balance.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
+import { computeUserTicketStatuses } from '../utils/ticket-status';
 import * as Papa from 'papaparse';
 
 const projectAdminInclude = {
@@ -3347,9 +3348,15 @@ export class AdminService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const ticketStatuses = await computeUserTicketStatuses(
+      this.prisma,
+      [...new Set(projects.map((p) => p.user.userId))],
+    );
+
     return projects.map((p) => {
       const latest = p.submissions[0] ?? null;
       const approvalStatus = latest?.approvalStatus ?? null;
+      const ticket = ticketStatuses.get(p.user.userId);
       return {
         projectId: p.projectId,
         projectTitle: p.projectTitle,
@@ -3362,6 +3369,8 @@ export class AdminService {
         approvalStatus,
         reviewed:
           approvalStatus === 'approved' || approvalStatus === 'rejected',
+        boughtTicket: ticket?.boughtTicket ?? false,
+        canBuyTicketIfApproved: ticket?.canBuyTicketIfApproved ?? false,
         user: {
           userId: p.user.userId,
           firstName: p.user.firstName,
