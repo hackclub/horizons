@@ -39,6 +39,7 @@ Tracks user lifecycle events. Each user has one row, looked up by email.
 | Loops - horizonsFirstProjectCreatedAt | ISO date | User creates their first project |
 | Loops - horizonsFirstSubmitAt | ISO date | User submits a project for the first time |
 | Loops - horizonsOnboardingCompletedAt | ISO date | User completes onboarding |
+| Last Synced At | ISO datetime | Every backend write to the record (lifecycle events, stats syncs, daily sweep) |
 
 ### Sync Behavior
 

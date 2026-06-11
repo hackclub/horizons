@@ -274,6 +274,7 @@ export class AirtableService {
       Birthday: stats.birthday
         ? stats.birthday.toISOString().split('T')[0]
         : '',
+      'Last Synced At': new Date().toISOString(),
     };
   }
 
@@ -342,7 +343,10 @@ export class AirtableService {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                fields: { [fieldName]: now },
+                fields: {
+                  [fieldName]: now,
+                  'Last Synced At': new Date().toISOString(),
+                },
               }),
             },
           );
@@ -362,6 +366,7 @@ export class AirtableService {
                   fields: {
                     Email: email,
                     [fieldName]: now,
+                    'Last Synced At': new Date().toISOString(),
                   },
                 },
               ],
@@ -453,6 +458,7 @@ export class AirtableService {
         }
 
         if (Object.keys(fieldsToUpdate).length > 0) {
+          fieldsToUpdate['Last Synced At'] = new Date().toISOString();
           await fetch(
             `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}/${existingRecord.id}`,
             {
@@ -487,6 +493,7 @@ export class AirtableService {
                       ? { 'Referral Code': user.referralCode }
                       : {}),
                     ...(stats ? this.statsToFields(stats) : {}),
+                    'Last Synced At': new Date().toISOString(),
                   },
                 },
               ],
