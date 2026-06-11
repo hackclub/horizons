@@ -168,7 +168,7 @@ Full administrative operations. Accessible to `admin` role only.
 | DELETE | `/projects/:id` | Admin | Delete a project |
 | **Fraud review** |||
 | GET | `/fraud-review/queue` | Admin | Silently-rejected projects awaiting a perm-reject decision (+ already perm-rejected) |
-| GET | `/fraud-review/gallery` | Admin | All submitted projects in review-gallery shape (type/event/hours + `joeProjectId`, `joeFraudPassed`, latest `approvalStatus`/`reviewed`) — powers `/admin/fraud-review` |
+| GET | `/fraud-review/gallery` | Admin | All submitted projects in review-gallery shape (type/event/hours + `joeProjectId`, `joeFraudPassed`, latest submission's `reviewerVerdict`/`reviewed` — the reviewer gate's decision, set even while fraud is still pending — plus finalized `approvalStatus`) — powers `/admin/fraud-review` |
 | POST | `/fraud-review/:projectId/perm-reject` | Admin | Permanently reject a silently-rejected project |
 | POST | `/projects/:id/joe-reset` | Admin | Reset Joe state and re-enqueue for fraud review |
 | **Users** |||

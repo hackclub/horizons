@@ -1727,7 +1727,8 @@ class FraudGalleryUserResponse {
  * One project in the admin fraud-review gallery. Mirrors the reviewer queue's
  * shape (type/event/hours for filtering and sorting) but additionally exposes
  * `joeProjectId` so the UI can deep-link to Joe, and the latest submission's
- * `approvalStatus`/`reviewed` so admins can filter reviewed vs unreviewed.
+ * `reviewerVerdict`/`reviewed` so admins can filter on the reviewer's decision
+ * independent of the fraud gate.
  */
 export class FraudGalleryItemResponse {
   @ApiProperty()
@@ -1767,13 +1768,22 @@ export class FraudGalleryItemResponse {
     type: String,
     nullable: true,
     description:
-      "Latest submission's approval status (pending | approved | rejected), or null if none.",
+      "Latest submission's finalized two-gate approval status (pending | approved | rejected), or null if none.",
   })
   approvalStatus: string | null;
 
   @ApiProperty({
+    type: String,
+    nullable: true,
+    enum: ['approved', 'rejected'],
     description:
-      'True when the latest submission has been finalized (approved or rejected).',
+      "The reviewer gate's verdict on the latest submission, independent of fraud reconciliation — set as soon as a reviewer decides, even while Joe's verdict is still pending. Null when no reviewer has decided yet.",
+  })
+  reviewerVerdict: string | null;
+
+  @ApiProperty({
+    description:
+      'True when a reviewer has decided on the latest submission (reviewerVerdict is set), even if fraud reconciliation is still pending.',
   })
   reviewed: boolean;
 
