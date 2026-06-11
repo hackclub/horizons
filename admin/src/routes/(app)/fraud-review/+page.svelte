@@ -23,6 +23,7 @@
 	const SORT_ORDER_STORAGE_KEY = 'horizons-fraud-review-sort-order';
 	const FRAUD_FILTER_STORAGE_KEY = 'horizons-fraud-review-fraud-filter';
 	const REVIEW_FILTER_STORAGE_KEY = 'horizons-fraud-review-review-filter';
+	const TICKET_FILTER_STORAGE_KEY = 'horizons-fraud-review-ticket-filter';
 
 	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
 	const SORT_ORDERS: readonly SortOrder[] = [
@@ -39,6 +40,15 @@
 		'approved',
 		'rejected',
 		'unreviewed',
+	];
+	// Ticket filter: 'all' is the unfiltered default with no chip — selecting a
+	// chip narrows, clicking the active chip clears back to 'all'.
+	type TicketFilter = 'all' | 'bought' | 'not-bought' | 'can-buy-if-approved';
+	const TICKET_FILTERS: readonly TicketFilter[] = [
+		'all',
+		'bought',
+		'not-bought',
+		'can-buy-if-approved',
 	];
 
 	function loadStringSet(key: string): Set<string> {
@@ -83,6 +93,9 @@
 	let reviewFilter = $state<ReviewFilter>(
 		loadEnum(REVIEW_FILTER_STORAGE_KEY, REVIEW_FILTERS, 'all'),
 	);
+	let ticketFilter = $state<TicketFilter>(
+		loadEnum(TICKET_FILTER_STORAGE_KEY, TICKET_FILTERS, 'all'),
+	);
 
 	function persist(key: string, value: string) {
 		if (typeof sessionStorage === 'undefined') return;
@@ -98,6 +111,7 @@
 	$effect(() => persist(SORT_ORDER_STORAGE_KEY, sortOrder));
 	$effect(() => persist(FRAUD_FILTER_STORAGE_KEY, fraudFilter));
 	$effect(() => persist(REVIEW_FILTER_STORAGE_KEY, reviewFilter));
+	$effect(() => persist(TICKET_FILTER_STORAGE_KEY, ticketFilter));
 
 	let items = $state<FraudGalleryItem[]>([]);
 	let events = $state<EventResponse[]>([]);
@@ -181,6 +195,13 @@
 		return item.reviewed && item.approvalStatus !== 'approved';
 	}
 
+	function matchesTicketFilter(item: FraudGalleryItem): boolean {
+		if (ticketFilter === 'all') return true;
+		if (ticketFilter === 'bought') return item.boughtTicket;
+		if (ticketFilter === 'not-bought') return !item.boughtTicket;
+		return item.canBuyTicketIfApproved;
+	}
+
 	// Sort by the latest submission timestamp (wait time) so the freshest /
 	// stalest submissions surface; fall back to project createdAt if a project
 	// somehow has no submission timestamp.
@@ -196,7 +217,8 @@
 				(item) =>
 					matchesFilters(item) &&
 					matchesFraudFilter(item.joeFraudPassed) &&
-					matchesReviewFilter(item),
+					matchesReviewFilter(item) &&
+					matchesTicketFilter(item),
 			)
 			.sort((a, b) => {
 				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
@@ -360,6 +382,18 @@
 					<button
 						class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {reviewFilter === value ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
 						onclick={() => (reviewFilter = value as ReviewFilter)}
+					>
+						{label}
+					</button>
+				{/each}
+
+				<span class="ml-3 text-[11px] text-rv-dim">Ticket</span>
+				{#each [['bought', 'Bought'], ['not-bought', "Hasn't bought"], ['can-buy-if-approved', 'Can buy if approved']] as [value, label]}
+					<button
+						class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {ticketFilter === value ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+						onclick={() =>
+							(ticketFilter =
+								ticketFilter === value ? 'all' : (value as TicketFilter))}
 					>
 						{label}
 					</button>

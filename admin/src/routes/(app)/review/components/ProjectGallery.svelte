@@ -131,9 +131,20 @@
 	];
 	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
 	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
+	// Ticket filter: 'all' is the unfiltered default (no chip) — selecting a chip
+	// narrows, clicking the active chip clears back to 'all'. Only applies to the
+	// live pending queue (past/fraud-rejected sections carry no ticket data).
+	type TicketFilter = 'all' | 'bought' | 'not-bought' | 'can-buy-if-approved';
+	const TICKET_FILTERS: readonly TicketFilter[] = [
+		'all',
+		'bought',
+		'not-bought',
+		'can-buy-if-approved',
+	];
 
 	const SORT_ORDER_STORAGE_KEY = 'horizons-review-gallery-sort-order';
 	const FRAUD_FILTER_STORAGE_KEY = 'horizons-review-gallery-fraud-filter';
+	const TICKET_FILTER_STORAGE_KEY = 'horizons-review-gallery-ticket-filter';
 
 	function loadSortOrderFromStorage(): SortOrder {
 		// Default to longest wait so reviewers triage the most-stale submissions first.
@@ -162,8 +173,22 @@
 		return 'all';
 	}
 
+	function loadTicketFilterFromStorage(): TicketFilter {
+		if (typeof sessionStorage === 'undefined') return 'all';
+		try {
+			const raw = sessionStorage.getItem(TICKET_FILTER_STORAGE_KEY);
+			if (raw && (TICKET_FILTERS as readonly string[]).includes(raw)) {
+				return raw as TicketFilter;
+			}
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+		return 'all';
+	}
+
 	let sortOrder = $state<SortOrder>(loadSortOrderFromStorage());
 	let fraudFilter = $state<FraudFilter>(loadFraudFilterFromStorage());
+	let ticketFilter = $state<TicketFilter>(loadTicketFilterFromStorage());
 
 	$effect(() => {
 		if (typeof sessionStorage === 'undefined') return;
@@ -178,6 +203,15 @@
 		if (typeof sessionStorage === 'undefined') return;
 		try {
 			sessionStorage.setItem(FRAUD_FILTER_STORAGE_KEY, fraudFilter);
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+	});
+
+	$effect(() => {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(TICKET_FILTER_STORAGE_KEY, ticketFilter);
 		} catch {
 			// see TYPE_FILTER_STORAGE_KEY effect for rationale
 		}
@@ -244,6 +278,13 @@
 		return joeFraudPassed === null;
 	}
 
+	function matchesTicketFilter(item: QueueItem): boolean {
+		if (ticketFilter === 'all') return true;
+		if (ticketFilter === 'bought') return item.boughtTicket;
+		if (ticketFilter === 'not-bought') return !item.boughtTicket;
+		return item.canBuyTicketIfApproved;
+	}
+
 	function userLabel(u: { displayName: string | null; slackUserId: string | null }): string {
 		return u.displayName ?? (u.slackUserId ? `@${u.slackUserId}` : 'Anonymous');
 	}
@@ -279,7 +320,9 @@
 						item.project.projectType,
 						userLabel(item.project.user),
 						item.project.user.eventSlug,
-					) && matchesFraudFilter(item.project.joeFraudPassed),
+					) &&
+					matchesFraudFilter(item.project.joeFraudPassed) &&
+					matchesTicketFilter(item),
 			)
 			.sort((a, b) => {
 				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
@@ -586,6 +629,18 @@
 				>
 					Unreviewed
 				</button>
+
+				<span class="text-[11px] text-rv-dim ml-3">Ticket</span>
+				{#each [['bought', 'Bought'], ['not-bought', "Hasn't bought"], ['can-buy-if-approved', 'Can buy if approved']] as [value, label]}
+					<button
+						class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {ticketFilter === value ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+						onclick={() =>
+							(ticketFilter =
+								ticketFilter === value ? 'all' : (value as TicketFilter))}
+					>
+						{label}
+					</button>
+				{/each}
 
 			</div>
 			{#if viewMode === 'grid'}

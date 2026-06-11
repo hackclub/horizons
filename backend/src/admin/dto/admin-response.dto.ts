@@ -1777,6 +1777,18 @@ export class FraudGalleryItemResponse {
   })
   reviewed: boolean;
 
+  @ApiProperty({
+    description:
+      "True when the project owner holds an EventTicket transaction for their pinned event.",
+  })
+  boughtTicket: boolean;
+
+  @ApiProperty({
+    description:
+      "True when the owner hasn't bought yet but their approved+pending hours would clear the pinned event's ticket threshold.",
+  })
+  canBuyTicketIfApproved: boolean;
+
   @ApiProperty({ type: FraudGalleryUserResponse })
   user: FraudGalleryUserResponse;
 }
