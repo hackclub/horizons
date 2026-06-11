@@ -62,6 +62,7 @@ sweep:
 | Slack ID | Single line text | `user.slackUserId` |
 | Slack Username | Single line text | `user.slackUsername` (Slack display name, cached from Slack API) |
 | Birthday | Date | `user.birthday` (date only, sent as `YYYY-MM-DD`; empty if unset) |
+| Last Synced At | Date (include time) | stamped with the current timestamp on every backend write to the record (lifecycle events, stats syncs, daily sweep, pre-auth sign-up) |
 
 ## Approved Projects
 
