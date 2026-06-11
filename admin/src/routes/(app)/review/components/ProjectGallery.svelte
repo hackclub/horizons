@@ -480,6 +480,12 @@
 			>
 				Stats
 			</a>
+			<a
+				href="/admin/review/settings"
+				class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit no-underline inline-block cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text"
+			>
+				Settings
+			</a>
 			{#if isAdmin}
 				<a
 					href="/admin/fraud-review"
