@@ -68,16 +68,21 @@
 	// re-pick after every round trip into a project.
 	const EVENT_FILTER_STORAGE_KEY = 'horizons-review-gallery-event-filter';
 
+	// Reviewers triage the Nexus cohort by default; seeded only when nothing has
+	// been persisted yet (key absent). A stored empty array is respected as an
+	// explicit "show all" so clearing the filter sticks across navigation.
+	const DEFAULT_EVENT_SLUGS = ['nexus'];
+
 	function loadSelectedEventsFromStorage(): Set<string> {
-		if (typeof sessionStorage === 'undefined') return new Set();
+		if (typeof sessionStorage === 'undefined') return new Set(DEFAULT_EVENT_SLUGS);
 		try {
 			const raw = sessionStorage.getItem(EVENT_FILTER_STORAGE_KEY);
-			if (!raw) return new Set();
+			if (raw === null) return new Set(DEFAULT_EVENT_SLUGS);
 			const parsed = JSON.parse(raw);
-			if (!Array.isArray(parsed)) return new Set();
+			if (!Array.isArray(parsed)) return new Set(DEFAULT_EVENT_SLUGS);
 			return new Set(parsed.filter((s): s is string => typeof s === 'string'));
 		} catch {
-			return new Set();
+			return new Set(DEFAULT_EVENT_SLUGS);
 		}
 	}
 
