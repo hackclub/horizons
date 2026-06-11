@@ -12,23 +12,12 @@
 	// joeProjectId so admins can jump straight to Joe's review UI.
 	const JOE_BASE_URL = 'https://joe.fraud.hackclub.com/ysws/horizons/projects';
 
-	const PROJECT_TYPES = [
-		'windows_playable',
-		'mac_playable',
-		'linux_playable',
-		'web_playable',
-		'cross_platform_playable',
-		'hardware',
-		'mobile_app',
-	];
-
 	// "__none__" sentinel matches users without a pinned event so they can be
 	// triaged separately from cohort-tagged submissions.
 	const NO_EVENT_SENTINEL = '__none__';
 
 	// Filter state is persisted in sessionStorage (distinct keys from the review
 	// gallery) so admins keep their scope across navigation round-trips.
-	const TYPE_FILTER_STORAGE_KEY = 'horizons-fraud-review-type-filter';
 	const EVENT_FILTER_STORAGE_KEY = 'horizons-fraud-review-event-filter';
 	const VIEW_MODE_STORAGE_KEY = 'horizons-fraud-review-view-mode';
 	const SORT_ORDER_STORAGE_KEY = 'horizons-fraud-review-sort-order';
@@ -80,7 +69,6 @@
 		return fallback;
 	}
 
-	let selectedTypes = $state<Set<string>>(loadStringSet(TYPE_FILTER_STORAGE_KEY));
 	let selectedEvents = $state<Set<string>>(loadStringSet(EVENT_FILTER_STORAGE_KEY));
 	let viewMode = $state<'grid' | 'list'>(
 		loadEnum(VIEW_MODE_STORAGE_KEY, ['grid', 'list'] as const, 'grid'),
@@ -105,7 +93,6 @@
 		}
 	}
 
-	$effect(() => persist(TYPE_FILTER_STORAGE_KEY, JSON.stringify([...selectedTypes])));
 	$effect(() => persist(EVENT_FILTER_STORAGE_KEY, JSON.stringify([...selectedEvents])));
 	$effect(() => persist(VIEW_MODE_STORAGE_KEY, viewMode));
 	$effect(() => persist(SORT_ORDER_STORAGE_KEY, sortOrder));
@@ -169,8 +156,6 @@
 	}
 
 	function matchesFilters(item: FraudGalleryItem): boolean {
-		const matchesType =
-			selectedTypes.size === 0 || selectedTypes.has(item.projectType);
 		const matchesEvent =
 			selectedEvents.size === 0 ||
 			selectedEvents.has(item.user.eventSlug ?? NO_EVENT_SENTINEL);
@@ -179,7 +164,7 @@
 			q === '' ||
 			item.projectTitle.toLowerCase().includes(q) ||
 			userLabel(item.user).toLowerCase().includes(q);
-		return matchesType && matchesEvent && matchesSearch;
+		return matchesEvent && matchesSearch;
 	}
 
 	function matchesFraudFilter(joeFraudPassed: boolean | null): boolean {
@@ -227,13 +212,6 @@
 				return sortOrder === 'longest-wait' ? aT - bT : bT - aT;
 			}),
 	);
-
-	function toggleType(type: string) {
-		const next = new Set(selectedTypes);
-		if (next.has(type)) next.delete(type);
-		else next.add(type);
-		selectedTypes = next;
-	}
 
 	function toggleEvent(slug: string) {
 		const next = new Set(selectedEvents);
@@ -293,25 +271,6 @@
 			placeholder="Search by project or author name..."
 			bind:value={searchQuery}
 		/>
-
-		<div class="flex flex-wrap items-center gap-2">
-			{#each PROJECT_TYPES as type}
-				<button
-					class="cursor-pointer rounded-[20px] border border-rv-border bg-rv-surface2 px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim transition-all duration-150 hover:border-rv-accent hover:text-rv-text {selectedTypes.has(type) ? 'bg-rv-tag-bg border-rv-accent! text-rv-accent!' : ''}"
-					onclick={() => toggleType(type)}
-				>
-					{formatTypeName(type)}
-				</button>
-			{/each}
-			{#if selectedTypes.size > 0}
-				<button
-					class="cursor-pointer rounded-[20px] border border-rv-border bg-transparent px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim underline hover:text-rv-text"
-					onclick={() => (selectedTypes = new Set())}
-				>
-					Clear filters
-				</button>
-			{/if}
-		</div>
 
 		{#if events.length > 0}
 			<div class="flex flex-wrap items-center gap-2">
