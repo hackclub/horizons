@@ -51,18 +51,25 @@
 		'can-buy-if-approved',
 	];
 
-	function loadStringSet(key: string): Set<string> {
-		if (typeof sessionStorage === 'undefined') return new Set();
+	// `defaults` seeds the set only when nothing has been persisted yet (key
+	// absent). A stored empty array is respected as an explicit "show all" so
+	// clearing the filter sticks across navigation.
+	function loadStringSet(key: string, defaults: string[] = []): Set<string> {
+		if (typeof sessionStorage === 'undefined') return new Set(defaults);
 		try {
 			const raw = sessionStorage.getItem(key);
-			if (!raw) return new Set();
+			if (raw === null) return new Set(defaults);
 			const parsed = JSON.parse(raw);
-			if (!Array.isArray(parsed)) return new Set();
+			if (!Array.isArray(parsed)) return new Set(defaults);
 			return new Set(parsed.filter((s): s is string => typeof s === 'string'));
 		} catch {
-			return new Set();
+			return new Set(defaults);
 		}
 	}
+
+	// Reviewers/admins triage the Nexus cohort by default; they can clear or
+	// switch events from the Event filter row.
+	const DEFAULT_EVENT_SLUGS = ['nexus'];
 
 	function loadEnum<T extends string>(
 		key: string,
@@ -79,7 +86,9 @@
 		return fallback;
 	}
 
-	let selectedEvents = $state<Set<string>>(loadStringSet(EVENT_FILTER_STORAGE_KEY));
+	let selectedEvents = $state<Set<string>>(
+		loadStringSet(EVENT_FILTER_STORAGE_KEY, DEFAULT_EVENT_SLUGS),
+	);
 	let viewMode = $state<'grid' | 'list'>(
 		loadEnum(VIEW_MODE_STORAGE_KEY, ['grid', 'list'] as const, 'grid'),
 	);
