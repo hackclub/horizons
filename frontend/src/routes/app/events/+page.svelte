@@ -101,7 +101,7 @@
 	// Confirmation modal — activated when the user picks "Buy Ticket". The user
 	// must type REQUIRED_PHRASE verbatim before the Purchase button enables.
 	const REQUIRED_PHRASE = $derived(
-		`I understand that by purchasing a ticket I must complete the requirements for an invite (${effectiveTicketCost} hour requirement) by the event date to receive prizes for my logged hours and to be allowed entry, regardless of my travel arrangements.`
+	`I understand that by purchasing a ticket I must complete the requirements for an invite (${effectiveTicketCost} hour requirement) by the event date to receive prizes for my logged hours and to be allowed entry, regardless of my travel arrangements.`
 	);
 	const phraseMatches = $derived(confirmText.trim() === REQUIRED_PHRASE);
 

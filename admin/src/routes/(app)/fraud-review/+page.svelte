@@ -44,8 +44,13 @@
 	];
 	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
 	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
-	type ReviewFilter = 'all' | 'reviewed' | 'unreviewed';
-	const REVIEW_FILTERS: readonly ReviewFilter[] = ['all', 'reviewed', 'unreviewed'];
+	type ReviewFilter = 'all' | 'approved' | 'rejected' | 'unreviewed';
+	const REVIEW_FILTERS: readonly ReviewFilter[] = [
+		'all',
+		'approved',
+		'rejected',
+		'unreviewed',
+	];
 
 	function loadStringSet(key: string): Set<string> {
 		if (typeof sessionStorage === 'undefined') return new Set();
@@ -183,10 +188,12 @@
 		return joeFraudPassed === null;
 	}
 
-	function matchesReviewFilter(reviewed: boolean): boolean {
+	function matchesReviewFilter(item: FraudGalleryItem): boolean {
 		if (reviewFilter === 'all') return true;
-		if (reviewFilter === 'reviewed') return reviewed;
-		return !reviewed;
+		if (reviewFilter === 'unreviewed') return !item.reviewed;
+		if (reviewFilter === 'approved')
+			return item.reviewed && item.approvalStatus === 'approved';
+		return item.reviewed && item.approvalStatus !== 'approved';
 	}
 
 	// Sort by the latest submission timestamp (wait time) so the freshest /
@@ -204,7 +211,7 @@
 				(item) =>
 					matchesFilters(item) &&
 					matchesFraudFilter(item.joeFraudPassed) &&
-					matchesReviewFilter(item.reviewed),
+					matchesReviewFilter(item),
 			)
 			.sort((a, b) => {
 				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
@@ -390,7 +397,7 @@
 				{/each}
 
 				<span class="ml-3 text-[11px] text-rv-dim">Project</span>
-				{#each [['all', 'All'], ['reviewed', 'Reviewed'], ['unreviewed', 'Unreviewed']] as [value, label]}
+				{#each [['all', 'All'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['unreviewed', 'Unreviewed']] as [value, label]}
 					<button
 						class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {reviewFilter === value ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
 						onclick={() => (reviewFilter = value as ReviewFilter)}
