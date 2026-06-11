@@ -78,7 +78,7 @@
 		loadEnum(SORT_ORDER_STORAGE_KEY, SORT_ORDERS, 'longest-wait'),
 	);
 	let fraudFilter = $state<FraudFilter>(
-		loadEnum(FRAUD_FILTER_STORAGE_KEY, FRAUD_FILTERS, 'all'),
+		loadEnum(FRAUD_FILTER_STORAGE_KEY, FRAUD_FILTERS, 'unreviewed'),
 	);
 	let reviewFilter = $state<ReviewFilter>(
 		loadEnum(REVIEW_FILTER_STORAGE_KEY, REVIEW_FILTERS, 'all'),
