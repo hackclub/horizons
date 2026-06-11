@@ -285,6 +285,18 @@
 					{filteredItems.length} of {items.length} projects
 				</p>
 			{/if}
+			<a
+				href="{base}/review/fraud-queue"
+				class="inline-block cursor-pointer rounded-md border border-rv-border bg-rv-surface2 px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim no-underline transition-all duration-150 hover:border-rv-accent hover:text-rv-text"
+			>
+				Fraud Queue
+			</a>
+			<a
+				href="{base}/review/fraud-review"
+				class="inline-block cursor-pointer rounded-md border border-rv-border bg-rv-surface2 px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim no-underline transition-all duration-150 hover:border-rv-accent hover:text-rv-text"
+			>
+				Fraud Review
+			</a>
 			<button
 				class="cursor-pointer rounded-md border border-rv-border bg-rv-surface2 px-3.5 py-1.5 font-inherit text-[12px] text-rv-dim transition-all duration-150 hover:border-rv-accent hover:text-rv-text disabled:cursor-not-allowed disabled:opacity-40"
 				onclick={refresh}

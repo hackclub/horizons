@@ -482,16 +482,10 @@
 			</a>
 			{#if isAdmin}
 				<a
-					href="/admin/review/fraud-queue"
+					href="/admin/fraud-review"
 					class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit no-underline inline-block cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text"
 				>
-					Fraud Queue
-				</a>
-				<a
-					href="/admin/review/fraud-review"
-					class="py-1.5 px-3.5 rounded-md border border-rv-border bg-rv-surface2 text-rv-dim text-[12px] font-inherit no-underline inline-block cursor-pointer transition-all duration-150 hover:border-rv-accent hover:text-rv-text"
-				>
-					Fraud Review
+					Fraud Gallery
 				</a>
 			{/if}
 			<button
