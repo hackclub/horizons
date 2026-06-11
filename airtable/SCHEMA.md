@@ -55,7 +55,7 @@ sweep:
 | Field name | Airtable type | Source |
 |---|---|---|
 | Approved Hours | Number, 1 decimal | sum of approved project hours |
-| Hours in Review | Number, 1 decimal | hours on projects with a pending latest submission |
+| Hours in Review | Number, 1 decimal | hours on projects whose latest submission isn't fully finalized: approval pending, or fraud review (Joe) still pending — except rejected submissions, which are terminal |
 | Unsubmitted Hours | Number, 1 decimal | Hackatime hours on never-submitted projects |
 | Chosen Event | Single line text | pinned event slug |
 | Country | Single line text | `user.country` |

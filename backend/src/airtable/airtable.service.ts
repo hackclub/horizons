@@ -204,9 +204,13 @@ export class AirtableService {
         where: { userId, deletedAt: null, submissions: { none: {} } },
         _sum: { nowHackatimeHours: true },
       }),
-      // Mirrors MetricsService.computeReviewHours: a project counts as
-      // in-review when its latest submission is still pending and the
-      // reviewer hasn't decided. Scoped to this user.
+      // A project counts as in-review when its latest submission isn't fully
+      // finalized: approval still pending, OR fraud review still pending
+      // (joe_fraud_passed unset) — except when the submission is rejected,
+      // which is terminal regardless of the fraud gate. Unlike
+      // MetricsService.computeReviewHours (reviewer workload, so reviewer
+      // gate only), this intentionally counts reviewer-approved projects
+      // still awaiting Joe's fraud verdict. Scoped to this user.
       this.prisma.$queryRaw<Array<{ total_hours: number }>>`
           SELECT COALESCE(SUM(p.now_hackatime_hours), 0) as total_hours
           FROM projects p
@@ -215,8 +219,13 @@ export class AirtableService {
             AND EXISTS (
               SELECT 1 FROM submissions s
               WHERE s.project_id = p.project_id
-                AND s.approval_status = 'pending'
-                AND s.review_passed IS NULL
+                AND (
+                  s.approval_status = 'pending'
+                  OR (
+                    p.joe_fraud_passed IS NULL
+                    AND s.approval_status != 'rejected'
+                  )
+                )
                 AND s.created_at = (
                   SELECT MAX(s2.created_at) FROM submissions s2
                   WHERE s2.project_id = p.project_id
