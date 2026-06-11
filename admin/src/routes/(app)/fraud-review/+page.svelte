@@ -34,9 +34,10 @@
 	];
 	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
 	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
-	type ReviewFilter = 'all' | 'approved' | 'rejected' | 'unreviewed';
-	const REVIEW_FILTERS: readonly ReviewFilter[] = [
-		'all',
+	// Project review status is multiselect: an empty set means "show all",
+	// matching the Event filter's semantics.
+	type ReviewStatus = 'approved' | 'rejected' | 'unreviewed';
+	const REVIEW_STATUSES: readonly ReviewStatus[] = [
 		'approved',
 		'rejected',
 		'unreviewed',
@@ -99,8 +100,15 @@
 	let fraudFilter = $state<FraudFilter>(
 		loadEnum(FRAUD_FILTER_STORAGE_KEY, FRAUD_FILTERS, 'unreviewed'),
 	);
-	let reviewFilter = $state<ReviewFilter>(
-		loadEnum(REVIEW_FILTER_STORAGE_KEY, REVIEW_FILTERS, 'all'),
+	// loadStringSet's JSON.parse rejects the old single-select values ('all',
+	// 'approved', …) stored under this key, so stale entries fall back to the
+	// empty set ("show all") instead of breaking.
+	let reviewFilter = $state<Set<ReviewStatus>>(
+		new Set(
+			[...loadStringSet(REVIEW_FILTER_STORAGE_KEY)].filter((s): s is ReviewStatus =>
+				(REVIEW_STATUSES as readonly string[]).includes(s),
+			),
+		),
 	);
 	let ticketFilter = $state<TicketFilter>(
 		loadEnum(TICKET_FILTER_STORAGE_KEY, TICKET_FILTERS, 'all'),
@@ -119,7 +127,7 @@
 	$effect(() => persist(VIEW_MODE_STORAGE_KEY, viewMode));
 	$effect(() => persist(SORT_ORDER_STORAGE_KEY, sortOrder));
 	$effect(() => persist(FRAUD_FILTER_STORAGE_KEY, fraudFilter));
-	$effect(() => persist(REVIEW_FILTER_STORAGE_KEY, reviewFilter));
+	$effect(() => persist(REVIEW_FILTER_STORAGE_KEY, JSON.stringify([...reviewFilter])));
 	$effect(() => persist(TICKET_FILTER_STORAGE_KEY, ticketFilter));
 
 	let items = $state<FraudGalleryItem[]>([]);
@@ -196,12 +204,13 @@
 		return joeFraudPassed === null;
 	}
 
+	function reviewStatus(item: FraudGalleryItem): ReviewStatus {
+		if (!item.reviewed) return 'unreviewed';
+		return item.approvalStatus === 'approved' ? 'approved' : 'rejected';
+	}
+
 	function matchesReviewFilter(item: FraudGalleryItem): boolean {
-		if (reviewFilter === 'all') return true;
-		if (reviewFilter === 'unreviewed') return !item.reviewed;
-		if (reviewFilter === 'approved')
-			return item.reviewed && item.approvalStatus === 'approved';
-		return item.reviewed && item.approvalStatus !== 'approved';
+		return reviewFilter.size === 0 || reviewFilter.has(reviewStatus(item));
 	}
 
 	function matchesTicketFilter(item: FraudGalleryItem): boolean {
@@ -249,6 +258,13 @@
 		if (next.has(slug)) next.delete(slug);
 		else next.add(slug);
 		selectedEvents = next;
+	}
+
+	function toggleReviewStatus(status: ReviewStatus) {
+		const next = new Set(reviewFilter);
+		if (next.has(status)) next.delete(status);
+		else next.add(status);
+		reviewFilter = next;
 	}
 </script>
 
@@ -405,10 +421,10 @@
 				{/each}
 
 				<span class="ml-3 text-[11px] text-rv-dim">Project</span>
-				{#each [['all', 'All'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['unreviewed', 'Unreviewed']] as [value, label]}
+				{#each [['approved', 'Approved'], ['rejected', 'Rejected'], ['unreviewed', 'Unreviewed']] as [value, label]}
 					<button
-						class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {reviewFilter === value ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
-						onclick={() => (reviewFilter = value as ReviewFilter)}
+						class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {reviewFilter.has(value as ReviewStatus) ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+						onclick={() => toggleReviewStatus(value as ReviewStatus)}
 					>
 						{label}
 					</button>
