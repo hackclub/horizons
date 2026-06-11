@@ -21,6 +21,8 @@
 	import ClaimConflictModal from '../components/ClaimConflictModal.svelte';
 	import { createClaimManager } from '../claimManager';
 	import { api, type components } from '$lib/api';
+	import { get } from 'svelte/store';
+	import { afterVerdict } from '$lib/reviewSettingsStore';
 	import confetti from 'canvas-confetti';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
@@ -589,8 +591,14 @@
 			// without a refetch.
 			currentSubmission = { ...currentSubmission, reviewPassed: approved };
 		}
-		// Surface the project card after a verdict so the reviewer sees what they
-		// just decided on rather than the now-stale verdict form.
+		// Reviewer preference (Review Settings): 'gallery' jumps straight back to
+		// the queue after a verdict; 'stay' (default) keeps the reviewer on this
+		// project and surfaces the project card so they see what they just decided
+		// on rather than the now-stale verdict form.
+		if (get(afterVerdict) === 'gallery') {
+			goBack();
+			return;
+		}
 		activeTab = 'card';
 	}
 </script>
