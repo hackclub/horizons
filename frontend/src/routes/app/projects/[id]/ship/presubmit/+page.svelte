@@ -14,10 +14,15 @@
 	let title = $state('');
 
 	const checklistItems = [
-		'You have an experienceable link (a URL where anyone can try your project now)',
-		'Your project has a screenshot uploaded (if it\'s difficult to experience, add a video to your README)',
-		'Your project description clearly explains what it does',
-		'AI use is declared in your project\'s README'
+		{ text: 'You have an experienceable link (a URL where anyone can try your project now)' },
+		{ text: 'Your project has a screenshot uploaded (if it\'s difficult to experience, add a video to your README)' },
+		{ text: 'Your project description clearly explains what it does' },
+		{ text: 'AI use is declared in your project\'s README' },
+		{
+			text: 'My README is not AI generated.',
+			subtext: '~50% of projects are rejected due to having an AI generated README.',
+			warning: true
+		}
 	];
 
 	let checked = $state<boolean[]>(checklistItems.map(() => false));
@@ -79,17 +84,36 @@
 			<div class="flex items-start justify-center w-full">
 				<div class="flex flex-col gap-4 w-full max-w-[487px]">
 					{#each checklistItems as item, i}
-						<label class="checklist-item border-2 border-black rounded-lg p-2 w-full flex gap-2.5 items-center justify-center cursor-pointer overflow-clip {checked[i] ? "bg-[#ffa936]" : "bg-[#f3e8d8]"}">
-							<p class="font-bricolage text-[14px] font-normal leading-[1.5] tracking-[-0.154px] text-black flex-1">{item}</p>
-							<input type="checkbox" class="hidden" bind:checked={checked[i]} />
-							<div class="size-4 border border-black rounded-[4px] shrink-0 flex items-center justify-center {checked[i] ? 'bg-[#ffa936]' : ''}">
-								{#if checked[i]}
-									<svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-										<path d="M1 4L3.5 6.5L9 1" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-									</svg>
-								{/if}
-							</div>
-						</label>
+						{#if item.warning}
+							<label class="checklist-item border-2 border-[#b91c1c] rounded-lg p-2 w-full flex gap-2.5 items-center justify-center cursor-pointer overflow-clip {checked[i] ? "bg-[#b91c1c]" : "bg-[#f3e8d8]"}">
+								<div class="flex-1 flex flex-col">
+									<p class="font-bricolage text-[14px] font-bold leading-[1.5] tracking-[-0.154px] m-0 {checked[i] ? 'text-[#f3e8d8]' : 'text-[#b91c1c]'}">{item.text}</p>
+									{#if item.subtext}
+										<p class="font-bricolage text-[12px] font-normal leading-[1.5] tracking-[-0.132px] m-0 {checked[i] ? 'text-[#f3e8d8]' : 'text-[#b91c1c]'}">{item.subtext}</p>
+									{/if}
+								</div>
+								<input type="checkbox" class="hidden" bind:checked={checked[i]} />
+								<div class="size-4 border rounded-[4px] shrink-0 flex items-center justify-center {checked[i] ? 'bg-[#b91c1c] border-[#f3e8d8]' : 'border-[#b91c1c]'}">
+									{#if checked[i]}
+										<svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+											<path d="M1 4L3.5 6.5L9 1" stroke="#f3e8d8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+										</svg>
+									{/if}
+								</div>
+							</label>
+						{:else}
+							<label class="checklist-item border-2 border-black rounded-lg p-2 w-full flex gap-2.5 items-center justify-center cursor-pointer overflow-clip {checked[i] ? "bg-[#ffa936]" : "bg-[#f3e8d8]"}">
+								<p class="font-bricolage text-[14px] font-normal leading-[1.5] tracking-[-0.154px] text-black flex-1">{item.text}</p>
+								<input type="checkbox" class="hidden" bind:checked={checked[i]} />
+								<div class="size-4 border border-black rounded-[4px] shrink-0 flex items-center justify-center {checked[i] ? 'bg-[#ffa936]' : ''}">
+									{#if checked[i]}
+										<svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+											<path d="M1 4L3.5 6.5L9 1" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+										</svg>
+									{/if}
+								</div>
+							</label>
+						{/if}
 					{/each}
 				</div>
 			</div>
