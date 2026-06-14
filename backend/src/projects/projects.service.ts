@@ -437,22 +437,6 @@ export class ProjectsService {
       project.nowHackatimeProjects,
     );
 
-    // Hour gate: first ship requires ≥3h; a reship requires ≥3h beyond the
-    // most recent approved submission's snapshotted hours.
-    const lastApprovedSubmission = await this.prisma.submission.findFirst({
-      where: { projectId, approvalStatus: 'approved' },
-      orderBy: { createdAt: 'desc' },
-      select: { hackatimeHours: true },
-    });
-    const requiredHours = (lastApprovedSubmission?.hackatimeHours ?? 0) + 3;
-    if (recalculatedHours < requiredHours) {
-      throw new BadRequestException(
-        lastApprovedSubmission
-          ? `You need at least ${requiredHours.toFixed(1)} tracked hours to reship (3 more than your last approved submission's ${lastApprovedSubmission.hackatimeHours?.toFixed(1)}h). You currently have ${recalculatedHours.toFixed(1)}h.`
-          : `You need at least 3 tracked hours to ship. You currently have ${recalculatedHours.toFixed(1)}h.`,
-      );
-    }
-
     // Inspect the most recent prior submission to gate eligibility and decide
     // whether this resubmission needs fresh fraud review.
     //
@@ -483,6 +467,25 @@ export class ProjectsService {
       if (blocked) {
         throw new BadRequestException('You have a pending submission.');
       }
+    }
+
+    // Hour gate: first ship requires ≥3h; a reship of an approved project
+    // requires ≥3h beyond that approved submission's snapshotted hours. The
+    // +3 only applies when the latest submission is approved — after a normal
+    // reviewer rejection it was already enforced when the rejected submission
+    // was created (or that submission predates the gate), and the resubmit
+    // rules above explicitly allow rejected resubmissions with no new hours.
+    const approvedBaseline =
+      priorSubmission?.approvalStatus === 'approved'
+        ? (priorSubmission.hackatimeHours ?? 0)
+        : null;
+    const requiredHours = (approvedBaseline ?? 0) + 3;
+    if (recalculatedHours < requiredHours) {
+      throw new BadRequestException(
+        approvedBaseline !== null
+          ? `You need at least ${requiredHours.toFixed(1)} tracked hours to reship (3 more than your last approved submission's ${approvedBaseline.toFixed(1)}h). You currently have ${recalculatedHours.toFixed(1)}h.`
+          : `You need at least 3 tracked hours to ship. You currently have ${recalculatedHours.toFixed(1)}h.`,
+      );
     }
 
     // Reuse the prior fraud outcome only when the prior submission was

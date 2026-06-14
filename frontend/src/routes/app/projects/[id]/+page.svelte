@@ -124,14 +124,17 @@
 
 	// Hackatime derived
 	let currentHours = $derived(hackatimeInfo?.currentHackatimeHours ?? 0);
-	// Ship-eligibility gate: first ship needs ≥3h, reship needs ≥3h beyond
-	// the last approved submission. Mirrors the backend check in
-	// `createSubmission` so the button reflects reality.
-	let requiredShipHours = $derived((hackatimeInfo?.lastApprovedHours ?? 0) + 3);
+	// Ship-eligibility gate: first ship needs ≥3h, a reship of an approved
+	// project needs ≥3h beyond that approved submission. The +3 only applies
+	// when the latest submission is approved — after a normal reviewer
+	// rejection the resubmission only needs the base 3h floor. Mirrors the
+	// backend check in `createSubmission` so the button reflects reality.
+	let reshipBaseline = $derived(isApproved ? (hackatimeInfo?.lastApprovedHours ?? null) : null);
+	let requiredShipHours = $derived((reshipBaseline ?? 0) + 3);
 	let canShip = $derived(hackatimeInfo !== null && currentHours >= requiredShipHours);
 	let shipBlockedReason = $derived(
-		hackatimeInfo?.lastApprovedHours != null
-			? `Track ${requiredShipHours.toFixed(1)} hours on this project to re-ship (3 more than your last approved submission's ${hackatimeInfo.lastApprovedHours.toFixed(1)}h).`
+		reshipBaseline != null
+			? `Track ${requiredShipHours.toFixed(1)} hours on this project to re-ship (3 more than your last approved submission's ${reshipBaseline.toFixed(1)}h).`
 			: 'You need to track 3 hours on this project before you can ship it.'
 	);
 	// Show approved hours (set by reviewer) when approved, otherwise show the original submitted hours
