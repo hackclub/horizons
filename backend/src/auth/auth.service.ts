@@ -470,8 +470,28 @@ export class AuthService {
     }
 
     const updateData: Record<string, any> = {};
+    const previousEmail = existingUser.email;
+    let emailChanged = false;
     if (!existingUser.hcaId) {
       updateData.hcaId = hcaId;
+    }
+    // A user may change their email in HCA; we match by hcaId, so sync the
+    // fresh email back to our record. Guard against the (anomalous) case where
+    // the new email already belongs to a different account to avoid hitting the
+    // unique constraint.
+    if (email && existingUser.email !== email) {
+      const conflicting = await this.prisma.user.findUnique({
+        where: { email },
+        select: { userId: true },
+      });
+      if (conflicting && conflicting.userId !== existingUser.userId) {
+        console.error(
+          `Cannot sync new HCA email for user ${existingUser.userId}: email ${email} already belongs to user ${conflicting.userId}`,
+        );
+      } else {
+        updateData.email = email;
+        emailChanged = true;
+      }
     }
     // Referrals only apply to new users — existing users cannot retroactively gain a referrer
     if (claims.given_name && existingUser.firstName !== claims.given_name) {
@@ -529,6 +549,16 @@ export class AuthService {
         where: { userId: existingUser.userId },
         data: updateData,
       });
+    }
+
+    // Propagate the email change to the linked Airtable record so Loops /
+    // transactional emails follow the new address.
+    if (emailChanged) {
+      this.airtableService
+        .updateUserEmail(previousEmail, email, existingUser.airtableRecId)
+        .catch((err) =>
+          console.error('Error syncing email change to Airtable:', err),
+        );
     }
 
     const effectiveSlackUserId =

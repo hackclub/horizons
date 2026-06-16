@@ -287,6 +287,49 @@ export class AirtableService {
     };
   }
 
+  /**
+   * Update the Email field on a user's Airtable record after an HCA email
+   * change. Prefers the stored record id; falls back to looking the record up
+   * by the previous email. No-op if the record can't be located.
+   */
+  async updateUserEmail(
+    oldEmail: string,
+    newEmail: string,
+    recordId?: string | null,
+  ): Promise<void> {
+    if (!this.AIRTABLE_API_KEY || !this.YSWS_BASE_ID || !this.USERS_TABLE_ID) {
+      return;
+    }
+
+    try {
+      let id = recordId ?? null;
+      if (!id) {
+        const record = await this.findUserRecord(oldEmail);
+        id = record?.id ?? null;
+      }
+      if (!id) return;
+
+      await fetch(
+        `https://api.airtable.com/v0/${this.YSWS_BASE_ID}/${this.USERS_TABLE_ID}/${id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.AIRTABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fields: {
+              Email: newEmail,
+              'Last Synced At': new Date().toISOString(),
+            },
+          }),
+        },
+      );
+    } catch (error) {
+      console.error('Error updating user email in Airtable:', error);
+    }
+  }
+
   private async findUserRecord(
     email: string,
   ): Promise<{ id: string; fields: Record<string, any> } | null> {
