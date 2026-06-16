@@ -69,6 +69,20 @@ export class HackatimeController {
     return this.hackatimeService.unlinkAccount(userId);
   }
 
+  @Get('unlink')
+  @ApiOperation({
+    summary: 'Unlink Hackatime account (browser-reachable page)',
+  })
+  async unlinkAccountPage(
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const userId = req.user.userId;
+    await this.hackatimeService.unlinkAccount(userId);
+    res.setHeader('Content-Type', 'text/html');
+    res.send('<html><body><p>Unlinked</p></body></html>');
+  }
+
   @Get('projects/unlinked')
   @HttpCode(200)
   @ApiOperation({ summary: 'Get unlinked Hackatime projects for current user' })
