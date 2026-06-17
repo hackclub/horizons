@@ -2731,6 +2731,7 @@ export class AdminService {
         user: {
           select: {
             userId: true,
+            email: true,
             firstName: true,
             lastName: true,
             slackUserId: true,
@@ -2750,6 +2751,7 @@ export class AdminService {
       return Papa.unparse([], {
         columns: [
           'Slack ID',
+          'Email',
           'Display Name',
           'Signed up date',
           'Approved hours',
@@ -2856,6 +2858,7 @@ export class AdminService {
       ).length;
       return {
         'Slack ID': user.slackUserId ?? '',
+        'Email': user.email,
         'Display Name': slackDisplay,
         'Signed up date': user.createdAt.toISOString(),
         'Approved hours': approvedHoursMap.get(user.userId) ?? 0,
