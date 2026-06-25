@@ -263,11 +263,17 @@
 
 <div class="p-6">
 	<div class="mx-auto max-w-7xl space-y-6">
-		<div class="flex items-baseline justify-between gap-4">
-			<h1 class="text-2xl font-semibold text-ds-text">Transactions</h1>
-			<p class="text-xs text-ds-text-secondary">
-				Unified ledger of shop purchases and event tickets
-			</p>
+		<div class="flex flex-wrap items-center justify-between gap-4">
+			<div>
+				<h1 class="text-2xl font-semibold text-ds-text">Transactions</h1>
+				<p class="text-xs text-ds-text-secondary">
+					Unified ledger of shop purchases and event tickets
+				</p>
+			</div>
+			<div class="space-y-1">
+				<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">View</p>
+				<Tab items={viewTabs} bind:value={viewMode} />
+			</div>
 		</div>
 
 		{#if summary}
@@ -300,11 +306,7 @@
 		{/if}
 
 		<div class="space-y-3 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
-			<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-				<div class="space-y-1">
-					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">View</p>
-					<Tab items={viewTabs} bind:value={viewMode} />
-				</div>
+			<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
 				<div class="space-y-1">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Kind</p>
 					<Tab items={kindTabs} bind:value={kindFilter} />
