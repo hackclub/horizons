@@ -205,6 +205,26 @@
 		return Array.from(grouped.values()).sort((a, b) => b.totalCost - a.totalCost);
 	});
 
+	// Event tickets each user currently holds, derived from the full loaded set
+	// (not filteredEntries) so the ticket pill shows in the by-user header even
+	// when the rows are filtered to a shop item like the travel grant. Refunded
+	// tickets are excluded — the user no longer holds them.
+	const ticketsByUser = $derived.by(() => {
+		const byUser = new Map<number, { eventId: number; title: string }[]>();
+		for (const e of entries) {
+			if (e.kind !== 'EventTicket' || !e.event || e.refundedAt) continue;
+			let list = byUser.get(e.user.userId);
+			if (!list) {
+				list = [];
+				byUser.set(e.user.userId, list);
+			}
+			if (!list.some((t) => t.eventId === e.event!.eventId)) {
+				list.push({ eventId: e.event.eventId, title: e.event.title });
+			}
+		}
+		return byUser;
+	});
+
 	function formatDateTime(d: string): string {
 		const date = new Date(d);
 		return date.toLocaleString(undefined, {
@@ -507,7 +527,17 @@
 					<Card class="overflow-hidden">
 						<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ds-border bg-ds-surface2/50 px-4 py-3">
 							<div>
-								<div class="font-semibold text-ds-text">{group.user.firstName} {group.user.lastName}</div>
+								<div class="flex flex-wrap items-center gap-2">
+									<span class="font-semibold text-ds-text">{group.user.firstName} {group.user.lastName}</span>
+									{#each ticketsByUser.get(group.user.userId) ?? [] as ticket (ticket.eventId)}
+										<span
+											class="inline-flex items-center gap-1 rounded-full border border-emerald-300/50 bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-900/40 dark:text-emerald-200"
+											title="Holds an event ticket"
+										>
+											🎟 {ticket.title}
+										</span>
+									{/each}
+								</div>
 								<div class="text-xs text-ds-text-secondary">{group.user.email}</div>
 							</div>
 							<div class="flex gap-5 text-right text-xs">
