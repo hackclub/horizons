@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, TextField, Tab, Card } from '$lib/components';
+	import { Button, TextField, Tab, Card, Select } from '$lib/components';
 	import { api } from '$lib/api';
 
 	type Kind = 'ShopItem' | 'EventTicket' | 'AdminAdjustment';
@@ -54,6 +54,9 @@
 	let refundedFilter = $state<'all' | 'hide' | 'only'>('all');
 	let search = $state('');
 	let viewMode = $state<'flat' | 'by-user'>('flat');
+	// Item-level filter (shop items only, not variants). Only applied in the
+	// by-user view so you can isolate which users purchased a given item.
+	let itemFilter = $state<number | 'all'>('all');
 
 	const kindTabs = [
 		{ label: 'All', value: 'all' },
@@ -114,22 +117,47 @@
 		loadLedger();
 	});
 
-	const filteredEntries = $derived(
-		search.trim() === ''
-			? entries
-			: entries.filter((e) => {
-					const q = search.toLowerCase();
-					return (
-						e.user.email.toLowerCase().includes(q) ||
-						`${e.user.firstName} ${e.user.lastName}`.toLowerCase().includes(q) ||
-						e.itemDescription.toLowerCase().includes(q) ||
-						e.event?.slug.toLowerCase().includes(q) ||
-						e.event?.title.toLowerCase().includes(q) ||
-						e.item?.name.toLowerCase().includes(q) ||
-						String(e.transactionId).includes(q)
-					);
-				}),
-	);
+	// Distinct shop items present in the loaded ledger, for the item filter
+	// dropdown. Variants are intentionally not surfaced — item-level only.
+	const itemOptions = $derived.by(() => {
+		const byId = new Map<number, string>();
+		for (const e of entries) {
+			if (e.item) byId.set(e.item.itemId, e.item.name);
+		}
+		return Array.from(byId, ([itemId, name]) => ({ itemId, name })).sort((a, b) =>
+			a.name.localeCompare(b.name),
+		);
+	});
+
+	// Reset the item filter if the selected item is no longer in the loaded set
+	// (e.g. after changing the kind filter away from shop purchases).
+	$effect(() => {
+		if (itemFilter !== 'all' && !itemOptions.some((o) => o.itemId === itemFilter)) {
+			itemFilter = 'all';
+		}
+	});
+
+	const filteredEntries = $derived.by(() => {
+		let result = entries;
+		// The item filter only applies in the by-user view.
+		if (viewMode === 'by-user' && itemFilter !== 'all') {
+			result = result.filter((e) => e.item?.itemId === itemFilter);
+		}
+		const q = search.trim().toLowerCase();
+		if (q !== '') {
+			result = result.filter(
+				(e) =>
+					e.user.email.toLowerCase().includes(q) ||
+					`${e.user.firstName} ${e.user.lastName}`.toLowerCase().includes(q) ||
+					e.itemDescription.toLowerCase().includes(q) ||
+					e.event?.slug.toLowerCase().includes(q) ||
+					e.event?.title.toLowerCase().includes(q) ||
+					e.item?.name.toLowerCase().includes(q) ||
+					String(e.transactionId).includes(q),
+			);
+		}
+		return result;
+	});
 
 	const filteredSpent = $derived(
 		Math.round(filteredEntries.reduce((s, e) => s + e.cost, 0) * 10) / 10,
@@ -307,6 +335,20 @@
 
 		<div class="space-y-3 rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 			<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+				{#if viewMode === 'by-user'}
+					<div class="space-y-1">
+						<label
+							class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary"
+							for="ledger-item">Item</label
+						>
+						<Select id="ledger-item" bind:value={itemFilter} class="w-full">
+							<option value="all">All items</option>
+							{#each itemOptions as opt (opt.itemId)}
+								<option value={opt.itemId}>{opt.name}</option>
+							{/each}
+						</Select>
+					</div>
+				{/if}
 				<div class="space-y-1">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Kind</p>
 					<Tab items={kindTabs} bind:value={kindFilter} />
