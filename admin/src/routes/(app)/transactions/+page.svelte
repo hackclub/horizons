@@ -53,10 +53,18 @@
 	let fulfilledFilter = $state<'all' | 'fulfilled' | 'unfulfilled'>('all');
 	let refundedFilter = $state<'all' | 'hide' | 'only'>('all');
 	let search = $state('');
-	let viewMode = $state<'flat' | 'by-user'>('flat');
+	// Defaults to the by-user view focused on travel grants — the most common
+	// reason to open this page is fulfilling travel grant purchases per user.
+	let viewMode = $state<'flat' | 'by-user'>('by-user');
 	// Item-level filter (shop items only, not variants). Only applied in the
 	// by-user view so you can isolate which users purchased a given item.
 	let itemFilter = $state<number | 'all'>('all');
+
+	// On first load we auto-select the travel grant item (matched by name) so the
+	// page lands directly on travel grant purchases. Tracked so we only apply the
+	// default once — after that the admin's item choice is respected.
+	const TRAVEL_GRANT_MATCH = 'travel grant';
+	let appliedTravelGrantDefault = $state(false);
 
 	const kindTabs = [
 		{ label: 'All', value: 'all' },
@@ -127,6 +135,16 @@
 		return Array.from(byId, ([itemId, name]) => ({ itemId, name })).sort((a, b) =>
 			a.name.localeCompare(b.name),
 		);
+	});
+
+	// Apply the travel grant default once, as soon as items are loaded. If no
+	// travel grant item is present in the loaded set we still mark it applied so
+	// we don't keep re-selecting it as the admin navigates.
+	$effect(() => {
+		if (appliedTravelGrantDefault || itemOptions.length === 0) return;
+		const tg = itemOptions.find((o) => o.name.toLowerCase().includes(TRAVEL_GRANT_MATCH));
+		if (tg) itemFilter = tg.itemId;
+		appliedTravelGrantDefault = true;
 	});
 
 	// Reset the item filter if the selected item is no longer in the loaded set
