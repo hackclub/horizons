@@ -37,7 +37,8 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let refundingId = $state<number | null>(null);
-	let refundError = $state<string | null>(null);
+	let fulfillingId = $state<number | null>(null);
+	let actionError = $state<string | null>(null);
 
 	let kindFilter = $state<'all' | Kind>('all');
 	let fulfilledFilter = $state<'all' | 'fulfilled' | 'unfulfilled'>('all');
@@ -170,13 +171,13 @@
 		if (!ok) return;
 
 		refundingId = e.transactionId;
-		refundError = null;
+		actionError = null;
 		try {
 			const { error: err } = await api.DELETE('/api/shop/admin/transactions/{id}', {
 				params: { path: { id: e.transactionId } },
 			});
 			if (err) {
-				refundError =
+				actionError =
 					err && typeof err === 'object' && 'message' in err
 						? String((err as { message: unknown }).message)
 						: 'Refund failed';
@@ -187,9 +188,36 @@
 				row.transactionId === e.transactionId ? { ...row, refundedAt } : row,
 			);
 		} catch (err) {
-			refundError = err instanceof Error ? err.message : 'Refund failed';
+			actionError = err instanceof Error ? err.message : 'Refund failed';
 		} finally {
 			refundingId = null;
+		}
+	}
+
+	async function handleFulfill(e: LedgerEntry) {
+		fulfillingId = e.transactionId;
+		actionError = null;
+		try {
+			const { error: err } = await api.PUT('/api/shop/admin/transactions/{id}/fulfill', {
+				params: { path: { id: e.transactionId } },
+			});
+			if (err) {
+				actionError =
+					err && typeof err === 'object' && 'message' in err
+						? String((err as { message: unknown }).message)
+						: 'Fulfill failed';
+				return;
+			}
+			const fulfilledAt = new Date().toISOString();
+			entries = entries.map((row) =>
+				row.transactionId === e.transactionId
+					? { ...row, isFulfilled: true, fulfilledAt }
+					: row,
+			);
+		} catch (err) {
+			actionError = err instanceof Error ? err.message : 'Fulfill failed';
+		} finally {
+			fulfillingId = null;
 		}
 	}
 </script>
@@ -225,10 +253,10 @@
 			</div>
 		{/if}
 
-		{#if refundError}
+		{#if actionError}
 			<div class="flex items-center justify-between gap-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/20 dark:text-red-200">
-				<span>{refundError}</span>
-				<button class="text-xs underline" onclick={() => (refundError = null)}>Dismiss</button>
+				<span>{actionError}</span>
+				<button class="text-xs underline" onclick={() => (actionError = null)}>Dismiss</button>
 			</div>
 		{/if}
 
@@ -327,13 +355,24 @@
 									{#if e.refundedAt}
 										<span class="text-[11px] text-ds-text-placeholder">—</span>
 									{:else}
-										<button
-											class="rounded border border-red-300 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-700/50 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50"
-											onclick={() => handleRefund(e)}
-											disabled={refundingId === e.transactionId}
-										>
-											{refundingId === e.transactionId ? 'Refunding…' : 'Refund'}
-										</button>
+										<div class="flex items-center justify-end gap-1.5">
+											{#if e.kind === 'ShopItem' && !e.isFulfilled}
+												<button
+													class="rounded border border-green-300 bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-green-700/50 dark:bg-green-900/30 dark:text-green-200 dark:hover:bg-green-900/50"
+													onclick={() => handleFulfill(e)}
+													disabled={fulfillingId === e.transactionId}
+												>
+													{fulfillingId === e.transactionId ? 'Fulfilling…' : 'Fulfill'}
+												</button>
+											{/if}
+											<button
+												class="rounded border border-red-300 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-700/50 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50"
+												onclick={() => handleRefund(e)}
+												disabled={refundingId === e.transactionId}
+											>
+												{refundingId === e.transactionId ? 'Refunding…' : 'Refund'}
+											</button>
+										</div>
 									{/if}
 								</td>
 							</tr>
