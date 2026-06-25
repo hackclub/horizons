@@ -49,6 +49,12 @@
 	let fulfillingId = $state<number | null>(null);
 	let unfulfillingId = $state<number | null>(null);
 	let actionError = $state<string | null>(null);
+	// Per-user bulk action in progress (by-user view). Holds the user being acted
+	// on plus which bulk action, so we can disable that user's buttons and show a
+	// busy label while the per-transaction calls run.
+	let bulkBusy = $state<{ userId: number; action: 'fulfill' | 'unfulfill' | 'refund' } | null>(
+		null,
+	);
 
 	let kindFilter = $state<'all' | Kind>('all');
 	let fulfilledFilter = $state<'all' | 'fulfilled' | 'unfulfilled'>('all');
@@ -352,6 +358,109 @@
 			unfulfillingId = null;
 		}
 	}
+
+	// --- Per-user bulk actions (by-user view) ---------------------------------
+	// Each operates on the entries currently shown in the group, so it respects
+	// the active filters (e.g. the travel grant item filter). Buttons are only
+	// rendered when their target list is non-empty.
+	const fulfillableEntries = (g: UserGroup) =>
+		g.entries.filter((e) => e.kind === 'ShopItem' && !e.isFulfilled && !e.refundedAt);
+	const unfulfillableEntries = (g: UserGroup) =>
+		g.entries.filter((e) => e.kind === 'ShopItem' && e.isFulfilled && !e.refundedAt);
+	const refundableEntries = (g: UserGroup) => g.entries.filter((e) => !e.refundedAt);
+
+	function errMessage(err: unknown, fallback: string): string {
+		return err && typeof err === 'object' && 'message' in err
+			? String((err as { message: unknown }).message)
+			: fallback;
+	}
+
+	async function runBulk(
+		group: UserGroup,
+		action: 'fulfill' | 'unfulfill' | 'refund',
+		targets: LedgerEntry[],
+		confirmMsg: string,
+	) {
+		if (targets.length === 0) return;
+		const ok = typeof window !== 'undefined' ? window.confirm(confirmMsg) : true;
+		if (!ok) return;
+
+		bulkBusy = { userId: group.user.userId, action };
+		actionError = null;
+		let failures = 0;
+		try {
+			for (const e of targets) {
+				let err: unknown;
+				if (action === 'refund') {
+					({ error: err } = await api.DELETE('/api/shop/admin/transactions/{id}', {
+						params: { path: { id: e.transactionId } },
+					}));
+				} else if (action === 'fulfill') {
+					({ error: err } = await api.PUT('/api/shop/admin/transactions/{id}/fulfill', {
+						params: { path: { id: e.transactionId } },
+					}));
+				} else {
+					({ error: err } = await api.DELETE('/api/shop/admin/transactions/{id}/fulfill', {
+						params: { path: { id: e.transactionId } },
+					}));
+				}
+				if (err) {
+					failures++;
+					continue;
+				}
+				const now = new Date().toISOString();
+				entries = entries.map((row) => {
+					if (row.transactionId !== e.transactionId) return row;
+					if (action === 'refund') return { ...row, refundedAt: now };
+					if (action === 'fulfill') return { ...row, isFulfilled: true, fulfilledAt: now };
+					return { ...row, isFulfilled: false, fulfilledAt: null };
+				});
+			}
+			if (failures > 0) {
+				actionError = `${failures} of ${targets.length} ${action} action(s) failed.`;
+			}
+		} catch (err) {
+			actionError = err instanceof Error ? err.message : `Bulk ${action} failed`;
+		} finally {
+			bulkBusy = null;
+		}
+	}
+
+	function handleFulfillAll(group: UserGroup) {
+		const targets = fulfillableEntries(group);
+		const name = `${group.user.firstName} ${group.user.lastName}`;
+		return runBulk(
+			group,
+			'fulfill',
+			targets,
+			`Fulfill all ${targets.length} pending shop item(s) for ${name}?`,
+		);
+	}
+
+	function handleUnfulfillAll(group: UserGroup) {
+		const targets = unfulfillableEntries(group);
+		const name = `${group.user.firstName} ${group.user.lastName}`;
+		return runBulk(
+			group,
+			'unfulfill',
+			targets,
+			`Mark all ${targets.length} fulfilled shop item(s) as unfulfilled for ${name}?`,
+		);
+	}
+
+	function handleRefundAll(group: UserGroup) {
+		const targets = refundableEntries(group);
+		const name = `${group.user.firstName} ${group.user.lastName}`;
+		const total = Math.round(targets.reduce((s, e) => s + e.cost, 0) * 10) / 10;
+		return runBulk(
+			group,
+			'refund',
+			targets,
+			`Refund / reverse all ${targets.length} transaction(s) for ${name}?\n\n` +
+				`Net ${total}h will be reversed (spent hours returned, awarded hours removed).\n` +
+				`This acts on every non-refunded row shown for this user and cannot be undone.`,
+		);
+	}
 </script>
 
 <div class="p-6">
@@ -600,6 +709,43 @@
 								</div>
 							</div>
 						</div>
+						{#if fulfillableEntries(group).length > 0 || unfulfillableEntries(group).length > 0 || refundableEntries(group).length > 0}
+							<div class="flex flex-wrap items-center gap-2 border-b border-ds-border bg-ds-surface2/30 px-4 py-2">
+								{#if fulfillableEntries(group).length > 0}
+									<button
+										class="rounded border border-green-300 bg-green-50 px-2.5 py-1 text-[11px] font-medium text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-green-700/50 dark:bg-green-900/30 dark:text-green-200 dark:hover:bg-green-900/50"
+										onclick={() => handleFulfillAll(group)}
+										disabled={bulkBusy?.userId === group.user.userId}
+									>
+										{bulkBusy?.userId === group.user.userId && bulkBusy.action === 'fulfill'
+											? 'Fulfilling…'
+											: `Fulfill all (${fulfillableEntries(group).length})`}
+									</button>
+								{/if}
+								{#if unfulfillableEntries(group).length > 0}
+									<button
+										class="rounded border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-900/50"
+										onclick={() => handleUnfulfillAll(group)}
+										disabled={bulkBusy?.userId === group.user.userId}
+									>
+										{bulkBusy?.userId === group.user.userId && bulkBusy.action === 'unfulfill'
+											? 'Unfulfilling…'
+											: `Unfulfill all (${unfulfillableEntries(group).length})`}
+									</button>
+								{/if}
+								{#if refundableEntries(group).length > 0}
+									<button
+										class="rounded border border-red-300 bg-red-50 px-2.5 py-1 text-[11px] font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-700/50 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50"
+										onclick={() => handleRefundAll(group)}
+										disabled={bulkBusy?.userId === group.user.userId}
+									>
+										{bulkBusy?.userId === group.user.userId && bulkBusy.action === 'refund'
+											? 'Refunding…'
+											: `Refund all (${refundableEntries(group).length})`}
+									</button>
+								{/if}
+							</div>
+						{/if}
 						<div class="overflow-x-auto">
 							<table class="w-full text-sm">
 								<thead>
