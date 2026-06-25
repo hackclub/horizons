@@ -1,12 +1,11 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
-    import { Button, TextField, Card, Tab, Checkbox, Select } from '$lib/components';
+    import { Button, TextField, Card, Checkbox, Select } from '$lib/components';
 
     type Shop = components['schemas']['ShopResponse'];
     type ShopItemVariant = components['schemas']['ShopItemVariantResponse'];
     type ShopItem = components['schemas']['ShopItemResponse'];
-    type AdminTransaction = components['schemas']['AdminTransactionResponse'];
 
     // --- State ---
     let shopLoading = $state(false);
@@ -15,7 +14,6 @@
     let shops = $state<Shop[]>([]);
     let selectedShopId = $state<number | null>(null);
     let shopItems = $state<ShopItem[]>([]);
-    let shopTransactions = $state<AdminTransaction[]>([]);
 
     let showShopManager = $state(false);
     let shopForm = $state<{ slug: string; description: string; isActive: boolean; isPublic: boolean }>({
@@ -54,9 +52,6 @@
     let shopItemSaving = $state(false);
     let shopItemError = $state('');
     let shopItemSuccess = $state('');
-    let shopSubTab = $state<'items' | 'transactions' | 'transactions-by-user'>('items');
-    let selectedItemFilter = $state<number | null>(null);
-    let fulfillmentFilter = $state<'all' | 'fulfilled' | 'unfulfilled' | 'refunded'>('all');
 
     let variantForm = $state<{ name: string; cost: string }>({
         name: '',
@@ -68,83 +63,6 @@
     let variantError = $state('');
     let variantSuccess = $state('');
     let expandedItemVariants = $state<Record<number, boolean>>({});
-    let refundingTransaction = $state<number | null>(null);
-    let fulfillingTransaction = $state<number | null>(null);
-    let unfulfillingTransaction = $state<number | null>(null);
-
-    // --- Derived ---
-    const filteredTransactions = $derived(() => {
-        let transactions = shopTransactions;
-
-        if (selectedItemFilter !== null) {
-            transactions = transactions.filter((t) => t.itemId === selectedItemFilter);
-        }
-
-        if (fulfillmentFilter === 'fulfilled') {
-            transactions = transactions.filter((t) => t.isFulfilled && !t.refundedAt);
-        } else if (fulfillmentFilter === 'unfulfilled') {
-            transactions = transactions.filter((t) => !t.isFulfilled && !t.refundedAt);
-        } else if (fulfillmentFilter === 'refunded') {
-            transactions = transactions.filter((t) => !!t.refundedAt);
-        }
-
-        return transactions;
-    });
-
-    const transactionsByUser = $derived(() => {
-        const grouped = new Map<
-            number,
-            {
-                user: AdminTransaction['user'];
-                transactions: AdminTransaction[];
-                totalCost: number;
-                fulfilledCount: number;
-                pendingCount: number;
-            }
-        >();
-
-        let transactionsToGroup = shopTransactions;
-
-        if (selectedItemFilter !== null) {
-            transactionsToGroup = transactionsToGroup.filter(
-                (t) => t.itemId === selectedItemFilter
-            );
-        }
-
-        if (fulfillmentFilter === 'fulfilled') {
-            transactionsToGroup = transactionsToGroup.filter(
-                (t) => t.isFulfilled && !t.refundedAt
-            );
-        } else if (fulfillmentFilter === 'unfulfilled') {
-            transactionsToGroup = transactionsToGroup.filter(
-                (t) => !t.isFulfilled && !t.refundedAt
-            );
-        } else if (fulfillmentFilter === 'refunded') {
-            transactionsToGroup = transactionsToGroup.filter((t) => !!t.refundedAt);
-        }
-
-        for (const transaction of transactionsToGroup) {
-            if (!grouped.has(transaction.userId)) {
-                grouped.set(transaction.userId, {
-                    user: transaction.user,
-                    transactions: [],
-                    totalCost: 0,
-                    fulfilledCount: 0,
-                    pendingCount: 0
-                });
-            }
-            const userGroup = grouped.get(transaction.userId)!;
-            userGroup.transactions.push(transaction);
-            userGroup.totalCost += transaction.cost;
-            if (transaction.isFulfilled) {
-                userGroup.fulfilledCount++;
-            } else {
-                userGroup.pendingCount++;
-            }
-        }
-
-        return Array.from(grouped.values()).sort((a, b) => b.totalCost - a.totalCost);
-    });
 
     // --- Helpers ---
     function formatDate(value: string) {
@@ -188,29 +106,12 @@
         }
     }
 
-    async function loadShopTransactions() {
-        try {
-            const { data, error } = await api.GET('/api/shop/admin/transactions', {
-                      params: { query: { shopId: selectedShopId ? String(selectedShopId) : undefined } }
-                  });
-            if (error) {
-                console.error('Failed to load shop transactions:', error);
-                return;
-            }
-            if (data) {
-                shopTransactions = data;
-            }
-        } catch (err) {
-            console.error('Failed to load shop transactions:', err);
-        }
-    }
-
     async function loadShopData() {
         shopLoading = true;
         try {
             await loadShops();
             if (selectedShopId) {
-                await Promise.all([loadShopItems(), loadShopTransactions()]);
+                await loadShopItems();
             }
             shopLoaded = true;
         } finally {
@@ -221,8 +122,7 @@
     async function onShopSelected(shopId: number) {
         selectedShopId = shopId;
         shopItems = [];
-        shopTransactions = [];
-        await Promise.all([loadShopItems(), loadShopTransactions()]);
+        await loadShopItems();
     }
 
     function resetShopForm() {
@@ -304,12 +204,11 @@
             if (selectedShopId === shopId) {
                 selectedShopId = null;
                 shopItems = [];
-                shopTransactions = [];
             }
             await loadShops();
             if (shops.length > 0 && !selectedShopId) {
                 selectedShopId = shops[0].shopId;
-                await Promise.all([loadShopItems(), loadShopTransactions()]);
+                await loadShopItems();
             }
         } catch (err) {
             console.error('Failed to delete shop:', err);
@@ -395,7 +294,7 @@
             // If the item went into a different category, switch the view to it so the user sees the result.
             if (formShopId !== selectedShopId) {
                 selectedShopId = formShopId;
-                await Promise.all([loadShopItems(), loadShopTransactions()]);
+                await loadShopItems();
             } else {
                 await loadShopItems();
             }
@@ -543,89 +442,6 @@
             await loadShopItems();
         } catch (err) {
             console.error('Failed to delete variant:', err);
-        }
-    }
-
-    async function handleRefundTransaction(transactionId: number) {
-        const confirmRefund =
-            typeof window !== 'undefined'
-                ? window.confirm('Refund this transaction? The hours will be returned to the user.')
-                : true;
-        if (!confirmRefund) return;
-
-        refundingTransaction = transactionId;
-        try {
-            const { error } = await api.DELETE('/api/shop/admin/transactions/{id}', {
-                params: { path: { id: transactionId } }
-            });
-            if (error) {
-                console.error('Failed to refund transaction:', error);
-                return;
-            }
-            const refundedAt = new Date().toISOString();
-            shopTransactions = shopTransactions.map((t) =>
-                t.transactionId === transactionId ? { ...t, refundedAt } : t
-            );
-        } catch (err) {
-            console.error('Failed to refund transaction:', err);
-        } finally {
-            refundingTransaction = null;
-        }
-    }
-
-    async function handleMarkFulfilled(transactionId: number) {
-        const confirmFulfill =
-            typeof window !== 'undefined'
-                ? window.confirm('Mark this transaction as fulfilled?')
-                : true;
-        if (!confirmFulfill) return;
-
-        fulfillingTransaction = transactionId;
-        try {
-            const { data, error } = await api.PUT('/api/shop/admin/transactions/{id}/fulfill', {
-                params: { path: { id: transactionId } }
-            });
-            if (error) {
-                console.error('Failed to mark transaction as fulfilled:', error);
-                return;
-            }
-            if (data) {
-                shopTransactions = shopTransactions.map((t) =>
-                    t.transactionId === transactionId ? data : t
-                );
-            }
-        } catch (err) {
-            console.error('Failed to mark transaction as fulfilled:', err);
-        } finally {
-            fulfillingTransaction = null;
-        }
-    }
-
-    async function handleUnfulfillTransaction(transactionId: number) {
-        const confirmUnfulfill =
-            typeof window !== 'undefined'
-                ? window.confirm('Remove fulfilled status from this transaction?')
-                : true;
-        if (!confirmUnfulfill) return;
-
-        unfulfillingTransaction = transactionId;
-        try {
-            const { data, error } = await api.DELETE('/api/shop/admin/transactions/{id}/fulfill', {
-                params: { path: { id: transactionId } }
-            });
-            if (error) {
-                console.error('Failed to unfulfill transaction:', error);
-                return;
-            }
-            if (data) {
-                shopTransactions = shopTransactions.map((t) =>
-                    t.transactionId === transactionId ? data : t
-                );
-            }
-        } catch (err) {
-            console.error('Failed to unfulfill transaction:', err);
-        } finally {
-            unfulfillingTransaction = null;
         }
     }
 
@@ -791,18 +607,11 @@
         </div>
     {:else if !selectedShopId}
         <div class="py-12 text-center text-ds-text-secondary">
-            Select a category above to manage its items and transactions.
+            Select a category above to manage its items.
         </div>
     {:else}
-        <div class="flex gap-2 items-center">
-            <Tab
-                items={[
-                    { label: `Items (${shopItems.length})`, value: 'items' },
-                    { label: `Transactions (${shopTransactions.length})`, value: 'transactions' },
-                    { label: 'By User', value: 'transactions-by-user' }
-                ]}
-                bind:value={shopSubTab}
-            />
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold">Items ({shopItems.length})</h3>
             <Button variant="default" onclick={loadShopData}>
                 Refresh
             </Button>
@@ -951,7 +760,7 @@
 
         {#if shopLoading}
             <div class="py-12 text-center text-ds-text-secondary">Loading shop data...</div>
-        {:else if shopSubTab === 'items'}
+        {:else}
             {#if !editingItemId}
                 <Card class="p-6 space-y-6">
                     <h3 class="text-lg font-semibold">Create New Item</h3>
@@ -1204,439 +1013,6 @@
                                 </div>
                             {/if}
                             {/if}
-                        </Card>
-                    {/each}
-                </div>
-            {/if}
-        {:else if shopSubTab === 'transactions'}
-            {#if shopTransactions.length === 0}
-                <div class="py-12 text-center text-ds-text-secondary">No transactions yet.</div>
-            {:else}
-                <div class="mb-4 flex items-center gap-3">
-                    <label class="text-sm font-medium text-ds-text-secondary">Filter by Item:</label>
-                    <Select bind:value={selectedItemFilter}>
-                        <option value={null}>All Items</option>
-                        {#each shopItems as item (item.itemId)}
-                            <option value={item.itemId}>{item.name}</option>
-                        {/each}
-                    </Select>
-                    <label class="text-sm font-medium text-ds-text-secondary">Status:</label>
-                    <Tab
-                        items={[
-                            { label: 'All', value: 'all' },
-                            { label: 'Fulfilled', value: 'fulfilled' },
-                            { label: 'Unfulfilled', value: 'unfulfilled' },
-                            { label: 'Refunded', value: 'refunded' }
-                        ]}
-                        bind:value={fulfillmentFilter}
-                    />
-                </div>
-                <Card class="overflow-hidden">
-                    <table class="w-full">
-                        <thead class="bg-ds-surface2/50">
-                            <tr>
-                                <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                    >Date</th
-                                >
-                                <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                    >User</th
-                                >
-                                <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                    >Item</th
-                                >
-                                <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                    >Cost</th
-                                >
-                                <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                    >Status</th
-                                >
-                                <th
-                                    class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                    >Actions</th
-                                >
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-ds-border">
-                            {#each filteredTransactions() as transaction (transaction.transactionId)}
-                                <tr class="hover:bg-ds-surface2/30">
-                                    <td class="px-4 py-3 text-sm text-ds-text-secondary"
-                                        >{formatDate(transaction.createdAt)}</td
-                                    >
-                                    <td class="px-4 py-3">
-                                        <p class="text-sm font-medium text-ds-text">
-                                            {transaction.user.firstName}
-                                            {transaction.user.lastName}
-                                        </p>
-                                        <p class="text-xs text-ds-text-secondary">
-                                            {transaction.user.email}
-                                        </p>
-                                        {#if transaction.user.addressLine1 || transaction.user.city || transaction.user.state}
-                                            <div class="text-xs text-ds-text-placeholder mt-1">
-                                                {#if transaction.user.addressLine1}
-                                                    <p>{transaction.user.addressLine1}</p>
-                                                {/if}
-                                                {#if transaction.user.addressLine2}
-                                                    <p>{transaction.user.addressLine2}</p>
-                                                {/if}
-                                                <p>
-                                                    {[
-                                                        transaction.user.city,
-                                                        transaction.user.state,
-                                                        transaction.user.zipCode
-                                                    ]
-                                                        .filter(Boolean)
-                                                        .join(', ')}
-                                                </p>
-                                                {#if transaction.user.country}
-                                                    <p>{transaction.user.country}</p>
-                                                {/if}
-                                            </div>
-                                        {/if}
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <p class="text-sm font-medium text-ds-text">
-                                            {transaction.item.name}
-                                            {#if transaction.variant}
-                                                <span class="text-ds-link">
-                                                    ({transaction.variant.name})</span
-                                                >
-                                            {/if}
-                                        </p>
-                                    </td>
-                                    <td
-                                        class="px-4 py-3 text-sm font-semibold text-ds-accent"
-                                        >{transaction.cost} hours</td
-                                    >
-                                    <td class="px-4 py-3">
-                                        {#if transaction.refundedAt}
-                                            <div class="flex flex-col gap-1">
-                                                <span
-                                                    class="px-2 py-1 text-xs rounded bg-red-500/20 border border-red-400 text-red-700 dark:text-red-300 w-fit"
-                                                    >Refunded</span
-                                                >
-                                                <span class="text-xs text-ds-text-placeholder"
-                                                    >{formatDate(transaction.refundedAt)}</span
-                                                >
-                                            </div>
-                                        {:else if transaction.isFulfilled}
-                                            <div class="flex flex-col gap-1">
-                                                <span
-                                                    class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 dark:text-green-300 w-fit"
-                                                    >Fulfilled</span
-                                                >
-                                                {#if transaction.fulfilledAt}
-                                                    <span class="text-xs text-ds-text-placeholder"
-                                                        >{formatDate(
-                                                            transaction.fulfilledAt
-                                                        )}</span
-                                                    >
-                                                {/if}
-                                            </div>
-                                        {:else}
-                                            <span
-                                                class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-700 dark:text-yellow-300"
-                                                >Pending</span
-                                            >
-                                        {/if}
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="flex gap-2">
-                                            {#if transaction.refundedAt}
-                                                <span class="text-xs text-ds-text-placeholder"
-                                                    >No actions available</span
-                                                >
-                                            {:else if transaction.isFulfilled}
-                                                <Button
-                                                    variant="ghost"
-                                                    onclick={() =>
-                                                        handleUnfulfillTransaction(
-                                                            transaction.transactionId
-                                                        )}
-                                                    disabled={unfulfillingTransaction ===
-                                                        transaction.transactionId}
-                                                >
-                                                    {unfulfillingTransaction ===
-                                                    transaction.transactionId
-                                                        ? 'Removing...'
-                                                        : 'Unfulfill'}
-                                                </Button>
-                                            {:else}
-                                                <Button
-                                                    variant="approve"
-                                                    onclick={() =>
-                                                        handleMarkFulfilled(
-                                                            transaction.transactionId
-                                                        )}
-                                                    disabled={fulfillingTransaction ===
-                                                        transaction.transactionId}
-                                                >
-                                                    {fulfillingTransaction ===
-                                                    transaction.transactionId
-                                                        ? 'Marking...'
-                                                        : 'Mark Fulfilled'}
-                                                </Button>
-                                            {/if}
-                                            <Button
-                                                variant="reject"
-                                                onclick={() =>
-                                                    handleRefundTransaction(
-                                                        transaction.transactionId
-                                                    )}
-                                                disabled={refundingTransaction ===
-                                                    transaction.transactionId}
-                                            >
-                                                {refundingTransaction ===
-                                                transaction.transactionId
-                                                    ? 'Refunding...'
-                                                    : 'Refund'}
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {/each}
-                        </tbody>
-                    </table>
-                </Card>
-            {/if}
-        {:else if shopSubTab === 'transactions-by-user'}
-            {#if shopTransactions.length === 0}
-                <div class="py-12 text-center text-ds-text-secondary">No transactions yet.</div>
-            {:else}
-                <div class="mb-4 flex items-center gap-3">
-                    <label class="text-sm font-medium text-ds-text-secondary">Filter by Item:</label>
-                    <Select bind:value={selectedItemFilter}>
-                        <option value={null}>All Items</option>
-                        {#each shopItems as item (item.itemId)}
-                            <option value={item.itemId}>{item.name}</option>
-                        {/each}
-                    </Select>
-                    <label class="text-sm font-medium text-ds-text-secondary">Status:</label>
-                    <Tab
-                        items={[
-                            { label: 'All', value: 'all' },
-                            { label: 'Fulfilled', value: 'fulfilled' },
-                            { label: 'Unfulfilled', value: 'unfulfilled' },
-                            { label: 'Refunded', value: 'refunded' }
-                        ]}
-                        bind:value={fulfillmentFilter}
-                    />
-                </div>
-                <div class="space-y-4">
-                    {#each transactionsByUser() as userGroup (userGroup.user.userId)}
-                        <Card class="overflow-hidden">
-                            <div class="bg-ds-surface2/50 px-6 py-4 border-b border-ds-border">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <h3 class="text-lg font-semibold text-ds-text">
-                                            {userGroup.user.firstName}
-                                            {userGroup.user.lastName}
-                                        </h3>
-                                        <p class="text-sm text-ds-text-secondary">
-                                            {userGroup.user.email}
-                                        </p>
-                                        {#if userGroup.user.addressLine1 || userGroup.user.city || userGroup.user.state}
-                                            <div class="text-xs text-ds-text-placeholder mt-1">
-                                                {#if userGroup.user.addressLine1}
-                                                    <p>{userGroup.user.addressLine1}</p>
-                                                {/if}
-                                                {#if userGroup.user.addressLine2}
-                                                    <p>{userGroup.user.addressLine2}</p>
-                                                {/if}
-                                                <p>
-                                                    {[
-                                                        userGroup.user.city,
-                                                        userGroup.user.state,
-                                                        userGroup.user.zipCode
-                                                    ]
-                                                        .filter(Boolean)
-                                                        .join(', ')}
-                                                </p>
-                                                {#if userGroup.user.country}
-                                                    <p>{userGroup.user.country}</p>
-                                                {/if}
-                                            </div>
-                                        {/if}
-                                    </div>
-                                    <div class="flex gap-4 text-sm">
-                                        <div class="text-right">
-                                            <p class="text-ds-text-secondary">Total Orders</p>
-                                            <p class="text-lg font-semibold text-ds-text">
-                                                {userGroup.transactions.length}
-                                            </p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-ds-text-secondary">Total Cost</p>
-                                            <p class="text-lg font-semibold text-ds-accent">
-                                                {userGroup.totalCost} hours
-                                            </p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-ds-text-secondary">Status</p>
-                                            <p class="text-sm">
-                                                <span class="text-ds-green"
-                                                    >{userGroup.fulfilledCount} fulfilled</span
-                                                >
-                                                {#if userGroup.pendingCount > 0}
-                                                    <span class="text-ds-text-placeholder"> / </span>
-                                                    <span class="text-yellow-700 dark:text-yellow-300"
-                                                        >{userGroup.pendingCount} pending</span
-                                                    >
-                                                {/if}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <table class="w-full">
-                                <thead class="bg-ds-surface2/30">
-                                    <tr>
-                                        <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                            >Date</th
-                                        >
-                                        <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                            >Item</th
-                                        >
-                                        <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                            >Cost</th
-                                        >
-                                        <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                            >Status</th
-                                        >
-                                        <th
-                                            class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary"
-                                            >Actions</th
-                                        >
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-ds-border">
-                                    {#each userGroup.transactions as transaction (transaction.transactionId)}
-                                        <tr class="hover:bg-ds-surface2/30">
-                                            <td class="px-4 py-3 text-sm text-ds-text-secondary"
-                                                >{formatDate(transaction.createdAt)}</td
-                                            >
-                                            <td class="px-4 py-3">
-                                                <p class="text-sm font-medium text-ds-text">
-                                                    {transaction.item.name}
-                                                    {#if transaction.variant}
-                                                        <span class="text-ds-link">
-                                                            ({transaction.variant.name})</span
-                                                        >
-                                                    {/if}
-                                                </p>
-                                            </td>
-                                            <td
-                                                class="px-4 py-3 text-sm font-semibold text-ds-accent"
-                                                >{transaction.cost} hours</td
-                                            >
-                                            <td class="px-4 py-3">
-                                                {#if transaction.isFulfilled}
-                                                    <div class="flex flex-col gap-1">
-                                                        <span
-                                                            class="px-2 py-1 text-xs rounded bg-green-500/20 border border-green-400 text-green-700 dark:text-green-300 w-fit"
-                                                            >Fulfilled</span
-                                                        >
-                                                        {#if transaction.fulfilledAt}
-                                                            <span class="text-xs text-ds-text-placeholder"
-                                                                >{formatDate(
-                                                                    transaction.fulfilledAt
-                                                                )}</span
-                                                            >
-                                                        {/if}
-                                                    </div>
-                                                {:else}
-                                                    <span
-                                                        class="px-2 py-1 text-xs rounded bg-yellow-500/20 border border-yellow-400 text-yellow-700 dark:text-yellow-300"
-                                                        >Pending</span
-                                                    >
-                                                {/if}
-                                            </td>
-                                            <td class="px-4 py-3">
-                                                <div class="flex gap-2">
-                                                    {#if transaction.isFulfilled}
-                                                        <Button
-                                                            variant="ghost"
-                                                            onclick={() =>
-                                                                handleUnfulfillTransaction(
-                                                                    transaction.transactionId
-                                                                )}
-                                                            disabled={unfulfillingTransaction ===
-                                                                transaction.transactionId}
-                                                        >
-                                                            {unfulfillingTransaction ===
-                                                            transaction.transactionId
-                                                                ? 'Removing...'
-                                                                : 'Unfulfill'}
-                                                        </Button>
-                                                    {:else}
-                                                        <Button
-                                                            variant="approve"
-                                                            onclick={() =>
-                                                                handleMarkFulfilled(
-                                                                    transaction.transactionId
-                                                                )}
-                                                            disabled={fulfillingTransaction ===
-                                                                transaction.transactionId}
-                                                        >
-                                                            {fulfillingTransaction ===
-                                                            transaction.transactionId
-                                                                ? 'Marking...'
-                                                                : 'Mark Fulfilled'}
-                                                        </Button>
-                                                    {/if}
-                                                    <Button
-                                                        variant="reject"
-                                                        onclick={() =>
-                                                            handleRefundTransaction(
-                                                                transaction.transactionId
-                                                            )}
-                                                        disabled={refundingTransaction ===
-                                                            transaction.transactionId}
-                                                    >
-                                                        {refundingTransaction ===
-                                                        transaction.transactionId
-                                                            ? 'Refunding...'
-                                                            : 'Refund'}
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
-                            <div
-                                class="bg-ds-surface2/30 px-6 py-4 border-t border-ds-border"
-                            >
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm font-semibold text-ds-text-secondary"
-                                        >Total</span
-                                    >
-                                    <div class="flex gap-6 text-sm">
-                                        <div class="text-right">
-                                            <p class="text-ds-text-secondary">Hours</p>
-                                            <p class="text-lg font-bold text-ds-accent">
-                                                {userGroup.totalCost}
-                                            </p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-ds-text-secondary">
-                                                Money Cost (only leo should use this - guesstimate)
-                                            </p>
-                                            <p class="text-lg font-bold text-ds-green">
-                                                ${(userGroup.totalCost * 10).toFixed(2)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </Card>
                     {/each}
                 </div>
