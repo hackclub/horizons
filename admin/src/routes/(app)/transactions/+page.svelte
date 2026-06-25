@@ -47,6 +47,7 @@
 	let error = $state<string | null>(null);
 	let refundingId = $state<number | null>(null);
 	let fulfillingId = $state<number | null>(null);
+	let unfulfillingId = $state<number | null>(null);
 	let actionError = $state<string | null>(null);
 
 	let kindFilter = $state<'all' | Kind>('all');
@@ -325,6 +326,32 @@
 			fulfillingId = null;
 		}
 	}
+
+	async function handleUnfulfill(e: LedgerEntry) {
+		unfulfillingId = e.transactionId;
+		actionError = null;
+		try {
+			const { error: err } = await api.DELETE('/api/shop/admin/transactions/{id}/fulfill', {
+				params: { path: { id: e.transactionId } },
+			});
+			if (err) {
+				actionError =
+					err && typeof err === 'object' && 'message' in err
+						? String((err as { message: unknown }).message)
+						: 'Unfulfill failed';
+				return;
+			}
+			entries = entries.map((row) =>
+				row.transactionId === e.transactionId
+					? { ...row, isFulfilled: false, fulfilledAt: null }
+					: row,
+			);
+		} catch (err) {
+			actionError = err instanceof Error ? err.message : 'Unfulfill failed';
+		} finally {
+			unfulfillingId = null;
+		}
+	}
 </script>
 
 <div class="p-6">
@@ -465,6 +492,14 @@
 									disabled={fulfillingId === e.transactionId}
 								>
 									{fulfillingId === e.transactionId ? 'Fulfilling…' : 'Fulfill'}
+								</button>
+							{:else if e.kind === 'ShopItem' && e.isFulfilled}
+								<button
+									class="rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-900/50"
+									onclick={() => handleUnfulfill(e)}
+									disabled={unfulfillingId === e.transactionId}
+								>
+									{unfulfillingId === e.transactionId ? 'Unfulfilling…' : 'Unfulfill'}
 								</button>
 							{/if}
 							<button
