@@ -101,20 +101,23 @@
 		loading = true;
 		error = null;
 		try {
-			const params = new URLSearchParams();
-			if (kindFilter !== 'all') params.set('kind', kindFilter);
-			if (fulfilledFilter === 'fulfilled') params.set('fulfilled', 'true');
-			else if (fulfilledFilter === 'unfulfilled') params.set('fulfilled', 'false');
-			if (refundedFilter === 'hide') params.set('refunded', 'false');
-			else if (refundedFilter === 'only') params.set('refunded', 'true');
-			params.set('limit', '500');
+			const query: {
+				kind?: Kind;
+				fulfilled?: boolean;
+				refunded?: boolean;
+				limit?: number;
+			} = { limit: 500 };
+			if (kindFilter !== 'all') query.kind = kindFilter;
+			if (fulfilledFilter === 'fulfilled') query.fulfilled = true;
+			else if (fulfilledFilter === 'unfulfilled') query.fulfilled = false;
+			if (refundedFilter === 'hide') query.refunded = false;
+			else if (refundedFilter === 'only') query.refunded = true;
 
-			const resp = await fetch(`/api/admin/transactions?${params.toString()}`, {
-				credentials: 'include',
+			const { data, error: err } = await api.GET('/api/admin/transactions', {
+				params: { query },
 			});
-			if (!resp.ok) throw new Error(`Failed to load transactions (${resp.status})`);
-			const data = await resp.json();
-			entries = data.entries;
+			if (err || !data) throw new Error('Failed to load transactions');
+			entries = data.entries as unknown as LedgerEntry[];
 			summary = data.summary;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load';
