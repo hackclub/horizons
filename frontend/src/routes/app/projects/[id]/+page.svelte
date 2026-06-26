@@ -129,9 +129,13 @@
 	// when the latest submission is approved — after a normal reviewer
 	// rejection the resubmission only needs the base 3h floor. Mirrors the
 	// backend check in `createSubmission` so the button reflects reality.
+	// Hardware projects are exempt from the minimum-hours gate.
+	let isHardware = $derived(project?.projectType === 'hardware');
 	let reshipBaseline = $derived(isApproved ? (hackatimeInfo?.lastApprovedHours ?? null) : null);
 	let requiredShipHours = $derived((reshipBaseline ?? 0) + 3);
-	let canShip = $derived(hackatimeInfo !== null && currentHours >= requiredShipHours);
+	let canShip = $derived(
+		hackatimeInfo !== null && (isHardware || currentHours >= requiredShipHours)
+	);
 	let shipBlockedReason = $derived(
 		reshipBaseline != null
 			? `Track ${requiredShipHours.toFixed(1)} hours on this project to re-ship (3 more than your last approved submission's ${reshipBaseline.toFixed(1)}h).`
