@@ -475,12 +475,15 @@ export class ProjectsService {
     // reviewer rejection it was already enforced when the rejected submission
     // was created (or that submission predates the gate), and the resubmit
     // rules above explicitly allow rejected resubmissions with no new hours.
+    // Hardware projects are exempt: their effort isn't captured by tracked
+    // Hackatime hours, so the minimum-hours gate doesn't apply to them.
+    const isHardware = project.projectType === 'hardware';
     const approvedBaseline =
       priorSubmission?.approvalStatus === 'approved'
         ? (priorSubmission.hackatimeHours ?? 0)
         : null;
     const requiredHours = (approvedBaseline ?? 0) + 3;
-    if (recalculatedHours < requiredHours) {
+    if (!isHardware && recalculatedHours < requiredHours) {
       throw new BadRequestException(
         approvedBaseline !== null
           ? `You need at least ${requiredHours.toFixed(1)} tracked hours to reship (3 more than your last approved submission's ${approvedBaseline.toFixed(1)}h). You currently have ${recalculatedHours.toFixed(1)}h.`
