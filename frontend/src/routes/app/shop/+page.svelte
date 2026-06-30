@@ -27,14 +27,17 @@
 
 	interface Order {
 		transactionId: number;
-		itemId: number;
+		kind: 'ShopItem' | 'EventRsvp' | 'EventTicket' | 'AdminAdjustment';
+		itemId: number | null;
+		itemDescription: string;
 		cost: number;
 		isFulfilled: boolean;
 		fulfilledAt: string | null;
 		refundedAt: string | null;
 		createdAt: string;
-		item: { itemId: number; name: string; imageUrl?: string | null };
+		item: { itemId: number; name: string; imageUrl?: string | null } | null;
 		variant: { variantId: number; name: string } | null;
+		event: { eventId: number; title: string; slug: string; imageUrl?: string | null } | null;
 	}
 
 	let items = $state<ShopItem[]>([]);
@@ -204,6 +207,19 @@
 		return 'Processing';
 	}
 
+	// A transaction may have no linked shop item (event tickets, RSVPs, admin
+	// adjustments). Fall back to the event, then the denormalized description.
+	function orderName(order: Order): string {
+		if (order.item) {
+			return order.item.name + (order.variant ? ` — ${order.variant.name}` : '');
+		}
+		return order.event?.title ?? order.itemDescription;
+	}
+
+	function orderImage(order: Order): string | null {
+		return order.item?.imageUrl ?? order.event?.imageUrl ?? null;
+	}
+
 	function formatHours(cost: number): string {
 		return `${cost} hour${cost === 1 ? '' : 's'}`;
 	}
@@ -260,7 +276,7 @@
 		onSelect: () => {
 			if (activeTab === 'orders') {
 				const order = orders[nav.row];
-				if (order) navigateTo(`/app/shop/${order.itemId}`);
+				if (order?.itemId != null) navigateTo(`/app/shop/${order.itemId}`);
 				return;
 			}
 			const idx = getSelectedIndex();
@@ -575,6 +591,7 @@
 			<div class="flex flex-col gap-4 w-full max-w-[932px]" bind:this={ordersEl}>
 				{#each orders as order, i (order.transactionId)}
 					{@const selected = activeTab === 'orders' && i === nav.row}
+						{@const orderImg = orderImage(order)}
 					<button
 						class="order-card border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] overflow-hidden text-left outline-none flex items-center gap-8 p-[30px] w-full"
 						class:selected
@@ -585,7 +602,9 @@
 						onclick={(e) => {
 							if (usingMouse) {
 								(e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-								setTimeout(() => navigateTo(`/app/shop/${order.itemId}`), 200);
+								if (order.itemId != null) {
+										setTimeout(() => navigateTo(`/app/shop/${order.itemId}`), 200);
+									}
 							} else {
 								nav.col = 0;
 								nav.row = i;
@@ -595,15 +614,15 @@
 						onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
 					>
 						<div class="shrink-0 h-[88px] w-[110px] flex items-center justify-center overflow-hidden" style={order.refundedAt ? 'filter: grayscale(1); opacity: 0.6;' : ''}>
-							{#if order.item.imageUrl}
-								<img src={order.item.imageUrl} alt={order.item.name} class="max-w-full max-h-full object-contain" />
+							{#if orderImg}
+								<img src={orderImg} alt={orderName(order)} class="max-w-full max-h-full object-contain" />
 							{:else}
 								<span class="font-bricolage text-2xl text-black/30">?</span>
 							{/if}
 						</div>
 						<div class="flex-1 flex flex-col min-w-0">
 							<p class="font-bricolage font-semibold text-[24px] text-black m-0 leading-normal truncate">
-								{order.item.name}{order.variant ? ` — ${order.variant.name}` : ''}
+								{orderName(order)}
 							</p>
 							<p class="font-bricolage font-semibold text-[24px] text-black m-0 leading-normal">
 								{formatHours(order.cost)}

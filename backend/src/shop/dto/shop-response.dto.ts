@@ -144,6 +144,20 @@ class TransactionVariantSummary {
   name: string;
 }
 
+class TransactionEventSummary {
+  @ApiProperty()
+  eventId: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  imageUrl?: string | null;
+}
+
 class TransactionUserSummary {
   @ApiProperty()
   userId: number;
@@ -183,11 +197,24 @@ export class UserTransactionResponse {
   @ApiProperty()
   userId: number;
 
-  @ApiProperty()
-  itemId: number;
+  @ApiProperty({
+    enum: ['ShopItem', 'EventRsvp', 'EventTicket', 'AdminAdjustment'],
+  })
+  kind: string;
+
+  @ApiProperty({ type: Number, nullable: true })
+  itemId: number | null;
 
   @ApiProperty({ type: Number, nullable: true })
   variantId: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  eventId: number | null;
+
+  // Denormalized label, always present — used as a fallback name for
+  // transactions without a linked shop item (event tickets, adjustments).
+  @ApiProperty()
+  itemDescription: string;
 
   @ApiProperty()
   cost: number;
@@ -204,11 +231,14 @@ export class UserTransactionResponse {
   @ApiProperty()
   createdAt: Date;
 
-  @ApiProperty({ type: TransactionItemSummary })
-  item: TransactionItemSummary;
+  @ApiProperty({ type: TransactionItemSummary, nullable: true })
+  item: TransactionItemSummary | null;
 
   @ApiProperty({ type: TransactionVariantSummary, nullable: true })
   variant: TransactionVariantSummary | null;
+
+  @ApiProperty({ type: TransactionEventSummary, nullable: true })
+  event: TransactionEventSummary | null;
 }
 
 export class AdminTransactionResponse extends UserTransactionResponse {

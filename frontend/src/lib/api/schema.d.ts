@@ -419,7 +419,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Unlink Hackatime account (browser-reachable page) */
+        get: operations["HackatimeController_unlinkAccountPage"];
         put?: never;
         /** Unlink Hackatime account */
         post: operations["HackatimeController_unlinkAccount"];
@@ -781,6 +782,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AdminController_getFraudReviewQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/fraud-review/gallery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getFraudReviewGallery"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2846,6 +2863,43 @@ export interface components {
             pendingPermReject: components["schemas"]["FraudReviewQueueItemResponse"][];
             permRejected: components["schemas"]["FraudReviewQueueItemResponse"][];
         };
+        FraudGalleryUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            slackUserId: string | null;
+            /** @description Slug of the user's pinned event, for cohort scoping. */
+            eventSlug: string | null;
+            eventTitle: string | null;
+        };
+        FraudGalleryItemResponse: {
+            projectId: number;
+            projectTitle: string;
+            projectType: string;
+            /** @description Joe's project UUID, used to deep-link to the fraud-review platform. Null until the project has been pushed to Joe. */
+            joeProjectId: string | null;
+            /** @description null = not yet fraud-reviewed; true = passed; false = flagged. */
+            joeFraudPassed: boolean | null;
+            nowHackatimeHours: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            latestSubmissionCreatedAt: string | null;
+            /** @description Latest submission's finalized two-gate approval status (pending | approved | rejected), or null if none. */
+            approvalStatus: string | null;
+            /**
+             * @description The reviewer gate's verdict on the latest submission, independent of fraud reconciliation — set as soon as a reviewer decides, even while Joe's verdict is still pending. Null when no reviewer has decided yet.
+             * @enum {string|null}
+             */
+            reviewerVerdict: "approved" | "rejected" | null;
+            /** @description True when a reviewer has decided on the latest submission (reviewerVerdict is set), even if fraud reconciliation is still pending. */
+            reviewed: boolean;
+            /** @description True when the project owner holds an EventTicket transaction for their pinned event. */
+            boughtTicket: boolean;
+            /** @description True when the owner hasn't bought yet but their approved+pending hours would clear the pinned event's ticket threshold. */
+            canBuyTicketIfApproved: boolean;
+            user: components["schemas"]["FraudGalleryUserResponse"];
+        };
         PermRejectProjectDto: {
             /** @description User-facing rejection reason. Shown to the project owner and embedded in the email/Slack DM. */
             reason: string;
@@ -2967,6 +3021,9 @@ export interface components {
         };
         StatsSignupCountryEntry: {
             country: string;
+            eventId: number;
+            eventTitle: string;
+            eventSlug: string;
             signedUp: number;
             couldBuyTicket: number;
             canBuyTicket: number;
@@ -3460,6 +3517,10 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             project: components["schemas"]["QueueProjectResponse"];
+            /** @description True when the project owner holds an EventTicket transaction for their pinned event. */
+            boughtTicket: boolean;
+            /** @description True when the owner hasn't bought yet but their approved+pending hours would clear the pinned event's ticket threshold. */
+            canBuyTicketIfApproved: boolean;
             claim: components["schemas"]["ClaimInfoResponse"] | null;
         };
         SubmissionProjectResponse: {
@@ -3671,11 +3732,21 @@ export interface components {
             variantId: number;
             name: string;
         };
+        TransactionEventSummary: {
+            eventId: number;
+            title: string;
+            slug: string;
+            imageUrl?: string | null;
+        };
         UserTransactionResponse: {
             transactionId: number;
             userId: number;
-            itemId: number;
+            /** @enum {string} */
+            kind: "ShopItem" | "EventRsvp" | "EventTicket" | "AdminAdjustment";
+            itemId: number | null;
             variantId: number | null;
+            eventId: number | null;
+            itemDescription: string;
             cost: number;
             isFulfilled: boolean;
             /** Format: date-time */
@@ -3684,8 +3755,9 @@ export interface components {
             refundedAt: string | null;
             /** Format: date-time */
             createdAt: string;
-            item: components["schemas"]["TransactionItemSummary"];
+            item: components["schemas"]["TransactionItemSummary"] | null;
             variant: components["schemas"]["TransactionVariantSummary"] | null;
+            event: components["schemas"]["TransactionEventSummary"] | null;
         };
         PurchaseResponse: {
             transaction: components["schemas"]["UserTransactionResponse"];
@@ -3774,8 +3846,12 @@ export interface components {
         AdminTransactionResponse: {
             transactionId: number;
             userId: number;
-            itemId: number;
+            /** @enum {string} */
+            kind: "ShopItem" | "EventRsvp" | "EventTicket" | "AdminAdjustment";
+            itemId: number | null;
             variantId: number | null;
+            eventId: number | null;
+            itemDescription: string;
             cost: number;
             isFulfilled: boolean;
             /** Format: date-time */
@@ -3784,8 +3860,9 @@ export interface components {
             refundedAt: string | null;
             /** Format: date-time */
             createdAt: string;
-            item: components["schemas"]["TransactionItemSummary"];
+            item: components["schemas"]["TransactionItemSummary"] | null;
             variant: components["schemas"]["TransactionVariantSummary"] | null;
+            event: components["schemas"]["TransactionEventSummary"] | null;
             user: components["schemas"]["TransactionUserSummary"];
         };
         RefundResponse: {
@@ -4761,6 +4838,23 @@ export interface operations {
             };
         };
     };
+    HackatimeController_unlinkAccountPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     HackatimeController_unlinkAccount: {
         parameters: {
             query?: never;
@@ -5271,6 +5365,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FraudReviewQueueResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getFraudReviewGallery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FraudGalleryItemResponse"][];
                 };
             };
         };
