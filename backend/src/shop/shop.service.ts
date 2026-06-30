@@ -533,6 +533,16 @@ export class ShopService {
             name: true,
           },
         },
+        // Non-ShopItem transactions (event tickets/RSVPs) have no linked item;
+        // surface the event so the frontend can show its name and image.
+        event: {
+          select: {
+            eventId: true,
+            title: true,
+            slug: true,
+            imageUrl: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
