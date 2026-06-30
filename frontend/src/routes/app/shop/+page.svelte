@@ -178,7 +178,10 @@
 			if (apiError) {
 				ordersError = 'Failed to load orders';
 			} else {
-				orders = (data as unknown as Order[]) ?? [];
+				// Event tickets don't render correctly on the orders page — hide them.
+				orders = ((data as unknown as Order[]) ?? []).filter(
+					(order) => order.kind !== 'EventRsvp' && order.kind !== 'EventTicket'
+				);
 			}
 		} catch {
 			ordersError = 'Failed to load orders';
