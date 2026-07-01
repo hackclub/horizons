@@ -97,6 +97,19 @@ The frontend features a custom WASD/arrow key navigation system defined in `lib/
 - **`navState`** - Shared state tracking keyboard vs. mouse mode (persisted in sessionStorage).
 - All navigable items auto-scroll to center when selected via keyboard.
 
+### Bottom Nav (`AppNav`)
+
+`lib/components/AppNav.svelte` is the persistent bottom bar shown on every `/app` page. It is rendered **once** in `routes/app/+layout.svelte`, *outside* the keyed `{#key page.url.pathname}` transition, so it never remounts or re-animates on navigation and layers above page content (`z-50`). Modals therefore sit at `z-60` to stay above it.
+
+- **Left — nav hints**: a Figma WASD d-pad + mouse-cursor glyph, chosen per route by `hintsFor(pathname)` in the layout. Each page kind advertises only the input(s) it actually supports:
+  - WASD + mouse — 2D grids (`/app`, `/app/shop`, `/app/events/shop`)
+  - WS + scroll — vertical lists (`/app/projects`, `/app/events`, `/app/events/explore`, `/app/community`, `/app/refer`)
+  - click — the edit form (`/app/projects/[id]/edit`)
+  - mouse-only — traditional detail/checkout pages (project detail, `new`, item detail, hackatime, …) — this is the default.
+- **Per-key lighting**: individual d-pad keys light to 100% on the matching physical key (WASD / arrows). Keyboard and mouse glyphs are mutually exclusive — inactive 25% / active 50% / just-used 100% — and keys a page doesn't use render "disabled" at 10%.
+- **Right — user info**: username with an eye toggle to hide it, a streak pill, a pulsing "Refer A Friend" button (hidden on `/app/refer` itself), and logout. Reads `userStore`.
+- **Space reservation**: `.page-transition.with-nav` reserves the bar height (`3rem`) at ≥640px so page content is never occluded. The bar is hidden below `sm` and on focused flows (onboarding, the ship wizard), which also skip the reserve.
+
 ### Data Caching & Preloading
 
 The store layer (`lib/store/`) wraps API calls with time-based caching:

@@ -586,7 +586,7 @@
 	{/if}
 
 	{#if showConfirmModal}
-		<div class="fixed inset-0 z-50 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+		<div class="fixed inset-0 z-60 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
 			<button
 				type="button"
 				class="absolute inset-0 bg-black/50 cursor-default"

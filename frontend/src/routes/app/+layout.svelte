@@ -101,6 +101,12 @@
 
 	const navSegments = $derived(hintsFor(page.url.pathname));
 
+	// Focused flows (onboarding, ship submission) hide the persistent nav.
+	const showNav = $derived(
+		!page.url.pathname.startsWith("/app/onboarding") &&
+			!/^\/app\/projects\/[^/]+\/ship(\/|$)/.test(page.url.pathname),
+	);
+
 	// Mobile entry point: route bare /app to the mobile-ready /app/projects.
 	$effect(() => {
 		if (authed && isMobile && page.url.pathname === "/app") {
@@ -196,7 +202,7 @@
 {:else}
 	<BG {disableAnimations}>
 		{#key page.url.pathname}
-			<div class="page-transition" class:scrollable={isProjectsRoute}>
+			<div class="page-transition" class:scrollable={isProjectsRoute} class:with-nav={showNav}>
 				{@render children()}
 			</div>
 		{/key}
@@ -212,8 +218,11 @@
 			</div>
 		{/if}
 		<!-- Persistent bottom nav — rendered once, outside the keyed page
-		     transition, so it stays put (no fade/remount) across navigations. -->
-		<AppNav segments={navSegments} />
+		     transition, so it stays put (no fade/remount) across navigations.
+		     Hidden on focused flows (onboarding, ship submission). -->
+		{#if showNav}
+			<AppNav segments={navSegments} />
+		{/if}
 	</BG>
 {/if}
 
@@ -221,6 +230,14 @@
 	.page-transition {
 		position: absolute;
 		inset: 0;
+	}
+	/* Reserve space for the persistent AppNav (h-12 = 3rem) so page content is
+	   never hidden under it. Only when the nav is actually shown: ≥640px (the nav
+	   is hidden below sm) and not on focused flows (which lack .with-nav). */
+	@media (min-width: 640px) {
+		.page-transition.with-nav {
+			bottom: 3rem;
+		}
 	}
 	@media (max-width: 639px) {
 		.page-transition.scrollable {

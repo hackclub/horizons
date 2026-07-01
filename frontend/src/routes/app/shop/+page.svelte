@@ -69,7 +69,6 @@
 	let navigating = $state(false);
 	let backExiting = $state(false);
 	let skipItemAnimation = $state(false);
-	let interacted = $state(false);
 	let itemsReady = $state(false);
 
 	const nonEventItems = $derived(items.filter((item) => !eventSlugs.has(item.shopSlug)));
@@ -193,7 +192,6 @@
 	function setTab(tab: Tab) {
 		if (activeTab === tab) return;
 		activeTab = tab;
-		interacted = true;
 		skipItemAnimation = false;
 		nav.col = 0;
 		nav.row = 0;
@@ -356,11 +354,9 @@
 				onFilters = false;
 			}
 			e.preventDefault();
-			interacted = true;
 			return;
 		}
 		usingMouse = false;
-		interacted = true;
 
 		if (onTabs) {
 			if (isLeft(e.key)) {
@@ -432,7 +428,7 @@
 	}}
 />
 
-<div class="relative size-full overflow-y-auto" bind:this={scrollContainer} onscroll={() => { interacted = true; }}>
+<div class="relative size-full overflow-y-auto" bind:this={scrollContainer}>
 	<div class="info-card" class:exiting={navigating}>
 		<!-- Tabs (right-aligned, sits just above the panel) -->
 		<div class="flex gap-4 items-center w-full max-w-[932px] justify-end">
