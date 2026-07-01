@@ -5,7 +5,6 @@
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { api, type components } from '$lib/api';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
-	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import { FormField, FormTextarea, FormSelect, FileUpload, FormCard, FormError, FormSubmitButton, HackatimeSelect } from '$lib/components/form';
 	import { editDataStore, fetchEditData, invalidateProjectCaches } from '$lib/store/projectDetailCache';
 	import { invalidateCache } from '$lib/store/projectCache';
@@ -640,13 +639,6 @@
 
 	<BackButton onclick={() => goto(`/app/projects/${projectId}`)} />
 
-	<NavigationHint
-		segments={[
-			{ type: 'input', value: 'click' },
-			{ type: 'text', value: 'TO FILL FIELDS' }
-		]}
-		position="bottom-right"
-	/>
 </div>
 
 <style>

@@ -7,7 +7,6 @@
 	import type { EventConfig } from '$lib/events/types';
 	import eventsRaw from '$lib/events/events.yaml?raw';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
-	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { createListNav } from '$lib/nav/wasd.svelte';
 	import type { components } from '$lib/api';
@@ -260,18 +259,6 @@
 		flyIn={page.url.searchParams.has('back')}
 	/>
 
-	<div class="fade-wrap" class:entered class:exiting={navigating}>
-		<NavigationHint
-			segments={[
-				{ type: 'text', value: 'USE' },
-				{ type: 'input', value: 'WS' },
-				{ type: 'text', value: 'OR' },
-				{ type: 'input', value: 'mouse-scroll' },
-				{ type: 'text', value: 'TO NAVIGATE' }
-			]}
-			position="bottom-right"
-		/>
-	</div>
 
 	<!-- Pinned popup -->
 	{#if pinnedSlug}
@@ -302,18 +289,6 @@
 	.event-card.exiting {
 		animation: card-exit var(--exit-duration) var(--exit-easing) both;
 		animation-delay: calc(var(--card-index, 0) * 75ms);
-	}
-
-	.fade-wrap {
-		opacity: 0;
-	}
-	.fade-wrap.entered {
-		opacity: 1;
-		transition: opacity var(--enter-duration) ease;
-	}
-	.fade-wrap.exiting {
-		opacity: 0;
-		transition: opacity 250ms ease;
 	}
 
 	@keyframes fly-in-top {

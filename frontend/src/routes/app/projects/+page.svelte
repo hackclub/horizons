@@ -4,7 +4,6 @@
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import { goto } from '$app/navigation';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
-	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import { createListNav } from '$lib/nav/wasd.svelte';
 	import { projectsStore, fetchProjects } from '$lib/store/projectCache';
@@ -284,18 +283,6 @@
 		/>
 	</div>
 
-	<div class="fade-wrap" class:entered class:exiting={navigating}>
-		<NavigationHint
-			segments={[
-				{ type: 'text', value: 'USE' },
-				{ type: 'input', value: 'WS' },
-				{ type: 'text', value: 'OR' },
-				{ type: 'input', value: 'mouse-scroll' },
-				{ type: 'text', value: 'TO NAVIGATE' }
-			]}
-			position="bottom-right"
-		/>
-	</div>
 </div>
 
 <style>
@@ -317,18 +304,6 @@
 	.project-card.exiting {
 		animation: card-exit var(--exit-duration) var(--exit-easing) both;
 		animation-delay: calc(var(--card-index, 0) * 75ms);
-	}
-
-	.fade-wrap {
-		opacity: 0;
-	}
-	.fade-wrap.entered {
-		opacity: 1;
-		transition: opacity var(--enter-duration) ease;
-	}
-	.fade-wrap.exiting {
-		opacity: 0;
-		transition: opacity 250ms ease;
 	}
 
 	.link-hackatime-blink {

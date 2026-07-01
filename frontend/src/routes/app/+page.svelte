@@ -14,7 +14,6 @@
 
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import InputPrompt from '$lib/components/InputPrompt.svelte';
 	import { createGridNav } from '$lib/nav/wasd.svelte';
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
@@ -91,8 +90,6 @@
 		cardDescriptions[`${COL_CE}-0`] = 'See what\'s coming up in the community!';
 	}
 
-	let userName = $derived($userStore.userName);
-	let referralCode = $derived($userStore.referralCode);
 	let currentStreak = $derived($userStore.currentStreak);
 	let longestStreak = $derived($userStore.longestStreak);
 	let isAdmin = $derived(
@@ -885,43 +882,6 @@
 				</div>
 		</div>
 
-		<!-- Bottom Info Row -->
-		<div class="info-row enter-down" class:exiting={navigating && !exitRight} style:--exit-delay="0ms" style:--enter-delay="300ms">
-			<div class="card nav-hint-card" class:nav-hint-hidden={hasInteracted}>
-				<div class="flex items-center gap-5">
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">USE</p>
-					<InputPrompt type="WASD" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">OR</p>
-					<InputPrompt type="mouse" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">TO NAVIGATE</p>
-				</div>
-			</div>
-
-			{#if userName}
-				<div class="card user-card">
-					<p class="font-cook text-[24px] font-semibold text-black m-0">{userName}</p>
-					<div class="streak-badge" class:streak-badge-empty={effectiveCurrentStreak === 0} title={effectiveLongestStreak > effectiveCurrentStreak ? `Best: ${effectiveLongestStreak}d` : effectiveCurrentStreak > 0 ? 'New record!' : 'Start your streak!'}>
-						<span class="streak-flame" aria-hidden="true">🔥</span>
-						<span class="font-cook text-[20px] font-semibold text-black leading-none">{effectiveCurrentStreak}d</span>
-					</div>
-					{#if referralCode}
-						<button
-							class="refer-btn py-2 px-4 border-2 border-black rounded-lg bg-[#ffa936] font-bricolage text-base font-semibold text-black cursor-pointer"
-							onclick={() => navigateTo('/app/refer?back', { exitRight: true })}
-						>
-							Refer a Friend
-						</button>
-					{/if}
-					<button class="logout-btn" onclick={async () => { await api.POST('/api/user/auth/logout'); window.location.href = '/'; }} aria-label="Logout">
-						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-							<path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-							<path d="M21 12H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-						</svg>
-					</button>
-				</div>
-			{/if}
-		</div>
 	</div>
 </div>
 
@@ -1095,7 +1055,8 @@
 		width: 100%;
 		height: 100%;
 		max-height: 100%;
-		padding: 32px 40px;
+		/* Bottom padding clears the fixed AppNav bar (48px) plus a gap above it. */
+		padding: 32px 40px 96px;
 	}
 
 	/* Scrollable cards area — only horizontal scroll, fills remaining vertical space */
@@ -1123,33 +1084,6 @@
 		gap: 24px;
 		width: 471px;
 		height: 100%;
-	}
-
-	/* Info row */
-	.info-row {
-		display: flex;
-		align-items: stretch;
-		justify-content: space-between;
-		width: 100%;
-		flex-shrink: 0;
-	}
-
-	@media (max-height: 700px) {
-		.page-content {
-			padding-bottom: 32px;
-		}
-		.info-row {
-			position: absolute;
-			bottom: 32px;
-			left: 40px;
-			right: 40px;
-			width: auto;
-			z-index: 20;
-		}
-		.nav-hint-card.nav-hint-hidden {
-			opacity: 0;
-			transition: opacity 0.3s ease;
-		}
 	}
 
 	/* Base card */
@@ -1248,83 +1182,6 @@
 		width: 372px;
 		height: 100%;
 		background-color: #5cb85c;
-	}
-
-	.nav-hint-card {
-		display: flex;
-		align-items: center;
-		padding: 20px;
-		background-color: #f3e8d8;
-		cursor: default;
-	}
-
-	.user-card {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		padding: 20px;
-		background-color: #f3e8d8;
-		cursor: default;
-		overflow: visible;
-	}
-
-	.streak-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		padding: 6px 10px;
-		border: 2px solid black;
-		border-radius: 8px;
-		background-color: #ffd56b;
-		cursor: default;
-	}
-
-	.streak-badge-empty {
-		background-color: #d9d2c5;
-		border-color: rgba(0, 0, 0, 0.4);
-	}
-
-	.streak-badge-empty :global(span) {
-		color: rgba(0, 0, 0, 0.45);
-	}
-
-	.streak-badge-empty .streak-flame {
-		filter: grayscale(1);
-		opacity: 0.5;
-	}
-
-	.streak-flame {
-		font-size: 18px;
-		line-height: 1;
-	}
-
-	.refer-btn {
-		transition:
-			background-color var(--selected-duration) ease,
-			transform var(--juice-duration) var(--juice-easing);
-		animation: white-blink 1.5s ease-in-out infinite;
-	}
-	@keyframes white-blink {
-		0%, 100% { background-color: #fdd9a8; }
-		50% { background-color: #fba74d; }
-	}
-	.refer-btn:hover {
-		transform: scale(var(--juice-scale));
-	}
-
-	.logout-btn {
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: black;
-		opacity: 0.4;
-		padding: 0;
-		display: flex;
-		align-items: center;
-		transition: opacity 0.2s ease;
-	}
-	.logout-btn:hover {
-		opacity: 1;
 	}
 
 	/* Entry / exit animations */

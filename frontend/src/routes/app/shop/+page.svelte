@@ -3,7 +3,6 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import BackButton from '$lib/components/BackButton.svelte';
-	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import { createGridNav } from '$lib/nav/wasd.svelte';
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
@@ -654,18 +653,6 @@
 	flyIn={page.url.searchParams.has('back')}
 />
 
-<div class="fade-wrap absolute inset-0 pointer-events-none z-20" class:entered class:exiting={navigating || interacted}>
-	<NavigationHint
-		segments={[
-			{ type: 'text', value: 'USE' },
-			{ type: 'input', value: 'WASD' },
-			{ type: 'text', value: 'OR' },
-			{ type: 'input', value: 'mouse' },
-			{ type: 'text', value: 'TO NAVIGATE' }
-		]}
-		position="bottom-right"
-	/>
-</div>
 
 <style>
 	@keyframes info-enter {
@@ -722,13 +709,6 @@
 		animation: item-exit var(--exit-duration) var(--exit-easing) both;
 	}
 
-	.fade-wrap {
-		opacity: 0;
-	}
-	.fade-wrap.entered {
-		opacity: 1;
-		transition: opacity var(--enter-duration) ease;
-	}
 	.order-card {
 		animation: item-enter var(--enter-duration) var(--enter-easing) backwards;
 		animation-delay: calc(var(--card-index, 0) * 60ms + 150ms);
@@ -751,8 +731,4 @@
 	}
 
 
-	.fade-wrap.exiting {
-		opacity: 0;
-		transition: opacity 250ms ease;
-	}
 </style>

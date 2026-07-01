@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from "$app/state";
 	import BG from "$lib/components/BG.svelte";
+	import AppNav from "$lib/components/AppNav.svelte";
+	import type { InputPromptType } from "$lib/input";
 	import BobaText from "$lib/components/BobaText.svelte";
 	import SlideOut from "$lib/components/anim/SlideOut.svelte";
 	import { afterNavigate, beforeNavigate, goto } from "$app/navigation";
@@ -48,6 +50,56 @@
 	);
 
 	let { children } = $props();
+
+	// Nav hint segments per route — the persistent AppNav (rendered once below)
+	// reads these so it never remounts/re-animates on navigation.
+	type NavSegment = { type: "input"; value: InputPromptType } | { type: "text"; value: string };
+	const HINT_WASD_MOUSE: NavSegment[] = [
+		{ type: "text", value: "Use" },
+		{ type: "input", value: "WASD" },
+		{ type: "text", value: "or" },
+		{ type: "input", value: "mouse" },
+		{ type: "text", value: "to navigate" },
+	];
+	const HINT_WS_SCROLL: NavSegment[] = [
+		{ type: "text", value: "Use" },
+		{ type: "input", value: "WS" },
+		{ type: "text", value: "or" },
+		{ type: "input", value: "mouse-scroll" },
+		{ type: "text", value: "to navigate" },
+	];
+	// Mouse-only, "traditional" pages (detail / form / checkout / ship flow).
+	const HINT_MOUSE: NavSegment[] = [
+		{ type: "text", value: "Use" },
+		{ type: "input", value: "mouse" },
+		{ type: "text", value: "to navigate" },
+	];
+	const HINT_CLICK: NavSegment[] = [
+		{ type: "input", value: "click" },
+		{ type: "text", value: "to fill fields" },
+	];
+
+	function hintsFor(pathname: string): NavSegment[] {
+		const p = pathname.replace(/\/+$/, "") || "/app";
+		// Project edit is a form.
+		if (/^\/app\/projects\/[^/]+\/edit$/.test(p)) return HINT_CLICK;
+		// Keyboard-navigable 2D grids.
+		if (p === "/app" || p === "/app/shop" || p === "/app/events/shop") return HINT_WASD_MOUSE;
+		// Keyboard-navigable vertical lists.
+		if (
+			p === "/app/projects" ||
+			p === "/app/events" ||
+			p === "/app/events/explore" ||
+			p === "/app/community" ||
+			p === "/app/refer"
+		)
+			return HINT_WS_SCROLL;
+		// Everything else (project detail, new, ship flow, hackatime, item detail,
+		// onboarding, …) is a traditional mouse-driven page.
+		return HINT_MOUSE;
+	}
+
+	const navSegments = $derived(hintsFor(page.url.pathname));
 
 	// Mobile entry point: route bare /app to the mobile-ready /app/projects.
 	$effect(() => {
@@ -159,6 +211,9 @@
 				</p>
 			</div>
 		{/if}
+		<!-- Persistent bottom nav — rendered once, outside the keyed page
+		     transition, so it stays put (no fade/remount) across navigations. -->
+		<AppNav segments={navSegments} />
 	</BG>
 {/if}
 

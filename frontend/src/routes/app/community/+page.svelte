@@ -382,30 +382,6 @@
 			</div>
 		</div>
 
-		<!-- Info Row -->
-		<div class="info-row md:flex hidden" class:exiting={navigating}>
-			<div class="card info-card">
-				<div class="flex items-center gap-5">
-					<p
-						class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none"
-					>
-						USE
-					</p>
-					<InputPrompt type="WS" />
-					<p
-						class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none"
-					>
-						OR
-					</p>
-					<InputPrompt type="mouse-scroll" />
-					<p
-						class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none"
-					>
-						TO NAVIGATE
-					</p>
-				</div>
-			</div>
-		</div>
 	</div>
 </div>
 
@@ -421,7 +397,8 @@
 		gap: 32px;
 		width: 100%;
 		height: 100%;
-		padding: 32px;
+		/* Bottom padding clears the fixed AppNav bar (48px). */
+		padding: 32px 32px 72px;
 	}
 
 	/* Back button — in flow at top */
@@ -602,23 +579,6 @@
 		}
 	}
 
-	/* Info row */
-	.info-row {
-		align-items: stretch;
-		width: 100%;
-		flex-shrink: 0;
-	}
-	.info-row.exiting {
-		animation: fly-out-bottom var(--exit-duration) var(--exit-easing) both;
-	}
-
-	.info-card {
-		display: flex;
-		align-items: center;
-		padding: 20px;
-		cursor: default;
-	}
-
 	/* Live badge */
 	.live-badge {
 		display: flex;
@@ -654,14 +614,6 @@
 			var(--fly-exit-delay, 0ms);
 	}
 
-	@keyframes fly-out-bottom {
-		from {
-			transform: translateY(0);
-		}
-		to {
-			transform: translateY(120vh);
-		}
-	}
 
 	@keyframes pulse {
 		0%,
