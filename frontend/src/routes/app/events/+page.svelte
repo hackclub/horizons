@@ -7,7 +7,6 @@
 	import type { EventConfig } from '$lib/events/types';
 	import eventsRaw from '$lib/events/events.yaml?raw';
 	import BackButton from '$lib/components/BackButton.svelte';
-	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
 	import clickSvg from '$lib/assets/prompts/click.svg';
 	import { createListNav } from '$lib/nav/wasd.svelte';
@@ -651,18 +650,6 @@
 		</div>
 	{/if}
 
-	<div class="fade-wrap" class:entered class:exiting={navigating}>
-		<NavigationHint
-			segments={[
-				{ type: 'text', value: 'USE' },
-				{ type: 'input', value: 'WS' },
-				{ type: 'text', value: 'OR' },
-				{ type: 'input', value: 'mouse-scroll' },
-				{ type: 'text', value: 'TO NAVIGATE' }
-			]}
-			position="bottom-right"
-		/>
-	</div>
 </div>
 
 {#if debugMode}
@@ -987,18 +974,6 @@
 	}
 	.fly-up.exiting {
 		animation: fly-out-down var(--exit-duration) var(--exit-easing) var(--enter-delay, 0ms) both;
-	}
-
-	.fade-wrap {
-		opacity: 0;
-	}
-	.fade-wrap.entered {
-		opacity: 1;
-		transition: opacity var(--enter-duration) ease;
-	}
-	.fade-wrap.exiting {
-		opacity: 0;
-		transition: opacity 250ms ease;
 	}
 
 	@keyframes shake {

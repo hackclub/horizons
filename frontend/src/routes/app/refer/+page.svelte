@@ -15,7 +15,6 @@
 	let entered = $state(false);
 	let navigating = $state(false);
 
-	let userName = $derived($userStore.userName);
 	let referralCode = $derived($userStore.referralCode);
 	let referrals = $state<ReferralUser[]>([]);
 	let loading = $state(true);
@@ -149,32 +148,6 @@
 			</div>
 		</div>
 
-		<!-- Info Row -->
-		<div class="info-row" class:exiting={navigating}>
-			<div class="card info-card">
-				<div class="flex items-center gap-5">
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">USE</p>
-					<InputPrompt type="WASD" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">OR</p>
-					<InputPrompt type="mouse" />
-					<p class="font-cook text-[24px] font-semibold text-black m-0 shrink-0 leading-none">TO NAVIGATE</p>
-				</div>
-			</div>
-
-			<div class="card info-card user-card">
-				<p class="font-cook text-[24px] font-semibold text-black m-0">{userName}</p>
-				<button class="refer-btn" onclick={copyLink}>
-					{copied ? 'Copied!' : 'Refer a Friend'}
-				</button>
-				<button class="logout-btn" onclick={async () => { await api.POST('/api/user/auth/logout'); window.location.href = '/'; }} aria-label="Logout">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-						<path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-						<path d="M21 12H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-					</svg>
-				</button>
-			</div>
-		</div>
 	</div>
 </div>
 
@@ -191,7 +164,8 @@
 		gap: 32px;
 		width: 100%;
 		height: 100%;
-		padding: 32px 40px;
+		/* Bottom padding clears the fixed AppNav bar (48px). */
+		padding: 32px 40px 72px;
 	}
 
 	/* Back button — in flow at top */
@@ -225,22 +199,6 @@
 		width: 100%;
 	}
 
-	/* Info row */
-	.info-row {
-		display: flex;
-		align-items: stretch;
-		justify-content: space-between;
-		width: 100%;
-		flex-shrink: 0;
-	}
-	.info-row.exiting {
-		animation: fly-out-bottom var(--exit-duration) var(--exit-easing) both;
-	}
-	@keyframes fly-out-bottom {
-		from { transform: translateY(0); }
-		to   { transform: translateY(120vh); }
-	}
-
 	/* Card base */
 	.card {
 		border: 4px solid black;
@@ -248,17 +206,6 @@
 		box-shadow: 4px 4px 0px 0px black;
 		overflow: hidden;
 		background-color: #f3e8d8;
-	}
-
-	.info-card {
-		display: flex;
-		align-items: center;
-		padding: 20px;
-		cursor: default;
-	}
-
-	.user-card {
-		gap: 12px;
 	}
 
 	.refer-card {
@@ -339,40 +286,6 @@
 	}
 	.referral-card.selected {
 		background-color: #ffa936;
-	}
-
-	.refer-btn {
-		padding: 8px 16px;
-		border: 2px solid black;
-		border-radius: 8px;
-		background: transparent;
-		font-family: var(--font-bricolage);
-		font-size: 16px;
-		font-weight: 600;
-		color: black;
-		cursor: pointer;
-		transition:
-			background-color var(--selected-duration) ease,
-			transform var(--juice-duration) var(--juice-easing);
-	}
-	.refer-btn:hover {
-		background-color: #ffa936;
-		transform: scale(var(--juice-scale));
-	}
-
-	.logout-btn {
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: black;
-		opacity: 0.4;
-		padding: 0;
-		display: flex;
-		align-items: center;
-		transition: opacity 0.2s ease;
-	}
-	.logout-btn:hover {
-		opacity: 1;
 	}
 
 	/* Fly in from left, exit to left */

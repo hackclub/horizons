@@ -4,7 +4,6 @@
 	import { goto } from '$app/navigation';
 	import heroPlaceholder from '$lib/assets/projects/hero-placeholder.png';
 	import InputPrompt from '$lib/components/InputPrompt.svelte';
-	import NavigationHint from '$lib/components/NavigationHint.svelte';
 	import TurbulentImage from '$lib/components/TurbulentImage.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { createGridNav } from '$lib/nav/wasd.svelte';
@@ -620,16 +619,6 @@
 	<!-- Back button -->
 	<BackButton onclick={() => navigateTo('/app/projects?noanimate')} />
 
-	<div class="fade-wrap" class:entered class:exiting={navigating}>
-		<NavigationHint
-			segments={[
-				{ type: 'text', value: 'USE' },
-				{ type: 'input', value: 'AD' },
-				{ type: 'text', value: 'TO NAVIGATE' }
-			]}
-			position="bottom-right"
-		/>
-	</div>
 </div>
 
 <style>
@@ -649,18 +638,6 @@
 
 	.detail-card.exiting {
 		animation: card-exit var(--exit-duration) var(--exit-easing) both;
-	}
-
-	.fade-wrap {
-		opacity: 0;
-	}
-	.fade-wrap.entered {
-		opacity: 1;
-		transition: opacity var(--enter-duration) ease;
-	}
-	.fade-wrap.exiting {
-		opacity: 0;
-		transition: opacity 250ms ease;
 	}
 
 	.action-btn {
