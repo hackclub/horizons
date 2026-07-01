@@ -23,6 +23,12 @@ export class ProjectSubmissionResponse {
   @ApiProperty({ type: String, nullable: true })
   hoursJustification: string | null;
 
+  @ApiProperty({
+    description:
+      'True once the reviewer has approved; surface as "Verifying hours" instead of "Under review". Stays true while the fraud gate is pending AND if it fails (silent reject) so fraud actors get no rejection signal. Becomes false only when the submission is fully approved or normally rejected.',
+  })
+  verifyingHours: boolean;
+
   @ApiProperty({ type: String, nullable: true })
   playableUrl: string | null;
 

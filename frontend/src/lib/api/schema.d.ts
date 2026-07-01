@@ -2270,6 +2270,8 @@ export interface components {
             approvedHours: number | null;
             hackatimeHours: number | null;
             hoursJustification: string | null;
+            /** @description True once the reviewer has approved; surface as "Verifying hours" instead of "Under review". Stays true while the fraud gate is pending AND if it fails (silent reject) so fraud actors get no rejection signal. Becomes false only when the submission is fully approved or normally rejected. */
+            verifyingHours: boolean;
             playableUrl: string | null;
             screenshotUrl: string | null;
             description: string | null;
