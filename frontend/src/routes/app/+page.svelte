@@ -447,7 +447,6 @@
 
 	let navigating = $state(false);
 	let exitRight = $state(false);
-	let hasInteracted = $state(false);
 
 	// Hover-cascade guard: when a mouseenter-triggered nav.select shifts the cards row, the
 	// shifting cards slide under the stationary cursor and fire more mouseenter events. A real
@@ -489,8 +488,6 @@
 	});
 
 	function handlePageKeydown(e: KeyboardEvent) {
-		hasInteracted = true;
-
 		// Huddle row keyboard handling — runs BEFORE nav.handleKeydown so
 		// up/down/enter while the huddle is selected don't fall through to the
 		// grid (which would otherwise clamp at row 0 of column 0 and no-op).
@@ -640,7 +637,7 @@
 	});
 </script>
 
-<svelte:window onkeydown={handlePageKeydown} onmousemove={(e) => { mouseX = e.clientX; mouseY = e.clientY; lastMouseMoveTime = performance.now(); hasInteracted = true; }} />
+<svelte:window onkeydown={handlePageKeydown} onmousemove={(e) => { mouseX = e.clientX; mouseY = e.clientY; lastMouseMoveTime = performance.now(); }} />
 
 {#snippet hintRow(text: string)}
 	<img src={nav.usingKeyboard ? enterSvg : clickSvg} alt={nav.usingKeyboard ? 'Enter' : 'Click'} class="enter-hint-key" />
@@ -1055,8 +1052,9 @@
 		width: 100%;
 		height: 100%;
 		max-height: 100%;
-		/* Bottom padding clears the fixed AppNav bar (48px) plus a gap above it. */
-		padding: 32px 40px 96px;
+		/* Extra bottom gap above the persistent AppNav (the bar's own space is
+		   reserved by the layout's .page-transition). */
+		padding: 32px 40px 48px;
 	}
 
 	/* Scrollable cards area — only horizontal scroll, fills remaining vertical space */

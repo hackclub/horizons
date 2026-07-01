@@ -164,8 +164,7 @@
 		gap: 32px;
 		width: 100%;
 		height: 100%;
-		/* Bottom padding clears the fixed AppNav bar (48px). */
-		padding: 32px 40px 72px;
+		padding: 32px 40px;
 	}
 
 	/* Back button — in flow at top */

@@ -34,7 +34,6 @@
 	let navigating = $state(false);
 	let backExiting = $state(false);
 	let skipItemAnimation = $state(false);
-	let interacted = $state(false);
 	let itemsReady = $state(false);
 
 	const eventOverride = $derived(page.url.searchParams.get('event'));
@@ -157,19 +156,17 @@
 			nav.col = 0;
 			nav.row = 0;
 			e.preventDefault();
-			interacted = true;
 			return;
 		}
 		usingMouse = false;
 		nav.handleKeydown(e);
-		interacted = true;
 	}}
 	onpointermove={() => {
 		usingMouse = true;
 	}}
 />
 
-<div class="relative size-full overflow-y-auto" bind:this={scrollContainer} onscroll={() => { interacted = true; }}>
+<div class="relative size-full overflow-y-auto" bind:this={scrollContainer}>
 	<div class="info-card" class:exiting={navigating}>
 		<!-- Header card -->
 		<div

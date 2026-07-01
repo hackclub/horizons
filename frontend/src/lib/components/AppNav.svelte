@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
@@ -17,6 +18,9 @@
 	const userName = $derived($userStore.userName);
 	const referralCode = $derived($userStore.referralCode);
 	const currentStreak = $derived($userStore.currentStreak);
+
+	// Hide the "Refer A Friend" button on the refer page itself.
+	const onReferPage = $derived(page.url.pathname.replace(/\/+$/, '') === '/app/refer');
 
 	// Eye icon toggles whether the username is visible.
 	let nameHidden = $state(false);
@@ -209,7 +213,7 @@
 				</span>
 			</div>
 
-			{#if referralCode}
+			{#if referralCode && !onReferPage}
 				<button
 					class="flex items-center justify-center rounded-sm border border-[#f3e8d8] px-2.5 py-1 font-bricolage text-sm font-bold text-black whitespace-nowrap cursor-pointer animate-refer-pulse transition-transform hover:scale-[1.04] outline-none"
 					onclick={handleRefer}
