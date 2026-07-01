@@ -75,6 +75,7 @@ export class ProjectsService {
     T extends {
       approvalStatus: 'pending' | 'approved' | 'rejected';
       silentReject: boolean;
+      reviewPassed: boolean | null;
     },
   >(
     submission: T,
@@ -87,7 +88,7 @@ export class ProjectsService {
     | 'reviewedBy'
     | 'airtableRecId'
     | 'reviewerAnalysis'
-  > {
+  > & { verifyingHours: boolean } {
     const {
       reviewPassed: _rp,
       silentReject: _sr,
@@ -101,6 +102,21 @@ export class ProjectsService {
     return {
       ...rest,
       approvalStatus: submission.silentReject ? 'pending' : submission.approvalStatus,
+      // Once a reviewer has approved, the tracker shows "verifying hours" and
+      // STAYS there regardless of how the fraud gate resolves:
+      //   - fraud pending → still pending, awaiting the fraud result
+      //   - fraud passed  → approvalStatus flips to 'approved' (shows "approved")
+      //   - fraud failed  → silent-reject; raw approvalStatus is 'rejected' (and
+      //                     remapped to 'pending' above), but we KEEP showing
+      //                     "verifying hours" so fraud actors get no rejection
+      //                     signal — no revert to "under review", no feedback.
+      // If the reviewer never approved (reviewPassed !== true) this stays false,
+      // so fresh pending rows show "under review" and normal (non-silent)
+      // rejections show "rejected".
+      verifyingHours:
+        submission.reviewPassed === true &&
+        (submission.approvalStatus === 'pending' ||
+          submission.silentReject === true),
     };
   }
 

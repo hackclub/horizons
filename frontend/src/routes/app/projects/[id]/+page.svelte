@@ -96,6 +96,9 @@
 	let isPending = $derived(latestSubmission?.approvalStatus === 'pending');
 	let isApproved = $derived(latestSubmission?.approvalStatus === 'approved');
 	let isRejected = $derived(latestSubmission?.approvalStatus === 'rejected');
+	// Reviewer approved but the fraud/hours gate hasn't resolved yet — still
+	// pending, but shown as "Verifying Hours" rather than "Under Review".
+	let isVerifyingHours = $derived(latestSubmission?.verifyingHours === true);
 	let isPermRejected = $derived(
 		(project as { permReject?: boolean } | null)?.permReject === true,
 	);
@@ -381,7 +384,7 @@
 				{@const reviewerFeedback = latestSubmission?.hoursJustification}
 				{@const step2Color = (isApproved || isPermRejected) ? '#ffa936' : isRejected ? '#e05632' : isPending ? '#ffa936' : '#f3e8d8'}
 				{@const step3Color = isApproved ? '#ffa936' : isPermRejected ? '#e05632' : '#f3e8d8'}
-				{@const step2Label = isPermRejected ? 'Reviewed' : isRejected ? 'Rejected' : 'Under Review'}
+				{@const step2Label = isPermRejected ? 'Reviewed' : isRejected ? 'Rejected' : isVerifyingHours ? 'Verifying Hours' : 'Under Review'}
 				{@const step3Label = isPermRejected ? 'Permanently Rejected' : 'Approved'}
 
 				<div class="flex flex-col gap-3 w-full border-4 border-black rounded-[20px] p-4">

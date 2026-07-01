@@ -47,6 +47,7 @@ Users can only see **their own data**. All project/submission endpoints check `u
 | Submission `reviewPassed` | **No** | Reviewer gate — stripped via `scopeSubmissionForUser()` |
 | Submission `finalizedAt`, `pendingSendEmail`, `reviewedBy`, `airtableRecId`, `reviewerAnalysis` | **No** | Stripped via `scopeSubmissionForUser()` |
 | Silent-reject state (reviewer approved + fraud failed) | **No** | Remapped to `approvalStatus='pending'` for users via `scopeSubmissionForUser()` |
+| Submission `verifyingHours` (reviewer approved; fraud gate pending or silently failed) | Yes (derived) | Computed in `scopeSubmissionForUser()` as `reviewPassed===true && (rawApprovalStatus==='pending' \|\| silentReject===true)`. Drives the "Verifying hours" tracker label. Deliberately **stays `true` for silent-rejected rows** so a fraud-failed submission freezes on "Verifying hours" — it never reverts to "under review" and never signals the rejection. Only exposes that review passed, never the fraud outcome. |
 
 The legacy `Project.isFraud` admin flag has been removed. Fraud state is driven exclusively by Joe (`joeFraudPassed`).
 
