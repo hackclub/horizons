@@ -152,6 +152,7 @@ pnpm --filter admin generate:api
 | Shop | `/admin/shop` | Shop item CRUD |
 | Gift Codes | `/admin/giftcodes` | Gift code generation and management |
 | Events | `/admin/events` | Event list and creation |
+| Announcements | `/admin/announcements` | Create/edit announcements — markdown body with live preview, event tags (none = everyone), and "show on open" / "show as tag" / active toggles. Admin, Superadmin, and Event Viewer. |
 | Settings | `/admin/settings` | Global submissions freeze toggle, reviewer leaderboard, priority users |
 
 ### Review Tool

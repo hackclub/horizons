@@ -321,6 +321,24 @@ Event (hackathon) management.
 
 ---
 
+### Announcements (`/api/announcements`)
+
+Admin-authored announcements with a markdown body and optional event tags. Users see active announcements that are global (no tags) or tagged for their **pinned event**; each carries a per-user `isRead`. Managed by Admin + Event Viewer (Superadmin inherits Admin).
+
+**Endpoints:**
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/auth` | User | Announcements visible to me (scoped server-side to pinned event), with `isRead`, newest-first |
+| POST | `/auth/:id/read` | User | Mark read (idempotent upsert) |
+| GET | `/admin` | Admin/EventViewer | List all |
+| GET | `/admin/:id` | Admin/EventViewer | Get one |
+| POST | `/admin` | Admin/EventViewer | Create (`eventSlugs` = tags; empty = global) |
+| PUT | `/admin/:id` | Admin/EventViewer | Update (replaces tag set when `eventSlugs` provided) |
+| DELETE | `/admin/:id` | Admin/EventViewer | Delete |
+
+---
+
 ### Uploads (`/api/uploads`)
 
 Image upload to Hack Club CDN.
@@ -445,6 +463,8 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 |-------|------------|---------|
 | **Event** | slug, title, startDate, endDate, hourCost, isActive | Hackathon events |
 | **PinnedEvent** | userId, eventId | User's pinned event |
+| **Announcement** | title, previewText, body (markdown), eventSlugs[], showOnOpen, showAsTag, isActive | Admin-authored announcements; empty `eventSlugs` = global |
+| **AnnouncementRead** | userId, announcementId | Per-user read state |
 | **UserSession** | userId, expiresAt | Auth sessions (21-day TTL) |
 | **EmailJob** | recipientEmail, status, scheduledFor, lockedBy | Email queue |
 | **GiftCode** | code, email, filloutUrl, isClaimed | Promotional codes |

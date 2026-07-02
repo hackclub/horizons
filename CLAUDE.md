@@ -29,6 +29,7 @@ The backend is organized into NestJS feature modules under `backend/src/`:
 - `hackatime/` — Hackatime OAuth, hours tracking, project linking, recalculation
 - `github/` — Repo info and README fetching with token pooling (reviewer/admin only)
 - `events/` — Event CRUD and pinning
+- `announcements/` — Admin-authored announcements (markdown body, event tags); user list/read scoped to pinned event; per-user read state
 - `uploads/` — Image upload to Hack Club CDN
 - `loops/` — Loops transactional email client (replaces archived `mail/` module; see `backend/archive/mail/`)
 - `slack/` — Slack DM notifications (internal service, no controller)

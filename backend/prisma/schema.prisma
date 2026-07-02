@@ -70,6 +70,7 @@ model User {
   pinnedEvent        PinnedEvent?
   claimedSubmissions Submission[]        @relation("SubmissionClaimedBy")
   dailyActivity      UserDailyActivity[]
+  announcementReads  AnnouncementRead[]
 
   @@index([currentStreak(sort: Desc), lastActiveDate(sort: Desc), userId], name: "users_streak_leaderboard_idx")
   @@map("users")
@@ -426,26 +427,26 @@ model PinnedItem {
 }
 
 model Event {
-  eventId       Int           @id @default(autoincrement()) @map("event_id")
-  slug          String        @unique @db.VarChar(100)
-  title         String        @db.VarChar(200)
-  description   String?       @db.VarChar(1000)
-  imageUrl      String?       @map("image_url")
-  location      String?       @db.VarChar(300)
-  country       String?       @db.VarChar(100)
-  startDate     DateTime      @map("start_date") @db.Date
-  endDate       DateTime      @map("end_date") @db.Date
-  hourCost      Float         @map("hour_cost")
+  eventId         Int           @id @default(autoincrement()) @map("event_id")
+  slug            String        @unique @db.VarChar(100)
+  title           String        @db.VarChar(200)
+  description     String?       @db.VarChar(1000)
+  imageUrl        String?       @map("image_url")
+  location        String?       @db.VarChar(300)
+  country         String?       @db.VarChar(100)
+  startDate       DateTime      @map("start_date") @db.Date
+  endDate         DateTime      @map("end_date") @db.Date
+  hourCost        Float         @map("hour_cost")
   // Minimum approved hours a user must have earned before they can buy a ticket.
   // Column name preserved from the old two-step RSVP/ticket flow.
-  ticketThreshold Float?      @map("rsvp_cost")
-  ticketCost    Float?        @map("ticket_cost")
-  ticketEnabled Boolean       @default(false) @map("ticket_enabled")
-  isActive      Boolean       @default(true) @map("is_active")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-  pinnedBy      PinnedEvent[]
-  transactions  Transaction[]
+  ticketThreshold Float?        @map("rsvp_cost")
+  ticketCost      Float?        @map("ticket_cost")
+  ticketEnabled   Boolean       @default(false) @map("ticket_enabled")
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  pinnedBy        PinnedEvent[]
+  transactions    Transaction[]
 
   @@map("events")
 }
@@ -478,6 +479,45 @@ model PinnedEvent {
 
   @@index([eventId])
   @@map("pinned_events")
+}
+
+model Announcement {
+  announcementId Int      @id @default(autoincrement()) @map("announcement_id")
+  title          String   @db.VarChar(200)
+  previewText    String   @map("preview_text") @db.VarChar(500)
+  body           String   @db.Text
+  // Auto-open the detail modal on the user's next app load, until read.
+  showOnOpen     Boolean  @default(false) @map("show_on_open")
+  // Surface as the floating top-right tag (only the most recent one shows).
+  showAsTag      Boolean  @default(false) @map("show_as_tag")
+  // Unpublished announcements are hidden from users but kept for admins.
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Event tags by slug. Empty = global (shown to everyone); otherwise shown only
+  // to users whose pinned event slug is in this list. Stored as a scalar array
+  // (like Project.nowHackatimeProjects) — events are a small, stable set and we
+  // never query the reverse, so a join table isn't worth it.
+  eventSlugs String[] @map("event_slugs")
+
+  reads AnnouncementRead[]
+
+  @@index([isActive, createdAt(sort: Desc)])
+  @@map("announcements")
+}
+
+model AnnouncementRead {
+  id             Int          @id @default(autoincrement())
+  userId         Int          @map("user_id")
+  announcementId Int          @map("announcement_id")
+  readAt         DateTime     @default(now()) @map("read_at")
+  user           User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [announcementId], onDelete: Cascade)
+
+  @@unique([userId, announcementId])
+  @@index([announcementId])
+  @@map("announcement_reads")
 }
 
 model GlobalSettings {
