@@ -85,7 +85,13 @@
 				<div class="flex shrink-0 items-center pb-3">
 					<p class="m-0 font-cook text-[16px] text-black">ANNOUNCEMENTS</p>
 									</div>
-				<div class="flex flex-1 flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
+				<!-- A scroll container always clips visual overflow at its padding box, so the
+				     corner-centered unread dot's pulse ring (reaches 12px past the item) needs
+				     >12px padding to sit fully inside: px-4/pt-4 (16px) give 4px clearance.
+				     Matching negative margins pull the box back so item layout is unchanged. -->
+				<div
+					class="-mx-4 -mt-3 flex flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pt-4 pb-2"
+				>
 					{#if items.length === 0}
 						<p class="m-0 font-bricolage text-[16px] text-black/50">No announcements yet.</p>
 					{:else}
@@ -115,7 +121,7 @@
 									<path d="m12 5 7 7-7 7" />
 								</svg>
 								{#if !a.isRead}
-									<PulseDot size={12} class="absolute -right-1 -top-1" />
+									<PulseDot size={12} class="absolute -right-1.5 -top-1.5" />
 								{/if}
 							</button>
 						{/each}
@@ -124,53 +130,51 @@
 			</section>
 
 			<!-- Detail pane (sized to Figma 2974-2363: p-20, gap-16, title 24px, date 20px) -->
-			<section class="flex h-full w-1/2 shrink-0 flex-col gap-4 p-5">
-				<div class="flex shrink-0 flex-col gap-1.5">
-					<div class="flex items-center pb-2">
-						<button
-							type="button"
-							class="flex cursor-pointer items-center text-black outline-none transition-opacity duration-300 {showDetail
-								? 'opacity-100'
-								: 'opacity-0'}"
-							aria-label="Back to announcements"
-							onclick={onBack}
-							tabindex={showDetail ? 0 : -1}
+			<section class="flex h-full w-1/2 shrink-0 flex-col p-5">
+				<div class="flex shrink-0 items-center pb-2">
+					<button
+						type="button"
+						class="flex cursor-pointer items-center text-black outline-none transition-opacity duration-300 {showDetail
+							? 'opacity-100'
+							: 'opacity-0'}"
+						aria-label="Back to announcements"
+						onclick={onBack}
+						tabindex={showDetail ? 0 : -1}
+					>
+						<svg
+							class="size-5"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
 						>
-							<svg
-								class="size-5"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								aria-hidden="true"
-							>
-								<path d="M19 12H5" />
-								<path d="m12 19-7-7 7-7" />
-							</svg>
-						</button>
-					</div>
-					{#if detailPane}
-						<div class="flex flex-col">
-							<p class="m-0 font-cook text-[24px] text-black">{detailPane.title}</p>
-							{#if dateStr}
-								<p class="m-0 font-bricolage text-[20px] text-[#363636]">{dateStr}</p>
-							{/if}
-						</div>
-						{#if detailPane.events.length}
-							<div class="flex flex-wrap gap-1.5">
-								{#each detailPane.events as ev (ev.slug)}
-									<span class="rounded-sm bg-[#1a140c] px-1.5 py-1 font-bricolage text-[12px] text-[#f3e8d8]">
-										{ev.title}
-									</span>
-								{/each}
-							</div>
-						{/if}
-					{/if}
+							<path d="M19 12H5" />
+							<path d="m12 19-7-7 7-7" />
+						</svg>
+					</button>
 				</div>
 				{#if detailPane}
-					<div class="flex-1 overflow-y-auto overscroll-contain">
+					<div class="flex flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-contain">
+						<div class="flex flex-col gap-1.5">
+							<div class="flex flex-col">
+								<p class="m-0 font-cook text-[24px] text-black">{detailPane.title}</p>
+								{#if dateStr}
+									<p class="m-0 font-bricolage text-[20px] text-[#363636]">{dateStr}</p>
+								{/if}
+							</div>
+							{#if detailPane.events.length}
+								<div class="flex flex-wrap gap-1.5">
+									{#each detailPane.events as ev (ev.slug)}
+										<span class="rounded-sm bg-[#1a140c] px-1.5 py-1 font-bricolage text-[12px] text-[#f3e8d8]">
+											{ev.title}
+										</span>
+									{/each}
+								</div>
+							{/if}
+						</div>
 						<Markdown source={detailPane.body} />
 					</div>
 				{/if}
