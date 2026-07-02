@@ -5,6 +5,7 @@
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
 	import { announcements, unreadCount } from '$lib/store/announcementsCache';
+	import { music, playerOpen } from '$lib/store/musicCache';
 	import PulseDot from './announcements/PulseDot.svelte';
 	import type { InputPromptType } from '$lib/input';
 
@@ -224,6 +225,28 @@
 				</button>
 			{/if}
 		</div>
+
+		<button
+			class="flex items-center transition-opacity hover:opacity-100 cursor-pointer outline-none {$playerOpen ? 'text-[#ffa936]' : 'text-white/80'}"
+			onclick={() => music.toggle()}
+			aria-label="Music player"
+			aria-pressed={$playerOpen}
+		>
+			<svg
+				class="size-5"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+			>
+				<path d="M9 18V5l12-2v13" />
+				<circle cx="6" cy="18" r="3" />
+				<circle cx="18" cy="16" r="3" />
+			</svg>
+		</button>
 
 		<button
 			class="relative flex items-center text-white/80 transition-opacity hover:opacity-100 cursor-pointer outline-none"

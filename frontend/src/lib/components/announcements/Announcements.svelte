@@ -2,18 +2,27 @@
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { fade } from 'svelte/transition';
-	import { page } from '$app/state';
+	import { page, navigating } from '$app/state';
 	import {
 		announcements,
 		currentDetail,
 		inboxOpen,
 		tagAnnouncement,
 	} from '$lib/store/announcementsCache';
+	import { homeExiting } from '$lib/store/homeExiting';
 	import AnnouncementsModal from './AnnouncementsModal.svelte';
 	import AnnouncementTag from './AnnouncementTag.svelte';
 
-	// The floating tag only appears on the app home page.
+	// The floating tag only appears on the app home page. It also exits the moment
+	// a navigation away from home begins — `homeExiting` is set on click (the
+	// home page's card exit plays for ~EXIT_DURATION before goto fires, so
+	// SvelteKit's `navigating` populates too late to lead), and `navigating`
+	// covers exits that don't run the card anim (bell/logout, browser back).
 	const onHome = $derived(page.url.pathname.replace(/\/+$/, '') === '/app');
+	const leavingHome = $derived(
+		!!navigating.to && navigating.to.url.pathname.replace(/\/+$/, '') !== '/app',
+	);
+	const showTag = $derived(onHome && !leavingHome && !$homeExiting);
 
 	function modalOpen() {
 		return get(inboxOpen) || !!get(currentDetail);
@@ -66,7 +75,7 @@
 </script>
 
 <!-- Floating tag: home page only, and only when nothing else is open. -->
-{#if onHome && $tagAnnouncement && !$currentDetail && !$inboxOpen}
+{#if showTag && $tagAnnouncement && !$currentDetail && !$inboxOpen}
 	{@const tag = $tagAnnouncement}
 	<AnnouncementTag
 		announcement={tag}

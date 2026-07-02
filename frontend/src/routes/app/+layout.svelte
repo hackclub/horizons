@@ -3,6 +3,7 @@
 	import BG from "$lib/components/BG.svelte";
 	import AppNav from "$lib/components/AppNav.svelte";
 	import Announcements from "$lib/components/announcements/Announcements.svelte";
+	import MusicPlayer from "$lib/components/music/MusicPlayer.svelte";
 	import type { InputPromptType } from "$lib/input";
 	import BobaText from "$lib/components/BobaText.svelte";
 	import SlideOut from "$lib/components/anim/SlideOut.svelte";
@@ -224,6 +225,7 @@
 		{#if showNav}
 			<AppNav segments={navSegments} />
 			<Announcements />
+			<MusicPlayer />
 		{/if}
 	</BG>
 {/if}

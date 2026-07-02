@@ -19,6 +19,7 @@
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
 	import { getCachedPinnedEvent, setCachedPinnedEvent } from '$lib/store/pinnedEventCache';
+	import { homeExiting } from '$lib/store/homeExiting';
 	import { onMount } from 'svelte';
 	import yaml from 'js-yaml';
 	import type { EventConfig } from '$lib/events/types';
@@ -362,6 +363,8 @@
 	}
 
 	onMount(() => {
+		// Cleared once home is back so the tag can fly in again next visit.
+		homeExiting.set(false);
 		fetchHuddleStatus();
 		const huddleInterval = setInterval(fetchHuddleStatus, 60_000);
 		return () => clearInterval(huddleInterval);
@@ -469,6 +472,7 @@
 
 	async function navigateTo(href: string, opts: { exitRight?: boolean } = {}) {
 		navigating = true;
+		homeExiting.set(true);
 		if (opts.exitRight) exitRight = true;
 		await new Promise(resolve => setTimeout(resolve, EXIT_DURATION + 350));
 		goto(href);
