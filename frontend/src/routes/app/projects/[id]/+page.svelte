@@ -256,7 +256,7 @@
 	{:else if project}
 		<!-- Hero image (desktop only — overflows on mobile) -->
 		<div
-			class="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+73px)] w-214 h-120.5 z-0 pointer-events-none"
+			class="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+49px)] w-214 h-120.5 z-0 pointer-events-none"
 			style="opacity: {navigating || !entered ? 0 : 1}; transition: opacity 0.4s ease;"
 		>
 			<TurbulentImage
@@ -278,7 +278,7 @@
 		</div>
 
 		<!-- Project details card -->
-		<div class="relative w-full px-4 pb-8 sm:absolute sm:bottom-20 sm:left-1/2 sm:-translate-x-[calc(50%+0.5px)] sm:px-0 sm:pb-0 sm:w-auto z-2">
+		<div class="relative w-full px-4 pb-8 sm:absolute sm:bottom-8 sm:left-1/2 sm:-translate-x-[calc(50%+0.5px)] sm:px-0 sm:pb-0 sm:w-auto z-2">
 		<div
 			class="detail-card w-full sm:w-181.75 bg-[#f3e8d8] border-4 border-black rounded-[20px] p-5 sm:p-7.5 shadow-[4px_4px_0px_0px_black] flex flex-col items-start gap-5 sm:gap-8 overflow-hidden"
 			class:exiting={navigating}
