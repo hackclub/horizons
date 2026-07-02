@@ -17,7 +17,8 @@
 
 <div
 	class="pointer-events-auto absolute right-6 top-8 z-40 hidden h-[75.13px] items-end sm:flex"
-	transition:fly={{ x: 48, duration: 320, easing: backOut }}
+	in:fly={{ x: 48, duration: 320, delay: 600, easing: backOut }}
+	out:fly={{ x: 48, duration: 320, easing: backOut }}
 >
 	<div class="relative flex items-center gap-2.5 rounded-lg bg-[#1a140c] p-2">
 		<p class="m-0 whitespace-nowrap text-right font-bricolage text-[14px] font-semibold text-white">

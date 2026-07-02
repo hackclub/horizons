@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { fade } from 'svelte/transition';
+	import { page } from '$app/state';
 	import {
 		announcements,
 		currentDetail,
@@ -10,6 +11,9 @@
 	} from '$lib/store/announcementsCache';
 	import AnnouncementsModal from './AnnouncementsModal.svelte';
 	import AnnouncementTag from './AnnouncementTag.svelte';
+
+	// The floating tag only appears on the app home page.
+	const onHome = $derived(page.url.pathname.replace(/\/+$/, '') === '/app');
 
 	function modalOpen() {
 		return get(inboxOpen) || !!get(currentDetail);
@@ -61,8 +65,8 @@
 	});
 </script>
 
-<!-- Floating tag: only when nothing else is open. -->
-{#if $tagAnnouncement && !$currentDetail && !$inboxOpen}
+<!-- Floating tag: home page only, and only when nothing else is open. -->
+{#if onHome && $tagAnnouncement && !$currentDetail && !$inboxOpen}
 	{@const tag = $tagAnnouncement}
 	<AnnouncementTag
 		announcement={tag}
