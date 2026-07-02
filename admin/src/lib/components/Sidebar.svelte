@@ -11,6 +11,7 @@
 		Gift,
 		ArrowRightLeft,
 		CalendarDays,
+		Megaphone,
 		Receipt,
 		Settings,
 		ShieldCheck,
@@ -47,13 +48,14 @@
 		{ href: '/giftcodes', label: 'Gift Codes', icon: Gift },
 		{ href: '/transactions', label: 'Transactions', icon: Receipt },
 		{ href: '/events', label: 'Events', icon: ArrowRightLeft },
-		{ href: '/community-events', label: 'Community Events', icon: CalendarDays }
+		{ href: '/community-events', label: 'Community Events', icon: CalendarDays },
+		{ href: '/announcements', label: 'Announcements', icon: Megaphone }
 	];
 
 	// event_viewer is scoped to event management + homepage stats; hide everything else.
 	const navItems = $derived<NavItem[]>(
 		user?.role === 'event_viewer'
-			? allNavItems.filter((i) => i.href === '/home' || i.href === '/events')
+			? allNavItems.filter((i) => i.href === '/home' || i.href === '/events' || i.href === '/announcements')
 			: allNavItems,
 	);
 

@@ -2,6 +2,7 @@
 	import { page } from "$app/state";
 	import BG from "$lib/components/BG.svelte";
 	import AppNav from "$lib/components/AppNav.svelte";
+	import Announcements from "$lib/components/announcements/Announcements.svelte";
 	import type { InputPromptType } from "$lib/input";
 	import BobaText from "$lib/components/BobaText.svelte";
 	import SlideOut from "$lib/components/anim/SlideOut.svelte";
@@ -222,6 +223,7 @@
 		     Hidden on focused flows (onboarding, ship submission). -->
 		{#if showNav}
 			<AppNav segments={navSegments} />
+			<Announcements />
 		{/if}
 	</BG>
 {/if}

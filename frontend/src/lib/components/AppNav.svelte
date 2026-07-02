@@ -4,6 +4,8 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
+	import { announcements, unreadCount } from '$lib/store/announcementsCache';
+	import PulseDot from './announcements/PulseDot.svelte';
 	import type { InputPromptType } from '$lib/input';
 
 	type Segment = { type: 'input'; value: InputPromptType } | { type: 'text'; value: string };
@@ -222,6 +224,31 @@
 				</button>
 			{/if}
 		</div>
+
+		<button
+			class="relative flex items-center text-white/80 transition-opacity hover:opacity-100 cursor-pointer outline-none"
+			onclick={() => announcements.openInbox()}
+			aria-label="Announcements"
+		>
+			<svg
+				class="size-5"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+			>
+				<path d="M10.268 21a2 2 0 0 0 3.464 0" />
+				<path
+					d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"
+				/>
+			</svg>
+			{#if $unreadCount > 0}
+				<PulseDot size={8} class="absolute -right-0.5 -top-0.5" />
+			{/if}
+		</button>
 
 		<button
 			class="flex items-center text-white/80 transition-opacity hover:opacity-100 cursor-pointer outline-none"

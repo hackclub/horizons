@@ -110,6 +110,16 @@ The frontend features a custom WASD/arrow key navigation system defined in `lib/
 - **Right — user info**: username with an eye toggle to hide it, a streak pill, a pulsing "Refer A Friend" button (hidden on `/app/refer` itself), and logout. Reads `userStore`.
 - **Space reservation**: `.page-transition.with-nav` reserves the bar height (`3rem`) at ≥640px so page content is never occluded. The bar is hidden below `sm` and on focused flows (onboarding, the ship wizard), which also skip the reserve.
 
+### Announcements
+
+Admin-authored announcements surface across all `/app` pages via `lib/components/announcements/Announcements.svelte`, mounted once in the layout alongside `AppNav`. State lives in `lib/store/announcementsCache.ts` — a module singleton loaded once and persisted across client-side navigations.
+
+- **Bell** in `AppNav` (left of logout) opens the inbox modal; a pulsing red dot shows when anything is unread.
+- **Inbox modal** (node 2978-4347) lists announcements (unread = highlighted + pulsing dot); selecting one opens the **detail modal** (node 2974-2362), which renders the markdown body via `announcements/Markdown.svelte` (`marked` + `DOMPurify`). Closing the detail marks it read (`POST /api/announcements/auth/:id/read`).
+- **Auto-open**: on load, the most recent unread `showOnOpen` announcement opens automatically (until read).
+- **Tag** (nodes 2980-5002 / 2984-316): the most recent unread `showAsTag` announcement shows as a floating top-right pill; "Read more" opens it, the X dismisses it for the session (kept unread, via `sessionStorage`).
+- Visibility is scoped **server-side** to the user's pinned event (announcements with no event tags are global), so the client never sends an event id. Overlays are `rgba(0,0,0,0.4)`; modals spring-pop in and the tag slides in from the right.
+
 ### Data Caching & Preloading
 
 The store layer (`lib/store/`) wraps API calls with time-based caching:

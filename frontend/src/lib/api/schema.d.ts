@@ -1910,6 +1910,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/announcements/admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementsAdminController_list"];
+        put?: never;
+        post: operations["AnnouncementsAdminController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/announcements/admin/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementsAdminController_getOne"];
+        put: operations["AnnouncementsAdminController_update"];
+        post?: never;
+        delete: operations["AnnouncementsAdminController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/announcements/auth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementsAuthController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/announcements/auth/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AnnouncementsAuthController_markRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/community-events/admin": {
         parameters: {
             query?: never;
@@ -3999,6 +4063,61 @@ export interface components {
         TicketTransactionResponse: {
             transactionId: number;
             newBalance: number;
+        };
+        AnnouncementResponse: {
+            announcementId: number;
+            title: string;
+            previewText: string;
+            body: string;
+            showOnOpen: boolean;
+            showAsTag: boolean;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            eventSlugs: string[];
+        };
+        CreateAnnouncementDto: {
+            title: string;
+            previewText: string;
+            body: string;
+            eventSlugs?: string[];
+            showOnOpen?: boolean;
+            showAsTag?: boolean;
+            isActive?: boolean;
+        };
+        UpdateAnnouncementDto: {
+            title?: string;
+            previewText?: string;
+            body?: string;
+            eventSlugs?: string[];
+            showOnOpen?: boolean;
+            showAsTag?: boolean;
+            isActive?: boolean;
+        };
+        DeleteAnnouncementResponse: {
+            success: boolean;
+        };
+        AnnouncementEventTag: {
+            slug: string;
+            title: string;
+        };
+        UserAnnouncementResponse: {
+            announcementId: number;
+            title: string;
+            previewText: string;
+            body: string;
+            showOnOpen: boolean;
+            showAsTag: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            events: components["schemas"]["AnnouncementEventTag"][];
+            isRead: boolean;
+        };
+        MarkReadResponse: {
+            success: boolean;
+            isRead: boolean;
         };
         CommunityEventResponse: {
             communityEventId: string;
@@ -7236,6 +7355,155 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventResponse"][];
+                };
+            };
+        };
+    };
+    AnnouncementsAdminController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementResponse"][];
+                };
+            };
+        };
+    };
+    AnnouncementsAdminController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnnouncementDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementResponse"];
+                };
+            };
+        };
+    };
+    AnnouncementsAdminController_getOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementResponse"];
+                };
+            };
+        };
+    };
+    AnnouncementsAdminController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnnouncementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementResponse"];
+                };
+            };
+        };
+    };
+    AnnouncementsAdminController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteAnnouncementResponse"];
+                };
+            };
+        };
+    };
+    AnnouncementsAuthController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAnnouncementResponse"][];
+                };
+            };
+        };
+    };
+    AnnouncementsAuthController_markRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkReadResponse"];
                 };
             };
         };
