@@ -3,6 +3,7 @@
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
 	import { Skeleton } from '$lib/components';
+	import { mostUpcomingEventSlug } from '$lib/events';
 	import { LayoutGrid, List, ExternalLink } from 'lucide-svelte';
 
 	type FraudGalleryItem = components['schemas']['FraudGalleryItemResponse'];
@@ -52,25 +53,28 @@
 		'can-buy-if-approved',
 	];
 
+	// Reads a persisted string set, or null when nothing valid is stored yet
+	// (key absent / malformed). A stored empty array is a valid explicit "show
+	// all" and comes back as an empty set, not null.
+	function readStoredStringSet(key: string): Set<string> | null {
+		if (typeof sessionStorage === 'undefined') return null;
+		try {
+			const raw = sessionStorage.getItem(key);
+			if (raw === null) return null;
+			const parsed = JSON.parse(raw);
+			if (!Array.isArray(parsed)) return null;
+			return new Set(parsed.filter((s): s is string => typeof s === 'string'));
+		} catch {
+			return null;
+		}
+	}
+
 	// `defaults` seeds the set only when nothing has been persisted yet (key
 	// absent). A stored empty array is respected as an explicit "show all" so
 	// clearing the filter sticks across navigation.
 	function loadStringSet(key: string, defaults: string[] = []): Set<string> {
-		if (typeof sessionStorage === 'undefined') return new Set(defaults);
-		try {
-			const raw = sessionStorage.getItem(key);
-			if (raw === null) return new Set(defaults);
-			const parsed = JSON.parse(raw);
-			if (!Array.isArray(parsed)) return new Set(defaults);
-			return new Set(parsed.filter((s): s is string => typeof s === 'string'));
-		} catch {
-			return new Set(defaults);
-		}
+		return readStoredStringSet(key) ?? new Set(defaults);
 	}
-
-	// Reviewers/admins triage the Nexus cohort by default; they can clear or
-	// switch events from the Event filter row.
-	const DEFAULT_EVENT_SLUGS = ['nexus'];
 
 	function loadEnum<T extends string>(
 		key: string,
@@ -87,9 +91,14 @@
 		return fallback;
 	}
 
-	let selectedEvents = $state<Set<string>>(
-		loadStringSet(EVENT_FILTER_STORAGE_KEY, DEFAULT_EVENT_SLUGS),
-	);
+	// Reviewers/admins triage the most-upcoming event's cohort by default. That
+	// slug can't be known until events load, so on a fresh session (no persisted
+	// filter) we start empty and seed it in load() once events are available.
+	// `needsDefaultEventSeed` gates that seeding — and holds off persisting so the
+	// transient empty set can't clobber the default for the next visit.
+	const storedEventFilter = readStoredStringSet(EVENT_FILTER_STORAGE_KEY);
+	let needsDefaultEventSeed = $state(storedEventFilter === null);
+	let selectedEvents = $state<Set<string>>(storedEventFilter ?? new Set());
 	let viewMode = $state<'grid' | 'list'>(
 		loadEnum(VIEW_MODE_STORAGE_KEY, ['grid', 'list'] as const, 'grid'),
 	);
@@ -123,7 +132,12 @@
 		}
 	}
 
-	$effect(() => persist(EVENT_FILTER_STORAGE_KEY, JSON.stringify([...selectedEvents])));
+	$effect(() => {
+		// Don't persist the transient empty set before the default is seeded, or a
+		// fast navigation away would save "show all" and lose the default.
+		if (needsDefaultEventSeed) return;
+		persist(EVENT_FILTER_STORAGE_KEY, JSON.stringify([...selectedEvents]));
+	});
 	$effect(() => persist(VIEW_MODE_STORAGE_KEY, viewMode));
 	$effect(() => persist(SORT_ORDER_STORAGE_KEY, sortOrder));
 	$effect(() => persist(FRAUD_FILTER_STORAGE_KEY, fraudFilter));
@@ -149,6 +163,12 @@
 		error = null;
 		items = data ?? [];
 		if (eventsData) events = eventsData;
+		// Seed the default event filter now that events are known (first load only).
+		if (needsDefaultEventSeed) {
+			const slug = mostUpcomingEventSlug(events);
+			if (slug) selectedEvents = new Set([slug]);
+			needsDefaultEventSeed = false;
+		}
 	}
 
 	onMount(async () => {

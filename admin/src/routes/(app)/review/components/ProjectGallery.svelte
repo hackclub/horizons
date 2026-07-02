@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
+	import { mostUpcomingEventSlug } from '$lib/events';
 	import { timeAgo, waitingFor } from '../utils';
 	import { Skeleton } from '$lib/components';
 	import { LayoutGrid, List } from 'lucide-svelte';
@@ -68,30 +69,36 @@
 	// re-pick after every round trip into a project.
 	const EVENT_FILTER_STORAGE_KEY = 'horizons-review-gallery-event-filter';
 
-	// Reviewers triage the Nexus cohort by default; seeded only when nothing has
-	// been persisted yet (key absent). A stored empty array is respected as an
-	// explicit "show all" so clearing the filter sticks across navigation.
-	const DEFAULT_EVENT_SLUGS = ['nexus'];
-
-	function loadSelectedEventsFromStorage(): Set<string> {
-		if (typeof sessionStorage === 'undefined') return new Set(DEFAULT_EVENT_SLUGS);
+	// Reviewers triage the most-upcoming event's cohort by default. That slug
+	// can't be known until events load, so on a fresh session (no persisted
+	// filter) we start empty and seed it in onMount once events are available.
+	// A stored empty array is respected as an explicit "show all" so clearing the
+	// filter sticks across navigation.
+	function loadStoredEvents(): Set<string> | null {
+		if (typeof sessionStorage === 'undefined') return null;
 		try {
 			const raw = sessionStorage.getItem(EVENT_FILTER_STORAGE_KEY);
-			if (raw === null) return new Set(DEFAULT_EVENT_SLUGS);
+			if (raw === null) return null;
 			const parsed = JSON.parse(raw);
-			if (!Array.isArray(parsed)) return new Set(DEFAULT_EVENT_SLUGS);
+			if (!Array.isArray(parsed)) return null;
 			return new Set(parsed.filter((s): s is string => typeof s === 'string'));
 		} catch {
-			return new Set(DEFAULT_EVENT_SLUGS);
+			return null;
 		}
 	}
 
 	// Set of event slugs (or the sentinel "__none__" for users without a pinned
 	// event) to filter the gallery by.
-	let selectedEvents = $state<Set<string>>(loadSelectedEventsFromStorage());
+	const storedEvents = loadStoredEvents();
+	// Gates the most-upcoming default seed, and holds off persisting so the
+	// transient empty set can't clobber the default for the next visit.
+	let needsDefaultEventSeed = $state(storedEvents === null);
+	let selectedEvents = $state<Set<string>>(storedEvents ?? new Set());
 
 	$effect(() => {
 		if (typeof sessionStorage === 'undefined') return;
+		// Don't persist the transient empty set before the default is seeded.
+		if (needsDefaultEventSeed) return;
 		try {
 			sessionStorage.setItem(
 				EVENT_FILTER_STORAGE_KEY,
@@ -248,6 +255,12 @@
 			}
 			if (fraudData) fraudRejected = fraudData;
 			if (eventsData) events = eventsData;
+			// Seed the default event filter now that events are known (first load only).
+			if (needsDefaultEventSeed) {
+				const slug = mostUpcomingEventSlug(events);
+				if (slug) selectedEvents = new Set([slug]);
+				needsDefaultEventSeed = false;
+			}
 			isAdmin = meData?.role === 'admin' || meData?.role === 'superadmin';
 		} finally {
 			pastLoading = false;
