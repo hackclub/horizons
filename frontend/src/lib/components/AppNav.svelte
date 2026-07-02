@@ -21,6 +21,10 @@
 	const userName = $derived($userStore.userName);
 	const referralCode = $derived($userStore.referralCode);
 	const currentStreak = $derived($userStore.currentStreak);
+	// Streak color ramps up with the count: orange at 1+ days, pink at 7+.
+	const streakColor = $derived(
+		currentStreak >= 7 ? '#F86D95' : currentStreak >= 1 ? '#ffa936' : '#c1af96',
+	);
 
 	// Hide the "Refer A Friend" button on the refer page itself.
 	const onReferPage = $derived(page.url.pathname.replace(/\/+$/, '') === '/app/refer');
@@ -171,7 +175,7 @@
 			<div class="flex items-center gap-1">
 				<span class="font-bricolage text-base font-semibold text-white whitespace-nowrap">{displayName}</span>
 				<button
-					class="flex items-center text-white cursor-pointer outline-none"
+					class="flex items-center text-white/80 transition-colors hover:text-white cursor-pointer outline-none"
 					onclick={() => (nameHidden = !nameHidden)}
 					aria-label={nameHidden ? 'Show username' : 'Hide username'}
 					aria-pressed={nameHidden}
@@ -210,8 +214,14 @@
 				</button>
 			</div>
 
-			<div class="flex items-center justify-center rounded-sm border border-[#c1af96] px-2.5 py-1">
-				<span class="font-bricolage text-sm font-semibold text-[#c1af96] whitespace-nowrap">
+			<div
+				class="flex items-center justify-center rounded-sm border px-2.5 py-1 transition-colors"
+				style="border-color: {streakColor};"
+			>
+				<span
+					class="font-bricolage text-sm font-semibold whitespace-nowrap transition-colors"
+					style="color: {streakColor};"
+				>
 					{currentStreak} day streak
 				</span>
 			</div>
@@ -227,7 +237,7 @@
 		</div>
 
 		<button
-			class="flex items-center transition-opacity hover:opacity-100 cursor-pointer outline-none {$playerOpen ? 'text-[#ffa936]' : 'text-white/80'}"
+			class="flex items-center transition-colors cursor-pointer outline-none {$playerOpen ? 'text-[#ffa936]' : 'text-white/80 hover:text-white'}"
 			onclick={() => music.toggle()}
 			aria-label="Music player"
 			aria-pressed={$playerOpen}
@@ -249,7 +259,7 @@
 		</button>
 
 		<button
-			class="relative flex items-center text-white/80 transition-opacity hover:opacity-100 cursor-pointer outline-none"
+			class="relative flex items-center text-white/80 transition-colors hover:text-white cursor-pointer outline-none"
 			onclick={() => announcements.openInbox()}
 			aria-label="Announcements"
 		>
@@ -274,7 +284,7 @@
 		</button>
 
 		<button
-			class="flex items-center text-white/80 transition-opacity hover:opacity-100 cursor-pointer outline-none"
+			class="flex items-center text-white/80 transition-colors hover:text-white cursor-pointer outline-none"
 			onclick={logout}
 			aria-label="Logout"
 		>
