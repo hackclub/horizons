@@ -21,6 +21,15 @@
 		50% { background-color: #fba74d; }
 	}
 
+	/* Unread-dot pulse (PulseDot) — slower than Tailwind's default 1s ping */
+	--animate-slow-ping: slow-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+	@keyframes slow-ping {
+		75%, 100% {
+			transform: scale(2);
+			opacity: 0;
+		}
+	}
+
 	/* Review page dark theme */
 	--color-rv-bg: #1c1c1c;
 	--color-rv-surface: #242424;

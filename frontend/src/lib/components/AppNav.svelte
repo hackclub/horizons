@@ -246,7 +246,7 @@
 				/>
 			</svg>
 			{#if $unreadCount > 0}
-				<PulseDot size={8} class="absolute -right-0.5 -top-0.5" />
+				<PulseDot size={8} class="absolute -right-1 -top-1" />
 			{/if}
 		</button>
 
