@@ -147,12 +147,18 @@
 	// Persist sort and fraud-filter selections across navigation for the same
 	// reason as the type/event filters above — reviewers shouldn't have to
 	// re-pick after every round trip into a project.
-	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
+	type SortOrder =
+		| 'longest-wait'
+		| 'shortest-wait'
+		| 'most-hours'
+		| 'least-hours'
+		| 'random';
 	const SORT_ORDERS: readonly SortOrder[] = [
 		'longest-wait',
 		'shortest-wait',
 		'most-hours',
 		'least-hours',
+		'random',
 	];
 	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
 	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
@@ -214,6 +220,26 @@
 	let sortOrder = $state<SortOrder>(loadSortOrderFromStorage());
 	let fraudFilter = $state<FraudFilter>(loadFraudFilterFromStorage());
 	let ticketFilter = $state<TicketFilter>(loadTicketFilterFromStorage());
+
+	// Stable random rank per submission so the "random" sort doesn't reshuffle
+	// on every keystroke/filter change (the comparator runs on each derived
+	// recompute). Ranks are (re)generated when the user picks "random" and
+	// whenever the queue gains items lacking a rank; clicking "random" again
+	// forces a fresh shuffle.
+	let randomRanks = $state<Map<number, number>>(new Map());
+
+	function shuffleRandomOrder() {
+		const next = new Map<number, number>();
+		for (const item of items) next.set(item.submissionId, Math.random());
+		randomRanks = next;
+	}
+
+	$effect(() => {
+		if (sortOrder !== 'random') return;
+		if (!items.every((i) => randomRanks.has(i.submissionId))) {
+			shuffleRandomOrder();
+		}
+	});
 
 	$effect(() => {
 		if (typeof sessionStorage === 'undefined') return;
@@ -418,6 +444,12 @@
 					matchesTicketFilter(item),
 			)
 			.sort((a, b) => {
+				if (sortOrder === 'random') {
+					return (
+						(randomRanks.get(a.submissionId) ?? 0) -
+						(randomRanks.get(b.submissionId) ?? 0)
+					);
+				}
 				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
 					// Submissions without recorded hours sink to the bottom regardless of direction
 					// so reviewers always see real values first.
@@ -706,6 +738,16 @@
 					onclick={() => (sortOrder = 'least-hours')}
 				>
 					Least hours
+				</button>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'random' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => {
+						sortOrder = 'random';
+						shuffleRandomOrder();
+					}}
+					title="Shuffle into random order — click again to reshuffle"
+				>
+					Random
 				</button>
 
 				<span class="text-[11px] text-rv-dim ml-3">Fraud</span>
