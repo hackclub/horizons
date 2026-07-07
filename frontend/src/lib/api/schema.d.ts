@@ -2713,6 +2713,7 @@ export interface components {
             firstName: string | null;
             lastName: string | null;
             email: string;
+            slackUserId: string | null;
             isFraud: boolean;
             isSus: boolean;
             /** Format: date-time */

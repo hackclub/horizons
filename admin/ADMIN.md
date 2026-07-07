@@ -146,7 +146,7 @@ pnpm --filter admin generate:api
 | Page | Route | Purpose |
 |------|-------|---------|
 | Submissions | `/admin/submissions` | View and manage all project submissions |
-| Projects | `/admin/projects` | Project list with timeline, fraud/sus flags, recalculation, unlock. Search is debounced, scopable by field (all/title/user/description/URLs/project ID) with match highlighting, and the list renders in 100-card chunks that load on scroll |
+| Projects | `/admin/projects` | Project list with timeline, fraud/sus flags, recalculation, unlock. Search is debounced, scopable by field (all/title/user/Slack ID/description/code URL/playable URL/project ID) with match highlighting, and the list renders in 100-card chunks that load on scroll |
 | Fraud Gallery | `/admin/fraud-review` | Review-gallery-style grid/list of submitted projects (same search/type/event/sort/fraud filters, plus a multiselect approved/rejected/unreviewed project filter on the reviewer gate's verdict, which is set even while fraud review is pending). Each card deep-links to Joe at `https://joe.fraud.hackclub.com/ysws/horizons/projects/{joeProjectId}`. Filters persist in `sessionStorage`. Admin-only. Distinct from the perm-reject queue at `/admin/review/fraud-review`. |
 | Users | `/admin/users` | Server-paginated user list (50/page, debounced server-side search + sort), Slack ID editing, fraud/sus flag toggles |
 | Shop | `/admin/shop` | Shop item CRUD |

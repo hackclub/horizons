@@ -338,6 +338,9 @@ class AdminProjectListUserResponse {
   @ApiProperty()
   email: string;
 
+  @ApiProperty({ type: String, nullable: true })
+  slackUserId: string | null;
+
   @ApiProperty()
   isFraud: boolean;
 

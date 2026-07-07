@@ -40,7 +40,15 @@
     // re-renders the whole project list, so doing it per keystroke makes the
     // input feel frozen on large datasets.
     let appliedSearch = $state('');
-    type SearchField = 'all' | 'title' | 'user' | 'description' | 'url' | 'id';
+    type SearchField =
+        | 'all'
+        | 'title'
+        | 'user'
+        | 'slack'
+        | 'description'
+        | 'repo'
+        | 'playable'
+        | 'id';
     let searchField = $state<SearchField>('all');
     let selectedStatuses = $state<Set<string>>(new Set(['pending']));
     let selectedProjectTypes = $state<Set<string>>(new Set());
@@ -207,10 +215,10 @@
                 const fields = {
                     title: p.projectTitle.toLowerCase(),
                     user: `${fullName(p.user)}\n${p.user.email}`.toLowerCase(),
+                    slack: (p.user.slackUserId ?? '').toLowerCase(),
                     description: (p.description ?? '').toLowerCase(),
-                    url: [p.repoUrl ?? '', p.playableUrl ?? '']
-                        .join('\n')
-                        .toLowerCase(),
+                    repo: (p.repoUrl ?? '').toLowerCase(),
+                    playable: (p.playableUrl ?? '').toLowerCase(),
                     // Bare number and "#123" form, so a pasted id matches either way.
                     id: `${p.projectId}\n#${p.projectId}`,
                 };
@@ -466,15 +474,17 @@
                             id="search-projects"
                             type="text"
                             class="flex-1"
-                            placeholder="Search by project title, user name, email, description, URL, or project ID..."
+                            placeholder="Search by project title, user name, email, Slack ID, description, URL, or project ID..."
                             bind:value={searchQuery}
                         />
                         <Select class="w-44 shrink-0" bind:value={searchField}>
                             <option value="all">All fields</option>
                             <option value="title">Title</option>
                             <option value="user">User (name/email)</option>
+                            <option value="slack">Slack ID</option>
                             <option value="description">Description</option>
-                            <option value="url">URLs</option>
+                            <option value="repo">Code URL</option>
+                            <option value="playable">Playable URL</option>
                             <option value="id">Project ID</option>
                         </Select>
                     </div>
