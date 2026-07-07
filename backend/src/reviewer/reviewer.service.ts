@@ -324,6 +324,7 @@ export class ReviewerService {
         adminComment: submission.project.adminComment,
         nowHackatimeHours: submission.project.nowHackatimeHours,
         nowHackatimeProjects: submission.project.nowHackatimeProjects,
+        joeProjectId: submission.project.joeProjectId,
         joeFraudPassed: submission.project.joeFraudPassed,
         joeTrustScore: submission.project.joeTrustScore,
         user: this.scopeUserData(submission.project.user, displayNameMap),

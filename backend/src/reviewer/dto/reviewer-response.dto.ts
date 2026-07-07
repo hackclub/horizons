@@ -163,6 +163,9 @@ class SubmissionProjectResponse {
   @ApiProperty({ type: [String] })
   nowHackatimeProjects: string[];
 
+  @ApiProperty({ type: String, nullable: true })
+  joeProjectId: string | null;
+
   @ApiProperty({ type: Boolean, nullable: true })
   joeFraudPassed: boolean | null;
 
