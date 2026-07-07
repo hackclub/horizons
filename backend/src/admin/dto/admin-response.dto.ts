@@ -575,6 +575,28 @@ export class PriorityUserResponse {
   reason: string;
 }
 
+export class PriorityQueueEntryResponse {
+  @ApiProperty({ description: 'Horizons project id this priority entry maps to' })
+  projectId: number;
+
+  @ApiProperty({ description: 'Reason the submitter gave for requesting priority review' })
+  reason: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Who approved the priority request',
+  })
+  decidedBy: string | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: 'Unix seconds when the priority request was decided',
+  })
+  decidedAt: number | null;
+}
+
 export class GlobalSettingsResponse {
   @ApiProperty()
   id: string;

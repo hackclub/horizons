@@ -1078,6 +1078,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/priority-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getPriorityQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/settings": {
         parameters: {
             query?: never;
@@ -3392,6 +3408,16 @@ export interface components {
             totalApprovedHours: number;
             potentialHoursIfApproved: number;
             reason: string;
+        };
+        PriorityQueueEntryResponse: {
+            /** @description Horizons project id this priority entry maps to */
+            projectId: number;
+            /** @description Reason the submitter gave for requesting priority review */
+            reason: string;
+            /** @description Who approved the priority request */
+            decidedBy: string | null;
+            /** @description Unix seconds when the priority request was decided */
+            decidedAt: number | null;
         };
         GlobalSettingsResponse: {
             id: string;
@@ -5929,6 +5955,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PriorityUserResponse"][];
+                };
+            };
+        };
+    };
+    AdminController_getPriorityQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriorityQueueEntryResponse"][];
                 };
             };
         };

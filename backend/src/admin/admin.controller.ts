@@ -47,6 +47,7 @@ import {
   AdminUserSlackResponse,
   SlackLookupResponse,
   PriorityUserResponse,
+  PriorityQueueEntryResponse,
   ProjectManifestSummaryResponse,
   GlobalSettingsResponse,
   ElevatedUserResponse,
@@ -499,6 +500,14 @@ export class AdminController {
   @ApiOkResponse({ type: [PriorityUserResponse] })
   async getPriorityUsers() {
     return this.adminService.getPriorityUsers();
+  }
+
+  @Get('priority-queue')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: [PriorityQueueEntryResponse] })
+  async getPriorityQueue() {
+    return this.adminService.getPriorityQueue();
   }
 
   @Get('settings')
