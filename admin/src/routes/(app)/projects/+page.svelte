@@ -40,6 +40,8 @@
     // re-renders the whole project list, so doing it per keystroke makes the
     // input feel frozen on large datasets.
     let appliedSearch = $state('');
+    type SearchField = 'all' | 'title' | 'user' | 'description' | 'url' | 'id';
+    let searchField = $state<SearchField>('all');
     let selectedStatuses = $state<Set<string>>(new Set(['pending']));
     let selectedProjectTypes = $state<Set<string>>(new Set());
     let sortField = $state<SortField>('createdAt');
@@ -195,31 +197,60 @@
         return () => clearTimeout(timer);
     });
 
-    // Lowercased per-project search text, built once per data load instead of
-    // lowercasing five fields per project on every filter pass. Fields are
-    // newline-joined so a query can't accidentally match across field
-    // boundaries.
+    // Lowercased per-project search text by field, built once per data load
+    // instead of lowercasing every field per project on every filter pass.
+    // "all" newline-joins the rest so a query can't accidentally match across
+    // field boundaries.
     const searchHaystacks = $derived(
         new Map(
-            projects.map((p) => [
-                p.projectId,
-                [
-                    p.projectTitle,
-                    fullName(p.user),
-                    p.user.email,
-                    p.description ?? '',
-                    p.repoUrl ?? '',
-                ]
-                    .join('\n')
-                    .toLowerCase(),
-            ]),
+            projects.map((p) => {
+                const fields = {
+                    title: p.projectTitle.toLowerCase(),
+                    user: `${fullName(p.user)}\n${p.user.email}`.toLowerCase(),
+                    description: (p.description ?? '').toLowerCase(),
+                    url: [p.repoUrl ?? '', p.playableUrl ?? '']
+                        .join('\n')
+                        .toLowerCase(),
+                    // Bare number and "#123" form, so a pasted id matches either way.
+                    id: `${p.projectId}\n#${p.projectId}`,
+                };
+                return [
+                    p.projectId,
+                    { ...fields, all: Object.values(fields).join('\n') },
+                ] as const;
+            }),
         ),
     );
 
     function matchesSearch(project: AdminProject, query: string): boolean {
         const q = query.trim().toLowerCase();
         if (!q) return true;
-        return searchHaystacks.get(project.projectId)?.includes(q) ?? false;
+        return (
+            searchHaystacks.get(project.projectId)?.[searchField].includes(q) ??
+            false
+        );
+    }
+
+    // Split text into segments around the active search query so the template
+    // can wrap hits in <mark>. Case-insensitive plain substring — the same
+    // matching the filter itself uses.
+    function highlightSegments(text: string): { text: string; hit: boolean }[] {
+        const q = appliedSearch.trim().toLowerCase();
+        if (!q || !text) return [{ text, hit: false }];
+        const lower = text.toLowerCase();
+        const segments: { text: string; hit: boolean }[] = [];
+        let pos = 0;
+        while (pos < text.length) {
+            const idx = lower.indexOf(q, pos);
+            if (idx === -1) {
+                segments.push({ text: text.slice(pos), hit: false });
+                break;
+            }
+            if (idx > pos) segments.push({ text: text.slice(pos, idx), hit: false });
+            segments.push({ text: text.slice(idx, idx + q.length), hit: true });
+            pos = idx + q.length;
+        }
+        return segments.length ? segments : [{ text, hit: false }];
     }
 
     function matchesStatus(project: AdminProject): boolean {
@@ -382,6 +413,12 @@
     <title>Projects - Admin Panel</title>
 </svelte:head>
 
+{#snippet highlighted(text: string)}
+    {#each highlightSegments(text) as segment}
+        {#if segment.hit}<mark class="rounded-xs bg-yellow-400/50 text-inherit dark:bg-yellow-500/40">{segment.text}</mark>{:else}{segment.text}{/if}
+    {/each}
+{/snippet}
+
 <div class="p-6">
     <div class="mx-auto max-w-6xl space-y-6">
         <section class="space-y-4 font-dm">
@@ -424,12 +461,23 @@
             <Card class="p-6 space-y-6 backdrop-blur">
                 <div>
                     <label for="search-projects" class="block text-sm font-medium text-ds-text-secondary mb-2">Search</label>
-                    <TextField
-                        id="search-projects"
-                        type="text"
-                        placeholder="Search by project title, user name, email, description, or code URL..."
-                        bind:value={searchQuery}
-                    />
+                    <div class="flex gap-2">
+                        <TextField
+                            id="search-projects"
+                            type="text"
+                            class="flex-1"
+                            placeholder="Search by project title, user name, email, description, URL, or project ID..."
+                            bind:value={searchQuery}
+                        />
+                        <Select class="w-44 shrink-0" bind:value={searchField}>
+                            <option value="all">All fields</option>
+                            <option value="title">Title</option>
+                            <option value="user">User (name/email)</option>
+                            <option value="description">Description</option>
+                            <option value="url">URLs</option>
+                            <option value="id">Project ID</option>
+                        </Select>
+                    </div>
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-3">
@@ -584,9 +632,9 @@
                         >
                             <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                                 <div class="min-w-0">
-                                    <h3 class="text-xl font-semibold">{project.projectTitle}</h3>
+                                    <h3 class="text-xl font-semibold">{@render highlighted(project.projectTitle)}</h3>
                                     <p class="text-sm text-ds-text-secondary">
-                                        {fullName(project.user)} ({project.user.email})
+                                        {@render highlighted(fullName(project.user))} ({@render highlighted(project.user.email)})
                                     </p>
                                     {#if project.user.hackatimeStartDate}
                                         <p class="mt-1 text-xs text-yellow-700 dark:text-yellow-300">
@@ -625,7 +673,7 @@
                             </div>
 
                             {#if project.description}
-                                <p class="text-sm text-ds-text-secondary leading-relaxed line-clamp-2">{project.description}</p>
+                                <p class="text-sm text-ds-text-secondary leading-relaxed line-clamp-2">{@render highlighted(project.description)}</p>
                             {/if}
 
                             <div class="flex flex-wrap items-center gap-4 text-xs text-ds-text-secondary pt-2 border-t border-ds-border">
