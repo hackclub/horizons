@@ -13,6 +13,7 @@
 		joeProjectId?: string | null;
 		joeFraudPassed?: boolean | null;
 		joeTrustScore?: number | null;
+		joeJustification?: string | null;
 		loading?: boolean;
 	}
 
@@ -25,6 +26,7 @@
 		joeProjectId = null,
 		joeFraudPassed = null,
 		joeTrustScore = null,
+		joeJustification = null,
 		loading = false,
 	}: Props = $props();
 
@@ -110,9 +112,31 @@
 			{fraudBadge.label}
 		</span>
 		{#if joeTrustScore != null}
-			<span class="inline-flex items-center rounded-full border border-rv-border text-rv-dim px-2 py-0.5 text-[11px] font-medium">
-				Trust: {joeTrustScore}
-			</span>
+			{#if joeJustification}
+				<span
+					class="group relative inline-flex items-center gap-1 rounded-full border border-rv-border text-rv-dim px-2 py-0.5 text-[11px] font-medium cursor-help focus:outline-none focus-within:outline-none"
+					tabindex="0"
+					role="note"
+					aria-label={`Trust score ${joeTrustScore}. Joe justification: ${joeJustification}`}
+				>
+					Trust: {joeTrustScore}
+					<svg class="w-3 h-3 text-rv-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+						<circle cx="12" cy="12" r="10" />
+						<line x1="12" y1="16" x2="12" y2="12" />
+						<line x1="12" y1="8" x2="12.01" y2="8" />
+					</svg>
+					<span
+						class="pointer-events-none absolute left-0 top-full z-20 mt-1.5 hidden w-72 max-w-[90vw] rounded-md border border-rv-border bg-rv-bg p-2.5 text-left text-[12px] font-normal leading-relaxed text-rv-text shadow-lg group-hover:block group-focus-within:block whitespace-pre-wrap normal-case"
+					>
+						<span class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-rv-dim">Joe justification</span>
+						{joeJustification}
+					</span>
+				</span>
+			{:else}
+				<span class="inline-flex items-center rounded-full border border-rv-border text-rv-dim px-2 py-0.5 text-[11px] font-medium">
+					Trust: {joeTrustScore}
+				</span>
+			{/if}
 		{/if}
 	</div>
 

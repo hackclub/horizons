@@ -693,6 +693,7 @@
 					joeProjectId={currentSubmission?.project.joeProjectId ?? null}
 					joeFraudPassed={currentSubmission?.project.joeFraudPassed ?? null}
 					joeTrustScore={currentSubmission?.project.joeTrustScore ?? null}
+					joeJustification={currentSubmission?.project.joeJustification ?? null}
 					loading={submissionLoading}
 				/>
 

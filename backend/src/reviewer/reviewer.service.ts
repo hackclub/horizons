@@ -327,6 +327,7 @@ export class ReviewerService {
         joeProjectId: submission.project.joeProjectId,
         joeFraudPassed: submission.project.joeFraudPassed,
         joeTrustScore: submission.project.joeTrustScore,
+        joeJustification: submission.project.joeJustification,
         user: this.scopeUserData(submission.project.user, displayNameMap),
       },
       timeline,

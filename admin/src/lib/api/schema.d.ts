@@ -3672,6 +3672,7 @@ export interface components {
             joeProjectId: string | null;
             joeFraudPassed: boolean | null;
             joeTrustScore: number | null;
+            joeJustification: string | null;
             user: components["schemas"]["ScopedUserResponse"];
         };
         TimelineEntryResponse: {
