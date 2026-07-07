@@ -18,8 +18,7 @@
         | 'approvalStatus'
         | 'nowHackatimeHours'
         | 'approvedHours'
-        | 'manifestDoubleDip'
-        | 'priorityQueue';
+        | 'manifestDoubleDip';
     type SortDirection = 'asc' | 'desc';
 
     const projectTypes = [
@@ -80,6 +79,8 @@
     // reason message on each card.
     let priorityQueue = $state<Map<number, PriorityQueueEntry>>(new Map());
     let priorityQueueLoading = $state(false);
+    // When enabled, only show projects present in the priority-review queue.
+    let priorityQueueFilterEnabled = $state(false);
 
     // Map of projectId → non-Horizons hours shipped per Manifest. Backend returns
     // only entries with hours > 0, so absence from the map means "clean" (or the
@@ -338,6 +339,11 @@
         return manifestSummary.has(project.projectId);
     }
 
+    function matchesPriorityQueue(project: AdminProject): boolean {
+        if (!priorityQueueFilterEnabled) return true;
+        return priorityQueue.has(project.projectId);
+    }
+
     function compareProjects(a: AdminProject, b: AdminProject): number {
         let c = 0;
         switch (sortField) {
@@ -364,20 +370,6 @@
                     (manifestSummary.get(a.projectId)?.hours ?? 0) -
                     (manifestSummary.get(b.projectId)?.hours ?? 0);
                 break;
-            case 'priorityQueue': {
-                // Queued projects sort ahead of the rest; within the queue,
-                // most-recently-decided first. Non-queued projects use -1 so
-                // they fall below everything with a real decidedAt. Ascending
-                // (the default) shows the priority queue at the top.
-                const ra = priorityQueue.has(a.projectId)
-                    ? (priorityQueue.get(a.projectId)!.decidedAt ?? 0)
-                    : -1;
-                const rb = priorityQueue.has(b.projectId)
-                    ? (priorityQueue.get(b.projectId)!.decidedAt ?? 0)
-                    : -1;
-                c = rb - ra;
-                break;
-            }
         }
         return sortDirection === 'asc' ? c : -c;
     }
@@ -394,7 +386,8 @@
                     matchesSus(p) &&
                     matchesDeleted(p) &&
                     matchesSubmissionCount(p) &&
-                    matchesDoubleDip(p),
+                    matchesDoubleDip(p) &&
+                    matchesPriorityQueue(p),
             )
             .sort(compareProjects),
     );
@@ -449,6 +442,7 @@
         selectedStatuses.size +
             selectedProjectTypes.size +
             (priorityFilterEnabled ? 1 : 0) +
+            (priorityQueueFilterEnabled ? 1 : 0) +
             (doubleDipFilterEnabled ? 1 : 0) +
             (submissionCountFilter !== 'all' ? 1 : 0) +
             (showFraudProjects ? 0 : 1) +
@@ -594,6 +588,16 @@
                                     ({priorityUsers.length} users)
                                 </span>
                             {/if}
+                            <FilterTag
+                                active={priorityQueueFilterEnabled}
+                                class={priorityQueueFilterEnabled ? 'bg-amber-600! border-amber-400! text-black!' : ''}
+                                onclick={() => (priorityQueueFilterEnabled = !priorityQueueFilterEnabled)}
+                            >
+                                {priorityQueueLoading
+                                    ? 'Loading queue...'
+                                    : `⚡ Priority Queue (${priorityQueue.size})`}
+                                {#if priorityQueueFilterEnabled}<span class="ml-1">✓</span>{/if}
+                            </FilterTag>
                         </div>
                     </div>
 
@@ -693,9 +697,6 @@
                                 <option value="approvedHours">Approved Hours</option>
                                 <option value="manifestDoubleDip" disabled={!manifestEnabled}>
                                     Manifest double-dip{!manifestEnabled ? ' (disabled)' : ''}
-                                </option>
-                                <option value="priorityQueue">
-                                    Priority Queue{priorityQueueLoading ? ' (loading…)' : ` (${priorityQueue.size})`}
                                 </option>
                             </Select>
                             <Button
