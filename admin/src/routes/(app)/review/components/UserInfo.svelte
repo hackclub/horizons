@@ -10,6 +10,7 @@
 		playableUrl: string | null;
 		readmeUrl: string | null;
 		hackatimeHours: number | null;
+		joeProjectId?: string | null;
 		joeFraudPassed?: boolean | null;
 		joeTrustScore?: number | null;
 		loading?: boolean;
@@ -21,6 +22,7 @@
 		playableUrl,
 		readmeUrl,
 		hackatimeHours,
+		joeProjectId = null,
 		joeFraudPassed = null,
 		joeTrustScore = null,
 		loading = false,
@@ -47,6 +49,13 @@
 	// Build Airlock URL to open the repo in a sandboxed VM
 	const airlockUrl = $derived(
 		repoUrl ? `https://airlock.hackclub.com/?r=${encodeURIComponent(repoUrl)}` : null,
+	);
+
+	// Build Joe fraud-review deep link (null until the project has been pushed to Joe)
+	const joeUrl = $derived(
+		joeProjectId
+			? `https://joe.fraud.hackclub.com/ysws/horizons/projects/${joeProjectId}`
+			: null,
 	);
 
 	const hackatimeStartDateLabel = $derived(
@@ -185,6 +194,16 @@
 					<line x1="12" y1="17" x2="12" y2="21" />
 				</svg>
 				Airlock ↗
+			</a>
+		{/if}
+		{#if joeUrl}
+			<a href={joeUrl} target="_blank" rel="noopener noreferrer" class="border-rv-accent! text-rv-accent! hover:bg-rv-tag-bg!">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
+					<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+					<line x1="12" y1="17" x2="12.01" y2="17" />
+				</svg>
+				Joe ↗
 			</a>
 		{/if}
 	</div>

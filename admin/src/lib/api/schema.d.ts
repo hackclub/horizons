@@ -3643,6 +3643,7 @@ export interface components {
             adminComment: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
+            joeProjectId: string | null;
             joeFraudPassed: boolean | null;
             joeTrustScore: number | null;
             user: components["schemas"]["ScopedUserResponse"];
