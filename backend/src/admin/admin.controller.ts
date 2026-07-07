@@ -33,12 +33,13 @@ import {
   AdminSubmissionResponse,
   SubmissionAuditLogResponse,
   AdminProjectResponse,
+  AdminProjectListItemResponse,
+  AdminUserListResponse,
   ProjectTimelineResponse,
   RecalculateProjectResponse,
   RecalculateAllResponse,
   DeleteProjectResponse,
   AdjustUserHoursResponse,
-  AdminUserResponse,
   AdminMetricsResponse,
   ReviewerLeaderboardEntry,
   AdminUserFlagResponse,
@@ -92,9 +93,18 @@ export class AdminController {
   @Get('submissions')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiQuery({
+    name: 'projectId',
+    required: false,
+    type: Number,
+    description: 'Only return submissions belonging to this project.',
+  })
   @ApiOkResponse({ type: [AdminSubmissionResponse] })
-  async getAllSubmissions() {
-    return this.adminService.getAllSubmissions();
+  async getAllSubmissions(@Query('projectId') projectId?: string) {
+    const parsed = projectId ? parseInt(projectId, 10) : undefined;
+    return this.adminService.getAllSubmissions(
+      Number.isNaN(parsed) ? undefined : parsed,
+    );
   }
 
   @Get('submissions/:id/audit-logs')
@@ -127,7 +137,7 @@ export class AdminController {
   @Get('projects')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @ApiOkResponse({ type: [AdminProjectResponse] })
+  @ApiOkResponse({ type: [AdminProjectListItemResponse] })
   async getAllProjects() {
     return this.adminService.getAllProjects();
   }
@@ -135,9 +145,15 @@ export class AdminController {
   @Get('projects/manifest-summary')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
+  @ApiQuery({
+    name: 'refresh',
+    required: false,
+    type: Boolean,
+    description: 'Bypass the server-side cache and re-sweep Manifest.',
+  })
   @ApiOkResponse({ type: ProjectManifestSummaryResponse })
-  async getProjectsManifestSummary() {
-    return this.adminService.getProjectsManifestSummary();
+  async getProjectsManifestSummary(@Query('refresh') refresh?: string) {
+    return this.adminService.getProjectsManifestSummary(refresh === 'true');
   }
 
   @Get('projects/:id')
@@ -197,9 +213,35 @@ export class AdminController {
   @Get('users')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @ApiOkResponse({ type: [AdminUserResponse] })
-  async getAllUsers() {
-    return this.adminService.getAllUsers();
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Page size (max 200, default 50).' })
+  @ApiQuery({ name: 'q', required: false, description: 'Search by name, email, or Slack ID.' })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    enum: ['recent', 'streak-desc', 'streak-asc', 'longest-desc'],
+  })
+  @ApiOkResponse({ type: AdminUserListResponse })
+  async getAllUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('sort') sort?: string,
+  ) {
+    const validSorts = [
+      'recent',
+      'streak-desc',
+      'streak-asc',
+      'longest-desc',
+    ] as const;
+    return this.adminService.getAllUsers({
+      page: page ? parseInt(page, 10) || 1 : undefined,
+      limit: limit ? parseInt(limit, 10) || 50 : undefined,
+      q,
+      sort: validSorts.includes(sort as (typeof validSorts)[number])
+        ? (sort as (typeof validSorts)[number])
+        : undefined,
+    });
   }
 
   @Get('metrics')
@@ -260,9 +302,15 @@ export class AdminController {
   @Get('stats')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin, Role.EventViewer)
+  @ApiQuery({
+    name: 'refresh',
+    required: false,
+    type: Boolean,
+    description: 'Bypass the server-side cache and recompute stats.',
+  })
   @ApiOkResponse({ type: AdminStatsResponse })
-  async getStats() {
-    return this.adminService.getStats();
+  async getStats(@Query('refresh') refresh?: string) {
+    return this.adminService.getStats(refresh === 'true');
   }
 
   @Post('stats/backfill')

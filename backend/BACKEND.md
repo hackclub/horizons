@@ -157,10 +157,10 @@ Full administrative operations. Accessible to `admin` role only.
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | **Submissions** |||
-| GET | `/submissions` | Admin | All submissions with full user/project details |
+| GET | `/submissions` | Admin | All submissions with full user/project details; optional `?projectId=` scopes to one project |
 | GET | `/submissions/:id/audit-logs` | Admin | Audit log history for a submission |
 | **Projects** |||
-| GET | `/projects` | Admin | All projects with user details |
+| GET | `/projects` | Admin | Slim project list: latest submission + submission count and a PII-free owner summary (full detail via `/projects/:id`) |
 | GET | `/projects/:id/timeline` | Admin | Full project timeline (creation, submissions, reviews) |
 | POST | `/projects/:id/recalculate` | Admin | Recalculate hours from Hackatime |
 | POST | `/projects/recalculate-all` | Admin | Bulk recalculate all projects |
@@ -172,7 +172,7 @@ Full administrative operations. Accessible to `admin` role only.
 | POST | `/fraud-review/:projectId/perm-reject` | Admin | Permanently reject a silently-rejected project |
 | POST | `/projects/:id/joe-reset` | Admin | Reset Joe state and re-enqueue for fraud review |
 | **Users** |||
-| GET | `/users` | Admin | All users with projects and submissions |
+| GET | `/users` | Admin | Paginated users (`page`, `limit` ≤200, `q` search on name/email/Slack, `sort` incl. decay-aware streak sorts); each user's projects carry only the latest submission |
 | PUT | `/users/:id/fraud-flag` | Admin | Toggle `isFraud` flag |
 | PUT | `/users/:id/sus-flag` | Admin | Toggle `isSus` flag |
 | PUT | `/users/:id/slack` | Admin | Manually set `slackUserId` |
@@ -191,6 +191,8 @@ Full administrative operations. Accessible to `admin` role only.
 - `recalculateProjectHours()` re-fetches hours from Hackatime API for individual or all projects
 - `getProjectTimeline()` builds a comprehensive timeline with creation, submissions, reviews, and audit log entries
 - `getPriorityUsers()` uses raw SQL to find users who need 50+ hours and would reach it with pending approvals
+- `getAllUsers()` pages/searches/sorts in the database (raw SQL for ordering so streak sorts apply the same lazy decay the UI displays), then hydrates one page of users via Prisma
+- `getStats()` (dashboard) and `getProjectsManifestSummary()` are served from in-process TTL caches (5 min / 30 min) with in-flight dedup; `?refresh=true` bypasses the cache — the Manifest sweep otherwise makes one external HTTP call per project
 
 ---
 

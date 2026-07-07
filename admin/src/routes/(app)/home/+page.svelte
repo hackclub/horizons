@@ -173,12 +173,16 @@
 	function gridColor() { return isDark() ? '#334155' : '#e2e8f0'; }
 	function bgColor() { return 'transparent'; }
 
-	async function loadStats() {
+	async function loadStats(force = false) {
 		loading = true;
 		error = null;
 		try {
 			const [statsRes, reviewRes] = await Promise.all([
-				api.GET('/api/admin/stats'),
+				// Stats are served from a short-lived backend cache; force=true
+				// (the Refresh button) recomputes them server-side.
+				api.GET('/api/admin/stats', {
+					params: { query: force ? { refresh: true } : {} },
+				}),
 				api.GET('/api/reviewer/stats'),
 			]);
 			if (statsRes.error) throw new Error('Failed to fetch stats');
@@ -1261,7 +1265,7 @@
 		{:else if error}
 			<div class="flex flex-col items-center justify-center h-64 gap-2">
 				<p class="text-ds-red">{error}</p>
-				<Button onclick={loadStats}>Retry</Button>
+				<Button onclick={() => loadStats()}>Retry</Button>
 			</div>
 		{:else if stats}
 			<div class="flex gap-1.5 border-b border-ds-border">
@@ -1818,10 +1822,15 @@
 			{/if}
 
 			<!-- Action bar -->
-			<div class="flex items-center gap-2 pt-2">
-				<Button onclick={loadStats} disabled={loading}>
+			<div class="flex items-center gap-3 pt-2">
+				<Button onclick={() => loadStats(true)} disabled={loading}>
 					{loading ? 'Refreshing...' : 'Refresh stats'}
 				</Button>
+				{#if stats.generatedAt}
+					<span class="text-xs text-ds-text-secondary">
+						Data as of {new Date(stats.generatedAt).toLocaleTimeString()}
+					</span>
+				{/if}
 			</div>
 		{/if}
 	</div>

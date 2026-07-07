@@ -14,6 +14,14 @@
     type SortMode = 'recent' | 'streak-desc' | 'streak-asc' | 'longest-desc';
     let sortMode = $state<SortMode>('recent');
 
+    // Server-side pagination: the backend searches, sorts, and pages so we
+    // never pull the whole user table into the browser.
+    const PAGE_SIZE = 50;
+    let page = $state(1);
+    let total = $state(0);
+    let appliedSearch = $state('');
+    const totalPages = $derived(Math.max(1, Math.ceil(total / PAGE_SIZE)));
+
     let currentUserRole = $state<string | null>(null);
     const isSuperadmin = $derived(currentUserRole === 'superadmin');
 
@@ -177,30 +185,60 @@
         return name || 'Unknown';
     }
 
-    let usersLoadPromise: Promise<void> | null = null;
+    let loadSequence = 0;
     async function loadUsers() {
-        if (usersLoading && usersLoadPromise) {
-            return usersLoadPromise;
-        }
+        const seq = ++loadSequence;
         usersLoading = true;
-        usersLoadPromise = (async () => {
-            try {
-                const { data, error } = await api.GET('/api/admin/users');
-                if (error) {
-                    console.error('Failed to load users:', error);
-                    return;
-                }
-                if (data) {
-                    users = data;
-                    usersLoaded = true;
-                }
-            } finally {
-                usersLoading = false;
-                usersLoadPromise = null;
+        try {
+            const { data, error } = await api.GET('/api/admin/users', {
+                params: {
+                    query: {
+                        page,
+                        limit: PAGE_SIZE,
+                        q: appliedSearch.trim() || undefined,
+                        sort: sortMode,
+                    },
+                },
+            });
+            // A newer request (search keystroke, page change) superseded this one.
+            if (seq !== loadSequence) return;
+            if (error) {
+                console.error('Failed to load users:', error);
+                return;
             }
-        })();
-        return usersLoadPromise;
+            if (data) {
+                users = data.users;
+                total = data.total;
+                usersLoaded = true;
+            }
+        } finally {
+            if (seq === loadSequence) usersLoading = false;
+        }
     }
+
+    function goToPage(next: number) {
+        page = Math.min(Math.max(1, next), totalPages);
+        loadUsers();
+    }
+
+    function changeSort() {
+        page = 1;
+        loadUsers();
+    }
+
+    // Debounced server-side search: wait for typing to settle, then reload
+    // from page 1. The $effect cleanup cancels the pending timer on each
+    // keystroke.
+    $effect(() => {
+        const q = userSearch;
+        if (q === appliedSearch) return;
+        const timer = setTimeout(() => {
+            appliedSearch = q;
+            page = 1;
+            loadUsers();
+        }, 300);
+        return () => clearTimeout(timer);
+    });
 
     function startSlackEdit(user: AdminUserResponse) {
         slackEditingUserId = user.userId;
@@ -312,34 +350,15 @@
         }
     }
 
-    let filteredUsers = $derived(() => {
-        const query = userSearch.toLowerCase().trim();
-        const base = !query
-            ? users
-            : users.filter((user) => {
-                  const name = fullName(user).toLowerCase();
-                  const email = user.email.toLowerCase();
-                  const slack = (user.slackUserId ?? '').toLowerCase();
-                  return name.includes(query) || email.includes(query) || slack.includes(query);
-              });
-        if (sortMode === 'recent') return base;
-        const sorted = [...base];
-        const cur = (u: AdminUserResponse) => (u as any).currentStreak ?? 0;
-        const best = (u: AdminUserResponse) => (u as any).longestStreak ?? 0;
-        if (sortMode === 'streak-desc') sorted.sort((a, b) => cur(b) - cur(a));
-        else if (sortMode === 'streak-asc') sorted.sort((a, b) => cur(a) - cur(b));
-        else if (sortMode === 'longest-desc') sorted.sort((a, b) => best(b) - best(a));
-        return sorted;
-    });
-
-    onMount(async () => {
+    onMount(() => {
         loadUsers();
-        try {
-            const { data: me } = await api.GET('/api/user/auth/me');
-            currentUserRole = me?.role ?? null;
-        } catch {
-            currentUserRole = null;
-        }
+        api.GET('/api/user/auth/me')
+            .then(({ data: me }) => {
+                currentUserRole = me?.role ?? null;
+            })
+            .catch(() => {
+                currentUserRole = null;
+            });
     });
 </script>
 
@@ -355,6 +374,7 @@
             <select
                 class="rounded-md border border-ds-border bg-ds-surface px-3 py-2 text-sm"
                 bind:value={sortMode}
+                onchange={changeSort}
             >
                 <option value="recent">Sort: Most recent</option>
                 <option value="streak-desc">Sort: Highest streak</option>
@@ -373,19 +393,14 @@
         </div>
     {:else if users.length === 0}
         <div class="py-12 text-center text-ds-text-secondary">
-            No users available.
+            {appliedSearch.trim() ? 'No users match your search.' : 'No users available.'}
         </div>
     {:else}
-        {#if userSearch.trim() && filteredUsers().length === 0}
-            <div class="py-12 text-center text-ds-text-secondary">
-                No users match your search.
-            </div>
-        {:else}
-            <p class="text-sm text-ds-text-secondary">
-                Showing {filteredUsers().length} of {users.length} users
-            </p>
-            <div class="grid gap-6">
-                {#each filteredUsers() as user (user.userId)}
+        <p class="text-sm text-ds-text-secondary">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + users.length} of {total} users
+        </p>
+        <div class="grid gap-6">
+                {#each users as user (user.userId)}
                     <Card class="p-6 space-y-4 backdrop-blur">
 
                         <div
@@ -763,6 +778,26 @@
                         {/if}
                     </Card>
                 {/each}
+        </div>
+        {#if totalPages > 1}
+            <div class="flex items-center justify-center gap-4 pt-4">
+                <Button
+                    variant="default"
+                    onclick={() => goToPage(page - 1)}
+                    disabled={page <= 1 || usersLoading}
+                >
+                    Previous
+                </Button>
+                <span class="text-sm text-ds-text-secondary">
+                    Page {page} of {totalPages}
+                </span>
+                <Button
+                    variant="default"
+                    onclick={() => goToPage(page + 1)}
+                    disabled={page >= totalPages || usersLoading}
+                >
+                    Next
+                </Button>
             </div>
         {/if}
     {/if}

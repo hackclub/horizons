@@ -297,11 +297,13 @@
     async function loadSubmissions() {
         submissionsLoading = true;
         try {
-            const { data, error } = await api.GET('/api/admin/submissions');
+            const { data, error } = await api.GET('/api/admin/submissions', {
+                params: { query: { projectId } },
+            });
             if (error || !data) return;
-            const mine = data
-                .filter((s) => s.project.projectId === projectId)
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            const mine = [...data].sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            );
             submissions = mine;
             const drafts: Record<number, SubmissionDraft> = {};
             for (const s of mine) drafts[s.submissionId] = toSubmissionDraft(s);
