@@ -502,9 +502,12 @@ export class AdminController {
     return this.adminService.getPriorityUsers();
   }
 
+  // Reviewer-accessible: the reviewer-facing review queue offers a "Priority
+  // queue" sort, and reviewers are exactly who benefits from triaging it. The
+  // reasons are benign user-submitted text with no PII.
   @Get('priority-queue')
   @UseGuards(RolesGuard)
-  @Roles(Role.Admin)
+  @Roles(Role.Reviewer, Role.Admin)
   @ApiOkResponse({ type: [PriorityQueueEntryResponse] })
   async getPriorityQueue() {
     return this.adminService.getPriorityQueue();

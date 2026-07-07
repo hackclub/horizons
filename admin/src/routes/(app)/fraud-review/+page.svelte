@@ -9,6 +9,7 @@
 
 	type FraudGalleryItem = components['schemas']['FraudGalleryItemResponse'];
 	type EventResponse = components['schemas']['EventResponse'];
+	type PriorityQueueEntry = components['schemas']['PriorityQueueEntryResponse'];
 
 	// Human-facing Joe fraud-review platform. Each project deep-links here by its
 	// joeProjectId so admins can jump straight to Joe's review UI.
@@ -27,12 +28,18 @@
 	const REVIEW_FILTER_STORAGE_KEY = 'horizons-fraud-review-review-filter';
 	const TICKET_FILTER_STORAGE_KEY = 'horizons-fraud-review-ticket-filter';
 
-	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
+	type SortOrder =
+		| 'longest-wait'
+		| 'shortest-wait'
+		| 'most-hours'
+		| 'least-hours'
+		| 'priority';
 	const SORT_ORDERS: readonly SortOrder[] = [
 		'longest-wait',
 		'shortest-wait',
 		'most-hours',
 		'least-hours',
+		'priority',
 	];
 	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
 	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
@@ -152,14 +159,19 @@
 
 	let items = $state<FraudGalleryItem[]>([]);
 	let events = $state<EventResponse[]>([]);
+	// Approved priority-review queue from the external Halceon service, keyed by
+	// Horizons project id. Drives the "Priority queue" sort and the per-card
+	// reason surfaced on matching projects.
+	let priorityQueue = $state<Map<number, PriorityQueueEntry>>(new Map());
 	let loading = $state(true);
 	let refreshing = $state(false);
 	let error = $state<string | null>(null);
 
 	async function load() {
-		const [{ data, error: err }, { data: eventsData }] = await Promise.all([
+		const [{ data, error: err }, { data: eventsData }, { data: pqData }] = await Promise.all([
 			api.GET('/api/admin/fraud-review/gallery'),
 			api.GET('/api/events'),
+			api.GET('/api/admin/priority-queue'),
 		]);
 		if (err) {
 			error = 'Failed to load fraud-review gallery. Admin role required.';
@@ -169,6 +181,11 @@
 		error = null;
 		items = data ?? [];
 		if (eventsData) events = eventsData;
+		if (pqData) {
+			const next = new Map<number, PriorityQueueEntry>();
+			for (const entry of pqData) next.set(entry.projectId, entry);
+			priorityQueue = next;
+		}
 		// Seed the default event filter now that events are known (first load only).
 		if (needsDefaultEventSeed) {
 			const slug = mostUpcomingEventSlug(events);
@@ -292,6 +309,17 @@
 					matchesTicketFilter(item),
 			)
 			.sort((a, b) => {
+				if (sortOrder === 'priority') {
+					// Priority-queue projects sort to the top, most-recently-decided
+					// first; everything not in the queue (-1) sinks below them.
+					const ra = priorityQueue.has(a.projectId)
+						? (priorityQueue.get(a.projectId)!.decidedAt ?? 0)
+						: -1;
+					const rb = priorityQueue.has(b.projectId)
+						? (priorityQueue.get(b.projectId)!.decidedAt ?? 0)
+						: -1;
+					return rb - ra;
+				}
 				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
 					const aH = a.nowHackatimeHours;
 					const bH = b.nowHackatimeHours;
@@ -476,6 +504,13 @@
 						{label}
 					</button>
 				{/each}
+				<button
+					class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {sortOrder === 'priority' ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (sortOrder = 'priority')}
+					title="Show priority-review requests first"
+				>
+					⚡ Priority queue{priorityQueue.size > 0 ? ` (${priorityQueue.size})` : ''}
+				</button>
 
 				<span class="ml-3 text-[11px] text-rv-dim">Fraud</span>
 				{#each [['all', 'All'], ['reviewed', 'Reviewed'], ['unreviewed', 'Unreviewed']] as [value, label]}
@@ -585,7 +620,21 @@
 											Unreviewed
 										</span>
 									{/if}
+									{#if priorityQueue.has(item.projectId)}
+										<span class="inline-flex items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
+											⚡ Priority
+										</span>
+									{/if}
 								</div>
+								{#if priorityQueue.has(item.projectId)}
+									{@const pq = priorityQueue.get(item.projectId)!}
+									<p
+										class="mt-0.5 text-[12px] leading-snug text-amber-600 line-clamp-2 dark:text-amber-400"
+										title={pq.decidedBy ? `Priority approved by ${pq.decidedBy}: ${pq.reason}` : pq.reason}
+									>
+										⚡ {pq.reason}
+									</p>
+								{/if}
 							</svelte:element>
 						{:else}
 							<p class="col-span-full py-6 text-center text-sm text-rv-dim">No projects match your filters.</p>
@@ -677,6 +726,15 @@
 											</span>
 										{:else}
 											<span class="inline-flex items-center rounded-xl border border-yellow-500/40 bg-yellow-500/15 px-2 py-0.5 text-[11px] text-yellow-600">Unreviewed</span>
+										{/if}
+										{#if priorityQueue.has(item.projectId)}
+											{@const pq = priorityQueue.get(item.projectId)!}
+											<span
+												class="ml-1 inline-flex items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600"
+												title={pq.decidedBy ? `Priority approved by ${pq.decidedBy}: ${pq.reason}` : pq.reason}
+											>
+												⚡ Priority
+											</span>
 										{/if}
 									</div>
 								</svelte:element>
