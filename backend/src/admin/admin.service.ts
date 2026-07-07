@@ -178,6 +178,7 @@ export class AdminService {
             firstName: true,
             lastName: true,
             email: true,
+            slackUserId: true,
             isFraud: true,
             isSus: true,
             hackatimeStartDate: true,
