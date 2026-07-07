@@ -9,6 +9,7 @@
     type AdminProjectUser = AdminProject['user'];
     type GlobalSettingsResponse = components['schemas']['GlobalSettingsResponse'];
     type PriorityUserResponse = components['schemas']['PriorityUserResponse'];
+    type PriorityQueueEntry = components['schemas']['PriorityQueueEntryResponse'];
 
     type SortField =
         | 'createdAt'
@@ -17,7 +18,8 @@
         | 'approvalStatus'
         | 'nowHackatimeHours'
         | 'approvedHours'
-        | 'manifestDoubleDip';
+        | 'manifestDoubleDip'
+        | 'priorityQueue';
     type SortDirection = 'asc' | 'desc';
 
     const projectTypes = [
@@ -72,6 +74,12 @@
     let priorityUsersLoading = $state(false);
     let priorityUsersLoaded = $state(false);
     let priorityFilterEnabled = $state(false);
+
+    // Approved priority-review queue from the external Halceon service, keyed by
+    // Horizons project id. Drives the "Priority Queue" sort and the per-project
+    // reason message on each card.
+    let priorityQueue = $state<Map<number, PriorityQueueEntry>>(new Map());
+    let priorityQueueLoading = $state(false);
 
     // Map of projectId → non-Horizons hours shipped per Manifest. Backend returns
     // only entries with hours > 0, so absence from the map means "clean" (or the
@@ -194,6 +202,21 @@
             console.error('Failed to load priority users:', err);
         } finally {
             priorityUsersLoading = false;
+        }
+    }
+
+    async function loadPriorityQueue() {
+        priorityQueueLoading = true;
+        try {
+            const { data, error } = await api.GET('/api/admin/priority-queue');
+            if (error || !data) return;
+            const next = new Map<number, PriorityQueueEntry>();
+            for (const entry of data) next.set(entry.projectId, entry);
+            priorityQueue = next;
+        } catch (err) {
+            console.error('Failed to load priority queue:', err);
+        } finally {
+            priorityQueueLoading = false;
         }
     }
 
@@ -341,6 +364,20 @@
                     (manifestSummary.get(a.projectId)?.hours ?? 0) -
                     (manifestSummary.get(b.projectId)?.hours ?? 0);
                 break;
+            case 'priorityQueue': {
+                // Queued projects sort ahead of the rest; within the queue,
+                // most-recently-decided first. Non-queued projects use -1 so
+                // they fall below everything with a real decidedAt. Ascending
+                // (the default) shows the priority queue at the top.
+                const ra = priorityQueue.has(a.projectId)
+                    ? (priorityQueue.get(a.projectId)!.decidedAt ?? 0)
+                    : -1;
+                const rb = priorityQueue.has(b.projectId)
+                    ? (priorityQueue.get(b.projectId)!.decidedAt ?? 0)
+                    : -1;
+                c = rb - ra;
+                break;
+            }
         }
         return sortDirection === 'asc' ? c : -c;
     }
@@ -433,7 +470,12 @@
     }
 
     onMount(() => {
-        Promise.all([loadProjects(), loadGlobalSettings(), loadManifestSummary()]);
+        Promise.all([
+            loadProjects(),
+            loadGlobalSettings(),
+            loadManifestSummary(),
+            loadPriorityQueue(),
+        ]);
     });
 </script>
 
@@ -652,6 +694,9 @@
                                 <option value="manifestDoubleDip" disabled={!manifestEnabled}>
                                     Manifest double-dip{!manifestEnabled ? ' (disabled)' : ''}
                                 </option>
+                                <option value="priorityQueue">
+                                    Priority Queue{priorityQueueLoading ? ' (loading…)' : ` (${priorityQueue.size})`}
+                                </option>
                             </Select>
                             <Button
                                 variant="default"
@@ -722,8 +767,25 @@
                                             Double-dip {dip.hours.toFixed(1)}h
                                         </span>
                                     {/if}
+                                    {#if priorityQueue.has(project.projectId)}
+                                        <span class="rounded-full border border-amber-500 bg-amber-500/20 text-amber-700 dark:text-amber-300 px-3 py-1 text-xs font-bold uppercase tracking-wide">
+                                            ⚡ Priority Queue
+                                        </span>
+                                    {/if}
                                 </div>
                             </div>
+
+                            {#if priorityQueue.has(project.projectId)}
+                                {@const pq = priorityQueue.get(project.projectId)!}
+                                <div class="rounded-md border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+                                    <p class="font-semibold flex items-center gap-1.5">
+                                        ⚡ Priority review requested{#if pq.decidedBy}<span class="font-normal text-amber-700/80 dark:text-amber-300/80">· approved by {pq.decidedBy}</span>{/if}
+                                    </p>
+                                    {#if pq.reason}
+                                        <p class="mt-0.5 leading-relaxed whitespace-pre-line">{pq.reason}</p>
+                                    {/if}
+                                </div>
+                            {/if}
 
                             {#if project.description}
                                 <p class="text-sm text-ds-text-secondary leading-relaxed line-clamp-2">{@render highlighted(project.description)}</p>

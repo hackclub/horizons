@@ -2259,6 +2259,75 @@ export class AdminService {
     }));
   }
 
+  // Short-lived cache so the projects page (which loads the queue on every
+  // visit) doesn't hammer the external Halceon service.
+  private priorityQueueCache: {
+    data: Array<{
+      projectId: number;
+      reason: string;
+      decidedBy: string | null;
+      decidedAt: number | null;
+    }>;
+    expiresAt: number;
+  } | null = null;
+
+  /**
+   * Fetch the approved priority-review queue from the external Halceon service
+   * and map each entry to a Horizons project id. Returns [] when the key is
+   * unset or the upstream call fails, so the projects page degrades gracefully.
+   */
+  async getPriorityQueue() {
+    if (this.priorityQueueCache && this.priorityQueueCache.expiresAt > Date.now()) {
+      return this.priorityQueueCache.data;
+    }
+
+    const key = process.env.HALCEON_API_KEY;
+    if (!key) {
+      console.warn(
+        'Priority queue not configured — set HALCEON_API_KEY to enable',
+      );
+      return [];
+    }
+
+    const baseUrl = (
+      process.env.HALCEON_BASE_URL || 'https://queue.halceon.dev'
+    ).replace(/\/$/, '');
+
+    try {
+      const response = await fetch(
+        `${baseUrl}/api/priority-review/approved?key=${encodeURIComponent(key)}`,
+      );
+      if (!response.ok) {
+        console.warn(
+          `Priority queue fetch failed with status ${response.status}`,
+        );
+        return this.priorityQueueCache?.data ?? [];
+      }
+
+      const body = await response.json();
+      const approved = Array.isArray(body?.approved) ? body.approved : [];
+      const data = approved
+        .filter((entry) => typeof entry?.project_id === 'number')
+        .map((entry) => ({
+          projectId: entry.project_id as number,
+          reason: typeof entry?.reason === 'string' ? entry.reason : '',
+          decidedBy:
+            typeof entry?.decided_by === 'string' ? entry.decided_by : null,
+          decidedAt:
+            typeof entry?.decided_at === 'number' ? entry.decided_at : null,
+        }));
+
+      this.priorityQueueCache = {
+        data,
+        expiresAt: Date.now() + 60_000,
+      };
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch priority queue:', err);
+      return this.priorityQueueCache?.data ?? [];
+    }
+  }
+
   async searchUsers(query: string) {
     if (!query || query.trim().length < 2) {
       return [];
