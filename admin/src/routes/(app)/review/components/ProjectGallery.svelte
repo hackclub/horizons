@@ -6,7 +6,7 @@
 	import { timeAgo, waitingFor } from '../utils';
 	import { Skeleton, Highlight } from '$lib/components';
 	import { matchesScopedQuery } from '$lib/search';
-	import { LayoutGrid, List } from 'lucide-svelte';
+	import { LayoutGrid, List, ChevronRight } from 'lucide-svelte';
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type PastReview = components['schemas']['PastReviewEntry'];
 	type FraudRejected = components['schemas']['FraudRejectedEntry'];
@@ -246,39 +246,60 @@
 	let fraudRejected = $state<FraudRejected[]>([]);
 	let events = $state<EventResponse[]>([]);
 	let currentReviewerId = $state<number | null>(null);
-	let pastLoading = $state(true);
 	let isAdmin = $state(false);
 
+	// Past reviews are loaded lazily: the endpoint returns every finalized
+	// review across all reviewers, which is heavy and irrelevant to the
+	// default pending-queue triage. Both the "My Past Reviews" and "All Past
+	// Reviews" sections start collapsed and share this single fetch, triggered
+	// the first time either section is expanded.
+	let pastReviewsLoaded = $state(false);
+	let pastReviewsLoading = $state(false);
+	let myExpanded = $state(false);
+	let allExpanded = $state(false);
+
 	onMount(async () => {
-		try {
-			const [
-				{ data: pastData },
-				{ data: meData },
-				{ data: fraudData },
-				{ data: eventsData },
-			] = await Promise.all([
-				api.GET('/api/reviewer/past-reviews'),
+		const [{ data: meData }, { data: fraudData }, { data: eventsData }] =
+			await Promise.all([
 				api.GET('/api/user/auth/me'),
 				api.GET('/api/reviewer/fraud-rejected'),
 				api.GET('/api/events'),
 			]);
-			if (pastData) {
-				pastReviews = pastData.reviews;
-				currentReviewerId = pastData.currentReviewerId;
-			}
-			if (fraudData) fraudRejected = fraudData;
-			if (eventsData) events = eventsData;
-			// Seed the default event filter now that events are known (first load only).
-			if (needsDefaultEventSeed) {
-				const slug = mostUpcomingEventSlug(events);
-				if (slug) selectedEvents = new Set([slug]);
-				needsDefaultEventSeed = false;
-			}
-			isAdmin = meData?.role === 'admin' || meData?.role === 'superadmin';
-		} finally {
-			pastLoading = false;
+		if (fraudData) fraudRejected = fraudData;
+		if (eventsData) events = eventsData;
+		// Seed the default event filter now that events are known (first load only).
+		if (needsDefaultEventSeed) {
+			const slug = mostUpcomingEventSlug(events);
+			if (slug) selectedEvents = new Set([slug]);
+			needsDefaultEventSeed = false;
 		}
+		isAdmin = meData?.role === 'admin' || meData?.role === 'superadmin';
 	});
+
+	async function loadPastReviews() {
+		if (pastReviewsLoaded || pastReviewsLoading) return;
+		pastReviewsLoading = true;
+		try {
+			const { data } = await api.GET('/api/reviewer/past-reviews');
+			if (data) {
+				pastReviews = data.reviews;
+				currentReviewerId = data.currentReviewerId;
+			}
+			pastReviewsLoaded = true;
+		} finally {
+			pastReviewsLoading = false;
+		}
+	}
+
+	function toggleMyExpanded() {
+		myExpanded = !myExpanded;
+		if (myExpanded) loadPastReviews();
+	}
+
+	function toggleAllExpanded() {
+		allExpanded = !allExpanded;
+		if (allExpanded) loadPastReviews();
+	}
 
 	// "__none__" sentinel matches users without a pinned event so reviewers can
 	// triage stragglers separately from cohort-tagged submissions.
@@ -980,10 +1001,19 @@
 		<hr class="border-none border-t border-rv-border mx-6 my-4" />
 
 		<section class="px-6 py-2">
-			<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold mb-3">
-				My Past Reviews <span class="text-rv-text/60 font-normal normal-case ml-1">({myPastReviews.length})</span>
-			</h2>
-			{#if pastLoading}
+			<button
+				type="button"
+				class="group flex items-center gap-2 mb-3 cursor-pointer bg-transparent border-none p-0 font-inherit"
+				onclick={toggleMyExpanded}
+				aria-expanded={myExpanded}
+			>
+				<ChevronRight class="w-4 h-4 text-rv-dim transition-transform duration-150 {myExpanded ? 'rotate-90' : ''}" />
+				<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold m-0 group-hover:text-rv-text transition-colors">
+					My Past Reviews{#if pastReviewsLoaded}<span class="text-rv-text/60 font-normal normal-case ml-1">({myPastReviews.length})</span>{/if}
+				</h2>
+			</button>
+			{#if myExpanded}
+			{#if pastReviewsLoading}
 				<p class="text-rv-dim py-6 text-sm">Loading past reviews…</p>
 			{:else}
 				<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
@@ -1035,15 +1065,25 @@
 					{/each}
 				</div>
 			{/if}
+			{/if}
 		</section>
 
 		<hr class="border-none border-t border-rv-border mx-6 my-4" />
 
 		<section class="px-6 py-2 pb-6">
-			<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold mb-3">
-				All Past Reviews <span class="text-rv-text/60 font-normal normal-case ml-1">({allPastReviews.length})</span>
-			</h2>
-			{#if pastLoading}
+			<button
+				type="button"
+				class="group flex items-center gap-2 mb-3 cursor-pointer bg-transparent border-none p-0 font-inherit"
+				onclick={toggleAllExpanded}
+				aria-expanded={allExpanded}
+			>
+				<ChevronRight class="w-4 h-4 text-rv-dim transition-transform duration-150 {allExpanded ? 'rotate-90' : ''}" />
+				<h2 class="text-[13px] uppercase tracking-wider text-rv-dim font-semibold m-0 group-hover:text-rv-text transition-colors">
+					All Past Reviews{#if pastReviewsLoaded}<span class="text-rv-text/60 font-normal normal-case ml-1">({allPastReviews.length})</span>{/if}
+				</h2>
+			</button>
+			{#if allExpanded}
+			{#if pastReviewsLoading}
 				<p class="text-rv-dim py-6 text-sm">Loading past reviews…</p>
 			{:else}
 				<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] content-start gap-4">
@@ -1095,6 +1135,7 @@
 						<p class="col-span-full text-rv-dim py-6 text-sm">No past reviews match your filters.</p>
 					{/each}
 				</div>
+			{/if}
 			{/if}
 		</section>
 	</div>
