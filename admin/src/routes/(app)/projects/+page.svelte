@@ -5,8 +5,8 @@
     import { Play, Snowflake, LoaderCircle } from 'lucide-svelte';
     import { Button, TextField, Card, Checkbox, Select, FilterTag } from '$lib/components';
 
-    type AdminProject = components['schemas']['AdminProjectResponse'];
-    type AdminLightUser = components['schemas']['AdminLightUserResponse'];
+    type AdminProject = components['schemas']['AdminProjectListItemResponse'];
+    type AdminProjectUser = AdminProject['user'];
     type GlobalSettingsResponse = components['schemas']['GlobalSettingsResponse'];
     type PriorityUserResponse = components['schemas']['PriorityUserResponse'];
 
@@ -72,7 +72,7 @@
         return value.toFixed(1);
     }
 
-    function fullName(user: AdminLightUser) {
+    function fullName(user: AdminProjectUser) {
         const first = user.firstName ?? '';
         const last = user.lastName ?? '';
         const name = `${first} ${last}`.trim();
@@ -87,8 +87,7 @@
     }
 
     function latestSubmission(project: AdminProject) {
-        if (!project.submissions || project.submissions.length === 0) return null;
-        return project.submissions[0];
+        return project.latestSubmission ?? null;
     }
 
     function projectStatus(project: AdminProject): string {
@@ -233,7 +232,7 @@
     }
 
     function matchesSubmissionCount(project: AdminProject): boolean {
-        const count = project.submissions?.length ?? 0;
+        const count = project.submissionCount ?? 0;
         if (submissionCountFilter === 'single') return count === 1;
         if (submissionCountFilter === 'multiple') return count > 1;
         return true;
@@ -571,7 +570,7 @@
                             {/if}
 
                             <div class="flex flex-wrap items-center gap-4 text-xs text-ds-text-secondary pt-2 border-t border-ds-border">
-                                <span>{project.submissions?.length ?? 0} submission{(project.submissions?.length ?? 0) === 1 ? '' : 's'}</span>
+                                <span>{project.submissionCount} submission{project.submissionCount === 1 ? '' : 's'}</span>
                                 {#if latest}
                                     <span>Latest: {formatDate(latest.createdAt)}</span>
                                     {#if latest.approvedHours != null}

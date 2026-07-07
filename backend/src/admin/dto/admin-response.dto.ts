@@ -311,6 +311,109 @@ export class AdminUserResponse extends AdminLightUserResponse {
   projects: AdminUserProjectResponse[];
 }
 
+export class AdminUserListResponse {
+  @ApiProperty({ type: [AdminUserResponse] })
+  users: AdminUserResponse[];
+
+  @ApiProperty({ description: 'Total users matching the search filter.' })
+  total: number;
+
+  @ApiProperty()
+  page: number;
+
+  @ApiProperty()
+  limit: number;
+}
+
+class AdminProjectListUserResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty({ type: String, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastName: string | null;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  isFraud: boolean;
+
+  @ApiProperty()
+  isSus: boolean;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  hackatimeStartDate: Date | null;
+}
+
+export class AdminProjectListItemResponse {
+  @ApiProperty()
+  projectId: number;
+
+  @ApiProperty()
+  projectTitle: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  description: string | null;
+
+  @ApiProperty({
+    enum: [
+      'windows_playable',
+      'mac_playable',
+      'linux_playable',
+      'web_playable',
+      'cross_platform_playable',
+      'hardware',
+      'mobile_app',
+    ],
+  })
+  projectType: string;
+
+  @ApiProperty({ type: Number, nullable: true })
+  nowHackatimeHours: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  approvedHours: number | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  playableUrl: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  repoUrl: string | null;
+
+  @ApiProperty()
+  isLocked: boolean;
+
+  @ApiProperty()
+  permReject: boolean;
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  joeFraudPassed: boolean | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  joeTrustScore: number | null;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty({ type: String, nullable: true })
+  deletedAt: Date | null;
+
+  @ApiProperty({ type: AdminProjectListUserResponse })
+  user: AdminProjectListUserResponse;
+
+  @ApiProperty({ type: AdminProjectSubmissionResponse, nullable: true })
+  latestSubmission: AdminProjectSubmissionResponse | null;
+
+  @ApiProperty()
+  submissionCount: number;
+}
+
 class MetricsTotals {
   @ApiProperty()
   totalHackatimeHours: number;
@@ -1145,6 +1248,12 @@ export class AdminStatsResponse {
 
   @ApiProperty({ type: StatsProjectsHackatime })
   projects: StatsProjectsHackatime;
+
+  @ApiProperty({
+    description:
+      'When this payload was computed. Responses are served from a short-lived server cache; pass ?refresh=true to recompute.',
+  })
+  generatedAt: string;
 }
 
 class ImportCsvError {

@@ -2708,6 +2708,39 @@ export interface components {
             user: components["schemas"]["TimelineActorResponse"];
             timeline: components["schemas"]["TimelineEventResponse"][];
         };
+        AdminProjectListUserResponse: {
+            userId: number;
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+            isFraud: boolean;
+            isSus: boolean;
+            /** Format: date-time */
+            hackatimeStartDate: string | null;
+        };
+        AdminProjectListItemResponse: {
+            projectId: number;
+            projectTitle: string;
+            description: string | null;
+            /** @enum {string} */
+            projectType: "windows_playable" | "mac_playable" | "linux_playable" | "web_playable" | "cross_platform_playable" | "hardware" | "mobile_app";
+            nowHackatimeHours: number | null;
+            approvedHours: number | null;
+            playableUrl: string | null;
+            repoUrl: string | null;
+            isLocked: boolean;
+            permReject: boolean;
+            joeFraudPassed: boolean | null;
+            joeTrustScore: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            deletedAt: string | null;
+            user: components["schemas"]["AdminProjectListUserResponse"];
+            latestSubmission: components["schemas"]["AdminProjectSubmissionResponse"] | null;
+            submissionCount: number;
+        };
         ProjectManifestSummaryEntry: {
             projectId: number;
             /** @description Sum of hoursShipped across non-Horizons YSWS submissions registered for this project codeUrl on Manifest. */
@@ -2822,6 +2855,13 @@ export interface components {
             updatedAt: string;
             role: string;
             projects: components["schemas"]["AdminUserProjectResponse"][];
+        };
+        AdminUserListResponse: {
+            users: components["schemas"]["AdminUserResponse"][];
+            /** @description Total users matching the search filter. */
+            total: number;
+            page: number;
+            limit: number;
         };
         MetricsTotals: {
             totalHackatimeHours: number;
@@ -3161,6 +3201,8 @@ export interface components {
             historical: components["schemas"]["StatsHistorical"];
             dau: components["schemas"]["StatsDau"];
             projects: components["schemas"]["StatsProjectsHackatime"];
+            /** @description When this payload was computed. Responses are served from a short-lived server cache; pass ?refresh=true to recompute. */
+            generatedAt: string;
         };
         BackfillEntry: {
             date: string;
@@ -5168,7 +5210,10 @@ export interface operations {
     };
     AdminController_getAllSubmissions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only return submissions belonging to this project. */
+                projectId?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5262,14 +5307,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminProjectResponse"][];
+                    "application/json": components["schemas"]["AdminProjectListItemResponse"][];
                 };
             };
         };
     };
     AdminController_getProjectsManifestSummary: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Bypass the server-side cache and re-sweep Manifest. */
+                refresh?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5416,7 +5464,14 @@ export interface operations {
     };
     AdminController_getAllUsers: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                /** @description Page size (max 200, default 50). */
+                limit?: number;
+                /** @description Search by name, email, or Slack ID. */
+                q?: string;
+                sort?: "recent" | "streak-desc" | "streak-asc" | "longest-desc";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5428,7 +5483,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminUserResponse"][];
+                    "application/json": components["schemas"]["AdminUserListResponse"];
                 };
             };
         };
@@ -5557,7 +5612,10 @@ export interface operations {
     };
     AdminController_getStats: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Bypass the server-side cache and recompute stats. */
+                refresh?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;

@@ -16,7 +16,23 @@ import { BalanceService } from '../balance/balance.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 import { computeUserTicketStatuses } from '../utils/ticket-status';
+import { Prisma } from '../../generated/prisma/client';
 import * as Papa from 'papaparse';
+
+export type AdminUserSort =
+  | 'recent'
+  | 'streak-desc'
+  | 'streak-asc'
+  | 'longest-desc';
+
+type ManifestSummary = {
+  entries: {
+    projectId: number;
+    priorYswsHoursShipped: number;
+    priorYswsNames: string[];
+  }[];
+  enabled: boolean;
+};
 
 const projectAdminInclude = {
   user: {
@@ -63,8 +79,9 @@ export class AdminService {
     private airtableService: AirtableService,
   ) {}
 
-  async getAllSubmissions() {
+  async getAllSubmissions(projectId?: number) {
     const submissions = await this.prisma.submission.findMany({
+      where: projectId ? { projectId } : undefined,
       include: {
         project: {
           include: {
@@ -130,13 +147,62 @@ export class AdminService {
     return updatedProject;
   }
 
+  /**
+   * Slim project list for the admin projects index. The old shape included the
+   * full owner row (address, birthday, Hackatime tokens) and every submission
+   * per project, which made the response grow with total submission volume.
+   * The index only ever renders the latest submission and a count, so that's
+   * all this returns — full detail stays on getProject(:id).
+   */
   async getAllProjects() {
     const projects = await this.prisma.project.findMany({
-      include: projectAdminInclude,
+      select: {
+        projectId: true,
+        projectTitle: true,
+        description: true,
+        projectType: true,
+        nowHackatimeHours: true,
+        approvedHours: true,
+        playableUrl: true,
+        repoUrl: true,
+        isLocked: true,
+        permReject: true,
+        joeFraudPassed: true,
+        joeTrustScore: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+        user: {
+          select: {
+            userId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            isFraud: true,
+            isSus: true,
+            hackatimeStartDate: true,
+          },
+        },
+        submissions: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            submissionId: true,
+            approvalStatus: true,
+            approvedHours: true,
+            createdAt: true,
+          },
+        },
+        _count: { select: { submissions: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
-    return projects;
+    return projects.map(({ _count, submissions, ...project }) => ({
+      ...project,
+      latestSubmission: submissions[0] ?? null,
+      submissionCount: _count.submissions,
+    }));
   }
 
   /**
@@ -149,8 +215,46 @@ export class AdminService {
    * service. Projects whose codeUrl isn't registered on Manifest (404) get
    * priorYswsHoursShipped=0 and are omitted from the response — only entries
    * with > 0 are returned, so the frontend can treat absence as "clean".
+   *
+   * The sweep makes one Manifest HTTP call per project, so results are cached
+   * in-process for MANIFEST_SUMMARY_TTL_MS and concurrent callers share a
+   * single in-flight sweep. Pass forceRefresh to bypass the cache.
    */
-  async getProjectsManifestSummary() {
+  private static readonly MANIFEST_SUMMARY_TTL_MS = 30 * 60 * 1000;
+  private manifestSummaryCache: {
+    data: ManifestSummary;
+    expiresAt: number;
+  } | null = null;
+  private manifestSummaryInFlight: Promise<ManifestSummary> | null = null;
+
+  async getProjectsManifestSummary(forceRefresh = false): Promise<ManifestSummary> {
+    if (
+      !forceRefresh &&
+      this.manifestSummaryCache &&
+      this.manifestSummaryCache.expiresAt > Date.now()
+    ) {
+      return this.manifestSummaryCache.data;
+    }
+    if (!forceRefresh && this.manifestSummaryInFlight) {
+      return this.manifestSummaryInFlight;
+    }
+
+    const inFlight = this.computeProjectsManifestSummary()
+      .then((data) => {
+        this.manifestSummaryCache = {
+          data,
+          expiresAt: Date.now() + AdminService.MANIFEST_SUMMARY_TTL_MS,
+        };
+        return data;
+      })
+      .finally(() => {
+        this.manifestSummaryInFlight = null;
+      });
+    this.manifestSummaryInFlight = inFlight;
+    return inFlight;
+  }
+
+  private async computeProjectsManifestSummary(): Promise<ManifestSummary> {
     if (!this.manifestService.isEnabled()) {
       return { entries: [], enabled: false };
     }
@@ -520,7 +624,45 @@ export class AdminService {
     };
   }
 
-  async getStats() {
+  /**
+   * Dashboard stats are a fan-out of heavy aggregation queries (funnel,
+   * signups CTEs, UTM groupBys, historical series), so results are cached
+   * in-process for STATS_TTL_MS and concurrent callers share one in-flight
+   * computation. `generatedAt` tells the UI how fresh the payload is;
+   * forceRefresh (the admin home "Refresh" button) bypasses the cache.
+   */
+  private static readonly STATS_TTL_MS = 5 * 60 * 1000;
+  private statsCache: { data: any; expiresAt: number } | null = null;
+  private statsInFlight: Promise<any> | null = null;
+
+  async getStats(forceRefresh = false) {
+    if (
+      !forceRefresh &&
+      this.statsCache &&
+      this.statsCache.expiresAt > Date.now()
+    ) {
+      return this.statsCache.data;
+    }
+    if (!forceRefresh && this.statsInFlight) {
+      return this.statsInFlight;
+    }
+
+    const inFlight = this.computeStats()
+      .then((data) => {
+        this.statsCache = {
+          data,
+          expiresAt: Date.now() + AdminService.STATS_TTL_MS,
+        };
+        return data;
+      })
+      .finally(() => {
+        this.statsInFlight = null;
+      });
+    this.statsInFlight = inFlight;
+    return inFlight;
+  }
+
+  private async computeStats() {
     const now = new Date();
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
@@ -572,7 +714,18 @@ export class AdminService {
       perEvent: dauPerEvent,
     };
 
-    return { funnel, userGrowth, reviewStats, reviewProjects, signups, utm, historical, dau, projects };
+    return {
+      funnel,
+      userGrowth,
+      reviewStats,
+      reviewProjects,
+      signups,
+      utm,
+      historical,
+      dau,
+      projects,
+      generatedAt: new Date().toISOString(),
+    };
   }
 
   private async computeProjectHackatimeCounts() {
@@ -1456,31 +1609,126 @@ export class AdminService {
     return { deleted: true, projectId };
   }
 
-  async getAllUsers() {
-    const users = await this.prisma.user.findMany({
-      include: {
-        projects: {
+  /**
+   * Paginated user list for the admin users index. Search and sort happen in
+   * the database so the response stays one page — the previous version
+   * returned every user with every project and every submission, which is
+   * what made the admin users page crawl.
+   *
+   * Sorting is done in raw SQL because the streak sorts need lazy decay
+   * applied (see StreakService.applyLazyDecay): rows the streak cron hasn't
+   * touched keep a stale currentStreak, and ordering by the raw column would
+   * float users at the top whose displayed streak is 0. The CASE mirrors the
+   * decay rule (streak survives while last_active_date is today or
+   * yesterday), approximated in UTC — per-user timezones can shift a
+   * boundary case by a day in ranking, but the displayed value is always the
+   * JS-decayed one.
+   */
+  async getAllUsers(
+    opts: {
+      page?: number;
+      limit?: number;
+      q?: string;
+      sort?: AdminUserSort;
+    } = {},
+  ) {
+    const page = Math.max(1, Math.floor(opts.page ?? 1));
+    const limit = Math.min(200, Math.max(1, Math.floor(opts.limit ?? 50)));
+    const sort: AdminUserSort = opts.sort ?? 'recent';
+
+    // Every whitespace-separated token must match at least one identity
+    // field, so "jane doe" matches firstName=Jane lastName=Doe.
+    const tokens = (opts.q ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 5);
+    const tokenFilters = tokens.map((token) => {
+      const like = `%${token}%`;
+      return Prisma.sql`(u.first_name ILIKE ${like} OR u.last_name ILIKE ${like} OR u.email ILIKE ${like} OR u.slack_user_id ILIKE ${like})`;
+    });
+    const whereSql = tokenFilters.length
+      ? Prisma.sql`WHERE ${Prisma.join(tokenFilters, ' AND ')}`
+      : Prisma.empty;
+
+    const decayedStreak = Prisma.sql`CASE WHEN u.last_active_date >= (CURRENT_DATE - INTERVAL '1 day') THEN u.current_streak ELSE 0 END`;
+    const orderSql =
+      sort === 'streak-desc'
+        ? Prisma.sql`${decayedStreak} DESC, u.created_at DESC`
+        : sort === 'streak-asc'
+          ? Prisma.sql`${decayedStreak} ASC, u.created_at DESC`
+          : sort === 'longest-desc'
+            ? Prisma.sql`u.longest_streak DESC, u.created_at DESC`
+            : Prisma.sql`u.created_at DESC`;
+
+    const [countRows, idRows] = await Promise.all([
+      this.prisma.$queryRaw<Array<{ total: bigint }>>(
+        Prisma.sql`SELECT COUNT(*) AS total FROM users u ${whereSql}`,
+      ),
+      this.prisma.$queryRaw<Array<{ user_id: number }>>(
+        Prisma.sql`
+          SELECT u.user_id
+          FROM users u
+          ${whereSql}
+          ORDER BY ${orderSql}
+          LIMIT ${limit} OFFSET ${(page - 1) * limit}
+        `,
+      ),
+    ]);
+
+    const total = Number(countRows[0]?.total ?? 0);
+    const ids = idRows.map((row) => Number(row.user_id));
+
+    const users = ids.length
+      ? await this.prisma.user.findMany({
+          where: { userId: { in: ids } },
           include: {
-            submissions: {
+            projects: {
+              select: {
+                projectId: true,
+                projectTitle: true,
+                projectType: true,
+                nowHackatimeHours: true,
+                approvedHours: true,
+                isLocked: true,
+                createdAt: true,
+                submissions: {
+                  orderBy: { createdAt: 'desc' },
+                  take: 1,
+                  select: {
+                    submissionId: true,
+                    approvalStatus: true,
+                    approvedHours: true,
+                    createdAt: true,
+                  },
+                },
+              },
               orderBy: { createdAt: 'desc' },
             },
           },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        })
+      : [];
 
-    // Apply lazy decay so admins see the same currentStreak value the user
-    // sees on /app — stale reads collapse to 0 without mutating the row.
-    return users.map((u) => ({
-      ...u,
-      currentStreak: this.streakService.applyLazyDecay({
-        currentStreak: u.currentStreak,
-        lastActiveDate: u.lastActiveDate,
-        timezone: u.timezone,
-      }),
-    }));
+    const byId = new Map(users.map((u) => [u.userId, u]));
+
+    return {
+      // Apply lazy decay so admins see the same currentStreak value the user
+      // sees on /app — stale reads collapse to 0 without mutating the row.
+      users: ids
+        .map((id) => byId.get(id))
+        .filter((u): u is NonNullable<typeof u> => Boolean(u))
+        .map((u) => ({
+          ...u,
+          currentStreak: this.streakService.applyLazyDecay({
+            currentStreak: u.currentStreak,
+            lastActiveDate: u.lastActiveDate,
+            timezone: u.timezone,
+          }),
+        })),
+      total,
+      page,
+      limit,
+    };
   }
 
   async getReviewerLeaderboard() {
