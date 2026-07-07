@@ -5,7 +5,7 @@
 	import { api } from '$lib/api';
 	import { Button, TextField, Checkbox } from '$lib/components';
 	import { theme } from '$lib/themeStore';
-	import * as echarts from 'echarts';
+	import type * as EChartsModule from 'echarts';
 	import yaml from 'js-yaml';
 
 	const slug = $derived($page.params.slug);
@@ -65,7 +65,12 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let eventConfigs = $state<Record<string, EventConfig>>({});
-	let charts: echarts.ECharts[] = [];
+	let charts: EChartsModule.ECharts[] = [];
+
+	// Loaded dynamically after mount so the page shell doesn't block on the
+	// ~1MB chart bundle.
+	let echarts: typeof EChartsModule;
+	let echartsReady: Promise<unknown> | undefined;
 
 	// Edit form state
 	let editing = $state(false);
@@ -128,6 +133,7 @@
 	let qualificationMode = $state<QualificationMode>('approved');
 
 	onMount(async () => {
+		echartsReady = import('echarts').then((mod) => (echarts = mod));
 		await Promise.all([loadStats(), loadEventConfigs(), loadAttendees()]);
 	});
 
@@ -161,7 +167,7 @@
 			stats = await resp.json();
 			populateEditForm();
 			loading = false;
-			await tick();
+			await Promise.all([tick(), echartsReady]);
 			renderCharts();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load';
@@ -249,7 +255,7 @@
 		color: string,
 		areaColor: string,
 	) {
-		if (!el) return;
+		if (!el || !echarts) return;
 		const chart = echarts.init(el);
 		charts.push(chart);
 
@@ -293,7 +299,7 @@
 	}
 
 	function renderQualificationChart() {
-		if (!stats || !qualificationChartEl) return;
+		if (!stats || !qualificationChartEl || !echarts) return;
 		const chart = echarts.init(qualificationChartEl);
 		charts.push(chart);
 
@@ -367,7 +373,7 @@
 	function renderCharts() {
 		charts.forEach((c) => c.dispose());
 		charts = [];
-		if (!stats) return;
+		if (!stats || !echarts) return;
 
 		renderLineChart(pinnedChartEl, stats.pinnedTimeline, '#3b82f6', 'rgba(59,130,246,0.15)');
 		renderLineChart(dauChartEl, stats.dauTimeline, '#22c55e', 'rgba(34,197,94,0.15)');

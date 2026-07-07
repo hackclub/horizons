@@ -306,47 +306,39 @@
         }
     }
 
+    function setUserFlag(userId: number, patch: Partial<AdminUserResponse>) {
+        users = users.map((u) => (u.userId === userId ? { ...u, ...patch } : u));
+    }
+
+    // Both flag toggles apply optimistically — the button flips immediately and
+    // reverts if the server rejects — so the UI doesn't hang on the round trip.
     async function toggleUserFraudFlag(userId: number, currentValue: boolean) {
+        setUserFlag(userId, { isFraud: !currentValue });
         try {
             const { data, error } = await api.PUT('/api/admin/users/{id}/fraud-flag', {
                 params: { path: { id: userId } },
                 body: { isFraud: !currentValue }
             } as any);
-            if (error) {
-                console.error('Failed to toggle fraud flag:', error);
-                return;
-            }
-            if (data) {
-                users = users.map((u) =>
-                    u.userId === userId
-                        ? { ...u, isFraud: data.isFraud }
-                        : u
-                );
-            }
+            if (error) throw error;
+            if (data) setUserFlag(userId, { isFraud: data.isFraud });
         } catch (err) {
             console.error('Failed to toggle fraud flag:', err);
+            setUserFlag(userId, { isFraud: currentValue });
         }
     }
 
     async function toggleSusFlag(userId: number, currentValue: boolean) {
+        setUserFlag(userId, { isSus: !currentValue });
         try {
             const { data, error } = await api.PUT('/api/admin/users/{id}/sus-flag', {
                 params: { path: { id: userId } },
                 body: { isSus: !currentValue }
             } as any);
-            if (error) {
-                console.error('Failed to toggle sus flag:', error);
-                return;
-            }
-            if (data) {
-                users = users.map((u) =>
-                    u.userId === userId
-                        ? { ...u, isSus: data.isSus }
-                        : u
-                );
-            }
+            if (error) throw error;
+            if (data) setUserFlag(userId, { isSus: data.isSus });
         } catch (err) {
             console.error('Failed to toggle sus flag:', err);
+            setUserFlag(userId, { isSus: currentValue });
         }
     }
 

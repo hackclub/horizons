@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { theme, toggleTheme } from '$lib/themeStore';
 	import { api, type components } from '$lib/api';
-	import * as echarts from 'echarts';
+	import type * as EChartsModule from 'echarts';
 	import { Skeleton } from '$lib/components';
 	import StatCard from './StatCard.svelte';
 
@@ -12,7 +12,12 @@
 	type FunnelMatrix = components['schemas']['StatsFunnelMatrix'];
 	type FraudRow = components['schemas']['StatsFunnelMatrixRow'];
 	type DataPoint = { date: string; value: number };
-	type EChart = echarts.ECharts;
+	type EChart = EChartsModule.ECharts;
+
+	// Loaded dynamically after mount so the page shell doesn't block on the
+	// ~1MB chart bundle.
+	let echarts: typeof EChartsModule;
+	let echartsReady: Promise<unknown> | undefined;
 
 	let stats = $state<ReviewStats | null>(null);
 	let loading = $state(true);
@@ -142,6 +147,7 @@
 	let hoursDistributionEl = $state<HTMLDivElement | null>(null);
 
 	onMount(async () => {
+		echartsReady = import('echarts').then((mod) => (echarts = mod));
 		const { data: me, error: authErr } = await api.GET('/api/user/auth/me');
 		if (authErr || !me) {
 			goto('/login');
@@ -173,7 +179,7 @@
 			if (fetchErr) throw new Error('Failed to fetch review stats');
 			stats = data ?? null;
 			loading = false;
-			await tick();
+			await Promise.all([tick(), echartsReady]);
 			renderCharts();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load stats';
@@ -196,7 +202,7 @@
 	}
 
 	function initChart(el: HTMLDivElement | null): EChart | null {
-		if (!el) return null;
+		if (!el || !echarts) return null;
 		const existing = echarts.getInstanceByDom(el);
 		if (existing) existing.dispose();
 		const chart = echarts.init(el, undefined, { renderer: 'canvas' });
@@ -205,7 +211,7 @@
 	}
 
 	function renderCharts() {
-		if (!stats) return;
+		if (!stats || !echarts) return;
 		charts.forEach((c) => c.dispose());
 		charts = [];
 		renderLineChart(
