@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import { base } from '$app/paths';
     import { api, type components } from '$lib/api';
-    import { Play, Snowflake, LoaderCircle } from 'lucide-svelte';
+    import { Play, Snowflake, LoaderCircle, ListFilter } from 'lucide-svelte';
     import { Button, TextField, Card, Checkbox, Select, FilterTag } from '$lib/components';
 
     type AdminProject = components['schemas']['AdminProjectListItemResponse'];
@@ -34,6 +34,11 @@
     // --- State ---
     let projects = $state<AdminProject[]>([]);
     let projectsLoading = $state(false);
+    // Gate list rendering until the first load lands, so the page shows a
+    // loading state instead of flashing an empty/stale list.
+    let projectsLoaded = $state(false);
+    // Filters live behind the funnel toggle next to the search bar.
+    let filtersOpen = $state(false);
 
     let searchQuery = $state('');
     // Debounced copy of searchQuery that actually drives filtering. Filtering
@@ -50,7 +55,8 @@
         | 'playable'
         | 'id';
     let searchField = $state<SearchField>('all');
-    let selectedStatuses = $state<Set<string>>(new Set(['pending']));
+    // No filters applied by default — admins see the full list until they opt in.
+    let selectedStatuses = $state<Set<string>>(new Set());
     let selectedProjectTypes = $state<Set<string>>(new Set());
     let sortField = $state<SortField>('createdAt');
     let sortDirection = $state<SortDirection>('asc');
@@ -123,6 +129,7 @@
             console.error('Failed to load projects:', err);
         } finally {
             projectsLoading = false;
+            projectsLoaded = true;
         }
     }
 
@@ -399,6 +406,19 @@
         selectedProjectTypes = next;
     }
 
+    // How many filters deviate from their defaults — shown as a badge on the
+    // filter toggle so active filters aren't invisible while the panel is shut.
+    const activeFilterCount = $derived(
+        selectedStatuses.size +
+            selectedProjectTypes.size +
+            (priorityFilterEnabled ? 1 : 0) +
+            (doubleDipFilterEnabled ? 1 : 0) +
+            (submissionCountFilter !== 'all' ? 1 : 0) +
+            (showFraudProjects ? 0 : 1) +
+            (showSusProjects ? 0 : 1) +
+            (showDeletedProjects ? 1 : 0),
+    );
+
     function statusBadgeClass(status: string): string {
         switch (status) {
             case 'approved':
@@ -466,28 +486,53 @@
                 </div>
             {/if}
 
+<!-- Search row (Figma 3044:839): full-width search bar + filter toggle. -->
+            <div class="flex items-stretch gap-2">
+                <TextField
+                    id="search-projects"
+                    type="text"
+                    class="flex-1"
+                    placeholder="Search..."
+                    bind:value={searchQuery}
+                />
+                <Button
+                    variant="default"
+                    class="shrink-0 gap-1.5 px-2.5"
+                    onclick={() => (filtersOpen = !filtersOpen)}
+                    title="Filters"
+                    aria-label="Toggle filters"
+                    aria-expanded={filtersOpen}
+                >
+                    <ListFilter size={20} />
+                    {#if activeFilterCount > 0}
+                        <span class="rounded-full bg-ds-accent px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                            {activeFilterCount}
+                        </span>
+                    {/if}
+                </Button>
+            </div>
+
+            <div class="text-sm text-ds-text-secondary">
+                {filteredProjects.length} of {projects.length} projects match
+                {#if filteredProjects.length > visibleProjects.length}
+                    · showing first {visibleProjects.length}, scroll for more
+                {/if}
+            </div>
+
+            {#if filtersOpen}
             <Card class="p-6 space-y-6 backdrop-blur">
                 <div>
-                    <label for="search-projects" class="block text-sm font-medium text-ds-text-secondary mb-2">Search</label>
-                    <div class="flex gap-2">
-                        <TextField
-                            id="search-projects"
-                            type="text"
-                            class="flex-1"
-                            placeholder="Search by project title, user name, email, Slack ID, description, URL, or project ID..."
-                            bind:value={searchQuery}
-                        />
-                        <Select class="w-44 shrink-0" bind:value={searchField}>
-                            <option value="all">All fields</option>
-                            <option value="title">Title</option>
-                            <option value="user">User (name/email)</option>
-                            <option value="slack">Slack ID</option>
-                            <option value="description">Description</option>
-                            <option value="repo">Code URL</option>
-                            <option value="playable">Playable URL</option>
-                            <option value="id">Project ID</option>
-                        </Select>
-                    </div>
+                    <div class="block text-sm font-medium text-ds-text-secondary mb-2">Search in</div>
+                    <Select class="w-52" bind:value={searchField}>
+                        <option value="all">All fields</option>
+                        <option value="title">Title</option>
+                        <option value="user">User (name/email)</option>
+                        <option value="slack">Slack ID</option>
+                        <option value="description">Description</option>
+                        <option value="repo">Code URL</option>
+                        <option value="playable">Playable URL</option>
+                        <option value="id">Project ID</option>
+                    </Select>
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-3">
@@ -619,15 +664,10 @@
                     </div>
                 </div>
 
-                <div class="text-sm text-ds-text-secondary">
-                    {filteredProjects.length} of {projects.length} projects match
-                    {#if filteredProjects.length > visibleProjects.length}
-                        · showing first {visibleProjects.length}, scroll for more
-                    {/if}
-                </div>
             </Card>
+            {/if}
 
-            {#if projectsLoading}
+            {#if projectsLoading || !projectsLoaded}
                 <div class="py-12 text-center text-ds-text-secondary">Loading projects...</div>
             {:else if filteredProjects.length === 0}
                 <div class="py-12 text-center text-ds-text-secondary">No projects match your filters.</div>
@@ -642,9 +682,12 @@
                         >
                             <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                                 <div class="min-w-0">
-                                    <h3 class="text-xl font-semibold">{@render highlighted(project.projectTitle)}</h3>
+                                    <h3 class="text-xl font-semibold">
+                                        {@render highlighted(project.projectTitle)}
+                                        <span class="text-sm font-normal text-ds-text-placeholder">{@render highlighted(`#${project.projectId}`)}</span>
+                                    </h3>
                                     <p class="text-sm text-ds-text-secondary">
-                                        {@render highlighted(fullName(project.user))} ({@render highlighted(project.user.email)})
+                                        {@render highlighted(fullName(project.user))} ({@render highlighted(project.user.email)}){#if project.user.slackUserId}&nbsp;· Slack: {@render highlighted(project.user.slackUserId)}{/if}
                                     </p>
                                     {#if project.user.hackatimeStartDate}
                                         <p class="mt-1 text-xs text-yellow-700 dark:text-yellow-300">
@@ -684,6 +727,17 @@
 
                             {#if project.description}
                                 <p class="text-sm text-ds-text-secondary leading-relaxed line-clamp-2">{@render highlighted(project.description)}</p>
+                            {/if}
+
+                            {#if project.repoUrl || project.playableUrl}
+                                <div class="flex flex-col gap-0.5 text-xs text-ds-text-secondary">
+                                    {#if project.repoUrl}
+                                        <span class="truncate">Code: {@render highlighted(project.repoUrl)}</span>
+                                    {/if}
+                                    {#if project.playableUrl}
+                                        <span class="truncate">Playable: {@render highlighted(project.playableUrl)}</span>
+                                    {/if}
+                                </div>
                             {/if}
 
                             <div class="flex flex-wrap items-center gap-4 text-xs text-ds-text-secondary pt-2 border-t border-ds-border">
