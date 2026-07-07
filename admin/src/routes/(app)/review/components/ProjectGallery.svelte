@@ -4,7 +4,8 @@
 	import { api, type components } from '$lib/api';
 	import { mostUpcomingEventSlug } from '$lib/events';
 	import { timeAgo, waitingFor } from '../utils';
-	import { Skeleton } from '$lib/components';
+	import { Skeleton, Highlight } from '$lib/components';
+	import { matchesScopedQuery } from '$lib/search';
 	import { LayoutGrid, List } from 'lucide-svelte';
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type PastReview = components['schemas']['PastReviewEntry'];
@@ -130,6 +131,18 @@
 	});
 
 	let searchQuery = $state('');
+	// Debounced copy of searchQuery that drives filtering/highlighting, so the
+	// gallery isn't re-rendered on every keystroke.
+	let appliedSearch = $state('');
+	type SearchField = 'all' | 'title' | 'author' | 'slack' | 'event' | 'type' | 'id';
+	let searchField = $state<SearchField>('all');
+
+	$effect(() => {
+		const q = searchQuery;
+		if (q === appliedSearch) return;
+		const timer = setTimeout(() => (appliedSearch = q), 200);
+		return () => clearTimeout(timer);
+	});
 
 	// Persist sort and fraud-filter selections across navigation for the same
 	// reason as the type/event filters above — reviewers shouldn't have to
@@ -271,23 +284,56 @@
 	// triage stragglers separately from cohort-tagged submissions.
 	const NO_EVENT_SENTINEL = '__none__';
 
-	function matchesFilters(
+	// Everything one card exposes to the field-scoped search.
+	type SearchSubject = {
+		title: string;
+		type: string;
+		author: string;
+		slack: string | null;
+		eventSlug: string | null;
+		id: number;
+	};
+
+	function searchSubject(
+		projectId: number,
 		projectTitle: string,
 		projectType: string,
-		authorName: string,
-		authorEventSlug: string | null,
-	): boolean {
-		const matchesType =
-			selectedTypes.size === 0 || selectedTypes.has(projectType);
+		user: { displayName: string | null; slackUserId: string | null; eventSlug: string | null },
+	): SearchSubject {
+		return {
+			title: projectTitle,
+			type: projectType,
+			author: userLabel(user),
+			slack: user.slackUserId,
+			eventSlug: user.eventSlug,
+			id: projectId,
+		};
+	}
+
+	function matchesFilters(s: SearchSubject): boolean {
+		const matchesType = selectedTypes.size === 0 || selectedTypes.has(s.type);
 		const matchesEvent =
 			selectedEvents.size === 0 ||
-			selectedEvents.has(authorEventSlug ?? NO_EVENT_SENTINEL);
-		const q = searchQuery.toLowerCase();
-		const matchesSearch =
-			q === '' ||
-			projectTitle.toLowerCase().includes(q) ||
-			authorName.toLowerCase().includes(q);
-		return matchesType && matchesEvent && matchesSearch;
+			selectedEvents.has(s.eventSlug ?? NO_EVENT_SENTINEL);
+		const eventTitle = s.eventSlug
+			? (events.find((e) => e.slug === s.eventSlug)?.title ?? s.eventSlug)
+			: '';
+		return (
+			matchesType &&
+			matchesEvent &&
+			matchesScopedQuery(
+				{
+					title: s.title,
+					author: s.author,
+					slack: s.slack ?? '',
+					event: eventTitle,
+					type: `${s.type}\n${formatTypeName(s.type)}`,
+					id: `${s.id}\n#${s.id}`,
+				},
+				searchField,
+				appliedSearch,
+			)
+		);
 	}
 
 	function matchesFraudFilter(joeFraudPassed: boolean | null): boolean {
@@ -305,6 +351,12 @@
 
 	function userLabel(u: { displayName: string | null; slackUserId: string | null }): string {
 		return u.displayName ?? (u.slackUserId ? `@${u.slackUserId}` : 'Anonymous');
+	}
+
+	// Slack handle shown (and highlighted) next to the author when the label is
+	// already the display name — otherwise userLabel is the handle itself.
+	function slackSuffix(u: { displayName: string | null; slackUserId: string | null }): string | null {
+		return u.displayName && u.slackUserId ? `@${u.slackUserId}` : null;
 	}
 
 	// Submissions this reviewer has already voted on. Hide them from the
@@ -334,10 +386,12 @@
 					!myReviewedSubmissionIds.has(item.submissionId) &&
 					!isActivelyClaimedByOther(item) &&
 					matchesFilters(
-						item.project.projectTitle,
-						item.project.projectType,
-						userLabel(item.project.user),
-						item.project.user.eventSlug,
+						searchSubject(
+							item.project.projectId,
+							item.project.projectTitle,
+							item.project.projectType,
+							item.project.user,
+						),
 					) &&
 					matchesFraudFilter(item.project.joeFraudPassed) &&
 					matchesTicketFilter(item),
@@ -395,10 +449,7 @@
 					currentReviewerId !== null &&
 					r.reviewerId === String(currentReviewerId) &&
 					matchesFilters(
-						r.projectTitle,
-						r.projectType,
-						userLabel(r.user),
-						r.user.eventSlug,
+						searchSubject(r.projectId, r.projectTitle, r.projectType, r.user),
 					),
 			),
 		),
@@ -408,10 +459,7 @@
 		dedupeByProject(
 			pastReviews.filter((r) =>
 				matchesFilters(
-					r.projectTitle,
-					r.projectType,
-					userLabel(r.user),
-					r.user.eventSlug,
+					searchSubject(r.projectId, r.projectTitle, r.projectType, r.user),
 				),
 			),
 		),
@@ -423,13 +471,10 @@
 	// Dedupe by projectId so a project with multiple silent-rejected
 	// resubmissions only takes one card (latest finalize wins).
 	let filteredFraudRejected = $derived.by(() => {
-		if (searchQuery.trim() === '') return [] as FraudRejected[];
+		if (appliedSearch.trim() === '') return [] as FraudRejected[];
 		const matched = fraudRejected.filter((r) =>
 			matchesFilters(
-				r.projectTitle,
-				r.projectType,
-				userLabel(r.user),
-				r.user.eventSlug,
+				searchSubject(r.projectId, r.projectTitle, r.projectType, r.user),
 			),
 		);
 		const seen = new Set<number>();
@@ -518,12 +563,26 @@
 	</div>
 
 	<div class="flex flex-col gap-3 px-6 py-4 bg-rv-surface border-b border-rv-border shrink-0">
-		<input
-			type="text"
-			class="w-full py-2.5 px-3.5 bg-rv-bg border border-rv-border rounded-lg text-rv-text text-sm font-inherit outline-none transition-all duration-150 placeholder:text-rv-dim focus:border-rv-accent"
-			placeholder="Search by project or author name..."
-			bind:value={searchQuery}
-		/>
+		<div class="flex gap-2">
+			<input
+				type="text"
+				class="flex-1 py-2.5 px-3.5 bg-rv-bg border border-rv-border rounded-lg text-rv-text text-sm font-inherit outline-none transition-all duration-150 placeholder:text-rv-dim focus:border-rv-accent"
+				placeholder="Search by project, author, Slack ID, event, type, or ID..."
+				bind:value={searchQuery}
+			/>
+			<select
+				bind:value={searchField}
+				class="shrink-0 cursor-pointer rounded-lg border border-rv-border bg-rv-bg px-2.5 font-inherit text-sm text-rv-text outline-none transition-all duration-150 focus:border-rv-accent"
+			>
+				<option value="all">All fields</option>
+				<option value="title">Title</option>
+				<option value="author">Author</option>
+				<option value="slack">Slack ID</option>
+				<option value="event">Event</option>
+				<option value="type">Type</option>
+				<option value="id">Project ID</option>
+			</select>
+		</div>
 
 		<div class="flex flex-wrap gap-2 items-center">
 			{#each PROJECT_TYPES as type}
@@ -686,9 +745,13 @@
 							class="flex flex-col gap-1.5 p-5 bg-rv-surface border rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit color-inherit hover:bg-rv-surface2 {activeOtherClaim ? 'border-yellow-500/50 hover:border-yellow-500' : 'border-rv-border hover:border-rv-accent'}"
 							title={activeOtherClaim ? `Currently being reviewed by ${activeOtherClaim.firstName} ${activeOtherClaim.lastName}` : undefined}
 						>
-							<p class="text-[15px] font-semibold text-rv-text m-0">{item.project.projectTitle}</p>
+							<p class="text-[15px] font-semibold text-rv-text m-0">
+								<Highlight text={item.project.projectTitle} query={appliedSearch} />
+								<span class="text-[11px] font-normal text-rv-dim"><Highlight text={`#${item.project.projectId}`} query={appliedSearch} /></span>
+							</p>
 							<p class="text-[13px] text-rv-dim m-0">
-								{userLabel(item.project.user)}
+								<Highlight text={userLabel(item.project.user)} query={appliedSearch} />{#if slackSuffix(item.project.user)}
+									· <Highlight text={slackSuffix(item.project.user)!} query={appliedSearch} />{/if}
 							</p>
 							<div class="flex items-center gap-1.5 flex-wrap mt-1">
 								<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
@@ -762,7 +825,8 @@
 								>
 									<div class="flex flex-col min-w-0">
 										<div class="font-semibold text-[14px] text-rv-text truncate">
-											{item.project.projectTitle}
+											<Highlight text={item.project.projectTitle} query={appliedSearch} />
+											<span class="text-[11px] font-normal text-rv-dim"><Highlight text={`#${item.project.projectId}`} query={appliedSearch} /></span>
 										</div>
 										<div class="flex items-center gap-1.5 mt-1 text-[11px] font-normal text-rv-dim">
 											{#if item.project.playableUrl}
@@ -806,12 +870,13 @@
 										</div>
 									</div>
 									<div class="text-[13px] text-rv-dim truncate">
-										{userLabel(item.project.user)}
+										<Highlight text={userLabel(item.project.user)} query={appliedSearch} />{#if slackSuffix(item.project.user)}
+											· <Highlight text={slackSuffix(item.project.user)!} query={appliedSearch} />{/if}
 									</div>
 									<div class="truncate">
 										{#if item.project.user.eventSlug}
 											<span class="inline-block py-0.5 px-2 bg-rv-surface2 text-rv-dim rounded text-[11px] border border-rv-border truncate max-w-full">
-												{events.find(e => e.slug === item.project.user.eventSlug)?.title || item.project.user.eventSlug}
+												<Highlight text={events.find(e => e.slug === item.project.user.eventSlug)?.title || item.project.user.eventSlug} query={appliedSearch} />
 											</span>
 										{:else}
 											<span class="text-[11px] text-rv-dim/50">—</span>
@@ -819,7 +884,7 @@
 									</div>
 									<div class="text-[12px] text-rv-text truncate">
 										<span class="inline-block py-0.5 px-2 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px] truncate max-w-full">
-											{formatTypeName(item.project.projectType)}
+											<Highlight text={formatTypeName(item.project.projectType)} query={appliedSearch} />
 										</span>
 									</div>
 									<div class="truncate flex items-center">
@@ -872,7 +937,7 @@
 			{/if}
 		</section>
 
-		{#if searchQuery.trim() !== '' && filteredFraudRejected.length > 0}
+		{#if appliedSearch.trim() !== '' && filteredFraudRejected.length > 0}
 			<hr class="border-none border-t border-rv-border mx-6 my-4" />
 
 			<section class="px-6 py-2">
@@ -886,8 +951,14 @@
 							href="{base}/review/{item.projectId}"
 							class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-red-500/40 rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit hover:border-red-500 hover:bg-rv-surface2"
 						>
-							<p class="text-[15px] font-semibold text-rv-text m-0">{item.projectTitle}</p>
-							<p class="text-[13px] text-rv-dim m-0">{userLabel(item.user)}</p>
+							<p class="text-[15px] font-semibold text-rv-text m-0">
+								<Highlight text={item.projectTitle} query={appliedSearch} />
+								<span class="text-[11px] font-normal text-rv-dim"><Highlight text={`#${item.projectId}`} query={appliedSearch} /></span>
+							</p>
+							<p class="text-[13px] text-rv-dim m-0">
+								<Highlight text={userLabel(item.user)} query={appliedSearch} />{#if slackSuffix(item.user)}
+									· <Highlight text={slackSuffix(item.user)!} query={appliedSearch} />{/if}
+							</p>
 							<div class="flex items-center gap-1.5 flex-wrap mt-1">
 								<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.projectType)}</span>
 								<span
@@ -921,9 +992,13 @@
 							href="{base}/review/{review.projectId}"
 							class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit hover:border-rv-accent hover:bg-rv-surface2"
 						>
-							<p class="text-[15px] font-semibold text-rv-text m-0">{review.projectTitle}</p>
+							<p class="text-[15px] font-semibold text-rv-text m-0">
+								<Highlight text={review.projectTitle} query={appliedSearch} />
+								<span class="text-[11px] font-normal text-rv-dim"><Highlight text={`#${review.projectId}`} query={appliedSearch} /></span>
+							</p>
 							<p class="text-[13px] text-rv-dim m-0">
-								{userLabel(review.user)}
+								<Highlight text={userLabel(review.user)} query={appliedSearch} />{#if slackSuffix(review.user)}
+									· <Highlight text={slackSuffix(review.user)!} query={appliedSearch} />{/if}
 							</p>
 							<div class="flex items-center gap-1.5 flex-wrap mt-1">
 								{#if review.reviewPassed !== null}
@@ -977,9 +1052,13 @@
 							href="{base}/review/{review.projectId}"
 							class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-rv-border rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit hover:border-rv-accent hover:bg-rv-surface2"
 						>
-							<p class="text-[15px] font-semibold text-rv-text m-0">{review.projectTitle}</p>
+							<p class="text-[15px] font-semibold text-rv-text m-0">
+								<Highlight text={review.projectTitle} query={appliedSearch} />
+								<span class="text-[11px] font-normal text-rv-dim"><Highlight text={`#${review.projectId}`} query={appliedSearch} /></span>
+							</p>
 							<p class="text-[13px] text-rv-dim m-0">
-								{userLabel(review.user)}
+								<Highlight text={userLabel(review.user)} query={appliedSearch} />{#if slackSuffix(review.user)}
+									· <Highlight text={slackSuffix(review.user)!} query={appliedSearch} />{/if}
 							</p>
 							<div class="flex items-center gap-1.5 flex-wrap mt-1">
 								{#if review.reviewPassed !== null}
