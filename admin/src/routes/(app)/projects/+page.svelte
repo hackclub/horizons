@@ -36,6 +36,10 @@
     let projectsLoading = $state(false);
 
     let searchQuery = $state('');
+    // Debounced copy of searchQuery that actually drives filtering. Filtering
+    // re-renders the whole project list, so doing it per keystroke makes the
+    // input feel frozen on large datasets.
+    let appliedSearch = $state('');
     let selectedStatuses = $state<Set<string>>(new Set(['pending']));
     let selectedProjectTypes = $state<Set<string>>(new Set());
     let sortField = $state<SortField>('createdAt');
@@ -184,17 +188,38 @@
     }
 
     // --- Filter / sort ---
+    $effect(() => {
+        const q = searchQuery;
+        if (q === appliedSearch) return;
+        const timer = setTimeout(() => (appliedSearch = q), 200);
+        return () => clearTimeout(timer);
+    });
+
+    // Lowercased per-project search text, built once per data load instead of
+    // lowercasing five fields per project on every filter pass. Fields are
+    // newline-joined so a query can't accidentally match across field
+    // boundaries.
+    const searchHaystacks = $derived(
+        new Map(
+            projects.map((p) => [
+                p.projectId,
+                [
+                    p.projectTitle,
+                    fullName(p.user),
+                    p.user.email,
+                    p.description ?? '',
+                    p.repoUrl ?? '',
+                ]
+                    .join('\n')
+                    .toLowerCase(),
+            ]),
+        ),
+    );
+
     function matchesSearch(project: AdminProject, query: string): boolean {
-        if (!query.trim()) return true;
-        const q = query.toLowerCase();
-        const name = fullName(project.user).toLowerCase();
-        return (
-            project.projectTitle.toLowerCase().includes(q) ||
-            name.includes(q) ||
-            project.user.email.toLowerCase().includes(q) ||
-            (project.description?.toLowerCase().includes(q) ?? false) ||
-            (project.repoUrl?.toLowerCase().includes(q) ?? false)
-        );
+        const q = query.trim().toLowerCase();
+        if (!q) return true;
+        return searchHaystacks.get(project.projectId)?.includes(q) ?? false;
     }
 
     function matchesStatus(project: AdminProject): boolean {
@@ -207,10 +232,11 @@
         return selectedProjectTypes.has(project.projectType);
     }
 
+    const priorityUserIds = $derived(new Set(priorityUsers.map((u) => u.userId)));
+
     function matchesPriority(project: AdminProject): boolean {
         if (!priorityFilterEnabled || !priorityUsersLoaded) return true;
-        const ids = new Set(priorityUsers.map((u) => u.userId));
-        return ids.has(project.user.userId);
+        return priorityUserIds.has(project.user.userId);
     }
 
     function matchesFraud(project: AdminProject): boolean {
@@ -228,7 +254,7 @@
         // the "Show deleted" checkbox.
         if (!project.deletedAt) return true;
         if (showDeletedProjects) return true;
-        return searchQuery.trim().length > 0;
+        return appliedSearch.trim().length > 0;
     }
 
     function matchesSubmissionCount(project: AdminProject): boolean {
@@ -277,7 +303,7 @@
         projects
             .filter(
                 (p) =>
-                    matchesSearch(p, searchQuery) &&
+                    matchesSearch(p, appliedSearch) &&
                     matchesStatus(p) &&
                     matchesProjectType(p) &&
                     matchesPriority(p) &&
@@ -289,6 +315,36 @@
             )
             .sort(compareProjects),
     );
+
+    // Rendering every match as a full card is what makes the page janky at
+    // scale — cap the DOM and grow it on demand. Resets whenever the filtered
+    // set changes.
+    const RENDER_CHUNK = 100;
+    let renderLimit = $state(RENDER_CHUNK);
+    const visibleProjects = $derived(filteredProjects.slice(0, renderLimit));
+    $effect(() => {
+        void filteredProjects;
+        renderLimit = RENDER_CHUNK;
+    });
+
+    // Grows the rendered window when the sentinel below the list scrolls into
+    // view (rootMargin starts the next chunk before the user hits the bottom).
+    function infiniteScroll(node: HTMLElement) {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    renderLimit += RENDER_CHUNK;
+                }
+            },
+            { rootMargin: '600px' },
+        );
+        observer.observe(node);
+        return {
+            destroy() {
+                observer.disconnect();
+            },
+        };
+    }
 
     function toggleStatus(status: string) {
         const next = new Set(selectedStatuses);
@@ -506,7 +562,10 @@
                 </div>
 
                 <div class="text-sm text-ds-text-secondary">
-                    Showing {filteredProjects.length} of {projects.length} projects
+                    {filteredProjects.length} of {projects.length} projects match
+                    {#if filteredProjects.length > visibleProjects.length}
+                        · showing first {visibleProjects.length}, scroll for more
+                    {/if}
                 </div>
             </Card>
 
@@ -516,7 +575,7 @@
                 <div class="py-12 text-center text-ds-text-secondary">No projects match your filters.</div>
             {:else}
                 <div class="space-y-3">
-                    {#each filteredProjects as project (project.projectId)}
+                    {#each visibleProjects as project (project.projectId)}
                         {@const status = projectStatus(project)}
                         {@const latest = latestSubmission(project)}
                         <a
@@ -581,6 +640,11 @@
                         </a>
                     {/each}
                 </div>
+                {#if filteredProjects.length > visibleProjects.length}
+                    <div use:infiniteScroll class="py-4 text-center text-sm text-ds-text-secondary">
+                        Loading more… ({filteredProjects.length - visibleProjects.length} remaining)
+                    </div>
+                {/if}
             {/if}
         </section>
     </div>
