@@ -4,8 +4,13 @@
 	import { api, type components } from '$lib/api';
 	import { Button } from '$lib/components';
 	import { theme } from '$lib/themeStore';
-	import * as echarts from 'echarts';
+	import type * as EChartsModule from 'echarts';
 	import StatCard from '../review/stats/StatCard.svelte';
+
+	// echarts is a ~1MB chunk; loading it dynamically after mount lets the page
+	// shell paint immediately instead of blocking navigation on the chart bundle.
+	let echarts: typeof EChartsModule;
+	let echartsReady: Promise<unknown> | undefined;
 
 	let worldMapRegistered = false;
 
@@ -13,7 +18,7 @@
 	type ReviewStats = components['schemas']['ReviewStatsResponse'];
 	type UserHoursDistribution = components['schemas']['UserHoursDistributionResponse'];
 	type DataPoint = { date: string; value: number };
-	type EChart = echarts.ECharts;
+	type EChart = EChartsModule.ECharts;
 
 	let stats = $state<Stats | null>(null);
 	let reviewStats = $state<ReviewStats | null>(null);
@@ -103,6 +108,7 @@
 	}
 
 	onMount(async () => {
+		echartsReady = import('echarts').then((mod) => (echarts = mod));
 		const { data: me } = await api.GET('/api/user/auth/me');
 		userRole = me?.role ?? null;
 		loadStats();
@@ -194,7 +200,7 @@
 				userHoursDist = reviewStats?.userHoursDistribution ?? null;
 			}
 			loading = false;
-			await tick();
+			await Promise.all([tick(), echartsReady]);
 			renderAll();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load stats';
@@ -322,7 +328,7 @@
 	}
 
 	function initChart(el: HTMLDivElement | null): EChart | null {
-		if (!el) return null;
+		if (!el || !echarts) return null;
 		const existing = echarts.getInstanceByDom(el);
 		if (existing) existing.dispose();
 		const chart = echarts.init(el, undefined, { renderer: 'canvas' });
@@ -331,7 +337,7 @@
 	}
 
 	function renderAll() {
-		if (!stats) return;
+		if (!stats || !echarts) return;
 		// Dispose old charts
 		charts.forEach((c) => c.dispose());
 		charts = [];
