@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
-	import { Skeleton } from '$lib/components';
+	import { Skeleton, Highlight } from '$lib/components';
+	import { matchesScopedQuery } from '$lib/search';
 	import { mostUpcomingEventSlug } from '$lib/events';
 	import { LayoutGrid, List, ExternalLink } from 'lucide-svelte';
 
@@ -103,6 +104,11 @@
 		loadEnum(VIEW_MODE_STORAGE_KEY, ['grid', 'list'] as const, 'grid'),
 	);
 	let searchQuery = $state('');
+	// Debounced copy of searchQuery that drives filtering/highlighting, so the
+	// grid isn't re-rendered on every keystroke.
+	let appliedSearch = $state('');
+	type SearchField = 'all' | 'title' | 'author' | 'slack' | 'event' | 'type' | 'id';
+	let searchField = $state<SearchField>('all');
 	let sortOrder = $state<SortOrder>(
 		loadEnum(SORT_ORDER_STORAGE_KEY, SORT_ORDERS, 'longest-wait'),
 	);
@@ -198,6 +204,13 @@
 		return name || (u.slackUserId ? `@${u.slackUserId}` : 'Anonymous');
 	}
 
+	// Slack handle shown (and highlighted) next to the author when the label is
+	// already the real name — otherwise userLabel is the handle itself.
+	function slackSuffix(u: FraudGalleryItem['user']): string | null {
+		const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+		return name && u.slackUserId ? `@${u.slackUserId}` : null;
+	}
+
 	function formatTypeName(type: string): string {
 		return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 	}
@@ -206,16 +219,34 @@
 		return `${JOE_BASE_URL}/${joeProjectId}`;
 	}
 
+	$effect(() => {
+		const q = searchQuery;
+		if (q === appliedSearch) return;
+		const timer = setTimeout(() => (appliedSearch = q), 200);
+		return () => clearTimeout(timer);
+	});
+
+	// Scope key → searchable text for one gallery item; 'id' accepts the bare
+	// number, the "#123" form, and the Joe project id.
+	function searchFields(item: FraudGalleryItem): Record<string, string> {
+		return {
+			title: item.projectTitle,
+			author: userLabel(item.user),
+			slack: item.user.slackUserId ?? '',
+			event: item.user.eventTitle ?? '',
+			type: `${item.projectType}\n${formatTypeName(item.projectType)}`,
+			id: `${item.projectId}\n#${item.projectId}\n${item.joeProjectId ?? ''}`,
+		};
+	}
+
 	function matchesFilters(item: FraudGalleryItem): boolean {
 		const matchesEvent =
 			selectedEvents.size === 0 ||
 			selectedEvents.has(item.user.eventSlug ?? NO_EVENT_SENTINEL);
-		const q = searchQuery.toLowerCase().trim();
-		const matchesSearch =
-			q === '' ||
-			item.projectTitle.toLowerCase().includes(q) ||
-			userLabel(item.user).toLowerCase().includes(q);
-		return matchesEvent && matchesSearch;
+		return (
+			matchesEvent &&
+			matchesScopedQuery(searchFields(item), searchField, appliedSearch)
+		);
 	}
 
 	function matchesFraudFilter(joeFraudPassed: boolean | null): boolean {
@@ -352,12 +383,26 @@
 	</div>
 
 	<div class="flex shrink-0 flex-col gap-3 border-b border-rv-border bg-rv-surface px-6 py-4">
-		<input
-			type="text"
-			class="w-full rounded-lg border border-rv-border bg-rv-bg px-3.5 py-2.5 font-inherit text-sm text-rv-text outline-none transition-all duration-150 placeholder:text-rv-dim focus:border-rv-accent"
-			placeholder="Search by project or author name..."
-			bind:value={searchQuery}
-		/>
+		<div class="flex gap-2">
+			<input
+				type="text"
+				class="flex-1 rounded-lg border border-rv-border bg-rv-bg px-3.5 py-2.5 font-inherit text-sm text-rv-text outline-none transition-all duration-150 placeholder:text-rv-dim focus:border-rv-accent"
+				placeholder="Search by project, author, Slack ID, event, type, or ID..."
+				bind:value={searchQuery}
+			/>
+			<select
+				bind:value={searchField}
+				class="shrink-0 cursor-pointer rounded-lg border border-rv-border bg-rv-bg px-2.5 font-inherit text-sm text-rv-text outline-none transition-all duration-150 focus:border-rv-accent"
+			>
+				<option value="all">All fields</option>
+				<option value="title">Title</option>
+				<option value="author">Author</option>
+				<option value="slack">Slack ID</option>
+				<option value="event">Event</option>
+				<option value="type">Type</option>
+				<option value="id">Project / Joe ID</option>
+			</select>
+		</div>
 
 		{#if events.length > 0}
 			<div class="flex flex-wrap items-center gap-2">
@@ -492,16 +537,27 @@
 								title={href ? 'Open in Joe fraud review' : 'No Joe record — not yet pushed to fraud review'}
 							>
 								<div class="flex items-start justify-between gap-2">
-									<p class="m-0 text-[15px] font-semibold text-rv-text">{item.projectTitle}</p>
+									<p class="m-0 text-[15px] font-semibold text-rv-text">
+										<Highlight text={item.projectTitle} query={appliedSearch} />
+										<span class="text-[11px] font-normal text-rv-dim"><Highlight text={`#${item.projectId}`} query={appliedSearch} /></span>
+									</p>
 									{#if href}
 										<ExternalLink class="mt-0.5 h-3.5 w-3.5 shrink-0 text-rv-dim" />
 									{/if}
 								</div>
-								<p class="m-0 text-[13px] text-rv-dim">{userLabel(item.user)}</p>
+								<p class="m-0 text-[13px] text-rv-dim">
+									<Highlight text={userLabel(item.user)} query={appliedSearch} />{#if slackSuffix(item.user)}
+										· <Highlight text={slackSuffix(item.user)!} query={appliedSearch} />{/if}
+								</p>
 								<div class="mt-1 flex flex-wrap items-center gap-1.5">
 									<span class="inline-block rounded-xl bg-rv-tag-bg px-2.5 py-0.75 text-[11px] text-rv-accent">
-										{formatTypeName(item.projectType)}
+										<Highlight text={formatTypeName(item.projectType)} query={appliedSearch} />
 									</span>
+									{#if item.user.eventTitle}
+										<span class="inline-block max-w-full truncate rounded border border-rv-border bg-rv-surface2 px-2 py-0.5 text-[11px] text-rv-dim">
+											<Highlight text={item.user.eventTitle} query={appliedSearch} />
+										</span>
+									{/if}
 									{#if item.nowHackatimeHours != null}
 										<span class="inline-flex items-center gap-1 rounded-xl border border-rv-border bg-rv-tag-bg px-2 py-0.5 text-[11px] text-rv-dim">
 											{item.nowHackatimeHours.toFixed(1)}h
@@ -572,16 +628,22 @@
 									title={href ? 'Open in Joe fraud review' : 'No Joe record — not yet pushed to fraud review'}
 								>
 									<div class="flex min-w-0 items-center gap-1.5">
-										<span class="truncate text-[14px] font-semibold text-rv-text">{item.projectTitle}</span>
+										<span class="truncate text-[14px] font-semibold text-rv-text">
+											<Highlight text={item.projectTitle} query={appliedSearch} />
+											<span class="text-[11px] font-normal text-rv-dim"><Highlight text={`#${item.projectId}`} query={appliedSearch} /></span>
+										</span>
 										{#if href}
 											<ExternalLink class="h-3 w-3 shrink-0 text-rv-dim" />
 										{/if}
 									</div>
-									<div class="truncate text-[13px] text-rv-dim">{userLabel(item.user)}</div>
+									<div class="truncate text-[13px] text-rv-dim">
+										<Highlight text={userLabel(item.user)} query={appliedSearch} />{#if slackSuffix(item.user)}
+											· <Highlight text={slackSuffix(item.user)!} query={appliedSearch} />{/if}
+									</div>
 									<div class="truncate">
 										{#if item.user.eventTitle}
 											<span class="inline-block max-w-full truncate rounded border border-rv-border bg-rv-surface2 px-2 py-0.5 text-[11px] text-rv-dim">
-												{item.user.eventTitle}
+												<Highlight text={item.user.eventTitle} query={appliedSearch} />
 											</span>
 										{:else}
 											<span class="text-[11px] text-rv-dim/50">—</span>
@@ -589,7 +651,7 @@
 									</div>
 									<div class="truncate">
 										<span class="inline-block max-w-full truncate rounded-xl bg-rv-tag-bg px-2 py-0.5 text-[11px] text-rv-accent">
-											{formatTypeName(item.projectType)}
+											<Highlight text={formatTypeName(item.projectType)} query={appliedSearch} />
 										</span>
 									</div>
 									<div class="truncate text-[12px] text-rv-text">
