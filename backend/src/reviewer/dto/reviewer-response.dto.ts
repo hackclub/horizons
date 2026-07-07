@@ -172,6 +172,9 @@ class SubmissionProjectResponse {
   @ApiProperty({ type: Number, nullable: true })
   joeTrustScore: number | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  joeJustification: string | null;
+
   @ApiProperty({ type: ScopedUserResponse })
   user: ScopedUserResponse;
 }
