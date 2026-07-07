@@ -833,17 +833,17 @@
 					const idx = params[0].dataIndex;
 					const d = data[idx];
 					const pct = (n: number) => (d.signedUp ? ((n / d.signedUp) * 100).toFixed(1) : '0.0');
-					const canBuy = canBuyOf(d);
-					const engaged = engagedOf(d);
-					const couldBuyLine = includePending
-						? `${couldBuyLabel}: ${d.couldBuyTicket} (${pct(d.couldBuyTicket)}%)<br/>`
-						: '';
-					return `<b>${d.title}</b><br/>`
-						+ `Signed up: ${d.signedUp} (100%)<br/>`
-						+ `${engagedLabel}: ${engaged} (${pct(engaged)}%)<br/>`
-						+ couldBuyLine
-						+ `${canBuyLabel}: ${canBuy} (${pct(canBuy)}%)<br/>`
-						+ `Bought Ticket: ${d.boughtTicket} (${pct(d.boughtTicket)}%)`;
+					// Report each drawn segment's own (subtracted) value so the
+					// numbers match the stacked bar widths, not the cumulative
+					// nested totals. Outermost segment first, reading top-down
+					// like the funnel.
+					let out = `<b>${d.title}</b><br/>`
+						+ `Signed up: ${d.signedUp} (100%)<br/>`;
+					for (const p of [...params].reverse()) {
+						const v = p.value ?? 0;
+						out += `${p.marker}${p.seriesName}: ${v} (${pct(v)}%)<br/>`;
+					}
+					return out;
 				},
 			},
 			series: [
