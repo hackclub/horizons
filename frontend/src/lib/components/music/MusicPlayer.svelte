@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { get } from 'svelte/store';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -28,7 +28,11 @@
 	});
 
 	const hasTracks = tracks.length > 0;
-	const track = $derived(tracks[index] ?? null);
+	// Play order into `tracks`. Starts as the identity so SSR and the initial
+	// client render agree on the first <audio src> (no hydration mismatch), then
+	// gets shuffled on mount so a random track leads off each load.
+	let order = $state<number[]>(tracks.map((_, i) => i));
+	const track = $derived(tracks[order[index]] ?? null);
 
 	// The panel behaves like a "now playing" toast: it slides in when a track
 	// starts (or the next one begins) and slides back out after 2s of no
@@ -58,6 +62,15 @@
 	// muted autoplay is blocked (in which case the `play` event never fires).
 	onMount(() => {
 		if (hasTracks) {
+			// Fisher–Yates shuffle so playback starts on a random track and
+			// traverses a fresh random order each load.
+			const shuffled = tracks.map((_, i) => i);
+			for (let i = shuffled.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+			}
+			order = shuffled;
+			index = 0;
 			playerOpen.set(true);
 			scheduleHide(ANNOUNCE_MS);
 		}
@@ -86,19 +99,72 @@
 		if (!interacting) scheduleHide(ANNOUNCE_MS);
 	}
 
+	// Fade the element's actual volume in/out around play/pause so audio eases
+	// rather than cutting. This drives `audioEl.volume` directly (no bind:volume)
+	// so it never disturbs the persisted `volume` pref / slider position.
+	const FADE_MS = 450;
+	let fadeRAF: number | null = null;
+
+	function cancelFade() {
+		if (fadeRAF !== null) {
+			cancelAnimationFrame(fadeRAF);
+			fadeRAF = null;
+		}
+	}
+
+	function fadeVolume(to: number, ms: number, onDone?: () => void) {
+		const el = audioEl;
+		if (!el) return;
+		cancelFade();
+		const from = el.volume;
+		if (ms <= 0 || Math.abs(from - to) < 0.001) {
+			el.volume = to;
+			onDone?.();
+			return;
+		}
+		let startTs: number | null = null;
+		const step = (ts: number) => {
+			if (startTs === null) startTs = ts;
+			const t = Math.min(1, (ts - startTs) / ms);
+			el.volume = from + (to - from) * t;
+			if (t < 1) {
+				fadeRAF = requestAnimationFrame(step);
+			} else {
+				fadeRAF = null;
+				onDone?.();
+			}
+		};
+		fadeRAF = requestAnimationFrame(step);
+	}
+	onDestroy(cancelFade);
+
 	// Drive play/pause from intent + current track. Re-runs when the track url
 	// changes (next/prev) so a new src keeps playing without a manual play call.
+	// Reads `volume` untracked so slider drags don't retrigger a play/fade cycle.
 	$effect(() => {
 		const el = audioEl;
 		const url = track?.url;
+		const wantPlay = playing;
 		if (!el || !url) return;
-		if (playing) {
-			el.play().catch(() => {
-				playing = false;
-			});
+		if (wantPlay) {
+			el.play()
+				.then(() => fadeVolume(untrack(() => volume), FADE_MS))
+				.catch(() => {
+					playing = false;
+				});
 		} else {
-			el.pause();
+			fadeVolume(0, FADE_MS, () => el.pause());
 		}
+	});
+
+	// Follow live slider changes while playing (unless a fade owns the volume).
+	$effect(() => {
+		const el = audioEl;
+		const v = volume;
+		if (!el) return;
+		untrack(() => {
+			if (playing && fadeRAF === null) el.volume = v;
+		});
 	});
 
 	function togglePlay() {
@@ -108,7 +174,7 @@
 
 	function next() {
 		if (!hasTracks) return;
-		index = (index + 1) % tracks.length;
+		index = (index + 1) % order.length;
 	}
 
 	function prev() {
@@ -119,11 +185,11 @@
 			audioEl.currentTime = 0;
 			return;
 		}
-		index = (index - 1 + tracks.length) % tracks.length;
+		index = (index - 1 + order.length) % order.length;
 	}
 
 	function onEnded() {
-		if (hasTracks) index = (index + 1) % tracks.length;
+		if (hasTracks) index = (index + 1) % order.length;
 	}
 
 	function toggleMute() {
@@ -148,7 +214,6 @@
 <audio
 	bind:this={audioEl}
 	src={track?.url}
-	bind:volume
 	bind:muted
 	bind:currentTime
 	bind:duration
