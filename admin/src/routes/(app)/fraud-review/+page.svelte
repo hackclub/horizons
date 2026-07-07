@@ -27,19 +27,14 @@
 	const FRAUD_FILTER_STORAGE_KEY = 'horizons-fraud-review-fraud-filter';
 	const REVIEW_FILTER_STORAGE_KEY = 'horizons-fraud-review-review-filter';
 	const TICKET_FILTER_STORAGE_KEY = 'horizons-fraud-review-ticket-filter';
+	const PRIORITY_QUEUE_FILTER_STORAGE_KEY = 'horizons-fraud-review-priority-queue-filter';
 
-	type SortOrder =
-		| 'longest-wait'
-		| 'shortest-wait'
-		| 'most-hours'
-		| 'least-hours'
-		| 'priority';
+	type SortOrder = 'longest-wait' | 'shortest-wait' | 'most-hours' | 'least-hours';
 	const SORT_ORDERS: readonly SortOrder[] = [
 		'longest-wait',
 		'shortest-wait',
 		'most-hours',
 		'least-hours',
-		'priority',
 	];
 	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
 	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
@@ -135,6 +130,10 @@
 	let ticketFilter = $state<TicketFilter>(
 		loadEnum(TICKET_FILTER_STORAGE_KEY, TICKET_FILTERS, 'all'),
 	);
+	// When enabled, only show projects present in the priority-review queue.
+	let priorityQueueFilter = $state<boolean>(
+		loadEnum(PRIORITY_QUEUE_FILTER_STORAGE_KEY, ['true', 'false'] as const, 'false') === 'true',
+	);
 
 	function persist(key: string, value: string) {
 		if (typeof sessionStorage === 'undefined') return;
@@ -156,6 +155,7 @@
 	$effect(() => persist(FRAUD_FILTER_STORAGE_KEY, fraudFilter));
 	$effect(() => persist(REVIEW_FILTER_STORAGE_KEY, JSON.stringify([...reviewFilter])));
 	$effect(() => persist(TICKET_FILTER_STORAGE_KEY, ticketFilter));
+	$effect(() => persist(PRIORITY_QUEUE_FILTER_STORAGE_KEY, String(priorityQueueFilter)));
 
 	let items = $state<FraudGalleryItem[]>([]);
 	let events = $state<EventResponse[]>([]);
@@ -306,20 +306,10 @@
 					matchesFilters(item) &&
 					matchesFraudFilter(item.joeFraudPassed) &&
 					matchesReviewFilter(item) &&
-					matchesTicketFilter(item),
+					matchesTicketFilter(item) &&
+					(!priorityQueueFilter || priorityQueue.has(item.projectId)),
 			)
 			.sort((a, b) => {
-				if (sortOrder === 'priority') {
-					// Priority-queue projects sort to the top, most-recently-decided
-					// first; everything not in the queue (-1) sinks below them.
-					const ra = priorityQueue.has(a.projectId)
-						? (priorityQueue.get(a.projectId)!.decidedAt ?? 0)
-						: -1;
-					const rb = priorityQueue.has(b.projectId)
-						? (priorityQueue.get(b.projectId)!.decidedAt ?? 0)
-						: -1;
-					return rb - ra;
-				}
 				if (sortOrder === 'most-hours' || sortOrder === 'least-hours') {
 					const aH = a.nowHackatimeHours;
 					const bH = b.nowHackatimeHours;
@@ -504,10 +494,12 @@
 						{label}
 					</button>
 				{/each}
+
+				<span class="ml-3 text-[11px] text-rv-dim">Priority</span>
 				<button
-					class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {sortOrder === 'priority' ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
-					onclick={() => (sortOrder = 'priority')}
-					title="Show priority-review requests first"
+					class="cursor-pointer rounded-[20px] border px-3.5 py-1.5 font-inherit text-[12px] transition-all duration-150 {priorityQueueFilter ? 'border-rv-accent bg-rv-tag-bg text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (priorityQueueFilter = !priorityQueueFilter)}
+					title="Show only projects in the priority-review queue"
 				>
 					⚡ Priority queue{priorityQueue.size > 0 ? ` (${priorityQueue.size})` : ''}
 				</button>
@@ -628,12 +620,10 @@
 								</div>
 								{#if priorityQueue.has(item.projectId)}
 									{@const pq = priorityQueue.get(item.projectId)!}
-									<p
-										class="mt-0.5 text-[12px] leading-snug text-amber-600 line-clamp-2 dark:text-amber-400"
-										title={pq.decidedBy ? `Priority approved by ${pq.decidedBy}: ${pq.reason}` : pq.reason}
-									>
-										⚡ {pq.reason}
-									</p>
+									<div class="mt-0.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[12px] leading-snug text-amber-700 dark:text-amber-300">
+										<span class="font-semibold">⚡ Priority{#if pq.decidedBy} · {pq.decidedBy}{/if}</span>
+										{#if pq.reason}<p class="mt-0.5 whitespace-pre-line wrap-break-word">{pq.reason}</p>{/if}
+									</div>
 								{/if}
 							</svelte:element>
 						{:else}

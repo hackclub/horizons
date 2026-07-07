@@ -153,15 +153,13 @@
 		| 'shortest-wait'
 		| 'most-hours'
 		| 'least-hours'
-		| 'random'
-		| 'priority';
+		| 'random';
 	const SORT_ORDERS: readonly SortOrder[] = [
 		'longest-wait',
 		'shortest-wait',
 		'most-hours',
 		'least-hours',
 		'random',
-		'priority',
 	];
 	type FraudFilter = 'all' | 'reviewed' | 'unreviewed';
 	const FRAUD_FILTERS: readonly FraudFilter[] = ['all', 'reviewed', 'unreviewed'];
@@ -179,6 +177,7 @@
 	const SORT_ORDER_STORAGE_KEY = 'horizons-review-gallery-sort-order';
 	const FRAUD_FILTER_STORAGE_KEY = 'horizons-review-gallery-fraud-filter';
 	const TICKET_FILTER_STORAGE_KEY = 'horizons-review-gallery-ticket-filter';
+	const PRIORITY_QUEUE_FILTER_STORAGE_KEY = 'horizons-review-gallery-priority-queue-filter';
 
 	function loadSortOrderFromStorage(): SortOrder {
 		// Default to longest wait so reviewers triage the most-stale submissions first.
@@ -220,9 +219,20 @@
 		return 'all';
 	}
 
+	function loadPriorityQueueFilterFromStorage(): boolean {
+		if (typeof sessionStorage === 'undefined') return false;
+		try {
+			return sessionStorage.getItem(PRIORITY_QUEUE_FILTER_STORAGE_KEY) === 'true';
+		} catch {
+			return false;
+		}
+	}
+
 	let sortOrder = $state<SortOrder>(loadSortOrderFromStorage());
 	let fraudFilter = $state<FraudFilter>(loadFraudFilterFromStorage());
 	let ticketFilter = $state<TicketFilter>(loadTicketFilterFromStorage());
+	// When enabled, only show projects present in the priority-review queue.
+	let priorityQueueFilter = $state<boolean>(loadPriorityQueueFilterFromStorage());
 
 	// Stable random rank per submission so the "random" sort doesn't reshuffle
 	// on every keystroke/filter change (the comparator runs on each derived
@@ -266,6 +276,15 @@
 		if (typeof sessionStorage === 'undefined') return;
 		try {
 			sessionStorage.setItem(TICKET_FILTER_STORAGE_KEY, ticketFilter);
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+	});
+
+	$effect(() => {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(PRIORITY_QUEUE_FILTER_STORAGE_KEY, String(priorityQueueFilter));
 		} catch {
 			// see TYPE_FILTER_STORAGE_KEY effect for rationale
 		}
@@ -454,20 +473,10 @@
 						),
 					) &&
 					matchesFraudFilter(item.project.joeFraudPassed) &&
-					matchesTicketFilter(item),
+					matchesTicketFilter(item) &&
+					(!priorityQueueFilter || priorityQueue.has(item.project.projectId)),
 			)
 			.sort((a, b) => {
-				if (sortOrder === 'priority') {
-					// Priority-queue projects sort to the top, most-recently-decided
-					// first; everything not in the queue (-1) sinks below them.
-					const ra = priorityQueue.has(a.project.projectId)
-						? (priorityQueue.get(a.project.projectId)!.decidedAt ?? 0)
-						: -1;
-					const rb = priorityQueue.has(b.project.projectId)
-						? (priorityQueue.get(b.project.projectId)!.decidedAt ?? 0)
-						: -1;
-					return rb - ra;
-				}
 				if (sortOrder === 'random') {
 					return (
 						(randomRanks.get(a.submissionId) ?? 0) -
@@ -773,10 +782,12 @@
 				>
 					Random
 				</button>
+
+				<span class="text-[11px] text-rv-dim ml-3">Priority</span>
 				<button
-					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {sortOrder === 'priority' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
-					onclick={() => (sortOrder = 'priority')}
-					title="Show priority-review requests first"
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {priorityQueueFilter ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (priorityQueueFilter = !priorityQueueFilter)}
+					title="Show only projects in the priority-review queue"
 				>
 					⚡ Priority queue{priorityQueue.size > 0 ? ` (${priorityQueue.size})` : ''}
 				</button>
@@ -885,12 +896,10 @@
 							</div>
 							{#if priorityQueue.has(item.project.projectId)}
 								{@const pq = priorityQueue.get(item.project.projectId)!}
-								<p
-									class="text-[12px] text-amber-600 dark:text-amber-400 leading-snug line-clamp-2 mt-0.5"
-									title={pq.decidedBy ? `Priority approved by ${pq.decidedBy}: ${pq.reason}` : pq.reason}
-								>
-									⚡ {pq.reason}
-								</p>
+								<div class="mt-0.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[12px] leading-snug text-amber-700 dark:text-amber-300">
+									<span class="font-semibold">⚡ Priority{#if pq.decidedBy} · {pq.decidedBy}{/if}</span>
+									{#if pq.reason}<p class="mt-0.5 whitespace-pre-line wrap-break-word">{pq.reason}</p>{/if}
+								</div>
 							{/if}
 						</a>
 					{:else}
