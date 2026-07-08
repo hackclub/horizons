@@ -595,7 +595,7 @@
                             >
                                 {priorityQueueLoading
                                     ? 'Loading queue...'
-                                    : `⚡ Priority Queue (${priorityQueue.size})`}
+                                    : `Priority Queue (${priorityQueue.size})`}
                                 {#if priorityQueueFilterEnabled}<span class="ml-1">✓</span>{/if}
                             </FilterTag>
                         </div>
@@ -770,7 +770,7 @@
                                     {/if}
                                     {#if priorityQueue.has(project.projectId)}
                                         <span class="rounded-full border border-amber-500 bg-amber-500/20 text-amber-700 dark:text-amber-300 px-3 py-1 text-xs font-bold uppercase tracking-wide">
-                                            ⚡ Priority Queue
+                                            Priority Queue
                                         </span>
                                     {/if}
                                 </div>
@@ -780,7 +780,7 @@
                                 {@const pq = priorityQueue.get(project.projectId)!}
                                 <div class="rounded-md border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
                                     <p class="font-semibold flex items-center gap-1.5">
-                                        ⚡ Priority review requested{#if pq.decidedBy}<span class="font-normal text-amber-700/80 dark:text-amber-300/80">· approved by {pq.decidedBy}</span>{/if}
+                                        Priority review requested{#if pq.decidedBy}<span class="font-normal text-amber-700/80 dark:text-amber-300/80">· approved by {pq.decidedBy}</span>{/if}
                                     </p>
                                     {#if pq.reason}
                                         <p class="mt-0.5 leading-relaxed whitespace-pre-line">{pq.reason}</p>
