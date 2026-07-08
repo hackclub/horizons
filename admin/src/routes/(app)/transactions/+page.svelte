@@ -60,9 +60,9 @@
 	let fulfilledFilter = $state<'all' | 'fulfilled' | 'unfulfilled'>('all');
 	let refundedFilter = $state<'all' | 'hide' | 'only'>('all');
 	let search = $state('');
-	// Defaults to the by-user view focused on travel grants — the most common
-	// reason to open this page is fulfilling travel grant purchases per user.
-	let viewMode = $state<'flat' | 'by-user'>('by-user');
+	// Defaults to the flat chronological ledger; switch to By User to fulfill
+	// purchases (e.g. travel grants) grouped per user.
+	let viewMode = $state<'flat' | 'by-user'>('flat');
 	// Item-level filter (shop items only, not variants). Only applied in the
 	// by-user view so you can isolate which users purchased a given item.
 	let itemFilter = $state<number | 'all'>('all');
