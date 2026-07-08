@@ -26,10 +26,12 @@
 	let hasProjects = $state(true);
 
 	const events = $derived(
-		Object.entries(eventsMap).map(([slug, config]) => {
-			const apiEvent = apiEvents.find((e) => e.slug === slug);
-			return { slug, ...config, location: apiEvent?.location, startDate: apiEvent?.startDate, endDate: apiEvent?.endDate };
-		})
+		Object.entries(eventsMap)
+			.filter(([, config]) => !config.hidden)
+			.map(([slug, config]) => {
+				const apiEvent = apiEvents.find((e) => e.slug === slug);
+				return { slug, ...config, location: apiEvent?.location, startDate: apiEvent?.startDate, endDate: apiEvent?.endDate };
+			})
 	);
 
 	onMount(async () => {

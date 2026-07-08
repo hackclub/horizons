@@ -41,6 +41,8 @@ export interface EventConfig {
 	stripes: string[];
 	menu: EventMenuItem[];
 	nexusOverrideFlag?: boolean;
+	/** When true, the event is hidden from the onboarding event list (e.g. finished events). */
+	hidden?: boolean;
 	/** ISO datetime string. When set, the EventColumnCard renders a live
 	 * "Announcement in DD:HH:MM:SS" countdown line. */
 	announcementDeadline?: string;
