@@ -406,8 +406,13 @@ Slack bot integration. No controller — used internally by other modules.
 - `getSlackUserInfo(slackUserId)` — get display name and email
 - `sendDirectMessage(slackUserId, text, blocks?)` — open DM channel and post message
 - `notifySubmissionReview(slackUserId, project, status, hours, feedback)` — formatted review notification with emoji
+- `postToChannel(channelId, text, blocks?)` — post a message to a channel (bot must be a member)
 
 Called by the Reviewer service on every submission status change.
+
+**Reviewer channel pings** (`SLACK_REVIEW_NOTIFICATIONS_CHANNEL`):
+- On every reviewer verdict — `Reviewer.notifyReviewersChannelOfReview()`.
+- When a user reships a project after a **reviewer rejection** — `Projects.notifyReviewerOfResubmission()` @-mentions the reviewer who rejected the prior submission so they can pick the re-review back up. Skipped for fraud silent-rejects and when the reshipped submission is itself silently fraud-rejected at creation.
 
 ---
 
