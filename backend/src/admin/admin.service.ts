@@ -1733,14 +1733,17 @@ export class AdminService {
   }
 
   async getReviewerLeaderboard() {
+    // Count by the reviewer's own decision (reviewPassed), not the finalized
+    // approvalStatus — a reviewer earns credit the moment they approve/reject,
+    // regardless of whether the fraud (Joe) gate has resolved yet.
     const reviewedSubmissions = await this.prisma.submission.findMany({
       where: {
         reviewedBy: { not: null },
-        approvalStatus: { in: ['approved', 'rejected'] },
+        reviewPassed: { not: null },
       },
       select: {
         reviewedBy: true,
-        approvalStatus: true,
+        reviewPassed: true,
         reviewedAt: true,
       },
     });
@@ -1765,9 +1768,9 @@ export class AdminService {
         lastReviewedAt: null,
       };
 
-      if (submission.approvalStatus === 'approved') {
+      if (submission.reviewPassed === true) {
         stats.approved++;
-      } else if (submission.approvalStatus === 'rejected') {
+      } else if (submission.reviewPassed === false) {
         stats.rejected++;
       }
       stats.total++;
