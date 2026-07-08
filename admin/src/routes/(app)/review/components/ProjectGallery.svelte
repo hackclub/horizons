@@ -789,7 +789,7 @@
 					onclick={() => (priorityQueueFilter = !priorityQueueFilter)}
 					title="Show only projects in the priority-review queue"
 				>
-					⚡ Priority queue{priorityQueue.size > 0 ? ` (${priorityQueue.size})` : ''}
+					Priority queue{priorityQueue.size > 0 ? ` (${priorityQueue.size})` : ''}
 				</button>
 
 				<span class="text-[11px] text-rv-dim ml-3">Fraud</span>
@@ -890,14 +890,14 @@
 								{/if}
 								{#if priorityQueue.has(item.project.projectId)}
 									<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-amber-500/15 text-amber-600 border border-amber-500/40">
-										⚡ Priority
+										Priority
 									</span>
 								{/if}
 							</div>
 							{#if priorityQueue.has(item.project.projectId)}
 								{@const pq = priorityQueue.get(item.project.projectId)!}
 								<div class="mt-0.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[12px] leading-snug text-amber-700 dark:text-amber-300">
-									<span class="font-semibold">⚡ Priority{#if pq.decidedBy} · {pq.decidedBy}{/if}</span>
+									<span class="font-semibold">Priority{#if pq.decidedBy} · {pq.decidedBy}{/if}</span>
 									{#if pq.reason}<p class="mt-0.5 whitespace-pre-line wrap-break-word">{pq.reason}</p>{/if}
 								</div>
 							{/if}

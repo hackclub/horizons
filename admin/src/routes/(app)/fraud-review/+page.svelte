@@ -501,7 +501,7 @@
 					onclick={() => (priorityQueueFilter = !priorityQueueFilter)}
 					title="Show only projects in the priority-review queue"
 				>
-					⚡ Priority queue{priorityQueue.size > 0 ? ` (${priorityQueue.size})` : ''}
+					Priority queue{priorityQueue.size > 0 ? ` (${priorityQueue.size})` : ''}
 				</button>
 
 				<span class="ml-3 text-[11px] text-rv-dim">Fraud</span>
@@ -614,14 +614,14 @@
 									{/if}
 									{#if priorityQueue.has(item.projectId)}
 										<span class="inline-flex items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
-											⚡ Priority
+											Priority
 										</span>
 									{/if}
 								</div>
 								{#if priorityQueue.has(item.projectId)}
 									{@const pq = priorityQueue.get(item.projectId)!}
 									<div class="mt-0.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[12px] leading-snug text-amber-700 dark:text-amber-300">
-										<span class="font-semibold">⚡ Priority{#if pq.decidedBy} · {pq.decidedBy}{/if}</span>
+										<span class="font-semibold">Priority{#if pq.decidedBy} · {pq.decidedBy}{/if}</span>
 										{#if pq.reason}<p class="mt-0.5 whitespace-pre-line wrap-break-word">{pq.reason}</p>{/if}
 									</div>
 								{/if}
@@ -723,7 +723,7 @@
 												class="ml-1 inline-flex items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600"
 												title={pq.decidedBy ? `Priority approved by ${pq.decidedBy}: ${pq.reason}` : pq.reason}
 											>
-												⚡ Priority
+												Priority
 											</span>
 										{/if}
 									</div>
