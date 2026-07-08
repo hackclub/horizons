@@ -14,6 +14,8 @@
 		joeFraudPassed?: boolean | null;
 		joeTrustScore?: number | null;
 		joeJustification?: string | null;
+		/** Whether the current viewer is an admin/superadmin (gates the Joe deep link). */
+		isAdmin?: boolean;
 		loading?: boolean;
 	}
 
@@ -27,6 +29,7 @@
 		joeFraudPassed = null,
 		joeTrustScore = null,
 		joeJustification = null,
+		isAdmin = false,
 		loading = false,
 	}: Props = $props();
 
@@ -220,8 +223,8 @@
 				Airlock ↗
 			</a>
 		{/if}
-		{#if joeUrl}
-			<a href={joeUrl} target="_blank" rel="noopener noreferrer" class="border-rv-accent! text-rv-accent! hover:bg-rv-tag-bg!">
+		{#if joeUrl && isAdmin}
+			<a href={joeUrl} target="_blank" rel="noopener noreferrer" class="border-ds-accent! text-ds-accent! hover:bg-ds-accent-bg!">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
 					<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
