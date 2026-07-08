@@ -582,9 +582,9 @@ void main(){
 			<div class="text-white text-2xl leading-relaxed max-w-[700px] max-sm:text-lg [&_p]:m-0 [&_.bold]:font-bold">
 				<p>This summer, we're running something we've never done before.</p>
 				<p class="bold">&ZeroWidthSpace;</p>
-				<p class="bold">7 hackathons. Ran by teenagers across the globe. For teenagers everywhere.</p>
+				<p class="bold">6 hackathons. Ran by teenagers across the globe. For teenagers everywhere.</p>
 				<p class="bold">&ZeroWidthSpace;</p>
-				<p>Fly out to San Francisco, Sydney, Toronto, Berlin, Cairo, Singapore or Sao Paulo. For Free.</p>
+				<p>Fly out to San Francisco, Sydney, Toronto, Berlin, Cairo or Singapore. For Free.</p>
 				<p>Go on an adventure of a lifetime.</p>
 			</div>
 
