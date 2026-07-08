@@ -21,6 +21,10 @@
 	type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
 	type GitHubRepo = components['schemas']['GitHubRepoResponse'];
 
+	// Current user role — gates the admin-only Joe deep link in UserInfo.
+	let me = $state<{ role: string } | null>(null);
+	let isAdmin = $derived(me?.role === 'admin' || me?.role === 'superadmin');
+
 	// Queue state
 	let queue = $state<QueueItem[]>([]);
 	let queueLoading = $state(true);
@@ -59,6 +63,9 @@
 	let activeTab = $state('readme');
 
 	onMount(async () => {
+		const { data: meData } = await api.GET('/api/user/auth/me');
+		if (meData) me = { role: meData.role };
+
 		await loadQueue();
 
 		// Periodically poll fraud review statuses and refresh the queue
@@ -261,6 +268,7 @@
 						joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
 						joeTrustScore={currentSubmission.project.joeTrustScore ?? null}
 						joeJustification={currentSubmission.project.joeJustification ?? null}
+						{isAdmin}
 					/>
 
 					<hr class="border-none border-t border-rv-border m-0" />

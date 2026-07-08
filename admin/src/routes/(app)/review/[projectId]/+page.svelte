@@ -37,6 +37,7 @@
 	// submissions (approved↔rejected flips).
 	let me = $state<{ role: string } | null>(null);
 	let isSuperadmin = $derived(me?.role === 'superadmin');
+	let isAdmin = $derived(me?.role === 'admin' || me?.role === 'superadmin');
 
 	// Queue state (for next/prev)
 	let queue = $state<QueueItem[]>([]);
@@ -694,6 +695,7 @@
 					joeFraudPassed={currentSubmission?.project.joeFraudPassed ?? null}
 					joeTrustScore={currentSubmission?.project.joeTrustScore ?? null}
 					joeJustification={currentSubmission?.project.joeJustification ?? null}
+					{isAdmin}
 					loading={submissionLoading}
 				/>
 
