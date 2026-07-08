@@ -472,6 +472,7 @@ export class ProjectsService {
         reviewPassed: true,
         silentReject: true,
         hackatimeHours: true,
+        reviewedBy: true,
       },
     });
 
@@ -628,7 +629,86 @@ export class ProjectsService {
       });
     }
 
+    // Ping the reviewer who rejected the previous submission so they know the
+    // user has addressed their feedback and reshipped. Only fires for genuine
+    // resubmissions after a *reviewer* rejection (not fraud silent-rejects) and
+    // never when this resubmission was itself silently fraud-rejected at
+    // creation (the user is cloaked — surfacing it would out the fraud state).
+    if (
+      isResubmission &&
+      !preDeterminedFraud &&
+      priorSubmission?.approvalStatus === 'rejected' &&
+      priorSubmission.reviewPassed === false &&
+      !priorSubmission.silentReject &&
+      priorSubmission.reviewedBy
+    ) {
+      this.notifyReviewerOfResubmission({
+        reviewerUserId: Number(priorSubmission.reviewedBy),
+        projectId,
+        projectTitle: project.projectTitle,
+        submitterName:
+          `${project.user.firstName ?? ''} ${project.user.lastName ?? ''}`.trim() ||
+          project.user.email,
+      }).catch((err) =>
+        console.error('Failed to notify reviewer of resubmission:', err),
+      );
+    }
+
     return this.scopeSubmissionForUser(submission);
+  }
+
+  /**
+   * Post to the reviewers Slack channel when a user reships a project after a
+   * reviewer rejection, @-mentioning the reviewer who rejected it so they can
+   * pick the re-review back up. Fire-and-forget: failures log and swallow, and
+   * it no-ops when SLACK_REVIEW_NOTIFICATIONS_CHANNEL isn't configured.
+   */
+  private async notifyReviewerOfResubmission(input: {
+    reviewerUserId: number;
+    projectId: number;
+    projectTitle: string;
+    submitterName: string;
+  }): Promise<void> {
+    const channelId = process.env.SLACK_REVIEW_NOTIFICATIONS_CHANNEL;
+    if (!channelId || !Number.isFinite(input.reviewerUserId)) return;
+
+    const reviewer = await this.prisma.user.findUnique({
+      where: { userId: input.reviewerUserId },
+      select: { firstName: true, lastName: true, slackUserId: true },
+    });
+
+    const reviewerLabel = reviewer?.slackUserId
+      ? `<@${reviewer.slackUserId}>`
+      : reviewer
+        ? `*${reviewer.firstName}${reviewer.lastName ? ' ' + reviewer.lastName : ''}*`
+        : 'Reviewer';
+
+    const frontendUrl =
+      process.env.FRONTEND_URL || 'https://horizons.hackclub.com';
+    const baseUrl = /^https?:\/\//.test(frontendUrl)
+      ? frontendUrl
+      : `https://${frontendUrl}`;
+    const projectUrl = `${baseUrl}/app/projects/${input.projectId}`;
+
+    const text = `:arrows_counterclockwise: ${reviewerLabel} — *${input.submitterName}* reshipped <${projectUrl}|${input.projectTitle}> after your rejection. It's back in the review queue.`;
+
+    const blocks: any[] = [
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text },
+      },
+    ];
+
+    const result = await this.slackService.postToChannel(
+      channelId,
+      `${input.submitterName} reshipped "${input.projectTitle}" after your rejection.`,
+      blocks,
+    );
+    if (!result.success) {
+      console.error(
+        `Resubmission reviewer ping failed for project ${input.projectId}: ${result.error}`,
+      );
+    }
   }
 
   /**
