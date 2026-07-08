@@ -96,13 +96,16 @@ export class ReviewerLeaderboardCronService {
       `${String(d.getUTCHours()).padStart(2, '0')}:00`;
     const dateLabel = `${dateStr} ${fmtHour(start)}–${fmtHour(end)} UTC`;
 
+    // Count by the reviewer's own decision (reviewPassed), not the finalized
+    // approvalStatus — a review counts the moment the reviewer approves/rejects,
+    // regardless of whether the fraud (Joe) gate has resolved yet.
     const submissions = await this.prisma.submission.findMany({
       where: {
         reviewedBy: { not: null },
-        approvalStatus: { in: ['approved', 'rejected'] },
+        reviewPassed: { not: null },
         reviewedAt: { gte: start, lt: end },
       },
-      select: { reviewedBy: true, approvalStatus: true },
+      select: { reviewedBy: true, reviewPassed: true },
     });
 
     if (submissions.length === 0) {
@@ -126,8 +129,8 @@ export class ReviewerLeaderboardCronService {
       if (isNaN(id)) continue;
       const entry = counts.get(id) ?? { total: 0, approved: 0, rejected: 0 };
       entry.total += 1;
-      if (sub.approvalStatus === 'approved') entry.approved += 1;
-      else if (sub.approvalStatus === 'rejected') entry.rejected += 1;
+      if (sub.reviewPassed === true) entry.approved += 1;
+      else if (sub.reviewPassed === false) entry.rejected += 1;
       counts.set(id, entry);
     }
 

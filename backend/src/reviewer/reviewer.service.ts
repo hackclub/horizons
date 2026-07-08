@@ -894,10 +894,13 @@ export class ReviewerService {
    * General stats: longest wait, average and median review time (past 30 days).
    */
   async getReviewStats() {
+    // Count by the reviewer's own decision (reviewPassed), not the finalized
+    // approvalStatus — a review counts as soon as the reviewer approves/rejects,
+    // regardless of whether the fraud (Joe) gate has resolved yet.
     const submissions = await this.prisma.submission.findMany({
       where: {
         reviewedBy: { not: null },
-        approvalStatus: { in: ['approved', 'rejected'] },
+        reviewPassed: { not: null },
       },
       select: {
         reviewedBy: true,
