@@ -108,7 +108,22 @@ export class ReviewerLeaderboardCronService {
       select: { reviewedBy: true, reviewPassed: true },
     });
 
-    if (submissions.length === 0) {
+    const fraudProjects = await this.prisma.project.findMany({
+      where: {
+        joeFraudReviewedAt: { gte: start, lt: end },
+      },
+      select: { joeFraudPassed: true },
+    });
+
+    const fraudTotal = fraudProjects.length;
+    const fraudPassed = fraudProjects.filter(
+      (p) => p.joeFraudPassed === true,
+    ).length;
+    const fraudFailed = fraudProjects.filter(
+      (p) => p.joeFraudPassed === false,
+    ).length;
+
+    if (submissions.length === 0 && fraudTotal === 0) {
       const message = `No reviews completed on ${dateLabel}, skipping leaderboard post.`;
       this.logger.log(message);
       return {
@@ -187,16 +202,28 @@ export class ReviewerLeaderboardCronService {
             type: 'mrkdwn',
             text: `*${totalReviews}* submissions reviewed by *${leaderboard.length}* reviewer${leaderboard.length === 1 ? '' : 's'} in ${dateLabel}.`,
           },
+          ...(fraudTotal > 0
+            ? [
+                {
+                  type: 'mrkdwn',
+                  text: `*${fraudTotal}* projects through fraud review (${fraudPassed} passed · ${fraudFailed} failed)`,
+                },
+              ]
+            : []),
         ],
       },
-      { type: 'divider' },
-      {
-        type: 'section',
-        text: { type: 'mrkdwn', text: lines.join('\n') },
-      },
+      ...(totalReviews > 0
+        ? [
+            { type: 'divider' },
+            {
+              type: 'section',
+              text: { type: 'mrkdwn', text: lines.join('\n') },
+            },
+          ]
+        : []),
     ];
 
-    const fallback = `Reviewer leaderboard for ${dateLabel}: ${totalReviews} submissions reviewed by ${leaderboard.length} reviewer${leaderboard.length === 1 ? '' : 's'}.`;
+    const fallback = `Reviewer leaderboard for ${dateLabel}: ${totalReviews} submissions reviewed by ${leaderboard.length} reviewer${leaderboard.length === 1 ? '' : 's'}.${fraudTotal > 0 ? ` ${fraudTotal} projects through fraud review (${fraudPassed} passed, ${fraudFailed} failed).` : ''}`;
 
     const result = await this.slack.postToChannel(channelId, fallback, blocks);
     if (result.success) {
