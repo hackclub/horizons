@@ -193,13 +193,12 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
 
-    const hasTicketTxn = await this.prisma.transaction.findUnique({
+    const hasTicketTxn = await this.prisma.transaction.findFirst({
       where: {
-        uniq_user_event_kind: {
-          userId,
-          eventId: event.eventId,
-          kind: 'EventTicket',
-        },
+        userId,
+        eventId: event.eventId,
+        kind: 'EventTicket',
+        refundedAt: null,
       },
       select: { transactionId: true },
     });
@@ -252,16 +251,49 @@ export class EventsService {
       }
     }
 
+    // A refunded ticket keeps its row (the unique constraint on
+    // user+event+kind forbids a second one), so re-purchase reactivates the
+    // existing refunded row rather than creating a new transaction. Only an
+    // active (non-refunded) ticket blocks the purchase.
+    const activeTicket = await this.prisma.transaction.findFirst({
+      where: {
+        userId,
+        eventId: event.eventId,
+        kind: 'EventTicket',
+        refundedAt: null,
+      },
+      select: { transactionId: true },
+    });
+    if (activeTicket) {
+      throw new ConflictException('You already have a ticket for this event');
+    }
+
     let transaction;
     try {
       transaction = await this.prisma.$transaction(async (tx) => {
-        const txn = await tx.transaction.create({
-          data: {
+        const txn = await tx.transaction.upsert({
+          where: {
+            uniq_user_event_kind: {
+              userId,
+              eventId: event.eventId,
+              kind: 'EventTicket',
+            },
+          },
+          create: {
             userId,
             eventId: event.eventId,
             kind: 'EventTicket',
             itemDescription: `Ticket — ${event.title}`,
             cost: event.ticketCost!,
+          },
+          // Reactivate a previously refunded ticket as a fresh purchase.
+          update: {
+            itemDescription: `Ticket — ${event.title}`,
+            cost: event.ticketCost!,
+            refundedAt: null,
+            isFulfilled: false,
+            fulfilledAt: null,
+            createdAt: new Date(),
           },
         });
         await tx.pinnedEvent.upsert({
