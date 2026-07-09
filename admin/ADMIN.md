@@ -160,7 +160,7 @@ pnpm --filter admin generate:api
 
 The review page at `/admin/review` is a specialized interface for processing submissions:
 
-- **Gallery view**: Grid of pending submissions, click to select. Debounced field-scoped search (all/title/author/Slack ID/event/type/project ID) with match highlighting across the pending queue, past reviews, and fraud-rejected sections
+- **Gallery view**: Grid of pending submissions, click to select. Debounced field-scoped search (all/title/author/Slack ID/event/type/project ID) with match highlighting across the pending queue, past reviews, and fraud-rejected sections. Resubmissions of projects the current reviewer previously rejected carry a "Your re-review" badge and a "My re-reviews" filter chip (same condition as the Slack re-review ping)
 - **Detail view**: Multi-panel layout showing:
   - User info and profile data
   - Project screenshots gallery

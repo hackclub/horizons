@@ -90,6 +90,14 @@ export class ClaimInfoResponse {
   isMine: boolean;
 }
 
+export class MyRereviewResponse {
+  @ApiProperty()
+  previousSubmissionId: number;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  previousReviewedAt: Date | null;
+}
+
 export class QueueItemResponse {
   @ApiProperty()
   submissionId: number;
@@ -120,6 +128,14 @@ export class QueueItemResponse {
 
   @ApiProperty({ type: ClaimInfoResponse, nullable: true })
   claim: ClaimInfoResponse | null;
+
+  @ApiProperty({
+    type: MyRereviewResponse,
+    nullable: true,
+    description:
+      "Set when this submission is a reship after the requesting reviewer's own rejection — the same condition that triggers the Slack re-review ping. Null for everyone else.",
+  })
+  myRereview: MyRereviewResponse | null;
 }
 
 export class ClaimResultResponse {

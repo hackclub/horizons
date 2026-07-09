@@ -178,6 +178,7 @@
 	const FRAUD_FILTER_STORAGE_KEY = 'horizons-review-gallery-fraud-filter';
 	const TICKET_FILTER_STORAGE_KEY = 'horizons-review-gallery-ticket-filter';
 	const PRIORITY_QUEUE_FILTER_STORAGE_KEY = 'horizons-review-gallery-priority-queue-filter';
+	const REREVIEW_FILTER_STORAGE_KEY = 'horizons-review-gallery-rereview-filter';
 
 	function loadSortOrderFromStorage(): SortOrder {
 		// Default to longest wait so reviewers triage the most-stale submissions first.
@@ -228,11 +229,23 @@
 		}
 	}
 
+	function loadRereviewFilterFromStorage(): boolean {
+		if (typeof sessionStorage === 'undefined') return false;
+		try {
+			return sessionStorage.getItem(REREVIEW_FILTER_STORAGE_KEY) === 'true';
+		} catch {
+			return false;
+		}
+	}
+
 	let sortOrder = $state<SortOrder>(loadSortOrderFromStorage());
 	let fraudFilter = $state<FraudFilter>(loadFraudFilterFromStorage());
 	let ticketFilter = $state<TicketFilter>(loadTicketFilterFromStorage());
 	// When enabled, only show projects present in the priority-review queue.
 	let priorityQueueFilter = $state<boolean>(loadPriorityQueueFilterFromStorage());
+	// When enabled, only show resubmissions the current reviewer previously
+	// rejected — the same set of projects the Slack re-review ping covers.
+	let rereviewFilter = $state<boolean>(loadRereviewFilterFromStorage());
 
 	// Stable random rank per submission so the "random" sort doesn't reshuffle
 	// on every keystroke/filter change (the comparator runs on each derived
@@ -285,6 +298,15 @@
 		if (typeof sessionStorage === 'undefined') return;
 		try {
 			sessionStorage.setItem(PRIORITY_QUEUE_FILTER_STORAGE_KEY, String(priorityQueueFilter));
+		} catch {
+			// see TYPE_FILTER_STORAGE_KEY effect for rationale
+		}
+	});
+
+	$effect(() => {
+		if (typeof sessionStorage === 'undefined') return;
+		try {
+			sessionStorage.setItem(REREVIEW_FILTER_STORAGE_KEY, String(rereviewFilter));
 		} catch {
 			// see TYPE_FILTER_STORAGE_KEY effect for rationale
 		}
@@ -458,6 +480,17 @@
 		return !!(item.claim && !item.claim.isMine && !item.claim.isStale);
 	}
 
+	// Pending resubmissions of projects this reviewer previously rejected.
+	// Drives the "My re-reviews" chip count independent of other filters.
+	let myRereviewCount = $derived(items.filter((i) => i.myRereview).length);
+
+	function rereviewTitle(item: QueueItem): string {
+		const when = item.myRereview?.previousReviewedAt
+			? ` ${timeAgo(item.myRereview.previousReviewedAt)}`
+			: '';
+		return `You rejected this project's previous submission${when} — the user has reshipped it.`;
+	}
+
 	let filteredItems = $derived(
 		items
 			.filter(
@@ -474,7 +507,8 @@
 					) &&
 					matchesFraudFilter(item.project.joeFraudPassed) &&
 					matchesTicketFilter(item) &&
-					(!priorityQueueFilter || priorityQueue.has(item.project.projectId)),
+					(!priorityQueueFilter || priorityQueue.has(item.project.projectId)) &&
+					(!rereviewFilter || !!item.myRereview),
 			)
 			.sort((a, b) => {
 				if (sortOrder === 'random') {
@@ -792,6 +826,15 @@
 					Priority queue{priorityQueue.size > 0 ? ` (${priorityQueue.size})` : ''}
 				</button>
 
+				<span class="text-[11px] text-rv-dim ml-3">Re-reviews</span>
+				<button
+					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {rereviewFilter ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
+					onclick={() => (rereviewFilter = !rereviewFilter)}
+					title="Show only resubmissions of projects you previously rejected"
+				>
+					My re-reviews{myRereviewCount > 0 ? ` (${myRereviewCount})` : ''}
+				</button>
+
 				<span class="text-[11px] text-rv-dim ml-3">Fraud</span>
 				<button
 					class="py-1.5 px-3.5 rounded-[20px] border text-[12px] font-inherit cursor-pointer transition-all duration-150 {fraudFilter === 'all' ? 'bg-rv-tag-bg border-rv-accent text-rv-accent' : 'border-rv-border bg-rv-surface2 text-rv-dim hover:border-rv-accent hover:text-rv-text'}"
@@ -891,6 +934,19 @@
 								{#if priorityQueue.has(item.project.projectId)}
 									<span class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-amber-500/15 text-amber-600 border border-amber-500/40">
 										Priority
+									</span>
+								{/if}
+								{#if item.myRereview}
+									<span
+										class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-purple-500/15 text-purple-500 border border-purple-500/40"
+										title={rereviewTitle(item)}
+									>
+										<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+											<polyline points="23 4 23 10 17 10" />
+											<polyline points="1 20 1 14 7 14" />
+											<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+										</svg>
+										Your re-review
 									</span>
 								{/if}
 							</div>
@@ -1028,6 +1084,14 @@
 												title={pq.decidedBy ? `Priority approved by ${pq.decidedBy}: ${pq.reason}` : pq.reason}
 											>
 												⚡ Priority
+											</span>
+										{/if}
+										{#if item.myRereview}
+											<span
+												class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-purple-500/15 text-purple-500 border border-purple-500/40 truncate max-w-full"
+												title={rereviewTitle(item)}
+											>
+												Your re-review
 											</span>
 										{/if}
 										{#if activeOtherClaim}
