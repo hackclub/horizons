@@ -463,7 +463,7 @@ void main(){
 		<img src={heroLogo} alt="Horizons" class="w-[560px] h-auto max-lg:w-full max-lg:max-w-[560px] max-sm:mt-6" />
 
 		<div class="font-cook max-sm:text-center">
-			<p class="hero-subtitle text-[32px] text-black m-0 leading-[1.2] max-sm:text-base max-sm:whitespace-normal whitespace-nowrap">We're running 7 hackathons across the world.</p>
+			<p class="hero-subtitle text-[32px] text-black m-0 leading-[1.2] max-sm:text-base max-sm:whitespace-normal whitespace-nowrap">We're running 6 hackathons across the world.</p>
 			<p class="hero-title text-[48px] text-black m-0 leading-[1.2] max-sm:text-2xl">And you're invited.</p>
 		</div>
 
