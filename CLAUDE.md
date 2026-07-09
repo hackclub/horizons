@@ -28,6 +28,7 @@ The backend is organized into NestJS feature modules under `backend/src/`:
 - `gift-codes/` — Gift code generation, email distribution, claiming
 - `hackatime/` — Hackatime OAuth, hours tracking, project linking, recalculation
 - `github/` — Repo info and README fetching with token pooling (reviewer/admin only)
+- `lapse/` — Lapse timelapse lookups for the review dash, matched to linked Hackatime projects (reviewer/admin only)
 - `events/` — Event CRUD and pinning
 - `announcements/` — Admin-authored announcements (markdown body, event tags); user list/read scoped to pinned event; per-user read state
 - `uploads/` — Image upload to Hack Club CDN

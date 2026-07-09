@@ -36,6 +36,7 @@ admin/src/
 │               ├── GitHubPanel.svelte  # Repo stats, language, timestamps
 │               ├── ReviewChecklist.svelte # 7-item per-submission checklist
 │               ├── HoursBreakdown.svelte # Total + per-project hour editing
+│               ├── LapsePanel.svelte   # Lapse timelapses for linked Hackatime projects
 │               └── ProjectGallery.svelte # Screenshot gallery
 │
 ├── lib/

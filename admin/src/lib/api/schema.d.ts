@@ -2167,6 +2167,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lapse/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["LapseController_getProjectLapses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/integrations/referral": {
         parameters: {
             query?: never;
@@ -4337,6 +4353,27 @@ export interface components {
         };
         ReadmeResponse: {
             content?: string | null;
+        };
+        LapseUserResponse: {
+            id: string;
+            handle: string;
+            displayName: string;
+        };
+        LapseTimelapseResponse: {
+            id: string;
+            name: string;
+            hackatimeProject?: string | null;
+            playbackUrl?: string | null;
+            thumbnailUrl?: string | null;
+            duration: number;
+            visibility: string;
+            createdAt: string;
+        };
+        ProjectLapsesResponse: {
+            lapseUser?: components["schemas"]["LapseUserResponse"] | null;
+            timelapses: components["schemas"]["LapseTimelapseResponse"][];
+            otherTimelapseCount: number;
+            error?: string;
         };
         ReferralResponse: {
             /** @description The user's referral code */
@@ -7910,6 +7947,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadmeResponse"];
+                };
+            };
+        };
+    };
+    LapseController_getProjectLapses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLapsesResponse"];
                 };
             };
         };

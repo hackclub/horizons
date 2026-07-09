@@ -28,6 +28,7 @@ backend/src/
 ├── slack/                       # Slack bot integration
 ├── airtable/                    # Airtable record sync
 ├── github/                      # GitHub repo info & README fetching
+├── lapse/                       # Lapse timelapse lookups for reviewers
 ├── uploads/                     # Image upload to CDN
 ├── events/                      # Event management
 └── health/                      # Health check endpoint
@@ -303,6 +304,23 @@ GitHub repository information and README fetching. Accessible to `reviewer` and 
 
 ---
 
+### Lapse (`/api/lapse`)
+
+Timelapse recordings from [Lapse](https://api.lapse.hackclub.com) for the review dashboard. Accessible to `reviewer` and `admin` roles.
+
+**Endpoints:**
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/projects/:id` | Reviewer | Timelapses the submitter published against the project's linked Hackatime projects |
+
+**Key implementation details:**
+- Resolves the submitter's Lapse account via `GET /user/query?hackatimeId=` using `User.hackatimeAccount`, then fetches `GET /timelapse/findByUser` and keeps timelapses whose `private.hackatimeProject` matches one of `Project.nowHackatimeProjects`. Unmatched timelapses are returned only as a count (`otherTimelapseCount`).
+- Authenticates with `LAPSE_API_TOKEN` (bearer). The token needs Lapse admin permissions — the `private.hackatimeProject` field used for matching is only visible to admins (or the timelapse owner).
+- Returns `{ lapseUser: null, timelapses: [] }` when the user has no Hackatime account or no Lapse account; returns an `error` string (never throws) on Lapse API failures so the review page degrades gracefully.
+
+---
+
 ### Events (`/api/events`)
 
 Event (hackathon) management.
@@ -519,6 +537,7 @@ The backend never makes outbound HTTP requests against user-supplied URLs. The o
 | **Slack** | DM notifications to students; daily reviewer leaderboard (UTC midnight) | `SLACK_BOT_TOKEN`, `SLACK_REVIEWER_LEADERBOARD_CHANNEL` (optional — channel ID; leaderboard cron no-ops if unset) |
 | **Loops** | Transactional emails (submission reviewed) | `LOOPS_API_KEY`, `LOOPS_TID_SUBMISSION_APPROVED`, `LOOPS_TID_SUBMISSION_DENIED` |
 | **GitHub** | Repo info and README for reviewers | `GITHUB_TOKENS` (comma-separated pool) |
+| **Lapse** | Timelapse recordings for reviewers | `LAPSE_API_TOKEN` (needs Lapse admin permissions) |
 | **Hack Club CDN** | Image uploads | `HC_CDN_API_KEY` |
 | **PostHog** | Analytics | `POSTHOG_API_KEY` |
 | **Datadog** | APM tracing | `DD_TRACE_ENABLED` |
