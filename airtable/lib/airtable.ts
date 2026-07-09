@@ -83,12 +83,16 @@ export async function* iterateApprovedProjects<
 export async function patchApprovedProject(
   recordId: string,
   fields: Record<string, any>,
+  opts?: { typecast?: boolean },
 ): Promise<void> {
   const res = await airtableFetch(
     `/${YSWS_BASE_ID}/${APPROVED_PROJECTS_TABLE_ID}/${recordId}`,
     {
       method: 'PATCH',
-      body: JSON.stringify({ fields }),
+      body: JSON.stringify({
+        fields,
+        ...(opts?.typecast ? { typecast: true } : {}),
+      }),
     },
   );
   if (!res.ok) {
@@ -101,6 +105,7 @@ export async function patchApprovedProject(
 
 export async function patchApprovedProjects(
   records: { id: string; fields: Record<string, any> }[],
+  opts?: { typecast?: boolean },
 ): Promise<void> {
   if (records.length === 0) return;
   if (records.length > 10) {
@@ -110,7 +115,10 @@ export async function patchApprovedProjects(
     `/${YSWS_BASE_ID}/${APPROVED_PROJECTS_TABLE_ID}`,
     {
       method: 'PATCH',
-      body: JSON.stringify({ records }),
+      body: JSON.stringify({
+        records,
+        ...(opts?.typecast ? { typecast: true } : {}),
+      }),
     },
   );
   if (!res.ok) {

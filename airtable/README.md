@@ -43,6 +43,26 @@ bun scripts/fix-screenshots.ts --dry-run   # preview
 bun scripts/fix-screenshots.ts             # write
 ```
 
+### `backfill-review-fields` — backfill Project Type and Reviewed By
+
+For every Horizons submission linked to Airtable (`submission.airtableRecId`
+set), PATCH its Approved Projects record with:
+
+- **Project Type** — the raw `ProjectType` enum value (e.g. `web_playable`)
+- **Reviewed By** — the reviewer's "First Last" name resolved from
+  `submission.reviewedBy` (omitted if the submission has no reviewer)
+
+Both fields must exist in Airtable first (single line text; or make Project
+Type a single select and pass `--typecast` so Airtable creates the options).
+Writes are blind but idempotent; a failed batch is retried record-by-record
+so a record deleted in Airtable doesn't sink the rest.
+
+```bash
+cd airtable
+bun scripts/backfill-review-fields.ts --dry-run   # preview
+bun scripts/backfill-review-fields.ts             # write
+```
+
 ## Adding a new script
 
 Drop a `.ts` file in `scripts/`, import from `lib/airtable.ts` for Airtable
