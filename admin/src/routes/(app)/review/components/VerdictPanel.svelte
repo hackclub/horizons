@@ -142,9 +142,6 @@
 					hoursJustification: hoursJustification || undefined,
 					userFeedback: approveComment || undefined,
 					sendEmail,
-					...(reshipNoticeDismissed && hasReshipContext
-						? { ignorePriorYswsCredit: true }
-						: {}),
 				} as any,
 			});
 			if (error) throw new Error(`Failed to approve submission ${submissionId}`);

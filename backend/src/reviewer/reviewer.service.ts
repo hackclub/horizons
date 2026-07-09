@@ -578,8 +578,6 @@ export class ReviewerService {
       auditChanges.hoursJustification = dto.hoursJustification;
     if (dto.adminComment !== undefined)
       auditChanges.adminComment = dto.adminComment;
-    if (dto.ignorePriorYswsCredit !== undefined)
-      auditChanges.ignorePriorYswsCredit = dto.ignorePriorYswsCredit;
     await this.prisma.submissionAuditLog.create({
       data: {
         submissionId,
