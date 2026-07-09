@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma.service';
 import { AirtableService } from '../airtable/airtable.service';
 import { SlackService } from '../slack/slack.service';
-import { ManifestService } from '../manifest/manifest.service';
 import { LoopsService } from '../loops/loops.service';
 import { TicketQualifyEmailService } from '../ticket-qualify-email/ticket-qualify-email.service';
 import { ReviewSubmissionDto } from '../reviewer/dto/review-submission.dto';
@@ -113,7 +112,6 @@ export class SubmissionApprovalService {
     private prisma: PrismaService,
     private airtableService: AirtableService,
     private slackService: SlackService,
-    private manifestService: ManifestService,
     private loopsService: LoopsService,
     private ticketQualifyEmailService: TicketQualifyEmailService,
   ) {}
@@ -142,9 +140,7 @@ export class SubmissionApprovalService {
       where: { submissionId },
       data,
     });
-    await this.evaluateAndFinalize(submissionId, reviewerId, {
-      ignorePriorYswsCredit: dto.ignorePriorYswsCredit === true,
-    });
+    await this.evaluateAndFinalize(submissionId, reviewerId);
   }
 
   /**
@@ -165,27 +161,8 @@ export class SubmissionApprovalService {
     });
     if (!submission || submission.approvalStatus !== 'approved') return;
 
-    // If the reviewer edited approvedHours, the value just written via
-    // reviewSubmission is the raw user-entered amount. Re-apply Manifest
-    // dedupe so the stored value matches the credit shown in the UI and
-    // controls credit everywhere downstream.
-    if (dto.approvedHours !== undefined) {
-      const dedupedApprovedHours = await this.computeDedupedApprovedHours(
-        dto.approvedHours,
-        submission.repoUrl || submission.project.repoUrl,
-        dto.ignorePriorYswsCredit === true,
-      );
-      if (dedupedApprovedHours !== submission.approvedHours) {
-        await this.prisma.submission.update({
-          where: { submissionId },
-          data: { approvedHours: dedupedApprovedHours },
-        });
-        submission.approvedHours = dedupedApprovedHours;
-      }
-    }
-
-    // Rebuild the full justification if the reviewer edited it. Use the
-    // now-deduped stored value so the "tracked → adjusted to" line is honest.
+    // Rebuild the full justification if the reviewer edited it, using the
+    // stored hours so the "tracked → adjusted to" line is honest.
     let fullJustification: string | undefined;
     if (dto.hoursJustification !== undefined) {
       const reviewer = await this.prisma.user.findUnique({
@@ -203,14 +180,8 @@ export class SubmissionApprovalService {
       );
     }
 
-    // Forward the post-dedupe value (not the dto raw) to syncProjectData /
-    // updateAirtableRecord so Project.approvedHours and the Airtable record
-    // both reflect the deduped credit.
     const effective = {
       ...dto,
-      ...(dto.approvedHours !== undefined
-        ? { approvedHours: submission.approvedHours ?? undefined }
-        : {}),
       ...(fullJustification ? { hoursJustification: fullJustification } : {}),
     };
 
@@ -411,37 +382,6 @@ export class SubmissionApprovalService {
   }
 
   /**
-   * Apply the Manifest dedupe to the raw reviewer-entered hours so the stored
-   * `Submission.approvedHours` reflects the user's net Horizons credit, not the
-   * raw "total work" they were credited for. This controls credit everywhere
-   * (stats, leaderboard, shop balance, Airtable) because downstream consumers
-   * read `Submission.approvedHours` / `Project.approvedHours` directly.
-   *
-   * Returns rawHours unchanged when Manifest is disabled, the codeUrl isn't
-   * registered, or the reviewer opted out via `ignorePriorYswsCredit`.
-   */
-  private async computeDedupedApprovedHours(
-    rawHours: number,
-    codeUrl: string | null,
-    ignorePriorYswsCredit: boolean,
-  ): Promise<number> {
-    // Manifest dedupe math commented out — approvedHours now reflects the raw
-    // reviewer-entered amount. Other-YSWS credit is surfaced as a notice in the
-    // reviewer UI instead of being subtracted from the granted hours.
-    return rawHours;
-    // if (!rawHours) return rawHours;
-    // if (ignorePriorYswsCredit) return rawHours;
-    // if (!codeUrl || !this.manifestService.isEnabled()) return rawHours;
-    //
-    // const manifest = await this.manifestService.lookup(codeUrl);
-    // const priorYswsHoursShipped = (manifest?.submissions ?? [])
-    //   .filter((s) => (s.yswsName ?? '').toLowerCase() !== 'horizons')
-    //   .reduce((sum, s) => sum + (s.hoursShipped ?? 0), 0);
-    //
-    // return Math.max(0, rawHours - priorYswsHoursShipped);
-  }
-
-  /**
    * Reconcile the two gates and transition approvalStatus from pending if possible.
    * CAS on approvalStatus='pending' makes this idempotent under reviewer + fraud-poll
    * races — exactly one caller wins the transition and fires side effects.
@@ -466,7 +406,6 @@ export class SubmissionApprovalService {
   private async evaluateAndFinalize(
     submissionId: number,
     actorUserId: number,
-    overrides: { ignorePriorYswsCredit?: boolean } = {},
   ): Promise<void> {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
@@ -491,7 +430,6 @@ export class SubmissionApprovalService {
         reviewPassed !== false,
         actorUserId,
         fraudRaw,
-        overrides,
       );
       return;
     }
@@ -509,7 +447,6 @@ export class SubmissionApprovalService {
         false,
         actorUserId,
         fraudRaw,
-        overrides,
       );
       return;
     }
@@ -521,7 +458,6 @@ export class SubmissionApprovalService {
       false,
       actorUserId,
       fraudRaw,
-      overrides,
     );
   }
 
@@ -559,7 +495,6 @@ export class SubmissionApprovalService {
     isSilent: boolean,
     actorUserId: number,
     fraudRaw: boolean | null,
-    overrides: { ignorePriorYswsCredit?: boolean } = {},
   ): Promise<void> {
     // CAS: only the first caller wins the pending → terminal transition.
     const finalizedAt = new Date();
@@ -595,7 +530,7 @@ export class SubmissionApprovalService {
     });
 
     if (newStatus === 'approved') {
-      await this.fireApprovalSideEffects(submission, finalizedAt, overrides);
+      await this.fireApprovalSideEffects(submission, finalizedAt);
     } else if (!isSilent) {
       await this.fireRejectionSideEffects(submission, finalizedAt);
     }
@@ -631,24 +566,7 @@ export class SubmissionApprovalService {
       };
     },
     finalizedAt: Date,
-    overrides: { ignorePriorYswsCredit?: boolean } = {},
   ): Promise<void> {
-    // Replace the raw reviewer-entered approvedHours with the post-Manifest
-    // dedupe value so it controls credit everywhere downstream. Skip the write
-    // when no change is needed (dedupe is a no-op).
-    const dedupedApprovedHours = await this.computeDedupedApprovedHours(
-      submission.approvedHours ?? 0,
-      submission.repoUrl || submission.project.repoUrl,
-      overrides.ignorePriorYswsCredit === true,
-    );
-    if (dedupedApprovedHours !== submission.approvedHours) {
-      await this.prisma.submission.update({
-        where: { submissionId: submission.submissionId },
-        data: { approvedHours: dedupedApprovedHours },
-      });
-      submission.approvedHours = dedupedApprovedHours;
-    }
-
     // Rebuild the full justification from the persisted reviewer analysis +
     // current project / reviewer state. This defers to finalization time so
     // that fraud review info (populated after reviewer acted) is included.
@@ -820,10 +738,9 @@ export class SubmissionApprovalService {
       });
       if (!project) return;
 
-      // Submission.approvedHours is already post-Manifest-dedupe (applied in
-      // fireApprovalSideEffects), so the only subtraction left here is prior
-      // Horizons credit on the same project — the Airtable record for this
-      // submission should carry only the NEW credit added by this submission.
+      // The only subtraction here is prior Horizons credit on the same
+      // project — the Airtable record for this submission should carry only
+      // the NEW credit added by this submission.
       const totalApprovedHours = dto.approvedHours || 0;
 
       const lastApprovedSubmission = await this.prisma.submission.findFirst({

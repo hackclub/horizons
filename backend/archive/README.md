@@ -20,6 +20,10 @@ MJML email templates that paired with the archived mail service.
 
 `AirtableBackfillService` — gated by `RUN_AIRTABLE_USERS_BACKFILL=true`, loaded every user with all nested projects + first submissions, then synced `signUp`/`firstProjectCreated`/`firstSubmit` events to Airtable at 700ms per user. Also migrated `referralCode` to `userId.toString()` for any user whose code didn't match. One-shot; removed from `AirtableModule` providers.
 
+## `backfill/`
+
+`DedupeApprovedHoursBackfillService` + `BackfillModule` — gated by `BACKFILL_DEDUPE_APPROVED_HOURS` (`dry-run` / `apply`), re-applied the Manifest "other YSWS hours already shipped" deduction to every approved `Submission.approvedHours`, then refreshed `Project.approvedHours` from each project's latest approved submission. Retired along with the rest of the Manifest dedupe: the deduction was **not idempotent** — leaving `apply` set meant every app restart subtracted the prior-YSWS hours again, silently ratcheting approved hours toward zero with no audit trail. The live pipeline no longer dedupes (other-YSWS credit is surfaced as a reviewer-UI notice instead), so there is nothing left to backfill. The `ignorePriorYswsCredit` DTO flag and the `computeDedupedApprovedHours` hook in `submission-approval.service.ts` were removed at the same time.
+
 ## `slack-channels/`
 
 Just the backfill chunks excised from `SlackChannelsService` — `onModuleInit`, `run()`, the DM block builder, and the `sendDm` branch of `processUser`. The service itself stays in `src/` because `inviteSingleUser`, `inviteToSubeventChannel`, and `removeUserFromAllChannels` are used by normal flows.
