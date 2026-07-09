@@ -143,8 +143,61 @@ export class ReviewerService {
       [...new Set(submissions.map((s) => s.project.user.userId))],
     );
 
+    // Flag resubmissions the viewer previously rejected, mirroring the Slack
+    // re-review ping conditions in ProjectsService.notifyReviewerOfResubmission:
+    // the immediately-prior submission must be a genuine reviewer rejection
+    // (not a fraud silent-reject) by the viewer. A queue item is always its
+    // project's latest submission, so the latest finalized submission per
+    // project is the immediately-prior one.
+    const priorByProject = new Map<
+      number,
+      {
+        submissionId: number;
+        approvalStatus: string;
+        reviewPassed: boolean | null;
+        silentReject: boolean;
+        reviewedBy: string | null;
+        reviewedAt: Date | null;
+      }
+    >();
+    if (viewerId !== undefined && submissions.length > 0) {
+      const priors = await this.prisma.submission.findMany({
+        where: {
+          projectId: { in: submissions.map((s) => s.projectId) },
+          approvalStatus: { not: 'pending' },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          projectId: true,
+          submissionId: true,
+          approvalStatus: true,
+          reviewPassed: true,
+          silentReject: true,
+          reviewedBy: true,
+          reviewedAt: true,
+        },
+      });
+      for (const prior of priors) {
+        if (!priorByProject.has(prior.projectId)) {
+          priorByProject.set(prior.projectId, prior);
+        }
+      }
+    }
+
     return submissions.map((submission) => {
       const ticket = ticketStatuses.get(submission.project.user.userId);
+      const prior = priorByProject.get(submission.projectId);
+      const myRereview =
+        prior &&
+        prior.approvalStatus === 'rejected' &&
+        prior.reviewPassed === false &&
+        !prior.silentReject &&
+        prior.reviewedBy === String(viewerId)
+          ? {
+              previousSubmissionId: prior.submissionId,
+              previousReviewedAt: prior.reviewedAt,
+            }
+          : null;
       return {
         submissionId: submission.submissionId,
         projectId: submission.projectId,
@@ -157,6 +210,7 @@ export class ReviewerService {
         boughtTicket: ticket?.boughtTicket ?? false,
         canBuyTicketIfApproved: ticket?.canBuyTicketIfApproved ?? false,
         claim: this.buildClaimInfo(submission, viewerId),
+        myRereview,
       };
     });
   }

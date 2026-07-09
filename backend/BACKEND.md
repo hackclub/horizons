@@ -124,7 +124,7 @@ Submission review queue and actions. Accessible to `reviewer` and `admin` roles.
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| GET | `/queue` | Reviewer | List pending submissions (PII-scoped) |
+| GET | `/queue` | Reviewer | List pending submissions (PII-scoped). Each item carries `myRereview` when it's a reship after the requesting reviewer's own rejection — same condition as the Slack re-review ping |
 | GET | `/submissions/:id` | Reviewer | Full submission detail with timeline |
 | PUT | `/submissions/:id/review` | Reviewer | Review submission (approve/reject with hours and feedback) |
 | POST | `/submissions/:id/quick-approve` | Reviewer | Auto-approve using Hackatime hours |

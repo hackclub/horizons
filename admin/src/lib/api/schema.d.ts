@@ -3661,6 +3661,11 @@ export interface components {
             isStale: boolean;
             isMine: boolean;
         };
+        MyRereviewResponse: {
+            previousSubmissionId: number;
+            /** Format: date-time */
+            previousReviewedAt: string | null;
+        };
         QueueItemResponse: {
             submissionId: number;
             projectId: number;
@@ -3673,6 +3678,8 @@ export interface components {
             /** @description True when the owner hasn't bought yet but their approved+pending hours would clear the pinned event's ticket threshold. */
             canBuyTicketIfApproved: boolean;
             claim: components["schemas"]["ClaimInfoResponse"] | null;
+            /** @description Set when this submission is a reship after the requesting reviewer's own rejection — the same condition that triggers the Slack re-review ping. Null for everyone else. */
+            myRereview: components["schemas"]["MyRereviewResponse"] | null;
         };
         SubmissionProjectResponse: {
             projectId: number;
