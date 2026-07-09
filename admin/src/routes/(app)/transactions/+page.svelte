@@ -101,12 +101,12 @@
 		loading = true;
 		error = null;
 		try {
+			// No limit — request the full ledger so every transaction shows.
 			const query: {
 				kind?: Kind;
 				fulfilled?: boolean;
 				refunded?: boolean;
-				limit?: number;
-			} = { limit: 500 };
+			} = {};
 			if (kindFilter !== 'all') query.kind = kindFilter;
 			if (fulfilledFilter === 'fulfilled') query.fulfilled = true;
 			else if (fulfilledFilter === 'unfulfilled') query.fulfilled = false;
