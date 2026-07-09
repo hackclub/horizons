@@ -1083,7 +1083,7 @@
 												class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] font-semibold bg-amber-500/15 text-amber-600 border border-amber-500/40"
 												title={pq.decidedBy ? `Priority approved by ${pq.decidedBy}: ${pq.reason}` : pq.reason}
 											>
-												⚡ Priority
+												Priority
 											</span>
 										{/if}
 										{#if item.myRereview}
