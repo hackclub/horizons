@@ -17,9 +17,6 @@ import { LoopsService } from '../loops/loops.service';
  */
 @Injectable()
 export class TicketQualifyEmailService {
-  /** Hour threshold at which the email fires. */
-  static readonly QUALIFY_HOURS = 15;
-
   constructor(
     private prisma: PrismaService,
     private loopsService: LoopsService,
@@ -31,8 +28,10 @@ export class TicketQualifyEmailService {
    * - The user has already been sent the email
    * - The user has no pinned event (we have no event name to put in the copy)
    * - The pinned event isn't open for ticket sales (`ticketEnabled = false`)
+   * - The pinned event has no `ticketThreshold` (no bar means no crossing
+   *   moment to congratulate — anyone can buy from the start)
    * - The user already bought a ticket for the pinned event
-   * - The user's total approved hours are still below the bar
+   * - The user's total approved hours are still below the event's bar
    *
    * Returns `true` iff the email was sent (and the flag stamped) on this
    * call. Callers can use this to suppress overlapping notifications — e.g.
@@ -50,7 +49,12 @@ export class TicketQualifyEmailService {
           select: {
             eventId: true,
             event: {
-              select: { slug: true, title: true, ticketEnabled: true },
+              select: {
+                slug: true,
+                title: true,
+                ticketEnabled: true,
+                ticketThreshold: true,
+              },
             },
           },
         },
@@ -59,6 +63,8 @@ export class TicketQualifyEmailService {
     if (!user) return false;
     if (user.ticketQualifyEmailSentAt) return false;
     if (!user.pinnedEvent?.event?.ticketEnabled) return false;
+    const ticketThreshold = user.pinnedEvent.event.ticketThreshold;
+    if (ticketThreshold == null) return false;
 
     const existingTicket = await this.prisma.transaction.findUnique({
       where: {
@@ -76,13 +82,13 @@ export class TicketQualifyEmailService {
       (sum, p) => sum + (p.approvedHours ?? 0),
       0,
     );
-    if (totalApproved < TicketQualifyEmailService.QUALIFY_HOURS) return false;
+    if (totalApproved < ticketThreshold) return false;
 
     const result = await this.loopsService.sendTicketQualifyEmail(
       user.email,
       {
         eventName: `Horizons ${user.pinnedEvent.event.title}`,
-        rsvpQualificationBar: TicketQualifyEmailService.QUALIFY_HOURS,
+        rsvpQualificationBar: ticketThreshold,
       },
       { idempotencyKey: `ticket-qualify:${user.userId}` },
     );
