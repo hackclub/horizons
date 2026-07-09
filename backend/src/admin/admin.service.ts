@@ -3393,7 +3393,9 @@ export class AdminService {
         event: { select: { eventId: true, slug: true, title: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: filters.limit ?? 500,
+      // No default cap — the admin ledger must show every transaction. An
+      // explicit limit is still honored for callers that want a slice.
+      ...(filters.limit ? { take: filters.limit } : {}),
     });
 
     const allTotals = await this.prisma.transaction.groupBy({
