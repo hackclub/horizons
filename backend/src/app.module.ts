@@ -21,6 +21,7 @@ import { HuddlesModule } from './huddles/huddles.module';
 import { HackatimeModule } from './hackatime/hackatime.module';
 import { UtilsModule } from './utils/utils.module';
 import { GitHubModule } from './github/github.module';
+import { LapseModule } from './lapse/lapse.module';
 import { ManifestModule } from './manifest/manifest.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { StreakModule } from './streaks/streak.module';
@@ -56,6 +57,7 @@ import { PrismaService } from './prisma.service';
     HackatimeModule,
     UtilsModule,
     GitHubModule,
+    LapseModule,
     ManifestModule,
     IntegrationsModule,
     StreakModule,

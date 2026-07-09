@@ -14,6 +14,7 @@
 	import ReadmePanel from '../components/ReadmePanel.svelte';
 	import ProjectCardPanel from '../components/ProjectCardPanel.svelte';
 	import ProjectHourBreakdown from '../components/ProjectHourBreakdown.svelte';
+	import LapsePanel from '../components/LapsePanel.svelte';
 	import VerdictPanel from '../components/VerdictPanel.svelte';
 	import GitHubPanel from '../components/GitHubPanel.svelte';
 	import ReviewChecklist from '../components/ReviewChecklist.svelte';
@@ -154,6 +155,10 @@
 	};
 	let hourBreakdown = $state<HourBreakdown | null>(null);
 	let hourBreakdownLoading = $state(false);
+	// Lapse timelapses recorded against this project's linked Hackatime projects.
+	type ProjectLapses = components['schemas']['ProjectLapsesResponse'];
+	let projectLapses = $state<ProjectLapses | null>(null);
+	let lapsesLoading = $state(false);
 
 	// Claim/lock state — keeps two reviewers from working the same submission.
 	const claimManager = createClaimManager();
@@ -171,6 +176,7 @@
 		{ id: 'readme', label: 'Readme' },
 		{ id: 'demo', label: 'Demo' },
 		{ id: 'card', label: 'Project Card' },
+		{ id: 'lapses', label: 'Timelapses' },
 		{ id: 'verdict', label: 'Verdict' },
 	];
 	let activeTab = $state('readme');
@@ -401,6 +407,7 @@
 		readmeMarkdown = '';
 		manifestLookup = null;
 		hourBreakdown = null;
+		projectLapses = null;
 		// Flip per-section loading flags up front so panels show their loading
 		// state immediately when switching submissions, instead of flashing
 		// "no data" between when the previous fetch's finally cleared them and
@@ -411,6 +418,7 @@
 		checklistLoading = true;
 		manifestLoading = true;
 		hourBreakdownLoading = true;
+		lapsesLoading = true;
 		// Read-only mode is per-submission — switching submissions resets it
 		// (attachClaim below decides whether to surface a fresh conflict).
 		readOnlyMode = false;
@@ -443,6 +451,7 @@
 			void loadChecklist(submissionId);
 			void loadManifestLookup(data.project.projectId);
 			void loadHourBreakdown(data.project.projectId);
+			void loadLapses(data.project.projectId);
 		} catch (error) {
 			console.error('Failed to load submission detail:', error);
 		} finally {
@@ -462,6 +471,20 @@
 			hourBreakdown = null;
 		} finally {
 			hourBreakdownLoading = false;
+		}
+	}
+
+	async function loadLapses(projectId: number) {
+		lapsesLoading = true;
+		try {
+			const { data } = await api.GET('/api/lapse/projects/{id}', {
+				params: { path: { id: projectId } },
+			});
+			projectLapses = data ?? null;
+		} catch {
+			projectLapses = null;
+		} finally {
+			lapsesLoading = false;
 		}
 	}
 
@@ -770,6 +793,9 @@
 								codeUrl={currentSubmission.repoUrl ?? currentSubmission.project.repoUrl}
 								readmeUrl={currentSubmission.project.readmeUrl}
 							/>
+						</div>
+						<div class="absolute inset-0" class:hidden={activeTab !== 'lapses'}>
+							<LapsePanel lapses={projectLapses} loading={lapsesLoading} />
 						</div>
 						<div class="absolute inset-0" class:hidden={activeTab !== 'verdict'}>
 							<VerdictPanel
