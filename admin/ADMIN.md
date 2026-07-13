@@ -31,7 +31,7 @@ admin/src/
 │               ├── UserInfo.svelte     # Name, Slack, links, age
 │               ├── NotesSection.svelte # Project/user notes (save to backend)
 │               ├── ReviewHistory.svelte# Submission/review timeline
-│               ├── DemoIframe.svelte   # Sandboxed demo preview
+│               ├── DemoIframe.svelte   # Sandboxed demo preview (new-tab fallback when framing is blocked)
 │               ├── ReadmeDrawer.svelte # Collapsible README panel
 │               ├── ActionBar.svelte    # Approve / Changes Needed forms
 │               ├── GitHubPanel.svelte  # Repo stats, language, timestamps
@@ -172,7 +172,7 @@ The review page at `/admin/review` is a specialized interface for processing sub
   - User info and profile data
   - Project screenshots gallery
   - GitHub repo panel (stats, language, README)
-  - Demo iframe (sandboxed)
+  - Demo iframe (sandboxed). On navigation it probes the demo URL via `/api/utils/check-url`; if the site blocks framing (`X-Frame-Options` / CSP `frame-ancestors`), the preview is replaced with an "Open in new tab" prompt instead of a silently blank frame. Falls back to attempting the iframe when embeddability can't be determined.
   - Hours breakdown with per-project details
   - Review history timeline
   - Notes (project and user-level)

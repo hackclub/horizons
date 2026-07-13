@@ -31,6 +31,13 @@ class UrlCheckResponse {
 
   @ApiPropertyOptional({ description: 'Favicon URL (e.g. origin/favicon.ico)' })
   favicon?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Whether the URL can be shown inside an iframe. false when the site blocks framing via X-Frame-Options or a CSP frame-ancestors directive. Absent/null when the isolated worker could not determine it.',
+    nullable: true,
+  })
+  embeddable?: boolean | null;
 }
 
 const WORKER_TIMEOUT_MS = 15_000;
