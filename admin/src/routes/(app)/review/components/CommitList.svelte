@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { components } from '$lib/api';
 	type GitHubCommit = components['schemas']['GitHubCommitResponse'];
-	import { timeAgo } from '../utils';
+	import { timeAgo, timeBetween } from '../utils';
 
 	interface Props {
 		commits: GitHubCommit[];
@@ -18,7 +18,7 @@
 <div class="pb-2.5 overflow-y-auto flex-1 min-h-0">
 	{#each commits as commit, i}
 		<a
-			class="block no-underline text-inherit px-4 py-2.5 transition-all duration-150 cursor-pointer hover:bg-white/[0.03] {i < commits.length - 1 ? 'border-b border-rv-divider' : ''}"
+			class="block no-underline text-inherit px-4 py-2.5 transition-all duration-150 cursor-pointer hover:bg-white/[0.03]"
 			href={commit.url}
 			target="_blank"
 			rel="noopener noreferrer"
@@ -38,5 +38,12 @@
 				</div>
 			</div>
 		</a>
+		{#if i < commits.length - 1}
+			<div class="flex items-center gap-2 px-4 text-rv-dim/60 border-b border-rv-divider">
+				<div class="h-px flex-1 bg-rv-divider"></div>
+				<span class="text-[10px] font-medium tabular-nums">{timeBetween(commit.date, commits[i + 1].date)} gap</span>
+				<div class="h-px flex-1 bg-rv-divider"></div>
+			</div>
+		{/if}
 	{/each}
 </div>
