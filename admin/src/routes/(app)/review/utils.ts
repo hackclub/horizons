@@ -33,6 +33,22 @@ export function waitingFor(dateStr: string): string {
   return `${years}y`;
 }
 
+/** Format the elapsed time between two date strings (e.g. "3h", "2d", "<1m"). Order-independent. */
+export function timeBetween(a: string, b: string): string {
+  const seconds = Math.floor(Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 1000);
+  if (seconds < 60) return '<1m';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo`;
+  const years = Math.floor(months / 12);
+  return `${years}y`;
+}
+
 /** Format a date string as a full readable date */
 export function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
