@@ -94,6 +94,18 @@
                     hours: data.hours,
                     newBalance: data.newBalance,
                 };
+                // Adjustments land in the ledger as cost = -hours, so earned
+                // stays put and spent moves; keep the balance chip in sync.
+                users = users.map((u) =>
+                    u.userId === userId
+                        ? {
+                              ...u,
+                              balance: data.newBalance,
+                              totalSpent:
+                                  Math.round((u.totalSpent - data.hours) * 10) / 10,
+                          }
+                        : u,
+                );
                 cancelHoursEdit();
             }
         } catch (e) {
@@ -419,6 +431,13 @@
                                     class="rounded-full border border-ds-border px-3 py-1"
                                 >
                                     Projects: {user.projects.length}
+                                </span>
+                                <span
+                                    class="rounded-full border border-ds-border px-3 py-1"
+                                    title="Spendable balance = approved hours earned minus unrefunded ledger spend"
+                                >
+                                    Balance: {formatHours(user.balance)}h
+                                    <span class="text-ds-text-placeholder">· earned {formatHours(user.totalApprovedHours)} · spent {formatHours(user.totalSpent)}</span>
                                 </span>
                                 <span
                                     class="rounded-full border border-ds-border px-3 py-1"

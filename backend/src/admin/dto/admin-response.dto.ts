@@ -309,6 +309,22 @@ export class AdminUserResponse extends AdminLightUserResponse {
 
   @ApiProperty({ type: [AdminUserProjectResponse] })
   projects: AdminUserProjectResponse[];
+
+  @ApiProperty({
+    description: 'Sum of approved hours across non-deleted projects.',
+  })
+  totalApprovedHours: number;
+
+  @ApiProperty({
+    description: 'Sum of unrefunded ledger transaction costs.',
+  })
+  totalSpent: number;
+
+  @ApiProperty({
+    description:
+      'Spendable hour balance (earned minus spent), matching BalanceService.',
+  })
+  balance: number;
 }
 
 export class AdminUserListResponse {
