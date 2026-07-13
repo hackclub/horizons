@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { marked } from 'marked';
-	import DOMPurify from 'dompurify';
+	import { renderMarkdown } from '$lib/markdown';
 	import { Skeleton } from '$lib/components';
 
 	interface Props {
@@ -10,9 +9,9 @@
 
 	let { markdown, loading = false }: Props = $props();
 
-	let sanitizedHtml = $derived(
-		markdown ? DOMPurify.sanitize(marked.parse(markdown) as string) : '',
-	);
+	// Memoized ($lib/markdown) — remounting the panel for a previously-viewed
+	// README skips the parse+sanitize cost entirely.
+	let sanitizedHtml = $derived(renderMarkdown(markdown));
 </script>
 
 <div class="readme-content h-full overflow-y-auto px-6 py-5 text-sm leading-[1.7] text-rv-text bg-rv-bg">

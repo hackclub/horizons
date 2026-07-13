@@ -42,6 +42,7 @@
 				class="w-full h-full object-contain bg-rv-surface2 block"
 				src={screenshotUrl}
 				alt="{projectTitle ?? 'Project'} screenshot"
+				decoding="async"
 			/>
 		</div>
 	{:else}

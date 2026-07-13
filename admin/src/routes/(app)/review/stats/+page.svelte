@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { theme, toggleTheme } from '$lib/themeStore';
 	import { api, type components } from '$lib/api';
+	import { ensureUser } from '$lib/auth';
 	import type * as EChartsModule from 'echarts';
 	import { Skeleton } from '$lib/components';
 	import StatCard from './StatCard.svelte';
@@ -148,8 +149,8 @@
 
 	onMount(async () => {
 		echartsReady = import('echarts').then((mod) => (echarts = mod));
-		const { data: me, error: authErr } = await api.GET('/api/user/auth/me');
-		if (authErr || !me) {
+		const me = await ensureUser();
+		if (!me) {
 			goto('/login');
 			return;
 		}

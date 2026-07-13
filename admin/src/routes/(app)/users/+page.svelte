@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
+    import { ensureUser } from '$lib/auth';
     import { Button, TextField, Card } from '$lib/components';
 
     type AdminUserResponse = components['schemas']['AdminUserResponse'];
@@ -344,13 +345,9 @@
 
     onMount(() => {
         loadUsers();
-        api.GET('/api/user/auth/me')
-            .then(({ data: me }) => {
-                currentUserRole = me?.role ?? null;
-            })
-            .catch(() => {
-                currentUserRole = null;
-            });
+        ensureUser().then((me) => {
+            currentUserRole = me?.role ?? null;
+        });
     });
 </script>
 

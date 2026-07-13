@@ -314,6 +314,8 @@
                                             src={giftCode.imageUrl}
                                             alt=""
                                             class="w-8 h-8 rounded object-cover"
+                                            loading="lazy"
+                                            decoding="async"
                                         />
                                     {/if}
                                     <span class="text-sm text-ds-text-secondary"

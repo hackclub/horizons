@@ -3,10 +3,11 @@
     import { goto } from '$app/navigation';
     import { base } from '$app/paths';
     import { api } from '$lib/api';
+    import { ensureUser } from '$lib/auth';
     import { Button, TextField, Checkbox } from '$lib/components';
 
     onMount(async () => {
-        const { data: me } = await api.GET('/api/user/auth/me');
+        const me = await ensureUser();
         if (me?.role === 'event_viewer') goto(`${base}/events`);
     });
 

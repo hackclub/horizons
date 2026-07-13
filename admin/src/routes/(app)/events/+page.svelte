@@ -92,6 +92,8 @@
                                         src={getEventLogo(event.slug)}
                                         alt={event.title}
                                         class="h-7 w-auto object-contain object-left"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                 {/if}
                                 <div class="flex items-center gap-2">

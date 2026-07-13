@@ -2,6 +2,7 @@
 	import { base } from '$app/paths';
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { api, type components } from '$lib/api';
+	import { ensureUser } from '$lib/auth';
 	import { Button } from '$lib/components';
 	import { theme } from '$lib/themeStore';
 	import type * as EChartsModule from 'echarts';
@@ -109,7 +110,7 @@
 
 	onMount(async () => {
 		echartsReady = import('echarts').then((mod) => (echarts = mod));
-		const { data: me } = await api.GET('/api/user/auth/me');
+		const me = await ensureUser();
 		userRole = me?.role ?? null;
 		loadStats();
 		window.addEventListener('resize', handleResize);
