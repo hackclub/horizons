@@ -4335,6 +4335,8 @@ export interface components {
             error?: string;
             /** @description Favicon URL (e.g. origin/favicon.ico) */
             favicon?: string;
+            /** @description Whether the URL can be shown inside an iframe. false when the site blocks framing via X-Frame-Options or a CSP frame-ancestors directive. Absent/null when the isolated worker could not determine it. */
+            embeddable?: boolean | null;
         };
         GitHubCommitResponse: {
             sha: string;

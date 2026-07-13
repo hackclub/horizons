@@ -391,9 +391,11 @@ User-URL reachability checks for the project ship/edit flows.
 
 Response shape (mirrors the Worker):
 ```ts
-{ ok: boolean; status: number; error?: string; favicon?: string | null }
+{ ok: boolean; status: number; error?: string; favicon?: string | null; embeddable?: boolean | null }
 ```
 `status` is bucketed: `200` (reachable), `400` (4xx), `500` (5xx), `0` (no response or blocked). Never the raw upstream status — exposing 401-vs-404 to the caller turns this into an external-service fingerprinting primitive.
+
+`embeddable` reports whether the URL can be shown inside an `<iframe>`: `false` when the target sets `X-Frame-Options` or a CSP `frame-ancestors` directive that blocks framing, `true` when nothing blocks it, and absent/`null` when the Worker couldn't determine it. The admin review dash's `DemoIframe` uses this to swap a blocked demo's preview for an "Open in new tab" prompt instead of a silently blank frame. **The Worker populates this field** (see below) — the backend only relays it.
 
 Test script: `bun scripts/url-check-test.ts` covers both the Worker directly and the backend forwarder. See the script header for required env vars.
 
@@ -546,13 +548,33 @@ The backend never makes outbound HTTP requests against user-supplied URLs. The o
 
 ### Cloudflare URL-check Worker
 
-Deployed separately (not in this repo). A small Cloudflare Worker that accepts `POST { url, type }` with a bearer secret, performs the actual `fetch()` against the user-supplied URL from Cloudflare's edge runtime, and returns `{ ok, status, error?, favicon? }`. The Worker:
+Deployed separately (not in this repo). A small Cloudflare Worker that accepts `POST { url, type }` with a bearer secret, performs the actual `fetch()` against the user-supplied URL from Cloudflare's edge runtime, and returns `{ ok, status, error?, favicon?, embeddable? }`. The Worker:
 
 - Lives on Cloudflare's public-internet edge with no network path to Horizons infrastructure — any SSRF blast radius is contained there, not in our VPC.
 - Re-validates everything: rejects non-http(s) schemes, IP-literal hostnames (incl. octal/decimal/IPv6 forms after WHATWG normalization), and self-references to `*.workers.dev`.
 - Never reads response bodies (status + headers only — no ReDoS / memory-DoS surface).
 - Buckets status codes so the backend can't be used as a fingerprinting tool for external services.
 - Handles both `type=url` (with `/favicon.ico`/`.png` probe) and `type=repo` (with `/info/refs?service=git-upload-pack` probe).
+- Reports `embeddable` for `type=url` by inspecting the response's `X-Frame-Options` and CSP `frame-ancestors` headers (it already reads headers, so this adds no new fetch). Logic: any `X-Frame-Options` (`DENY`/`SAMEORIGIN`/`ALLOW-FROM`) → `false`; a CSP `frame-ancestors` directive → `false` unless it contains a bare `*`; `'none'` → `false`; neither header present → `true`. Reference implementation for the Worker repo:
+  ```js
+  function computeEmbeddable(headers) {
+    const xfo = headers.get('x-frame-options');
+    if (xfo && /deny|sameorigin|allow-from/i.test(xfo)) return false;
+    const csp = headers.get('content-security-policy');
+    if (csp) {
+      const fa = csp.split(';').map((d) => d.trim().toLowerCase())
+        .find((d) => d.startsWith('frame-ancestors'));
+      if (fa) {
+        const sources = fa.replace('frame-ancestors', '').trim().split(/\s+/);
+        if (sources.includes('*')) return true; // explicitly allows any framer
+        return false; // 'none' or a host allowlist that won't include the review dash
+      }
+    }
+    return true;
+  }
+  ```
+
+> **Companion change required:** the framing check runs in the Worker, whose source lives in a separate repo. Until that repo is updated to add `embeddable` to its JSON response, `check-url` simply omits the field and the review dash falls back to attempting the iframe as before (no regression) — the "Open in new tab" fallback activates once the Worker ships.
 
 To run the local test suite against the Worker: `bun backend/scripts/url-check-test.ts`. See the script for required env vars.
 
