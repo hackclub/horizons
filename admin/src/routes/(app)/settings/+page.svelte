@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
+    import { ensureUser } from '$lib/auth';
     import { Button, Card } from '$lib/components';
 
     type ReviewerLeaderboardEntry = components['schemas']['ReviewerLeaderboardEntry'];
@@ -236,12 +237,8 @@
         loadGlobalSettings();
         loadReviewerLeaderboard();
         loadPriorityUsers();
-        try {
-            const { data: me } = await api.GET('/api/user/auth/me');
-            currentUserRole = me?.role ?? null;
-        } catch {
-            currentUserRole = null;
-        }
+        const me = await ensureUser();
+        currentUserRole = me?.role ?? null;
     });
 </script>
 

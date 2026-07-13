@@ -5,6 +5,7 @@
     import { goto } from '$app/navigation';
     import { env } from '$env/dynamic/public';
     import { api, type components } from '$lib/api';
+    import { ensureUser } from '$lib/auth';
     import { Button, TextField, Card, Checkbox, Select, FilterTag } from '$lib/components';
 
     type AdminProject = components['schemas']['AdminProjectResponse'];
@@ -271,7 +272,7 @@
 
     // --- API ---
     async function loadMe() {
-        const { data } = await api.GET('/api/user/auth/me');
+        const data = await ensureUser();
         if (data) me = { role: data.role };
     }
 

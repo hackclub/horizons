@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
+	import { ensureUser } from '$lib/auth';
+	import { getEvents, getPriorityQueue } from '$lib/reviewCache';
 	import { Skeleton, Highlight } from '$lib/components';
 	import { matchesScopedQuery } from '$lib/search';
 	import { mostUpcomingEventSlug } from '$lib/events';
@@ -168,10 +170,10 @@
 	let error = $state<string | null>(null);
 
 	async function load() {
-		const [{ data, error: err }, { data: eventsData }, { data: pqData }] = await Promise.all([
+		const [{ data, error: err }, eventsData, pqData] = await Promise.all([
 			api.GET('/api/admin/fraud-review/gallery'),
-			api.GET('/api/events'),
-			api.GET('/api/admin/priority-queue'),
+			getEvents(),
+			getPriorityQueue(),
 		]);
 		if (err) {
 			error = 'Failed to load fraud-review gallery. Admin role required.';
@@ -195,7 +197,7 @@
 	}
 
 	onMount(async () => {
-		const { data: me } = await api.GET('/api/user/auth/me');
+		const me = await ensureUser();
 		if (me && me.role !== 'admin' && me.role !== 'superadmin') {
 			window.location.href = `${base}/review`;
 			return;

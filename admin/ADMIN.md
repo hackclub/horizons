@@ -10,6 +10,7 @@ admin/src/
 │   ├── +layout.svelte                  # Root layout (imports layout.css)
 │   ├── +page.svelte                    # Redirects to /admin/submissions
 │   ├── +page.server.ts                 # Root page auth/redirect logic
+│   ├── login/+page.svelte              # Self-contained login (OAuth + unauthorized state)
 │   └── (app)/                          # Grouped layout for authenticated pages
 │       ├── +layout.svelte              # Admin chrome: header, nav, metrics cards
 │       ├── submissions/+page.svelte    # View/manage submissions
@@ -100,9 +101,15 @@ let errors = $state<Record<number, string>>({});
 let success = $state<Record<number, string>>({});
 ```
 
+### Authentication
+
+The admin app is auth-self-contained — see `docs/auth-flow.md` § Admin Panel. `/admin/login` starts the HCA OAuth flow with `redirect=<intended admin path>`; the `(app)` layout gates on a single `ensureUser()` from the shared `$lib/auth` store (pages read `$currentUser` instead of refetching `/me`); a global 401 middleware in `$lib/api/client.ts` bounces expired sessions to the login page with a `next` param; the sidebar has sign-out.
+
 ### Data Loading
 
-Pages use client-side loading via `onMount`:
+Shared, slow, or cross-page data goes through the stale-while-revalidate cache (`$lib/swr.ts` + `$lib/reviewCache.ts`) — the review queue, past-reviews, fraud-rejected, events, and priority-queue are cached so gallery ↔ project navigation doesn't refetch them; verdicts must call `invalidateReviewData()`.
+
+Pages otherwise use client-side loading via `onMount`:
 
 ```typescript
 import { onMount } from 'svelte';

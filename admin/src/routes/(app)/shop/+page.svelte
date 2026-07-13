@@ -791,6 +791,8 @@
                                             src={item.imageUrl}
                                             alt={item.name}
                                             class="w-20 h-20 object-cover rounded-lg border border-ds-border"
+                                            loading="lazy"
+                                            decoding="async"
                                         />
                                     {:else}
                                         <div

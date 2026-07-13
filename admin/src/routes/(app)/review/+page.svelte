@@ -16,6 +16,8 @@
 	import ReviewChecklist from './components/ReviewChecklist.svelte';
 	import ProjectGallery from './components/ProjectGallery.svelte';
 	import { api, type components } from '$lib/api';
+	import { ensureUser } from '$lib/auth';
+	import { getQueue } from '$lib/reviewCache';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
 	type SubmissionDetail = components['schemas']['SubmissionDetailResponse'];
@@ -63,18 +65,39 @@
 	let activeTab = $state('readme');
 
 	onMount(async () => {
-		const { data: meData } = await api.GET('/api/user/auth/me');
-		if (meData) me = { role: meData.role };
+		// Role comes from the shared store (populated by the layout gate) —
+		// no reason to serialize it in front of the queue fetch.
+		void ensureUser().then((meData) => {
+			if (meData) me = { role: meData.role };
+		});
 
 		await loadQueue();
+		lastQueueRefreshAt = Date.now();
 
-		// Periodically poll fraud review statuses and refresh the queue
-		pollTimer = setInterval(refreshQueue, FRAUD_POLL_INTERVAL_MS);
+		// Periodically poll fraud review statuses and refresh the queue — but
+		// only while the tab is actually visible. Reviewers keep this page open
+		// all day; polling hidden tabs just hammers the backend for nothing.
+		pollTimer = setInterval(() => {
+			if (!document.hidden) refreshQueue();
+		}, FRAUD_POLL_INTERVAL_MS);
+		document.addEventListener('visibilitychange', handleVisibilityChange);
 	});
 
 	onDestroy(() => {
 		if (pollTimer) clearInterval(pollTimer);
+		if (typeof document !== 'undefined') {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		}
 	});
+
+	let lastQueueRefreshAt = 0;
+
+	function handleVisibilityChange() {
+		// Coming back to a tab that slept through one or more poll ticks —
+		// catch up once instead of waiting up to a full interval.
+		if (document.hidden) return;
+		if (Date.now() - lastQueueRefreshAt >= FRAUD_POLL_INTERVAL_MS) refreshQueue();
+	}
 
 	async function refreshQueue() {
 		if (queueRefreshing) return;
@@ -82,24 +105,28 @@
 		try {
 			// Ask the backend to poll the fraud review platform for pending projects
 			await api.POST('/api/reviewer/fraud-review/refresh', {});
-			// Reload the queue so newly-passed projects appear
-			await loadQueue();
+			// Reload the queue so newly-passed projects appear. Silent: keep the
+			// current gallery on screen instead of flashing its loading state.
+			await loadQueue({ fresh: true, silent: true });
 		} catch {
 			// Refresh failures are non-fatal — the queue stays as-is
 		} finally {
+			lastQueueRefreshAt = Date.now();
 			queueRefreshing = false;
 		}
 	}
 
-	async function loadQueue() {
-		queueLoading = true;
+	async function loadQueue(opts: { fresh?: boolean; silent?: boolean } = {}) {
+		if (!opts.silent) {
+			queueLoading = true;
+			galleryMode = true;
+		}
 		queueError = null;
-		galleryMode = true;
 		try {
-			const { data, error } = await api.GET('/api/reviewer/queue');
-			if (error) throw new Error('Failed to fetch review queue');
-			queue = data ?? [];
-			currentIndex = 0;
+			// Cached (60s) — returning from a project renders the gallery
+			// instantly; verdicts invalidate the cache so it never lags actions.
+			queue = await getQueue({ fresh: opts.fresh });
+			if (!opts.silent) currentIndex = 0;
 		} catch (error) {
 			queueError = error instanceof Error ? error.message : 'Failed to load review queue';
 		} finally {
@@ -220,7 +247,8 @@
 	}
 
 	function handleReviewComplete() {
-		loadQueue();
+		// Bypass the cache — it still contains the queue from before this verdict.
+		loadQueue({ fresh: true });
 	}
 </script>
 

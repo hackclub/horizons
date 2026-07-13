@@ -2,6 +2,8 @@
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
 	import { theme, toggleTheme } from '$lib/themeStore';
+	import { api } from '$lib/api';
+	import { clearUser } from '$lib/auth';
 	import {
 		Home,
 		PlaySquare,
@@ -20,7 +22,8 @@
 		PanelLeftClose,
 		PanelLeftOpen,
 		Moon,
-		Sun
+		Sun,
+		LogOut
 	} from 'lucide-svelte';
 
 	type NavItem = {
@@ -76,6 +79,16 @@
 		if (user?.name) return user.name;
 		if (user?.email) return user.email.split('@')[0];
 		return 'User';
+	}
+
+	async function signOut() {
+		try {
+			await api.POST('/api/user/auth/logout', {});
+		} catch {
+			// Session may already be dead server-side — proceed to login anyway.
+		}
+		clearUser();
+		window.location.href = `${base}/login`;
 	}
 
 	function navItemClass(active: boolean, tint?: string): string {
@@ -209,8 +222,8 @@
 		</div>
 	</nav>
 
-	<!-- User info -->
-	<div class="flex items-center border-t border-ds-border p-3 {collapsed ? 'justify-center' : ''}">
+	<!-- User info + sign out -->
+	<div class="flex items-center border-t border-ds-border p-3 {collapsed ? 'justify-center' : 'justify-between'}">
 		<div class="flex items-center gap-1.5">
 			<div class="flex size-5 shrink-0 items-center justify-center rounded-full bg-ds-border text-[10px] font-semibold text-ds-surface">
 				{displayName().charAt(0).toUpperCase()}
@@ -219,5 +232,14 @@
 				<span class="text-xs font-semibold text-ds-text-muted">{displayName()}</span>
 			{/if}
 		</div>
+		{#if !collapsed}
+			<button
+				class="rounded p-1 text-ds-text-placeholder hover:text-ds-text"
+				onclick={signOut}
+				title="Sign out"
+			>
+				<LogOut size={14} />
+			</button>
+		{/if}
 	</div>
 </aside>

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { api } from '$lib/api';
+	import { ensureUser } from '$lib/auth';
 	import { toast } from '$lib/toastStore';
 
 	// Locally-typed to keep this file resilient to schema regen ordering. After
@@ -70,7 +71,7 @@
 	}
 
 	onMount(async () => {
-		const { data: me } = await api.GET('/api/user/auth/me');
+		const me = await ensureUser();
 		if (me && me.role !== 'admin' && me.role !== 'superadmin') {
 			window.location.href = `${base}/review`;
 			return;

@@ -22,6 +22,8 @@
 	import ClaimConflictModal from '../components/ClaimConflictModal.svelte';
 	import { createClaimManager } from '../claimManager';
 	import { api, type components } from '$lib/api';
+	import { ensureUser } from '$lib/auth';
+	import { getQueue, getPastReviews, getFraudRejected, invalidateReviewData } from '$lib/reviewCache';
 	import { get } from 'svelte/store';
 	import { afterVerdict } from '$lib/reviewSettingsStore';
 	import confetti from 'canvas-confetti';
@@ -247,44 +249,56 @@
 	onMount(async () => {
 		sessionSkippedProjectIds = loadSkippedFromStorage();
 
-		// Load queue + past reviews + fraud-rejected in parallel. Past reviews
-		// powers two things: (1) the seenProjectIds set that drives next/prev
-		// skip-already-reviewed, and (2) the deep-link fallback when a project
-		// isn't in the pending queue. Fraud-rejected is a separate fallback
-		// because silentReject submissions have no human reviewer and so don't
-		// appear in past-reviews — without it, opening a fraud-killed project
-		// from the gallery shows "not in the review system".
-		const [queueRes, pastRes, fraudRes, meRes] = await Promise.all([
-			api.GET('/api/reviewer/queue'),
-			api.GET('/api/reviewer/past-reviews'),
-			api.GET('/api/reviewer/fraud-rejected'),
-			api.GET('/api/user/auth/me'),
-		]);
-		queue = queueRes.data ?? [];
-		if (meRes.data) me = { role: meRes.data.role };
+		// Role comes from the shared store — never blocks the submission.
+		void ensureUser().then((meData) => {
+			if (meData) me = { role: meData.role };
+		});
 
-		if (pastRes.data) {
-			const myId = String(pastRes.data.currentReviewerId);
+		// Queue, past reviews, and fraud-rejected only power next/prev
+		// navigation and deep-link fallbacks. Past reviews drives (1) the
+		// seenProjectIds set for skip-already-reviewed and (2) the fallback for
+		// projects no longer pending; fraud-rejected covers silentReject
+		// submissions, which have no human reviewer and so miss past-reviews.
+		// All three come from the shared cache — warm (instant) when arriving
+		// from the gallery — and the submission itself no longer waits for
+		// them when the URL names it.
+		const queuePromise = getQueue().catch(() => [] as QueueItem[]);
+		const pastPromise = getPastReviews().catch(() => null);
+		const fraudPromise = getFraudRejected().catch(() => []);
+
+		void pastPromise.then((past) => {
+			if (!past) return;
+			const myId = String(past.currentReviewerId);
 			seenProjectIds = new Set(
-				pastRes.data.reviews
+				past.reviews
 					.filter((r) => r.reviewerId === myId)
 					.map((r) => r.projectId),
 			);
-		}
+		});
 
 		// Honor ?submissionId=X so reviewers can deep-link to a specific
 		// submission (e.g. an older resubmission) rather than always landing
-		// on the latest.
+		// on the latest. The id is enough to fetch — start immediately and let
+		// the queue position resolve in the background.
 		const queryParam = $page.url.searchParams.get('submissionId');
 		if (queryParam) {
 			const qId = Number(queryParam);
 			if (!Number.isNaN(qId)) {
-				const item = queue.find((q) => q.submissionId === qId);
-				if (item) currentIndex = queue.indexOf(item);
-				await loadSubmissionDetail(qId);
+				const detailPromise = loadSubmissionDetail(qId);
+				void queuePromise.then((q) => {
+					queue = q;
+					const item = q.find((entry) => entry.submissionId === qId);
+					if (item) currentIndex = q.indexOf(item);
+				});
+				await detailPromise;
 				return;
 			}
 		}
+
+		// No explicit submission id — the queue is needed to resolve
+		// projectId → latest submission, so this path still waits for it
+		// (instant when cached).
+		queue = await queuePromise;
 
 		const item = queue.find(q => q.projectId === projectId);
 		if (item) {
@@ -295,15 +309,17 @@
 
 		// Not in pending queue — fall back to past reviews so already-reviewed
 		// projects remain viewable from the gallery.
-		const past = pastRes.data?.reviews.find((r) => r.projectId === projectId);
-		if (past) {
-			await loadSubmissionDetail(past.submissionId);
+		const past = await pastPromise;
+		const pastEntry = past?.reviews.find((r) => r.projectId === projectId);
+		if (pastEntry) {
+			await loadSubmissionDetail(pastEntry.submissionId);
 			return;
 		}
 
 		// Fraud-killed submissions have no reviewer, so past-reviews misses them.
 		// Pick the newest fraud-rejected submission for this project.
-		const fraud = fraudRes.data?.find((f) => f.projectId === projectId);
+		const fraudList = await fraudPromise;
+		const fraud = fraudList?.find((f) => f.projectId === projectId);
 		if (fraud) {
 			await loadSubmissionDetail(fraud.submissionId);
 			return;
@@ -602,6 +618,9 @@
 		// Backend auto-releases on verdict; tell the local manager to stop
 		// heartbeating so we don't ping a no-longer-ours claim.
 		claimManager.destroy();
+		// The cached queue/past-reviews now predate this verdict — drop them so
+		// the gallery (and the next project's nav) refetch fresh state.
+		invalidateReviewData();
 		// Verdict is saved — don't prompt on subsequent navigations from this view.
 		skipLeavePrompt = true;
 		// Mark this project seen so navigateNext skips past it (and any future

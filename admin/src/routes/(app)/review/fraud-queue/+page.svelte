@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
+	import { ensureUser } from '$lib/auth';
 
 	type FraudQueueResponse = components['schemas']['FraudQueueResponse'];
 	type FraudProject = components['schemas']['FraudQueueProjectResponse'];
@@ -27,7 +28,7 @@
 	onMount(async () => {
 		// Guard against non-admin users hitting the route directly. The backend
 		// already 403s, but this gives them a clearer redirect.
-		const { data: me } = await api.GET('/api/user/auth/me');
+		const me = await ensureUser();
 		if (me && me.role !== 'admin' && me.role !== 'superadmin') {
 			window.location.href = `${base}/review`;
 			return;

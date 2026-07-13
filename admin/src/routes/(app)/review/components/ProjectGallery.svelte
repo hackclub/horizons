@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
-	import { api, type components } from '$lib/api';
+	import { type components } from '$lib/api';
+	import { ensureUser } from '$lib/auth';
+	import { getFraudRejected, getEvents, getPriorityQueue, getPastReviews } from '$lib/reviewCache';
 	import { mostUpcomingEventSlug } from '$lib/events';
 	import { timeAgo, waitingFor } from '../utils';
 	import { Skeleton, Highlight } from '$lib/components';
@@ -333,13 +335,14 @@
 	let allExpanded = $state(false);
 
 	onMount(async () => {
-		const [{ data: meData }, { data: fraudData }, { data: eventsData }, { data: pqData }] =
-			await Promise.all([
-				api.GET('/api/user/auth/me'),
-				api.GET('/api/reviewer/fraud-rejected'),
-				api.GET('/api/events'),
-				api.GET('/api/admin/priority-queue'),
-			]);
+		// All four sources are cached ($lib/reviewCache + $lib/auth) — returning
+		// to the gallery from a project renders instantly instead of refetching.
+		const [me, fraudData, eventsData, pqData] = await Promise.all([
+			ensureUser(),
+			getFraudRejected(),
+			getEvents(),
+			getPriorityQueue(),
+		]);
 		if (fraudData) fraudRejected = fraudData;
 		if (eventsData) events = eventsData;
 		if (pqData) {
@@ -353,14 +356,14 @@
 			if (slug) selectedEvents = new Set([slug]);
 			needsDefaultEventSeed = false;
 		}
-		isAdmin = meData?.role === 'admin' || meData?.role === 'superadmin';
+		isAdmin = me?.role === 'admin' || me?.role === 'superadmin';
 	});
 
 	async function loadPastReviews() {
 		if (pastReviewsLoaded || pastReviewsLoading) return;
 		pastReviewsLoading = true;
 		try {
-			const { data } = await api.GET('/api/reviewer/past-reviews');
+			const data = await getPastReviews();
 			if (data) {
 				pastReviews = data.reviews;
 				currentReviewerId = data.currentReviewerId;

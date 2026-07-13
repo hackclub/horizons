@@ -33,13 +33,17 @@ export class AuthController {
   @ApiQuery({ name: 'referralCode', required: false })
   @ApiQuery({ name: 'email', required: false })
   @ApiQuery({ name: 'utm_source', required: false })
+  @ApiQuery({ name: 'redirect', required: false })
   @ApiOkResponse({ type: AuthUrlResponse })
   async getAuthUrl(
     @Query('referralCode') referralCode?: string,
     @Query('email') email?: string,
     @Query('utm_source') utmSource?: string,
+    @Query('redirect') redirect?: string,
   ): Promise<AuthUrlResponse> {
-    return this.authService.getAuthUrl(email, referralCode, undefined, utmSource);
+    // `redirect` rides in the signed state and the callback enforces
+    // relative-paths-only, so a tampered value can't leave the origin.
+    return this.authService.getAuthUrl(email, referralCode, redirect, utmSource);
   }
 
   @Get('callback')
@@ -81,7 +85,11 @@ export class AuthController {
 
     const defaultPath = result.isNewUser ? '/app/onboarding' : '/app';
     // const defaultPath = '/app';
-    const redirectPath = result.redirectPath ?? defaultPath;
+    // New users always land on onboarding — a stored redirect (e.g. back to
+    // the admin login's target) must not let them skip it.
+    const redirectPath = result.isNewUser
+      ? defaultPath
+      : (result.redirectPath ?? defaultPath);
     // Prevent open redirect: only allow relative paths starting with /
     const destination =
       typeof redirectPath === 'string' &&

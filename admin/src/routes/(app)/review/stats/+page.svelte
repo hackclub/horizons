@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { theme, toggleTheme } from '$lib/themeStore';
 	import { api, type components } from '$lib/api';
+	import { ensureUser } from '$lib/auth';
 	import type * as EChartsModule from 'echarts';
 	import { Skeleton } from '$lib/components';
 	import StatCard from './StatCard.svelte';
@@ -148,13 +150,15 @@
 
 	onMount(async () => {
 		echartsReady = import('echarts').then((mod) => (echarts = mod));
-		const { data: me, error: authErr } = await api.GET('/api/user/auth/me');
-		if (authErr || !me) {
-			goto('/login');
+		const me = await ensureUser();
+		if (!me) {
+			goto(`${base}/login`);
 			return;
 		}
 		if (me.role !== 'admin' && me.role !== 'superadmin' && me.role !== 'reviewer') {
-			goto('/app/projects');
+			// event_viewer can use the app but not review stats — keep them
+			// inside the admin app instead of bouncing to the participant site.
+			goto(`${base}/home`);
 			return;
 		}
 		await loadStats();

@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { api } from '$lib/api';
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import { base } from '$app/paths';
     import { Sidebar } from '$lib/components';
+    import { ensureUser } from '$lib/auth';
 
     let { children } = $props();
 
@@ -13,9 +13,16 @@
     let wasOnReview = $state(false);
 
     onMount(async () => {
-        const { data: userData, error } = await api.GET('/api/user/auth/me');
-        if (error || !userData) {
-            window.location.href = '/';
+        // Single blocking auth fetch for the whole app. Pages under (app)
+        // render only after this resolves, so they can read $currentUser
+        // synchronously instead of refetching /me.
+        const userData = await ensureUser();
+        if (!userData) {
+            // Preserve the intended destination so login lands back here.
+            const next = encodeURIComponent(
+                window.location.pathname + window.location.search,
+            );
+            window.location.href = `${base}/login?next=${next}`;
             return;
         }
         if (
@@ -24,7 +31,7 @@
             userData.role !== 'reviewer' &&
             userData.role !== 'event_viewer'
         ) {
-            window.location.href = '/app/projects';
+            window.location.href = `${base}/login`;
             return;
         }
         user = userData as any;
