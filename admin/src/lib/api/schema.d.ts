@@ -2888,6 +2888,12 @@ export interface components {
             updatedAt: string;
             role: string;
             projects: components["schemas"]["AdminUserProjectResponse"][];
+            /** @description Sum of approved hours across non-deleted projects. */
+            totalApprovedHours: number;
+            /** @description Sum of unrefunded ledger transaction costs. */
+            totalSpent: number;
+            /** @description Spendable hour balance (earned minus spent), matching BalanceService. */
+            balance: number;
         };
         AdminUserListResponse: {
             users: components["schemas"]["AdminUserResponse"][];

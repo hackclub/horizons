@@ -1680,35 +1680,60 @@ export class AdminService {
     const total = Number(countRows[0]?.total ?? 0);
     const ids = idRows.map((row) => Number(row.user_id));
 
-    const users = ids.length
-      ? await this.prisma.user.findMany({
-          where: { userId: { in: ids } },
-          include: {
-            projects: {
-              select: {
-                projectId: true,
-                projectTitle: true,
-                projectType: true,
-                nowHackatimeHours: true,
-                approvedHours: true,
-                isLocked: true,
-                createdAt: true,
-                submissions: {
-                  orderBy: { createdAt: 'desc' },
-                  take: 1,
-                  select: {
-                    submissionId: true,
-                    approvalStatus: true,
-                    approvedHours: true,
-                    createdAt: true,
-                  },
+    if (!ids.length) {
+      return { users: [], total, page, limit };
+    }
+
+    // Balance = approved hours earned minus unrefunded ledger spend, grouped
+    // per user so the page costs two aggregates instead of one per row. Must
+    // mirror BalanceService.getUserBalance so admins see the same number the
+    // shop enforces.
+    const [users, earnedRows, spentRows] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { userId: { in: ids } },
+        include: {
+          projects: {
+            select: {
+              projectId: true,
+              projectTitle: true,
+              projectType: true,
+              nowHackatimeHours: true,
+              approvedHours: true,
+              isLocked: true,
+              createdAt: true,
+              submissions: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: {
+                  submissionId: true,
+                  approvalStatus: true,
+                  approvedHours: true,
+                  createdAt: true,
                 },
               },
-              orderBy: { createdAt: 'desc' },
             },
+            orderBy: { createdAt: 'desc' },
           },
-        })
-      : [];
+        },
+      }),
+      this.prisma.project.groupBy({
+        by: ['userId'],
+        where: { userId: { in: ids }, deletedAt: null },
+        _sum: { approvedHours: true },
+      }),
+      this.prisma.transaction.groupBy({
+        by: ['userId'],
+        where: { userId: { in: ids }, refundedAt: null },
+        _sum: { cost: true },
+      }),
+    ]);
+
+    const earnedById = new Map(
+      earnedRows.map((r) => [r.userId, r._sum.approvedHours ?? 0]),
+    );
+    const spentById = new Map(
+      spentRows.map((r) => [r.userId, r._sum.cost ?? 0]),
+    );
 
     const byId = new Map(users.map((u) => [u.userId, u]));
 
@@ -1718,14 +1743,21 @@ export class AdminService {
       users: ids
         .map((id) => byId.get(id))
         .filter((u): u is NonNullable<typeof u> => Boolean(u))
-        .map((u) => ({
-          ...u,
-          currentStreak: this.streakService.applyLazyDecay({
-            currentStreak: u.currentStreak,
-            lastActiveDate: u.lastActiveDate,
-            timezone: u.timezone,
-          }),
-        })),
+        .map((u) => {
+          const totalApprovedHours = earnedById.get(u.userId) ?? 0;
+          const totalSpent = spentById.get(u.userId) ?? 0;
+          return {
+            ...u,
+            currentStreak: this.streakService.applyLazyDecay({
+              currentStreak: u.currentStreak,
+              lastActiveDate: u.lastActiveDate,
+              timezone: u.timezone,
+            }),
+            totalApprovedHours,
+            totalSpent,
+            balance: Math.round((totalApprovedHours - totalSpent) * 10) / 10,
+          };
+        }),
       total,
       page,
       limit,
