@@ -12,6 +12,7 @@ import { TicketQualifyEmailService } from '../ticket-qualify-email/ticket-qualif
 import { SlackService } from '../slack/slack.service';
 import { SlackChannelsService } from '../slack-channels/slack-channels.service';
 import { StreakService } from '../streaks/streak.service';
+import { Role } from './enums/role.enum';
 
 import { createHmac } from 'crypto';
 import * as jose from 'jose';
@@ -289,7 +290,16 @@ export class AuthService {
       utmSource,
     );
 
-    if (claims.ysws_eligible === false) {
+    const yswsExemptRoles: string[] = [
+      Role.Reviewer,
+      Role.Admin,
+      Role.EventViewer,
+      Role.Superadmin,
+    ];
+    if (
+      claims.ysws_eligible === false &&
+      !yswsExemptRoles.includes(user.role)
+    ) {
       throw new ForbiddenException('You are not eligible for YSWS.');
     }
 
