@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { theme, toggleTheme } from '$lib/themeStore';
 	import { api, type components } from '$lib/api';
 	import { ensureUser } from '$lib/auth';
@@ -151,11 +152,13 @@
 		echartsReady = import('echarts').then((mod) => (echarts = mod));
 		const me = await ensureUser();
 		if (!me) {
-			goto('/login');
+			goto(`${base}/login`);
 			return;
 		}
 		if (me.role !== 'admin' && me.role !== 'superadmin' && me.role !== 'reviewer') {
-			goto('/app/projects');
+			// event_viewer can use the app but not review stats — keep them
+			// inside the admin app instead of bouncing to the participant site.
+			goto(`${base}/home`);
 			return;
 		}
 		await loadStats();

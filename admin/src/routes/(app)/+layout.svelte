@@ -18,7 +18,11 @@
         // synchronously instead of refetching /me.
         const userData = await ensureUser();
         if (!userData) {
-            window.location.href = '/';
+            // Preserve the intended destination so login lands back here.
+            const next = encodeURIComponent(
+                window.location.pathname + window.location.search,
+            );
+            window.location.href = `${base}/login?next=${next}`;
             return;
         }
         if (
@@ -27,7 +31,7 @@
             userData.role !== 'reviewer' &&
             userData.role !== 'event_viewer'
         ) {
-            window.location.href = '/app/projects';
+            window.location.href = `${base}/login`;
             return;
         }
         user = userData as any;

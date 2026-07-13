@@ -20,7 +20,8 @@ GET /api/user/auth/login ──► Hack Club Auth (OAuth)
   │                            ├─ find or create user in DB
   │                            ├─ create session (21-day expiry)
   │                            ├─ set sessionId cookie
-  │                            └─ redirect to /app or /app/onboarding
+  │                            └─ redirect: new users → /app/onboarding (always);
+  │                               otherwise the stored redirect path or /app
   │
   ▼
 App Layout (frontend or admin)
@@ -45,6 +46,15 @@ The login URL includes a signed state token to prevent CSRF:
 - **Payload**: `{ referralCode, timestamp, redirectPath }`
 
 The callback verifies the signature and checks the timestamp hasn't expired before proceeding.
+
+### Post-login Redirect
+
+`GET /api/user/auth/login` accepts an optional `redirect` query param. It rides inside the signed state token as `redirectPath` and the callback redirects there after setting the session cookie. Two safeguards apply:
+
+- **Relative paths only** — the callback rejects anything that doesn't start with `/` (or that starts with `//`), so a tampered state can't leave the origin.
+- **New users always land on `/app/onboarding`** — a stored redirect cannot skip onboarding.
+
+The admin login page uses this to return reviewers to the exact admin page they were headed to (e.g. `redirect=/admin/review`).
 
 ### Token Exchange
 
@@ -201,24 +211,16 @@ The landing page (`/+page.svelte`) checks auth on mount:
 
 ## Admin Auth
 
-### Review Page (Server-Side)
-
-The review page (`admin/src/routes/review/+page.server.ts`) uses a server-side load function:
-
-```typescript
-const userResponse = await fetch(`${apiUrl}/api/user/auth/me`, {
-  headers: { cookie: request.headers.get('cookie') || '' },
-});
-
-if (userResponse.status === 401) throw redirect(302, '/login');
-if (user.role !== 'admin' && user.role !== 'reviewer') throw redirect(302, '/app/projects');
-```
-
-Forwards the session cookie to the backend and checks the role before rendering.
-
 ### Admin Panel
 
-The admin layout checks auth client-side via `api.GET('/api/user/auth/me')` on mount, similar to the frontend.
+The admin app is self-contained for auth — reviewers and admins never need the participant frontend:
+
+- **Login page** (`admin/src/routes/login/+page.svelte`, public): "Sign in with Hack Club" button that calls `GET /api/user/auth/login?redirect=<intended admin path>` and forwards to the OAuth URL. If the visitor is signed in but lacks a privileged role, it shows an "no reviewer/admin access" state with a sign-out-and-switch-account action and a link to the main site.
+- **Layout gate** (`(app)/+layout.svelte`): resolves the user once via the shared `$lib/auth` store (`ensureUser()`); unauthenticated visitors are sent to `/admin/login?next=<current path>` so login returns them to where they were headed. Non-privileged users are sent to the login page's unauthorized state.
+- **Global 401 handling** (`$lib/api/client.ts` middleware): any 401 mid-session redirects to `/admin/login?next=<current path>` (skipped on the login page itself, which probes `/me` while signed out).
+- **Sign out**: the sidebar's sign-out button calls `POST /api/user/auth/logout`, clears the store, and lands on `/admin/login`.
+
+Privileged roles for the admin app: `admin`, `superadmin`, `reviewer`, `event_viewer`.
 
 ## Security Summary
 

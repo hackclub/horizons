@@ -4445,6 +4445,7 @@ export interface operations {
                 referralCode?: string;
                 email?: string;
                 utm_source?: string;
+                redirect?: string;
             };
             header?: never;
             path?: never;
