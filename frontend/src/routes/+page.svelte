@@ -978,7 +978,6 @@ void main(){
 						<a href="https://hackclub.com/philosophy" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Our Philosophy</a>
 						<a href="https://hackclub.com/team" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Team &amp; Board</a>
 						<a href="https://hackclub.com/donate" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Donate</a>
-						<a href="https://hackclub.com/print" target="_blank" rel="noopener" class="text-white no-underline hover:underline">Print</a>
 						<a href="mailto:press@hackclub.com" class="text-white no-underline hover:underline">Press Inquiries</a>
 					</div>
 				</div>
