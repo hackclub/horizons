@@ -21,6 +21,7 @@ import {
   SaveChecklistDto,
   ClaimSubmissionDto,
   PreviewSlackMessageDto,
+  SendToAdminDto,
 } from './dto/review-submission.dto';
 import {
   QueueItemResponse,
@@ -36,6 +37,7 @@ import {
   ClaimResultResponse,
   HackatimeProjectHours,
   ProjectHourBreakdownResponse,
+  SendToAdminResultResponse,
 } from './dto/reviewer-response.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -185,7 +187,34 @@ export class ReviewerController {
       id,
       req.user.userId,
       dto,
+      req.user.role,
     );
+  }
+
+  /**
+   * Send a submission to the secondary admin review queue. Requires a note
+   * explaining why an admin needs to look at it. Escalated submissions leave
+   * the regular reviewer queue and only admins can submit a verdict on them.
+   */
+  @Post('submissions/:id/send-to-admin')
+  @ApiOkResponse({ type: SendToAdminResultResponse })
+  async sendToAdmin(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SendToAdminDto,
+    @Req() req: Request,
+  ) {
+    return this.reviewerService.sendToAdmin(id, req.user.userId, dto);
+  }
+
+  /** Admin-only: return an escalated submission to the regular reviewer queue. */
+  @Delete('submissions/:id/send-to-admin')
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: SendToAdminResultResponse })
+  async returnToReviewerQueue(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ) {
+    return this.reviewerService.returnToReviewerQueue(id, req.user.userId);
   }
 
   /** Look up this project's codeUrl in the Manifest registry to see other YSWS submissions */

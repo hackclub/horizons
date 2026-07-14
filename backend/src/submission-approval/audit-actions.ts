@@ -8,6 +8,10 @@ export const AUDIT_ACTIONS = {
   fraudResolved: 'fraud_resolved',
   fraudRequeued: 'fraud_requeued',
   noteUpdate: 'note_update',
+  // Reviewer escalated the submission to the admin queue (changes.note holds
+  // the required explanation) / admin sent it back to the reviewer queue.
+  sendToAdmin: 'send_to_admin',
+  returnToQueue: 'return_to_queue',
   permReject: 'perm_reject',
   permRejectCleared: 'perm_reject_cleared',
   // Superadmin-only out-of-band status flip on an already-finalized submission

@@ -12,6 +12,7 @@ import {
   SaveNoteDto,
   SaveChecklistDto,
   PreviewSlackMessageDto,
+  SendToAdminDto,
 } from './dto/review-submission.dto';
 
 // A claim is "active" while heartbeats arrive within this window. Past it,
@@ -138,6 +139,10 @@ export class ReviewerService {
       submissions.map((s) => s.project.user),
     );
 
+    const escalatorNameMap = await this.fetchReviewerNamesFor(
+      submissions.map((s) => s.sentToAdminById),
+    );
+
     const ticketStatuses = await computeUserTicketStatuses(
       this.prisma,
       [...new Set(submissions.map((s) => s.project.user.userId))],
@@ -211,8 +216,49 @@ export class ReviewerService {
         canBuyTicketIfApproved: ticket?.canBuyTicketIfApproved ?? false,
         claim: this.buildClaimInfo(submission, viewerId),
         myRereview,
+        sentToAdmin: this.buildSentToAdminInfo(submission, escalatorNameMap),
       };
     });
+  }
+
+  /**
+   * Shape escalation metadata for the API: null when the submission hasn't
+   * been sent to the admin queue, otherwise when/who/why.
+   */
+  private buildSentToAdminInfo(
+    submission: {
+      sentToAdminAt: Date | null;
+      sentToAdminById: number | null;
+      sentToAdminNote: string | null;
+    },
+    nameMap: Map<number, string>,
+  ) {
+    if (!submission.sentToAdminAt) return null;
+    return {
+      sentAt: submission.sentToAdminAt,
+      byUserId: submission.sentToAdminById,
+      byName:
+        submission.sentToAdminById !== null
+          ? (nameMap.get(submission.sentToAdminById) ??
+            `User ${submission.sentToAdminById}`)
+          : 'Unknown',
+      note: submission.sentToAdminNote ?? '',
+    };
+  }
+
+  /** Batch-resolve reviewer userIds to "First Last" names. */
+  private async fetchReviewerNamesFor(
+    ids: Array<number | null>,
+  ): Promise<Map<number, string>> {
+    const unique = [...new Set(ids.filter((id): id is number => id !== null))];
+    if (unique.length === 0) return new Map();
+    const users = await this.prisma.user.findMany({
+      where: { userId: { in: unique } },
+      select: { userId: true, firstName: true, lastName: true },
+    });
+    return new Map(
+      users.map((u) => [u.userId, `${u.firstName} ${u.lastName}`]),
+    );
   }
 
   /**
@@ -387,6 +433,10 @@ export class ReviewerService {
       timeline,
       submissions: submissionsList,
       claim: this.buildClaimInfo(submission, viewerId),
+      sentToAdmin: this.buildSentToAdminInfo(
+        submission,
+        await this.fetchReviewerNamesFor([submission.sentToAdminById]),
+      ),
     };
   }
 
@@ -560,11 +610,27 @@ export class ReviewerService {
   ) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
-      select: { submissionId: true, approvalStatus: true },
+      select: {
+        submissionId: true,
+        approvalStatus: true,
+        sentToAdminAt: true,
+      },
     });
 
     if (!submission) {
       throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+
+    // Escalated submissions belong to the admin queue — plain reviewers can
+    // still save drafts/notes but can't finalize a verdict on them.
+    if (
+      dto.approvalStatus !== undefined &&
+      submission.sentToAdminAt &&
+      reviewerRole === 'reviewer'
+    ) {
+      throw new ForbiddenException(
+        'This submission was sent to the admin queue — only admins can submit a verdict on it',
+      );
     }
 
     // Status flips on already-finalized submissions (approved↔rejected) are
@@ -746,6 +812,7 @@ export class ReviewerService {
     submissionId: number,
     reviewerId: number,
     dto: QuickApproveDto,
+    reviewerRole?: string,
   ) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
@@ -753,6 +820,13 @@ export class ReviewerService {
     });
     if (!submission) {
       throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+
+    // Same gate as reviewSubmission — escalated submissions are admin-only.
+    if (submission.sentToAdminAt && reviewerRole === 'reviewer') {
+      throw new ForbiddenException(
+        'This submission was sent to the admin queue — only admins can submit a verdict on it',
+      );
     }
 
     if (dto.userFeedback !== undefined) {
@@ -821,6 +895,111 @@ export class ReviewerService {
     });
 
     return { success: true, submissionId, status: 'approved' };
+  }
+
+  /**
+   * Escalate a submission to the secondary admin queue. The required note
+   * explains why an admin needs to look (shown on the admin queue card and in
+   * the review timeline). The claim is released so the reviewer can move on;
+   * plain reviewers can no longer submit a verdict until an admin either
+   * decides or returns it to the regular queue.
+   */
+  async sendToAdmin(
+    submissionId: number,
+    reviewerId: number,
+    dto: SendToAdminDto,
+  ) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      select: {
+        submissionId: true,
+        approvalStatus: true,
+        reviewPassed: true,
+        sentToAdminAt: true,
+      },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+    if (submission.approvalStatus !== 'pending' || submission.reviewPassed !== null) {
+      throw new BadRequestException(
+        'Only pending, unreviewed submissions can be sent to the admin queue',
+      );
+    }
+    if (submission.sentToAdminAt) {
+      throw new BadRequestException(
+        'This submission is already in the admin queue',
+      );
+    }
+    const note = dto.note.trim();
+    if (!note) {
+      throw new BadRequestException(
+        'A note explaining why this needs an admin is required',
+      );
+    }
+
+    await this.prisma.submission.update({
+      where: { submissionId },
+      data: {
+        sentToAdminAt: new Date(),
+        sentToAdminById: reviewerId,
+        sentToAdminNote: note,
+        // Escalation ends this reviewer's session — release the claim so the
+        // admin picking it up doesn't hit a takeover prompt.
+        claimedById: null,
+        claimedAt: null,
+        claimHeartbeatAt: null,
+      },
+    });
+
+    await this.prisma.submissionAuditLog.create({
+      data: {
+        submissionId,
+        adminId: reviewerId,
+        action: AUDIT_ACTIONS.sendToAdmin,
+        changes: { note } as any,
+      },
+    });
+
+    return { success: true, submissionId };
+  }
+
+  /**
+   * Admin-only: send an escalated submission back to the regular reviewer
+   * queue (e.g. the concern was resolved without needing a verdict).
+   */
+  async returnToReviewerQueue(submissionId: number, adminId: number) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { submissionId },
+      select: { submissionId: true, sentToAdminAt: true },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Submission ${submissionId} not found`);
+    }
+    if (!submission.sentToAdminAt) {
+      throw new BadRequestException(
+        'This submission is not in the admin queue',
+      );
+    }
+
+    await this.prisma.submission.update({
+      where: { submissionId },
+      data: {
+        sentToAdminAt: null,
+        sentToAdminById: null,
+        sentToAdminNote: null,
+      },
+    });
+
+    await this.prisma.submissionAuditLog.create({
+      data: {
+        submissionId,
+        adminId,
+        action: AUDIT_ACTIONS.returnToQueue,
+      },
+    });
+
+    return { success: true, submissionId };
   }
 
   async sendPreviewSlackMessage(
@@ -1432,6 +1611,12 @@ export class ReviewerService {
           approvedHours: number | null;
           submittedHours: number | null;
           timestamp: Date;
+        }
+      | {
+          type: 'sent_to_admin' | 'returned_to_queue';
+          reviewerName: string;
+          note: string | null;
+          timestamp: Date;
         };
 
     const events: TimelineEntry[] = [];
@@ -1454,13 +1639,13 @@ export class ReviewerService {
 
       // Add review events from audit logs
       for (const log of sub.auditLogs) {
-        if (log.action === 'review' && log.newStatus) {
-          const reviewer = reviewerMap.get(log.adminId);
-          const reviewerName = reviewer
-            ? `${reviewer.firstName} ${reviewer.lastName}`
-            : 'Unknown';
-          const changes = log.changes as Record<string, unknown> | null;
+        const reviewer = reviewerMap.get(log.adminId);
+        const reviewerName = reviewer
+          ? `${reviewer.firstName} ${reviewer.lastName}`
+          : 'Unknown';
+        const changes = log.changes as Record<string, unknown> | null;
 
+        if (log.action === 'review' && log.newStatus) {
           events.push({
             type: log.newStatus === 'approved' ? 'approved' : 'rejected',
             reviewerName,
@@ -1468,6 +1653,19 @@ export class ReviewerService {
             hoursJustification: (changes?.hoursJustification as string) ?? null,
             approvedHours: log.approvedHours,
             submittedHours: sub.hackatimeHours,
+            timestamp: log.createdAt,
+          });
+        } else if (
+          log.action === AUDIT_ACTIONS.sendToAdmin ||
+          log.action === AUDIT_ACTIONS.returnToQueue
+        ) {
+          events.push({
+            type:
+              log.action === AUDIT_ACTIONS.sendToAdmin
+                ? 'sent_to_admin'
+                : 'returned_to_queue',
+            reviewerName,
+            note: (changes?.note as string) ?? null,
             timestamp: log.createdAt,
           });
         }

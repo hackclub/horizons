@@ -128,6 +128,8 @@ Submission review queue and actions. Accessible to `reviewer` and `admin` roles.
 | GET | `/submissions/:id` | Reviewer | Full submission detail with timeline |
 | PUT | `/submissions/:id/review` | Reviewer | Review submission (approve/reject with hours and feedback) |
 | POST | `/submissions/:id/quick-approve` | Reviewer | Auto-approve using Hackatime hours |
+| POST | `/submissions/:id/send-to-admin` | Reviewer | Escalate to the secondary admin queue with a required note (`sentToAdmin*` fields on Submission). Escalated submissions leave the reviewer queue; plain reviewers can no longer submit a verdict on them |
+| DELETE | `/submissions/:id/send-to-admin` | Admin | Return an escalated submission to the regular reviewer queue |
 | GET | `/projects/:id/notes` | Reviewer | Get shared reviewer note on project |
 | PUT | `/projects/:id/notes` | Reviewer | Save reviewer note on project |
 | GET | `/users/:id/notes` | Reviewer | Get shared reviewer note on user |
@@ -469,7 +471,7 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 |-------|------------|---------|
 | **User** | hcaId, email, firstName, lastName, birthday, address fields, role, onboardComplete, hackatimeAccount, hackatimeAccessToken, rafflePos, airtableRecId, isFraud, isSus | Student profiles |
 | **Project** | userId, projectTitle, projectType, description, approvedHours, nowHackatimeHours, nowHackatimeProjects[], URLs, isLocked, joeFraudPassed, joeTrustScore (+ other joe\*) | Student projects |
-| **Submission** | projectId, approvalStatus (reconciled final outcome), reviewPassed (reviewer gate), approvedHours, hackatimeHours, hoursJustification, reviewerAnalysis, pendingSendEmail, reviewedBy, reviewedAt, finalizedAt, airtableRecId | Per-project submissions |
+| **Submission** | projectId, approvalStatus (reconciled final outcome), reviewPassed (reviewer gate), approvedHours, hackatimeHours, hoursJustification, reviewerAnalysis, pendingSendEmail, reviewedBy, reviewedAt, finalizedAt, airtableRecId, sentToAdminAt/ById/Note (reviewer escalation to the admin queue — never exposed to users) | Per-project submissions |
 | **SubmissionAuditLog** | submissionId, adminId, action, newStatus, approvedHours, changes (JSON) | Review audit trail |
 | **ReviewerNote** | projectId or userId, content | Shared reviewer notes |
 | **ReviewerChecklist** | submissionId, checkedItems (JSON) | 7-item per-submission checklist |

@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsArray,
   IsInt,
+  IsNotEmpty,
   MaxLength,
   IsBoolean,
 } from 'class-validator';
@@ -84,6 +85,15 @@ export class PreviewSlackMessageDto {
   @IsBoolean()
   @IsOptional()
   approved?: boolean;
+}
+
+export class SendToAdminDto {
+  // Required explanation of why this submission needs an admin's eyes —
+  // surfaced on the admin queue card and in the review timeline.
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  note: string;
 }
 
 export class SaveNoteDto {

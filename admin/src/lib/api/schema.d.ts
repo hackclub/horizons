@@ -1430,6 +1430,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reviewer/submissions/{id}/send-to-admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewerController_sendToAdmin"];
+        delete: operations["ReviewerController_returnToReviewerQueue"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviewer/projects/{id}/manifest-lookup": {
         parameters: {
             query?: never;
@@ -3672,6 +3688,13 @@ export interface components {
             /** Format: date-time */
             previousReviewedAt: string | null;
         };
+        SentToAdminInfoResponse: {
+            /** Format: date-time */
+            sentAt: string;
+            byUserId: number | null;
+            byName: string;
+            note: string;
+        };
         QueueItemResponse: {
             submissionId: number;
             projectId: number;
@@ -3686,6 +3709,8 @@ export interface components {
             claim: components["schemas"]["ClaimInfoResponse"] | null;
             /** @description Set when this submission is a reship after the requesting reviewer's own rejection — the same condition that triggers the Slack re-review ping. Null for everyone else. */
             myRereview: components["schemas"]["MyRereviewResponse"] | null;
+            /** @description Set when a reviewer escalated this submission to the secondary admin queue. Null for regular queue items. */
+            sentToAdmin: components["schemas"]["SentToAdminInfoResponse"] | null;
         };
         SubmissionProjectResponse: {
             projectId: number;
@@ -3706,13 +3731,14 @@ export interface components {
         };
         TimelineEntryResponse: {
             /** @enum {string} */
-            type: "submitted" | "resubmitted" | "approved" | "rejected";
+            type: "submitted" | "resubmitted" | "approved" | "rejected" | "sent_to_admin" | "returned_to_queue";
             hours?: number | null;
             reviewerName?: string;
             userFeedback?: string | null;
             hoursJustification?: string | null;
             approvedHours?: number | null;
             submittedHours?: number | null;
+            note?: string | null;
             /** Format: date-time */
             timestamp: string;
         };
@@ -3753,6 +3779,7 @@ export interface components {
             timeline: components["schemas"]["TimelineEntryResponse"][];
             submissions: components["schemas"]["ProjectSubmissionSummary"][];
             claim: components["schemas"]["ClaimInfoResponse"] | null;
+            sentToAdmin: components["schemas"]["SentToAdminInfoResponse"] | null;
         };
         ClaimSubmissionDto: {
             force?: boolean;
@@ -3784,6 +3811,13 @@ export interface components {
             userFeedback?: string;
             hoursJustification?: string;
             approvedHours?: number;
+        };
+        SendToAdminDto: {
+            note: string;
+        };
+        SendToAdminResultResponse: {
+            success: boolean;
+            submissionId: number;
         };
         ManifestSubmissionResponse: {
             submissionId: string;
@@ -6520,6 +6554,58 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ReviewerController_sendToAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendToAdminDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendToAdminResultResponse"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewerController_returnToReviewerQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendToAdminResultResponse"];
+                };
             };
         };
     };

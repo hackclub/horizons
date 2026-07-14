@@ -90,6 +90,28 @@
 						<span class="border-b border-dotted border-rv-dim cursor-default" title={formatDate(event.timestamp)}>{timeAgo(event.timestamp)}</span>
 					</div>
 				</div>
+			{:else if event.type === 'sent_to_admin'}
+				<div class="pb-2.5 last:pb-0">
+					<span class="inline-block text-[10px] font-bold px-1.75 py-0.5 rounded mb-1 bg-amber-500/15 text-amber-600">
+						&#8593; Sent to Admin
+					</span>
+					{#if event.note}
+						<div class="text-[13px] leading-normal mt-1 whitespace-pre-line">{event.note}</div>
+					{/if}
+					<div class="text-[11px] text-rv-dim mt-1">
+						escalated by @{event.reviewerName} &middot;
+						<span class="border-b border-dotted border-rv-dim cursor-default" title={formatDate(event.timestamp)}>{timeAgo(event.timestamp)}</span>
+					</div>
+				</div>
+			{:else if event.type === 'returned_to_queue'}
+				<div class="flex items-start gap-2 py-1.5 text-[12px] text-rv-dim">
+					<span class="w-1.5 h-1.5 rounded-full mt-1.25 shrink-0 bg-amber-500"></span>
+					<span>
+						Returned to the reviewer queue by
+						<strong class="text-rv-text font-semibold">@{event.reviewerName}</strong>
+						<span class="border-b border-dotted border-rv-dim cursor-default" title={formatDate(event.timestamp)}>{timeAgo(event.timestamp)}</span>
+					</span>
+				</div>
 			{/if}
 		{/each}
 	{/if}
