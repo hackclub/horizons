@@ -365,7 +365,7 @@
         <div class="flex items-center gap-3">
             <TextField
                 class="min-w-72"
-                placeholder="Search by name, email, Slack ID, Hackatime ID..."
+                placeholder="Search by name, email, Slack name/ID, Hackatime ID..."
                 bind:value={userSearch}
             />
             <select
@@ -412,7 +412,7 @@
                                     {@render highlighted(user.email)}
                                 </p>
                                 <p class="text-sm text-ds-text-secondary">
-                                    Slack: <span class={user.slackUserId ? '' : 'text-ds-text-placeholder'}>{#if user.slackUserId}{@render highlighted(user.slackUserId)}{:else}not linked{/if}</span>
+                                    Slack: <span class={user.slackUserId ? '' : 'text-ds-text-placeholder'}>{#if user.slackUserId}{#if user.slackUsername}@{@render highlighted(user.slackUsername)} <span class="text-ds-text-placeholder">(</span>{@render highlighted(user.slackUserId)}<span class="text-ds-text-placeholder">)</span>{:else}{@render highlighted(user.slackUserId)}{/if}{:else}not linked{/if}</span>
                                     <span class="text-ds-text-placeholder">·</span>
                                     Hackatime: <span class={user.hackatimeAccount ? '' : 'text-ds-text-placeholder'}>{#if user.hackatimeAccount}{@render highlighted(user.hackatimeAccount)}{:else}not linked{/if}</span>
                                 </p>

@@ -2685,6 +2685,8 @@ export interface components {
             /** Format: date-time */
             hackatimeStartDate: string | null;
             slackUserId: string | null;
+            /** @description Cached Slack display name (refreshed on login). */
+            slackUsername: string | null;
             referralCode: string | null;
             referredByUserId: number | null;
             isFraud: boolean;
@@ -2899,6 +2901,8 @@ export interface components {
             /** Format: date-time */
             hackatimeStartDate: string | null;
             slackUserId: string | null;
+            /** @description Cached Slack display name (refreshed on login). */
+            slackUsername: string | null;
             referralCode: string | null;
             referredByUserId: number | null;
             isFraud: boolean;
@@ -5605,7 +5609,7 @@ export interface operations {
                 page?: number;
                 /** @description Page size (max 200, default 50). */
                 limit?: number;
-                /** @description Search by name, email, or Slack ID. */
+                /** @description Search by name, email, Slack ID, Slack display name, or Hackatime ID. */
                 q?: string;
                 sort?: "recent" | "streak-desc" | "streak-asc" | "longest-desc";
             };

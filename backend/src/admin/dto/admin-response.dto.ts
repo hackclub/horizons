@@ -43,6 +43,13 @@ export class AdminLightUserResponse {
   @ApiProperty({ type: String, nullable: true })
   slackUserId: string | null;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Cached Slack display name (refreshed on login).',
+  })
+  slackUsername: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   referralCode: string | null;
 

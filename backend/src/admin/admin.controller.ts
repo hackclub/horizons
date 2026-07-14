@@ -216,7 +216,7 @@ export class AdminController {
   @Roles(Role.Admin)
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Page size (max 200, default 50).' })
-  @ApiQuery({ name: 'q', required: false, description: 'Search by name, email, or Slack ID.' })
+  @ApiQuery({ name: 'q', required: false, description: 'Search by name, email, Slack ID, Slack display name, or Hackatime ID.' })
   @ApiQuery({
     name: 'sort',
     required: false,
