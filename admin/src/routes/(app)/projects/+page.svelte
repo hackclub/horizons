@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { base } from '$app/paths';
+    import { page } from '$app/stores';
     import { api, type components } from '$lib/api';
     import { Play, Snowflake, LoaderCircle, ListFilter } from 'lucide-svelte';
     import { Button, TextField, Card, Checkbox, Select, FilterTag } from '$lib/components';
@@ -468,6 +469,23 @@
     }
 
     onMount(() => {
+        // Deep-link support: ?q= seeds the search box and ?field= the scope
+        // (e.g. the users page links here with field=user&q=<email>). Applied
+        // immediately — skipping the debounce — so the list opens pre-filtered.
+        const params = $page.url.searchParams;
+        const q = params.get('q');
+        const field = params.get('field');
+        if (q) {
+            searchQuery = q;
+            appliedSearch = q;
+        }
+        const validFields: SearchField[] = [
+            'all', 'title', 'user', 'slack', 'description', 'repo', 'playable', 'id', 'airtable',
+        ];
+        if (field && (validFields as string[]).includes(field)) {
+            searchField = field as SearchField;
+        }
+
         Promise.all([
             loadProjects(),
             loadGlobalSettings(),

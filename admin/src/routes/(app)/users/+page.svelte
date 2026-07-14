@@ -1,5 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { base } from '$app/paths';
+    import { page as pageStore } from '$app/stores';
     import { api, type components } from '$lib/api';
     import { ensureUser } from '$lib/auth';
     import { Button, TextField, Card } from '$lib/components';
@@ -356,6 +358,14 @@
     }
 
     onMount(() => {
+        // Deep-link support: ?q= seeds the search (e.g. the project detail
+        // page links here with the owner's email). Applied before the initial
+        // load so the list opens pre-filtered without a debounce round-trip.
+        const q = $pageStore.url.searchParams.get('q');
+        if (q) {
+            userSearch = q;
+            appliedSearch = q;
+        }
         loadUsers();
         ensureUser().then((me) => {
             currentUserRole = me?.role ?? null;
@@ -415,6 +425,13 @@
                                 <p class="text-sm text-ds-text-secondary">
                                     {user.email}
                                 </p>
+                                <a
+                                    href="{base}/projects?field=user&q={encodeURIComponent(user.email)}"
+                                    class="text-sm text-ds-link hover:underline"
+                                    title="Open the projects page filtered to this user"
+                                >
+                                    Open in Projects →
+                                </a>
                             </div>
                             <div
                                 class="flex flex-wrap gap-2 text-sm text-ds-text-secondary"
@@ -738,7 +755,8 @@
                                                     <p
                                                         class="font-medium"
                                                     >
-                                                        {project.projectTitle}
+                                                        <a href="{base}/projects/{project.projectId}" class="hover:underline">{project.projectTitle}</a>
+                                                        <span class="text-xs font-normal text-ds-text-placeholder">#{project.projectId}</span>
                                                     </p>
                                                     <p
                                                         class="text-xs uppercase tracking-wide text-ds-text-secondary"
