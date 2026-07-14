@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
@@ -285,6 +285,15 @@
 		}
 	}
 
+	// Capture phase so the shortcut fires before any element-level handler can
+	// swallow it (e.g. modals that stopPropagation on keydown, focused inputs).
+	// A bubbling <svelte:window> handler misses those — this makes Cmd/Ctrl+K
+	// work on every page regardless of what has focus.
+	onMount(() => {
+		window.addEventListener('keydown', onWindowKeydown, { capture: true });
+		return () => window.removeEventListener('keydown', onWindowKeydown, { capture: true });
+	});
+
 	function onInputKeydown(e: KeyboardEvent) {
 		switch (e.key) {
 			case 'ArrowDown':
@@ -320,8 +329,6 @@
 		}
 	}
 </script>
-
-<svelte:window onkeydown={onWindowKeydown} />
 
 {#if open}
 	<!-- Backdrop: a click that lands on it (not on the palette within) dismisses. -->
