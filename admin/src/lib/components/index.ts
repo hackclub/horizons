@@ -10,3 +10,4 @@ export { default as Checkbox } from './Checkbox.svelte';
 export { default as Select } from './Select.svelte';
 export { default as Skeleton } from './Skeleton.svelte';
 export { default as Highlight } from './Highlight.svelte';
+export { default as CommandPalette } from './CommandPalette.svelte';
