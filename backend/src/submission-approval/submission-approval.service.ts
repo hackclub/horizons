@@ -41,6 +41,13 @@ interface FraudReviewInfo {
   hackatimeProjects: string[];
 }
 
+// Most recent prior APPROVED submission of the same project — presence means
+// this record is an update to credit Airtable already carries.
+interface PriorApprovedInfo {
+  approvedHours: number | null;
+}
+
+
 /**
  * Wrap the reviewer's analysis with boilerplate hours summary + fraud line + footer.
  */
@@ -52,6 +59,7 @@ function buildFullJustification(
   submissionDate: Date,
   reviewerSlackId: string | null,
   fraudReview?: FraudReviewInfo | null,
+  priorApproved?: PriorApprovedInfo | null,
 ): string {
   const parts: string[] = [];
 
@@ -68,6 +76,16 @@ function buildFullJustification(
   } else {
     parts.push(
       `This user tracked ${tracked} on Hackatime. This was adjusted to ${approved} after review.`,
+    );
+  }
+
+  if (priorApproved) {
+    const hoursNote =
+      priorApproved.approvedHours != null
+        ? ` ${formatHoursMin(priorApproved.approvedHours)} was already approved.`
+        : '';
+    parts.push(
+      `This is an update to a previously approved submission of this project.${hoursNote}`,
     );
   }
 
@@ -177,6 +195,7 @@ export class SubmissionApprovalService {
         submission.createdAt,
         reviewer?.slackUserId ?? null,
         this.buildFraudReviewInfo(submission.project),
+        await this.getPriorApprovedInfo(submission),
       );
     }
 
@@ -290,6 +309,7 @@ export class SubmissionApprovalService {
         submission.createdAt,
         reviewer?.slackUserId ?? null,
         this.buildFraudReviewInfo(submission.project),
+        await this.getPriorApprovedInfo(submission),
       );
       if (submission.airtableRecId) {
         await this.updateAirtableRecord(submission, {
@@ -585,6 +605,7 @@ export class SubmissionApprovalService {
       submission.createdAt,
       reviewer?.slackUserId ?? null,
       this.buildFraudReviewInfo(submission.project),
+      await this.getPriorApprovedInfo(submission),
     );
 
     await this.syncProjectData(submission, {
@@ -660,6 +681,33 @@ export class SubmissionApprovalService {
       sendEmail: submission.pendingSendEmail,
       finalizedAt,
     });
+  }
+
+  /**
+   * The most recent prior APPROVED submission of the same project, or null —
+   * presence means this submission is an update whose Airtable record only
+   * carries the additional hours. Rejected prior submissions don't count (a
+   * reject → reship cycle reads as a first ship); prior approved credit
+   * counts even with rejections in between. Mirrors the condition
+   * syncAirtable uses to subtract previously approved hours.
+   */
+  private async getPriorApprovedInfo(submission: {
+    submissionId: number;
+    projectId: number;
+    createdAt: Date;
+  }): Promise<PriorApprovedInfo | null> {
+    const lastApproved = await this.prisma.submission.findFirst({
+      where: {
+        projectId: submission.projectId,
+        submissionId: { not: submission.submissionId },
+        approvalStatus: 'approved',
+        createdAt: { lt: submission.createdAt },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { approvedHours: true },
+    });
+    if (!lastApproved) return null;
+    return { approvedHours: lastApproved.approvedHours };
   }
 
   private buildFraudReviewInfo(project: {
