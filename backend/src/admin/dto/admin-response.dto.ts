@@ -237,11 +237,21 @@ export class AdminProjectResponse {
   })
   permReject: boolean;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Joe fraud-review project id, for deep-linking to Joe.',
+  })
+  joeProjectId: string | null;
+
   @ApiProperty({ type: Boolean, nullable: true })
   joeFraudPassed: boolean | null;
 
   @ApiProperty({ type: Number, nullable: true })
   joeTrustScore: number | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  joeJustification: string | null;
 
   @ApiProperty()
   createdAt: Date;
