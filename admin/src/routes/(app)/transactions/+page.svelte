@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import { User, Package } from 'lucide-svelte';
 	import { Button, TextField, Tab, Card, Select } from '$lib/components';
 	import { api } from '$lib/api';
@@ -135,9 +136,17 @@
 	onMount(() => {
 		// Deep-link support: ?q= seeds the search box (e.g. the users page
 		// links here with a user's email to show just their transactions).
-		const q = $page.url.searchParams.get('q');
+		const q = page.url.searchParams.get('q');
 		if (q) search = q;
 		loadLedger();
+	});
+
+	// Navigating here with a new ?q= while already on this page (e.g. the
+	// command palette) reuses the component, so onMount never re-seeds the
+	// box. The ledger is filtered client-side, so updating `search` is enough.
+	afterNavigate(() => {
+		const q = page.url.searchParams.get('q');
+		if (q !== null && q !== search) search = q;
 	});
 
 	$effect(() => {

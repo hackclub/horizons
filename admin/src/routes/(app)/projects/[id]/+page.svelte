@@ -1,12 +1,15 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { page } from '$app/stores';
+    import { page } from '$app/state';
     import { base } from '$app/paths';
-    import { goto } from '$app/navigation';
+    import { afterNavigate, goto } from '$app/navigation';
     import { env } from '$env/dynamic/public';
     import { api, type components } from '$lib/api';
     import { ensureUser } from '$lib/auth';
-    import { Button, TextField, Card, Checkbox, Select, FilterTag } from '$lib/components';
+    import { addToast } from '$lib/toastStore';
+    import { Skeleton } from '$lib/components';
+    import TabBar, { type Tab } from '../../review/components/TabBar.svelte';
+    import NotesSection from '../../review/components/NotesSection.svelte';
+    import { timeAgo } from '../../review/utils';
 
     type AdminProject = components['schemas']['AdminProjectResponse'];
     type AdminSubmission = components['schemas']['AdminSubmissionResponse'];
@@ -25,9 +28,8 @@
         'hardware',
         'mobile_app',
     ];
-    const statusOptions = ['pending', 'approved', 'rejected'] as const;
 
-    let projectId = $derived(parseInt($page.params.id ?? '', 10));
+    let projectId = $derived(parseInt(page.params.id ?? '', 10));
 
     // --- Auth ---
     let me = $state<{ role: string } | null>(null);
@@ -38,7 +40,7 @@
     let loading = $state(true);
     let loadError = $state('');
 
-    // --- Submissions (full data for review) ---
+    // --- Submissions (viewer only — verdicts live in the review dash) ---
     let submissions = $state<AdminSubmission[]>([]);
     let submissionsLoading = $state(false);
     let selectedSubmissionId = $state<number | null>(null);
@@ -46,20 +48,53 @@
         submissions.find((s) => s.submissionId === selectedSubmissionId) ?? submissions[0] ?? null,
     );
 
-    // --- Review draft state ---
-    type SubmissionDraft = {
-        approvalStatus: string;
-        approvedHours: string;
-        userFeedback: string;
-        hoursJustification: string;
-        adminComment: string;
-        sendEmailNotification: boolean;
-    };
-    let submissionDrafts = $state<Record<number, SubmissionDraft>>({});
-    let submissionSaving = $state<Record<number, boolean>>({});
-    let submissionErrors = $state<Record<number, string>>({});
-    let submissionSuccess = $state<Record<number, string>>({});
-    let submissionRecalculating = $state<Record<number, boolean>>({});
+    // --- Center tabs ---
+    const centerTabs: Tab[] = [
+        { id: 'overview', label: 'Overview' },
+        { id: 'submission', label: 'Submission' },
+        { id: 'timeline', label: 'Timeline' },
+    ];
+    let activeTab = $state('overview');
+
+    // --- Timeline (lazy-loaded when the tab first opens) ---
+    let timeline = $state<ProjectTimelineResponse | null>(null);
+    let timelineLoading = $state(false);
+
+    // --- Notes (shared with the review dash via the reviewer notes endpoints) ---
+    let projectNote = $state('');
+    let userNote = $state('');
+    let notesLoading = $state(false);
+
+    // --- Edit form state (right rail) ---
+    let saving = $state(false);
+    let saveError = $state('');
+
+    let projectTitle = $state('');
+    let projectType = $state<ProjectType>('web_playable');
+    let description = $state('');
+    let playableUrl = $state('');
+    let repoUrl = $state('');
+    let readmeUrl = $state('');
+    let journalUrl = $state('');
+    let screenshotUrl = $state('');
+    let adminCommentEdit = $state('');
+    let hoursJustificationEdit = $state('');
+    let approvedHoursText = $state('');
+    let isLocked = $state(false);
+    let permReject = $state(false);
+    let linkedProjects = $state<string[]>([]);
+
+    // --- Hackatime attach UI ---
+    let hackatimeLoading = $state(false);
+    let hackatimeError = $state('');
+    let hackatimeProjects = $state<HackatimeProjectRow[]>([]);
+    let hackatimeOwnerAccount = $state<string | null>(null);
+    let hackatimeOwnerStartDate = $state<string | null>(null);
+    let manualHackatimeInput = $state('');
+
+    // --- Per-project action state ---
+    let projectBusy = $state(false);
+    let recalculating = $state(false);
     let addressExpanded = $state(false);
 
     // --- Billy date range (persisted) ---
@@ -102,49 +137,27 @@
         }
     });
 
-    function generateBillyLink(hackatimeAccount: string | null): string | null {
-        if (!hackatimeAccount || hackatimeAccount.trim() === '') return null;
-        return `https://billy.3kh0.net/?u=${hackatimeAccount}&d=${dateRangeStart}-${dateRangeEnd}`;
-    }
+    let billyUrl = $derived.by(() => {
+        const account = project?.user.hackatimeAccount;
+        if (!account || account.trim() === '') return null;
+        return `https://billy.3kh0.net/?u=${account}&d=${dateRangeStart}-${dateRangeEnd}`;
+    });
 
-    // --- Timeline ---
-    let timeline = $state<ProjectTimelineResponse | null>(null);
-    let timelineLoading = $state(false);
-    let timelineOpen = $state(false);
-
-    // --- Edit form state ---
-    let saving = $state(false);
-    let saveError = $state('');
-    let saveSuccess = $state('');
-    let editOpen = $state(false);
-
-    let projectTitle = $state('');
-    let projectType = $state<ProjectType>('web_playable');
-    let description = $state('');
-    let playableUrl = $state('');
-    let repoUrl = $state('');
-    let readmeUrl = $state('');
-    let journalUrl = $state('');
-    let screenshotUrl = $state('');
-    let adminCommentEdit = $state('');
-    let hoursJustificationEdit = $state('');
-    let approvedHoursText = $state('');
-    let isLocked = $state(false);
-    let permReject = $state(false);
-    let linkedProjects = $state<string[]>([]);
-
-    // --- Hackatime attach UI ---
-    let hackatimeLoading = $state(false);
-    let hackatimeError = $state('');
-    let hackatimeProjects = $state<HackatimeProjectRow[]>([]);
-    let hackatimeOwnerAccount = $state<string | null>(null);
-    let hackatimeOwnerStartDate = $state<string | null>(null);
-    let manualHackatimeInput = $state('');
-
-    // --- Per-project action state ---
-    let projectBusy = $state(false);
-    let projectError = $state('');
-    let projectSuccess = $state('');
+    // --- Derived link targets ---
+    let joeUrl = $derived(
+        project?.joeProjectId
+            ? `https://joe.fraud.hackclub.com/ysws/horizons/projects/${project.joeProjectId}`
+            : null,
+    );
+    let slackDmUrl = $derived(
+        project?.user.slackUserId
+            ? `https://hackclub.slack.com/team/${project.user.slackUserId}`
+            : null,
+    );
+    let latestSubmission = $derived(submissions[0] ?? null);
+    let effectiveScreenshot = $derived(
+        project?.screenshotUrl || latestSubmission?.screenshotUrl || null,
+    );
 
     // --- Helpers ---
     function formatDate(value: string) {
@@ -186,22 +199,61 @@
         return fallback;
     }
 
-    function toSubmissionDraft(s: AdminSubmission): SubmissionDraft {
-        return {
-            approvalStatus: s.approvalStatus,
-            approvedHours:
-                s.project.approvedHours !== null
-                    ? s.project.approvedHours.toString()
-                    : s.project.nowHackatimeHours !== null
-                      ? s.project.nowHackatimeHours.toFixed(1)
-                      : '',
-            userFeedback: s.hoursJustification ?? '',
-            hoursJustification: s.project.hoursJustification ?? '',
-            adminComment: s.project.adminComment ?? '',
-            sendEmailNotification: false,
-        };
+    function typeLabel(type: string): string {
+        return type.replace(/_/g, ' ');
     }
 
+    function statusLabel(status: string): string {
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    function statusPillClass(status: string): string {
+        if (status === 'approved') return 'bg-rv-green-bg text-rv-green';
+        if (status === 'rejected') return 'bg-rv-red-bg text-rv-red';
+        return 'bg-rv-surface2 text-rv-dim';
+    }
+
+    // --- Copy to clipboard ---
+    let copiedKey = $state<string | null>(null);
+    let copyTimer: ReturnType<typeof setTimeout> | null = null;
+    async function copyText(key: string, value: string | null | undefined) {
+        if (!value) return;
+        try {
+            await navigator.clipboard.writeText(value);
+            copiedKey = key;
+            if (copyTimer) clearTimeout(copyTimer);
+            copyTimer = setTimeout(() => (copiedKey = null), 1200);
+        } catch {
+            // clipboard unavailable — silent
+        }
+    }
+
+    // --- Timeline styling ---
+    function timelineEventLabel(type: string): string {
+        switch (type) {
+            case 'project_created': return 'Project Created';
+            case 'submission': return 'Submitted';
+            case 'resubmission': return 'Resubmitted';
+            case 'project_updated': return 'Project Updated';
+            case 'admin_review': return 'Admin Reviewed';
+            case 'admin_update': return 'Admin Updated';
+            default: return type;
+        }
+    }
+
+    function timelineDotColor(type: string): string {
+        switch (type) {
+            case 'project_created': return 'bg-blue-500';
+            case 'submission': return 'bg-rv-green';
+            case 'resubmission': return 'bg-yellow-500';
+            case 'project_updated': return 'bg-cyan-500';
+            case 'admin_review': return 'bg-purple-500';
+            case 'admin_update': return 'bg-orange-500';
+            default: return 'bg-rv-surface2';
+        }
+    }
+
+    // --- API ---
     function hydrateForm(p: AdminProject) {
         project = p;
         projectTitle = p.projectTitle ?? '';
@@ -217,60 +269,10 @@
         approvedHoursText =
             p.approvedHours === null || p.approvedHours === undefined ? '' : String(p.approvedHours);
         isLocked = p.isLocked ?? false;
-        permReject = (p as typeof p & { permReject?: boolean }).permReject ?? false;
+        permReject = p.permReject ?? false;
         linkedProjects = [...(p.nowHackatimeProjects ?? [])];
     }
 
-    function statusBadgeClass(status: string): string {
-        switch (status) {
-            case 'approved':
-                return 'bg-green-500/20 border-green-400 text-green-700 dark:text-green-300';
-            case 'rejected':
-                return 'bg-red-500/20 border-red-400 text-red-700 dark:text-red-300';
-            case 'pending':
-                return 'bg-yellow-500/20 border-yellow-400 text-yellow-700 dark:text-yellow-300';
-            default:
-                return 'bg-ds-surface-inactive border-ds-border text-ds-text-secondary';
-        }
-    }
-
-    function timelineEventLabel(type: string): string {
-        switch (type) {
-            case 'project_created': return 'Project Created';
-            case 'submission': return 'Submitted';
-            case 'resubmission': return 'Resubmitted';
-            case 'project_updated': return 'Project Updated';
-            case 'admin_review': return 'Admin Reviewed';
-            case 'admin_update': return 'Admin Updated';
-            default: return type;
-        }
-    }
-
-    function timelineEventColor(type: string): string {
-        switch (type) {
-            case 'project_created': return 'border-blue-500 bg-blue-500/10';
-            case 'submission': return 'border-green-500 bg-green-500/10';
-            case 'resubmission': return 'border-yellow-500 bg-yellow-500/10';
-            case 'project_updated': return 'border-cyan-500 bg-cyan-500/10';
-            case 'admin_review': return 'border-ds-accent bg-purple-500/10';
-            case 'admin_update': return 'border-orange-500 bg-orange-500/10';
-            default: return 'border-ds-border bg-ds-surface2';
-        }
-    }
-
-    function timelineDotColor(type: string): string {
-        switch (type) {
-            case 'project_created': return 'bg-blue-500';
-            case 'submission': return 'bg-green-500';
-            case 'resubmission': return 'bg-yellow-500';
-            case 'project_updated': return 'bg-cyan-500';
-            case 'admin_review': return 'bg-purple-500';
-            case 'admin_update': return 'bg-orange-500';
-            default: return 'bg-ds-surface-inactive';
-        }
-    }
-
-    // --- API ---
     async function loadMe() {
         const data = await ensureUser();
         if (data) me = { role: data.role };
@@ -302,18 +304,31 @@
                 params: { query: { projectId } },
             });
             if (error || !data) return;
-            const mine = [...data].sort(
+            submissions = [...data].sort(
                 (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
             );
-            submissions = mine;
-            const drafts: Record<number, SubmissionDraft> = {};
-            for (const s of mine) drafts[s.submissionId] = toSubmissionDraft(s);
-            submissionDrafts = drafts;
-            if (mine.length > 0 && selectedSubmissionId == null) {
-                selectedSubmissionId = mine[0].submissionId;
+            if (submissions.length > 0 && selectedSubmissionId == null) {
+                selectedSubmissionId = submissions[0].submissionId;
             }
         } finally {
             submissionsLoading = false;
+        }
+    }
+
+    async function loadNotes(pid: number, userId: number) {
+        notesLoading = true;
+        try {
+            const [projRes, userRes] = await Promise.all([
+                api.GET('/api/reviewer/projects/{id}/notes', { params: { path: { id: pid } } }),
+                api.GET('/api/reviewer/users/{id}/notes', { params: { path: { id: userId } } }),
+            ]);
+            projectNote = projRes.data?.content ?? '';
+            userNote = userRes.data?.content ?? '';
+        } catch {
+            projectNote = '';
+            userNote = '';
+        } finally {
+            notesLoading = false;
         }
     }
 
@@ -340,19 +355,13 @@
     }
 
     async function loadTimeline() {
-        if (timeline) {
-            timelineOpen = !timelineOpen;
-            return;
-        }
+        if (timeline || timelineLoading) return;
         timelineLoading = true;
         try {
             const { data, error } = await api.GET('/api/admin/projects/{id}/timeline', {
                 params: { path: { id: projectId } },
             });
-            if (!error && data) {
-                timeline = data;
-                timelineOpen = true;
-            }
+            if (!error && data) timeline = data;
         } finally {
             timelineLoading = false;
         }
@@ -360,131 +369,17 @@
 
     function invalidateTimeline() {
         timeline = null;
+        if (activeTab === 'timeline') void loadTimeline();
     }
 
-    // --- Review actions ---
-    async function saveSubmission(
-        submissionId: number,
-        sendEmail?: boolean,
-        opts?: { deleteAirtableRecord?: boolean },
-    ) {
-        const draft = submissionDrafts[submissionId];
-        if (!draft) return;
-
-        submissionSaving = { ...submissionSaving, [submissionId]: true };
-        submissionErrors = { ...submissionErrors, [submissionId]: '' };
-        submissionSuccess = { ...submissionSuccess, [submissionId]: '' };
-
-        const shouldSendEmail = sendEmail !== undefined ? sendEmail : draft.sendEmailNotification;
-
-        try {
-            const { error } = await api.PUT('/api/reviewer/submissions/{id}/review', {
-                params: { path: { id: submissionId } },
-                body: {
-                    approvalStatus: draft.approvalStatus as 'pending' | 'approved' | 'rejected',
-                    approvedHours: draft.approvedHours === '' ? undefined : parseFloat(draft.approvedHours),
-                    userFeedback: draft.userFeedback === '' ? undefined : draft.userFeedback,
-                    hoursJustification: draft.hoursJustification === '' ? undefined : draft.hoursJustification,
-                    adminComment: draft.adminComment === '' ? undefined : draft.adminComment,
-                    sendEmail: shouldSendEmail,
-                    ...(opts?.deleteAirtableRecord ? { deleteAirtableRecord: true } : {}),
-                },
-            });
-            if (error) {
-                submissionErrors = { ...submissionErrors, [submissionId]: 'Failed to update submission' };
-                return;
-            }
-            submissionSuccess = { ...submissionSuccess, [submissionId]: 'Submission updated' };
-            invalidateTimeline();
-            await Promise.all([loadProject(), loadSubmissions()]);
-        } catch (err) {
-            submissionErrors = {
-                ...submissionErrors,
-                [submissionId]: err instanceof Error ? err.message : 'Failed to update submission',
-            };
-        } finally {
-            submissionSaving = { ...submissionSaving, [submissionId]: false };
-        }
+    function handleTabChange(id: string) {
+        activeTab = id;
+        if (id === 'timeline') void loadTimeline();
     }
 
-    async function quickApprove(submission: AdminSubmission) {
-        const id = submission.submissionId;
-        submissionSaving = { ...submissionSaving, [id]: true };
-        submissionErrors = { ...submissionErrors, [id]: '' };
-        submissionSuccess = { ...submissionSuccess, [id]: '' };
-        const draft = submissionDrafts[id];
-
-        try {
-            const { error } = await api.POST('/api/reviewer/submissions/{id}/quick-approve', {
-                params: { path: { id } },
-                body: {
-                    userFeedback: draft?.userFeedback || undefined,
-                    hoursJustification: draft?.hoursJustification || undefined,
-                    approvedHours: draft?.approvedHours ? parseFloat(draft.approvedHours) : undefined,
-                },
-            });
-            if (error) {
-                submissionErrors = { ...submissionErrors, [id]: 'Failed to quick approve' };
-                return;
-            }
-            submissionSuccess = { ...submissionSuccess, [id]: 'Quick approved and synced to Airtable' };
-            invalidateTimeline();
-            await Promise.all([loadProject(), loadSubmissions()]);
-        } catch (err) {
-            submissionErrors = {
-                ...submissionErrors,
-                [id]: err instanceof Error ? err.message : 'Failed to quick approve',
-            };
-        } finally {
-            submissionSaving = { ...submissionSaving, [id]: false };
-        }
-    }
-
-    async function quickDeny(submissionId: number) {
-        submissionDrafts[submissionId] = {
-            ...submissionDrafts[submissionId],
-            approvalStatus: 'rejected',
-            approvedHours: '0',
-        };
-        await saveSubmission(submissionId, submissionDrafts[submissionId].sendEmailNotification);
-    }
-
-    async function quickDenyAndDeleteAirtable(submissionId: number) {
-        const confirmed = window.confirm(
-            'Reject this submission AND permanently delete the Airtable record? Airtable has no undo — this cannot be recovered.',
-        );
-        if (!confirmed) return;
-        submissionDrafts[submissionId] = {
-            ...submissionDrafts[submissionId],
-            approvalStatus: 'rejected',
-            approvedHours: '0',
-        };
-        await saveSubmission(
-            submissionId,
-            submissionDrafts[submissionId].sendEmailNotification,
-            { deleteAirtableRecord: true },
-        );
-    }
-
-    async function recalculateSubmissionHours(submissionId: number) {
-        submissionRecalculating = { ...submissionRecalculating, [submissionId]: true };
-        try {
-            const { data, error } = await api.POST('/api/admin/projects/{id}/recalculate', {
-                params: { path: { id: projectId } },
-            });
-            if (!error && data?.project) {
-                await Promise.all([loadProject(), loadSubmissions()]);
-            }
-        } finally {
-            submissionRecalculating = { ...submissionRecalculating, [submissionId]: false };
-        }
-    }
-
-    async function resetDraft(submission: AdminSubmission) {
-        submissionDrafts = {
-            ...submissionDrafts,
-            [submission.submissionId]: toSubmissionDraft(submission),
-        };
+    function selectSubmission(submissionId: number) {
+        selectedSubmissionId = submissionId;
+        activeTab = 'submission';
     }
 
     // --- Project-level actions ---
@@ -495,72 +390,53 @@
                 params: { path: { id: project.user.userId } },
                 body: { isSus: !project.user.isSus },
             });
-            if (!error) await loadProject();
-        } catch (err) {
-            console.error('Failed to toggle sus flag:', err);
-        }
-    }
-
-    async function unlockProject() {
-        projectBusy = true;
-        projectError = '';
-        projectSuccess = '';
-        try {
-            const { error } = await api.PUT('/api/admin/projects/{id}/unlock', {
-                params: { path: { id: projectId } },
-            });
             if (error) {
-                projectError = errorMessage(error, 'Failed to unlock project');
+                addToast('Failed to toggle sus flag', 'error');
                 return;
             }
-            projectSuccess = 'Project unlocked';
+            addToast(project.user.isSus ? 'Sus flag removed' : 'User flagged as sus', 'success');
             await loadProject();
-        } catch (e) {
-            projectError = e instanceof Error ? e.message : 'Failed to unlock project';
-        } finally {
-            projectBusy = false;
-        }
-    }
-
-    async function deleteProject() {
-        if (typeof window !== 'undefined' && !window.confirm('Delete this project? This cannot be undone.')) {
-            return;
-        }
-        projectBusy = true;
-        projectError = '';
-        projectSuccess = '';
-        try {
-            const { error } = await api.DELETE('/api/admin/projects/{id}', {
-                params: { path: { id: projectId } },
-            });
-            if (error) {
-                projectError = errorMessage(error, 'Failed to delete project');
-                return;
-            }
-            goto(`${base}/projects`);
-        } catch (e) {
-            projectError = e instanceof Error ? e.message : 'Failed to delete project';
-        } finally {
-            projectBusy = false;
+        } catch {
+            addToast('Failed to toggle sus flag', 'error');
         }
     }
 
     async function recalculate() {
-        projectError = '';
-        projectSuccess = '';
+        recalculating = true;
         try {
             const { error } = await api.POST('/api/admin/projects/{id}/recalculate', {
                 params: { path: { id: projectId } },
             });
             if (error) {
-                projectError = errorMessage(error, 'Failed to recalculate hours');
+                addToast(errorMessage(error, 'Failed to recalculate hours'), 'error');
                 return;
             }
             await Promise.all([loadProject(), loadSubmissions()]);
             invalidateTimeline();
-            projectSuccess = 'Hours recalculated';
-        } catch (e) {
-            projectError = e instanceof Error ? e.message : 'Failed to recalculate hours';
+            addToast('Hours recalculated', 'success');
+        } catch {
+            addToast('Failed to recalculate hours', 'error');
+        } finally {
+            recalculating = false;
+        }
+    }
+
+    async function unlockProject() {
+        projectBusy = true;
+        try {
+            const { error } = await api.PUT('/api/admin/projects/{id}/unlock', {
+                params: { path: { id: projectId } },
+            });
+            if (error) {
+                addToast(errorMessage(error, 'Failed to unlock project'), 'error');
+                return;
+            }
+            addToast('Project unlocked', 'success');
+            await loadProject();
+        } catch {
+            addToast('Failed to unlock project', 'error');
+        } finally {
+            projectBusy = false;
         }
     }
 
@@ -575,21 +451,40 @@
             return;
         }
         projectBusy = true;
-        projectError = '';
-        projectSuccess = '';
         try {
             const { error } = await api.POST('/api/admin/projects/{id}/joe-reset', {
                 params: { path: { id: projectId } },
             });
             if (error) {
-                projectError = errorMessage(error, 'Failed to reset Joe state');
+                addToast(errorMessage(error, 'Failed to reset Joe state'), 'error');
                 return;
             }
-            projectSuccess = 'Joe state reset — project re-enqueued for fraud review';
+            addToast('Joe state reset — project re-enqueued for fraud review', 'success');
             await Promise.all([loadProject(), loadSubmissions()]);
             invalidateTimeline();
-        } catch (e) {
-            projectError = e instanceof Error ? e.message : 'Failed to reset Joe state';
+        } catch {
+            addToast('Failed to reset Joe state', 'error');
+        } finally {
+            projectBusy = false;
+        }
+    }
+
+    async function deleteProject() {
+        if (typeof window !== 'undefined' && !window.confirm('Delete this project? This cannot be undone.')) {
+            return;
+        }
+        projectBusy = true;
+        try {
+            const { error } = await api.DELETE('/api/admin/projects/{id}', {
+                params: { path: { id: projectId } },
+            });
+            if (error) {
+                addToast(errorMessage(error, 'Failed to delete project'), 'error');
+                return;
+            }
+            goto(`${base}/projects`);
+        } catch {
+            addToast('Failed to delete project', 'error');
         } finally {
             projectBusy = false;
         }
@@ -614,7 +509,6 @@
     async function saveEdit() {
         saving = true;
         saveError = '';
-        saveSuccess = '';
 
         let approvedHours: number | null = null;
         if (approvedHoursText.trim() !== '') {
@@ -654,7 +548,7 @@
                 return;
             }
             if (data) hydrateForm(data);
-            saveSuccess = 'Saved';
+            addToast('Project saved', 'success');
             invalidateTimeline();
             await loadSubmissions();
         } catch (e) {
@@ -664,603 +558,725 @@
         }
     }
 
-    onMount(async () => {
+    async function loadPage() {
         await loadMe();
         if (!isNaN(projectId)) {
             await Promise.all([loadProject(), loadSubmissions(), loadHackatime()]);
+            if (project) void loadNotes(projectId, project.user.userId);
+        } else {
+            loading = false;
+            loadError = 'Invalid project id';
         }
+    }
+
+    // afterNavigate fires on mount AND on same-route navigations between
+    // project ids (e.g. via the command palette), which reuse this component
+    // — an onMount-only load would leave the previous project on screen.
+    // Per-project state is reset here so lazy-load guards (timeline,
+    // selectedSubmissionId) don't pin stale data.
+    let loadedProjectId: number | null = null;
+    afterNavigate(() => {
+        if (projectId === loadedProjectId) return;
+        loadedProjectId = projectId;
+        loading = true;
+        submissions = [];
+        selectedSubmissionId = null;
+        timeline = null;
+        activeTab = 'overview';
+        void loadPage();
     });
+
+    // --- Shared class strings (rv design language, matching the review dash) ---
+    const btn =
+        'bg-rv-surface2 border border-rv-border text-rv-text px-3 py-1.5 rounded-md text-[12px] font-medium cursor-pointer transition-all duration-150 hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed';
+    const btnSm =
+        'bg-rv-surface2 border border-rv-border text-rv-dim px-2.5 py-1 rounded text-[11px] font-medium cursor-pointer transition-all duration-150 hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed';
+    const input =
+        'w-full bg-rv-bg border border-rv-border rounded-md px-2.5 py-2 text-rv-text text-[13px] focus:outline-none focus:border-rv-accent disabled:opacity-60 disabled:cursor-not-allowed';
+    const label = 'block text-[11px] uppercase tracking-[0.8px] text-rv-dim font-semibold mb-1';
+    const sectionTitle = 'text-[11px] uppercase tracking-wider text-rv-dim font-semibold';
 </script>
 
 <svelte:head>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    />
     <title>Project #{projectId} - Admin Panel</title>
 </svelte:head>
 
-<div class="p-6">
-    <div class="mx-auto max-w-5xl space-y-6">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <a href="{base}/projects" class="text-sm text-ds-link hover:underline">← Back to projects</a>
-                <h2 class="mt-2 text-2xl font-semibold">
-                    Project {isNaN(projectId) ? '' : `#${projectId}`}
-                </h2>
+<div class="font-[Inter,sans-serif] bg-rv-bg text-rv-text h-screen flex flex-col overflow-hidden">
+    {#if loading}
+        <!-- Skeleton chrome: same top bar + three-panel grid as the loaded page,
+             so navigation feels instant instead of flashing a blank screen. -->
+        <div class="flex items-center justify-between gap-4 px-4 py-2.5 bg-rv-surface border-b border-rv-border shrink-0">
+            <div class="flex items-center gap-3">
+                <Skeleton class="h-6 w-20" />
+                <Skeleton class="h-5 w-48" />
+                <Skeleton class="h-4 w-16 rounded-xl" />
             </div>
-            <div class="flex shrink-0 items-center gap-2">
-                {#if project}
-                    <a
-                        href="{base}/users?q={encodeURIComponent(project.user.email)}"
-                        class="px-4 py-2 rounded-lg bg-ds-surface-inactive hover:bg-ds-surface-inactive border border-ds-border text-ds-text text-sm transition-colors"
-                        title="Open the users page filtered to this project's owner"
-                    >
-                        View User →
-                    </a>
-                {/if}
-                {#if !isNaN(projectId)}
-                    <a
-                        href="{base}/review/{projectId}"
-                        class="px-4 py-2 rounded-lg bg-ds-surface-inactive hover:bg-ds-surface-inactive border border-ds-border text-ds-text text-sm transition-colors"
-                        title="Open this project in the review dashboard"
-                    >
-                        Open in Review →
-                    </a>
-                {/if}
+            <div class="flex items-center gap-2">
+                <Skeleton class="h-7 w-32" />
+                <Skeleton class="h-7 w-24" />
+            </div>
+        </div>
+        <div class="grid grid-cols-[300px_1fr_380px] flex-1 overflow-hidden">
+            <div class="bg-rv-surface border-r border-rv-border overflow-hidden">
+                <div class="p-4 flex flex-col gap-2.5">
+                    <Skeleton class="h-3 w-14" />
+                    <Skeleton class="h-5 w-36" />
+                    <Skeleton class="h-3.5 w-full" />
+                    <Skeleton class="h-3.5 w-3/4" />
+                    <Skeleton class="h-3.5 w-2/3" />
+                    <Skeleton class="h-6 w-24" />
+                </div>
+                <hr class="border-none border-t border-rv-border m-0" />
+                <div class="p-4 flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <Skeleton class="h-3 w-12" />
+                        <Skeleton class="h-5 w-24" />
+                    </div>
+                    <Skeleton class="h-3.5 w-full" />
+                    <Skeleton class="h-3.5 w-full" />
+                    <Skeleton class="h-3.5 w-full" />
+                </div>
+                <hr class="border-none border-t border-rv-border m-0" />
+                <div class="flex items-center justify-between px-4 py-2.5">
+                    <Skeleton class="h-3 w-32" />
+                    <Skeleton class="h-5.5 w-5.5" />
+                </div>
+                <hr class="border-none border-t border-rv-border m-0" />
+                <div class="flex items-center justify-between px-4 py-2.5">
+                    <Skeleton class="h-3 w-28" />
+                    <Skeleton class="h-5.5 w-5.5" />
+                </div>
+                <hr class="border-none border-t border-rv-border m-0" />
+                <div class="p-4 flex flex-col gap-1.5">
+                    <Skeleton class="h-3 w-24 mb-1" />
+                    <Skeleton class="h-12 w-full" />
+                    <Skeleton class="h-12 w-full" />
+                </div>
+            </div>
+            <div class="flex flex-col overflow-hidden">
+                <div class="flex items-end gap-1 bg-rv-surface border-b border-rv-border px-2 pt-1.5 pb-0 shrink-0">
+                    <Skeleton class="h-8 w-24 rounded-t-lg rounded-b-none" />
+                    <Skeleton class="h-8 w-24 rounded-t-lg rounded-b-none" />
+                    <Skeleton class="h-8 w-24 rounded-t-lg rounded-b-none" />
+                </div>
+                <div class="max-w-[860px] w-full mx-auto p-5 flex flex-col gap-5">
+                    <Skeleton class="h-64 w-full" />
+                    <div class="flex items-start justify-between gap-4">
+                        <Skeleton class="h-6 w-56" />
+                        <div class="flex gap-2">
+                            <Skeleton class="h-7 w-20" />
+                            <Skeleton class="h-7 w-20" />
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <Skeleton class="h-3.5 w-full" />
+                        <Skeleton class="h-3.5 w-full" />
+                        <Skeleton class="h-3.5 w-2/3" />
+                    </div>
+                </div>
+            </div>
+            <div class="bg-rv-surface border-l border-rv-border flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-2.5 border-b border-rv-border shrink-0">
+                    <Skeleton class="h-3 w-24" />
+                </div>
+                <div class="p-4 flex flex-col gap-3.5 flex-1 overflow-hidden">
+                    {#each { length: 6 } as _, i (i)}
+                        <div class="flex flex-col gap-1">
+                            <Skeleton class="h-3 w-20" />
+                            <Skeleton class="h-8 w-full" />
+                        </div>
+                    {/each}
+                </div>
+                <div class="flex items-center justify-end px-4 py-3 border-t border-rv-border shrink-0">
+                    <Skeleton class="h-7 w-28" />
+                </div>
+            </div>
+        </div>
+    {:else if loadError || !project}
+        <div class="flex flex-col items-center justify-center h-screen gap-3 px-6">
+            <p class="text-rv-text text-[15px] m-0">Couldn't load project #{projectId}.</p>
+            <p class="text-[12px] text-rv-dim m-0">{loadError || 'Project not found.'}</p>
+            <a href="{base}/projects" class="{btn} mt-2 no-underline">← Back to Projects</a>
+        </div>
+    {:else}
+        <!-- ═══ Top bar ═══ -->
+        <div class="flex items-center justify-between gap-4 px-4 py-2.5 bg-rv-surface border-b border-rv-border shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <a href="{base}/projects" class="{btnSm} no-underline shrink-0">← Projects</a>
+                <div class="flex items-center gap-2 min-w-0">
+                    <h1 class="text-[15px] font-semibold m-0 truncate">{project.projectTitle}</h1>
+                    <span class="text-[12px] text-rv-dim shrink-0">#{project.projectId}</span>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    {#if latestSubmission}
+                        <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold {statusPillClass(latestSubmission.approvalStatus)}">
+                            {statusLabel(latestSubmission.approvalStatus)}
+                        </span>
+                    {:else}
+                        <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold bg-rv-surface2 text-rv-dim">Draft</span>
+                    {/if}
+                    {#if project.isLocked}
+                        <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold bg-rv-tag-bg text-rv-accent">Locked</span>
+                    {/if}
+                    {#if project.permReject}
+                        <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold bg-rv-red-bg text-rv-red">Perm-rejected</span>
+                    {/if}
+                    {#if project.joeFraudPassed === false}
+                        <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold bg-rv-red-bg text-rv-red">Fraud (Joe)</span>
+                    {/if}
+                    {#if project.user.isSus}
+                        <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">Sus</span>
+                    {/if}
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="{base}/review/{project.projectId}{selectedSubmission ? `?submissionId=${selectedSubmission.submissionId}` : ''}" class="{btn} no-underline">
+                    Open in Review →
+                </a>
+                <a href="{base}/users?q={encodeURIComponent(project.user.email)}" class="{btn} no-underline">
+                    View User →
+                </a>
             </div>
         </div>
 
-        {#if loading}
-            <div class="py-12 text-center text-ds-text-secondary">Loading...</div>
-        {:else if loadError}
-            <Card class="p-4 border border-red-500 bg-red-600/10 text-red-700 dark:text-red-300">{loadError}</Card>
-        {:else if project}
-            <!-- ═══ Header card: flags + status + actions ═══ -->
-            <Card
-                class={`p-6 space-y-4 backdrop-blur ${
-                    project.user.isSus
-                        ? 'border-yellow-500'
-                        : project.joeFraudPassed === false
-                          ? 'border-red-500'
-                          : 'border-ds-border'
-                }`}
-            >
-                {#if project.deletedAt}
-                    <div class="bg-red-600/20 border-2 border-red-500 rounded-lg p-3">
-                        <p class="text-red-700 dark:text-red-300 font-bold text-center uppercase tracking-wide">
-                            DELETED BY OWNER · {new Date(project.deletedAt).toLocaleString()}
-                        </p>
-                    </div>
-                {/if}
-                {#if project.joeFraudPassed === false}
-                    <div class="bg-red-600/20 border-2 border-red-500 rounded-lg p-3">
-                        <p class="text-red-700 dark:text-red-300 font-bold text-center uppercase tracking-wide">⚠️ FRAUD (JOE)</p>
-                    </div>
-                {/if}
-                {#if project.user.isSus}
-                    <div class="bg-yellow-600/20 border-2 border-yellow-500 rounded-lg p-3">
-                        <p class="text-yellow-700 dark:text-yellow-300 font-bold text-center uppercase tracking-wide">⚠️ SUS FLAGGED</p>
-                    </div>
-                {/if}
+        {#if project.deletedAt}
+            <div class="px-5 py-2 bg-rv-red-bg border-b border-rv-red/40 text-rv-red text-[12px] font-semibold shrink-0">
+                Deleted by owner · {formatDate(project.deletedAt)}
+            </div>
+        {/if}
 
-                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div class="min-w-0">
-                        <h3 class="text-2xl font-semibold break-words">{project.projectTitle}</h3>
-                        <p class="text-sm text-ds-text-secondary">
-                            Owner: <span class="font-medium">{fullName(project.user)}</span>
-                            <span class="text-ds-text-placeholder">#{project.user.userId}</span>
+        <div class="grid grid-cols-[300px_1fr_380px] flex-1 overflow-hidden">
+            <!-- ═══ LEFT PANEL: owner, hours, notes, submissions ═══ -->
+            <div class="bg-rv-surface border-r border-rv-border overflow-y-auto">
+                <!-- Owner -->
+                <div class="p-4 flex flex-col gap-2.5">
+                    <h3 class={sectionTitle}>Owner</h3>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[15px] font-semibold">{fullName(project.user)}</span>
+                        <span class="text-[11px] text-rv-dim">#{project.user.userId}</span>
+                        {#if project.user.isFraud}
+                            <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold bg-rv-red-bg text-rv-red">Fraud</span>
+                        {/if}
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <button
+                            class="group flex items-center justify-between gap-2 text-left bg-transparent border-none p-0 cursor-pointer"
+                            onclick={() => copyText('email', project?.user.email)}
+                            title="Click to copy"
+                        >
+                            <span class="text-[12px] text-rv-text font-mono truncate">{project.user.email}</span>
+                            <span class="text-[10px] {copiedKey === 'email' ? 'text-rv-green' : 'text-rv-dim opacity-0 group-hover:opacity-100'} shrink-0 transition-opacity">
+                                {copiedKey === 'email' ? 'Copied' : 'Copy'}
+                            </span>
+                        </button>
+                        {#if project.user.slackUserId}
+                            <div class="flex items-center justify-between gap-2">
+                                <button
+                                    class="group flex items-center gap-2 text-left bg-transparent border-none p-0 cursor-pointer min-w-0"
+                                    onclick={() => copyText('slack', project?.user.slackUserId)}
+                                    title="Click to copy Slack ID"
+                                >
+                                    <span class="text-[12px] text-rv-text font-mono truncate">{project.user.slackUserId}</span>
+                                    <span class="text-[10px] {copiedKey === 'slack' ? 'text-rv-green' : 'text-rv-dim opacity-0 group-hover:opacity-100'} shrink-0 transition-opacity">
+                                        {copiedKey === 'slack' ? 'Copied' : 'Copy'}
+                                    </span>
+                                </button>
+                                {#if slackDmUrl}
+                                    <a href={slackDmUrl} target="_blank" rel="noreferrer" class="text-[11px] text-rv-blue no-underline hover:underline shrink-0">Slack ↗</a>
+                                {/if}
+                            </div>
+                        {/if}
+                        {#if project.user.hackatimeAccount}
+                            <button
+                                class="group flex items-center justify-between gap-2 text-left bg-transparent border-none p-0 cursor-pointer"
+                                onclick={() => copyText('hackatime', project?.user.hackatimeAccount)}
+                                title="Click to copy Hackatime account"
+                            >
+                                <span class="text-[12px] text-rv-text font-mono truncate">hackatime: {project.user.hackatimeAccount}</span>
+                                <span class="text-[10px] {copiedKey === 'hackatime' ? 'text-rv-green' : 'text-rv-dim opacity-0 group-hover:opacity-100'} shrink-0 transition-opacity">
+                                    {copiedKey === 'hackatime' ? 'Copied' : 'Copy'}
+                                </span>
+                            </button>
+                        {:else}
+                            <span class="text-[12px] text-rv-dim">No Hackatime account linked</span>
+                        {/if}
+                    </div>
+
+                    {#if project.user.hackatimeStartDate}
+                        <p class="m-0 text-[11px] text-rv-accent bg-rv-tag-bg border border-rv-accent/40 rounded-md px-2.5 py-1.5">
+                            ⚠ Custom Hackatime start date: {toDateInputValue(project.user.hackatimeStartDate)}
                         </p>
-                        <p class="text-sm text-ds-text-secondary">{project.user.email}</p>
-                        {#if project.user.hackatimeStartDate}
-                            <div class="mt-2 rounded-md border border-yellow-600 bg-yellow-500/15 px-3 py-2 text-xs text-yellow-800 dark:text-yellow-200">
-                                <p class="font-semibold">
-                                    ⚠ Custom Hackatime start date: {toDateInputValue(project.user.hackatimeStartDate)}
+                    {/if}
+
+                    <div>
+                        <button
+                            class="bg-transparent border-none p-0 text-[11px] text-rv-blue cursor-pointer hover:underline"
+                            onclick={() => (addressExpanded = !addressExpanded)}
+                        >
+                            {addressExpanded ? '▾' : '▸'} Birthday / Address
+                        </button>
+                        {#if addressExpanded}
+                            <div class="mt-1.5 p-2.5 bg-rv-bg rounded-md border border-rv-border text-[12px] text-rv-dim flex flex-col gap-0.5">
+                                {#if project.user.birthday}
+                                    <p class="m-0 text-rv-text">Birthday: {toDateInputValue(project.user.birthday)}</p>
+                                {/if}
+                                {#if project.user.addressLine1}<p class="m-0">{project.user.addressLine1}</p>{/if}
+                                {#if project.user.addressLine2}<p class="m-0">{project.user.addressLine2}</p>{/if}
+                                <p class="m-0">
+                                    {[project.user.city, project.user.state, project.user.zipCode].filter(Boolean).join(', ')}
                                 </p>
+                                {#if project.user.country}<p class="m-0">{project.user.country}</p>{/if}
                             </div>
                         {/if}
                     </div>
-                    <div class="flex flex-wrap gap-2 text-sm">
-                        <span class="rounded-full border border-ds-border px-3 py-1">
-                            Hackatime: {formatHours(project.nowHackatimeHours)}
-                        </span>
-                        {#if project.approvedHours !== null}
-                            <span class="rounded-full border border-green-500 bg-green-500/10 text-green-700 px-3 py-1">
-                                Approved: {formatHours(project.approvedHours)}
-                            </span>
-                        {/if}
-                        <span class="rounded-full border border-ds-border px-3 py-1">
-                            {project.isLocked ? 'Locked' : 'Unlocked'}
-                        </span>
-                    </div>
-                </div>
 
-                {#if project.user.hackatimeAccount}
-                    <p class="text-sm text-purple-600">
-                        Hackatime account: <span class="font-mono">{project.user.hackatimeAccount}</span>
-                    </p>
-                {/if}
-
-                <div class="flex flex-wrap gap-2">
-                    <Button
-                        variant="ghost"
-                        class={project.user.isSus ? 'bg-yellow-600/20 border-yellow-500 text-yellow-600 hover:bg-yellow-600/30' : ''}
+                    <button
+                        class="{btnSm} {project.user.isSus ? 'text-yellow-600 dark:text-yellow-400 border-yellow-500/60 bg-yellow-500/10 hover:border-yellow-500' : ''} self-start"
                         onclick={toggleSusFlag}
                     >
-                        {project.user.isSus ? '⚠️ Sus Flagged' : 'Flag as Sus'}
-                    </Button>
-                    <Button variant="ghost" onclick={recalculate}>Recalculate hours</Button>
-                    {#if project.isLocked}
-                        <Button variant="ghost" onclick={unlockProject} disabled={projectBusy}>Unlock project</Button>
-                    {/if}
-                    {#if project.joeFraudPassed === false || permReject}
-                        <Button
-                            variant="ghost"
-                            class="border-red-500 text-red-600 hover:bg-red-600/15"
-                            onclick={resetJoeAndRequeue}
-                            disabled={projectBusy}
-                        >
-                            Reset Joe & requeue
-                        </Button>
-                    {/if}
+                        {project.user.isSus ? '⚠ Sus flagged — click to clear' : 'Mark as sus'}
+                    </button>
                 </div>
 
-                {#if projectError}
-                    <p class="text-sm text-red-600">{projectError}</p>
-                {:else if projectSuccess}
-                    <p class="text-sm text-green-700">{projectSuccess}</p>
-                {/if}
+                <hr class="border-none border-t border-rv-border m-0" />
 
-                <!-- Address (expandable) -->
-                <div>
-                    <Button
-                        variant="ghost"
-                        class="text-xs text-left text-blue-600 hover:text-blue-700 border-none"
-                        onclick={() => (addressExpanded = !addressExpanded)}
-                    >
-                        {addressExpanded ? '▼' : '▶'} Address / Birthday
-                    </Button>
-                    {#if addressExpanded}
-                        <div class="mt-2 p-3 bg-ds-surface2/50 rounded-lg border border-ds-border text-xs text-ds-text-secondary space-y-1">
-                            {#if project.user.addressLine1}<p>{project.user.addressLine1}</p>{/if}
-                            {#if project.user.addressLine2}<p>{project.user.addressLine2}</p>{/if}
-                            <p>
-                                {[project.user.city, project.user.state, project.user.zipCode].filter(Boolean).join(', ')}
-                            </p>
-                            {#if project.user.country}<p>{project.user.country}</p>{/if}
-                            {#if project.user.birthday}
-                                <p class="pt-2 border-t border-ds-border">Birthday: {formatDate(project.user.birthday)}</p>
-                            {/if}
+                <!-- Hours -->
+                <div class="p-4 flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <h3 class={sectionTitle}>Hours</h3>
+                        <button class={btnSm} onclick={recalculate} disabled={recalculating}>
+                            {recalculating ? '⟳ Recalculating…' : '⟳ Recalculate'}
+                        </button>
+                    </div>
+                    <div class="flex flex-col gap-1 text-[12px]">
+                        <div class="flex items-center justify-between">
+                            <span class="text-rv-dim">Tracked (Hackatime)</span>
+                            <span class="font-semibold">{formatHours(project.nowHackatimeHours)}h</span>
                         </div>
-                    {/if}
-                </div>
-            </Card>
-
-            <!-- ═══ Submissions review ═══ -->
-            {#if submissionsLoading}
-                <Card class="p-6"><p class="text-sm text-ds-text-secondary">Loading submissions...</p></Card>
-            {:else if submissions.length === 0}
-                <Card class="p-6"><p class="text-sm text-ds-text-secondary">No submissions yet.</p></Card>
-            {:else if selectedSubmission}
-                {@const sub = selectedSubmission}
-                {@const draft = submissionDrafts[sub.submissionId]}
-                {@const selectedIndex = submissions.indexOf(sub)}
-                {@const previousSubmission = selectedIndex < submissions.length - 1 ? submissions[selectedIndex + 1] : null}
-                {@const deltaHours = sub.approvedHours != null && previousSubmission?.approvedHours != null
-                    ? sub.approvedHours - previousSubmission.approvedHours
-                    : null}
-                {@const canFlipStatus = sub.approvalStatus === 'pending' || isSuperadmin}
-
-                <Card class="p-6 space-y-4 backdrop-blur">
-                    <!-- Submission selector -->
-                    {#if submissions.length > 1}
-                        <div>
-                            <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary mb-3">
-                                Submissions ({submissions.length})
-                            </h4>
-                            <div class="flex flex-wrap gap-2">
-                                {#each submissions as s}
-                                    <FilterTag
-                                        active={selectedSubmissionId === s.submissionId}
-                                        onclick={() => (selectedSubmissionId = s.submissionId)}
-                                    >
-                                        {formatDate(s.createdAt)}
-                                        <span class={`ml-2 px-1.5 py-0.5 rounded text-xs ${statusBadgeClass(s.approvalStatus)}`}>
-                                            {s.approvalStatus}
-                                        </span>
-                                    </FilterTag>
-                                {/each}
-                            </div>
-                        </div>
-                    {/if}
-
-                    <!-- Submission overview -->
-                    <div class="flex flex-col gap-4 md:flex-row md:gap-6">
-                        {#if sub.screenshotUrl || sub.project.screenshotUrl}
-                            <div class="w-full md:w-64 flex-shrink-0">
-                                <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary mb-2">Screenshot</h4>
-                                <a href={sub.screenshotUrl || sub.project.screenshotUrl} target="_blank" rel="noreferrer">
-                                    <img
-                                        src={sub.screenshotUrl || sub.project.screenshotUrl}
-                                        alt="Project screenshot"
-                                        loading="lazy"
-                                        class="w-full h-48 object-cover rounded-lg border border-ds-border hover:border-ds-accent transition-colors"
-                                    />
-                                </a>
+                        {#if latestSubmission}
+                            <div class="flex items-center justify-between">
+                                <span class="text-rv-dim">At last submission</span>
+                                <span class="font-semibold">{formatHours(latestSubmission.hackatimeHours)}h</span>
                             </div>
                         {/if}
-
-                        <div class="flex-1 space-y-3 min-w-0">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="text-sm text-ds-text-secondary">Submitted {formatDate(sub.createdAt)}</p>
-                                    <p class="text-sm text-ds-text-secondary">
-                                        Hackatime: <span class="font-semibold text-purple-600">{formatHours(sub.project.nowHackatimeHours)}</span>
-                                        <Button
-                                            variant="default"
-                                            class="ml-2 bg-ds-accent border-ds-accent hover:bg-ds-accent/80"
-                                            onclick={() => recalculateSubmissionHours(sub.submissionId)}
-                                            disabled={submissionRecalculating[sub.submissionId]}
-                                        >
-                                            {submissionRecalculating[sub.submissionId] ? '⟳ Calculating...' : '⟳ Recalc'}
-                                        </Button>
-                                    </p>
-                                    {#if deltaHours != null}
-                                        <p class="text-sm text-blue-700">
-                                            Additional (this submission): <span class="font-semibold">+{formatHours(deltaHours)}</span>
-                                        </p>
-                                    {/if}
-                                </div>
-                                <span class={`px-3 py-1 rounded-full text-sm border ${statusBadgeClass(sub.approvalStatus)}`}>
-                                    {sub.approvalStatus.toUpperCase()}
-                                </span>
-                            </div>
-
-                            {#if sub.description || sub.project.description}
-                                <div class="space-y-1">
-                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Description</h4>
-                                    <p class="text-sm text-ds-text-secondary break-words">
-                                        {sub.description || sub.project.description}
-                                    </p>
-                                </div>
-                            {/if}
-
-                            {#if sub.hoursJustification}
-                                <div class="bg-blue-950/10 border border-blue-800/40 rounded-lg p-3">
-                                    <h4 class="text-xs font-semibold uppercase tracking-wide text-blue-700 mb-1">User Feedback</h4>
-                                    <p class="text-sm text-ds-text-secondary break-words">{sub.hoursJustification}</p>
-                                </div>
-                            {/if}
-                            {#if sub.project.hoursJustification}
-                                <div class="bg-purple-950/10 border border-purple-800/40 rounded-lg p-3">
-                                    <h4 class="text-xs font-semibold uppercase tracking-wide text-purple-600 mb-1">Hours Justification (admin only)</h4>
-                                    <p class="text-sm text-ds-text-secondary break-words">{sub.project.hoursJustification}</p>
-                                </div>
-                            {/if}
-                            {#if sub.project.adminComment}
-                                <div class="bg-orange-950/10 border border-orange-800/40 rounded-lg p-3">
-                                    <h4 class="text-xs font-semibold uppercase tracking-wide text-orange-600 mb-1">Admin Comment</h4>
-                                    <p class="text-sm text-ds-text-secondary break-words">{sub.project.adminComment}</p>
-                                </div>
-                            {/if}
-
-                            <!-- Quick action links -->
-                            <div class="flex flex-wrap gap-2">
-                                {#if sub.playableUrl || sub.project.playableUrl}
-                                    {@const url = normalizeUrl(sub.playableUrl || sub.project.playableUrl)}
-                                    {#if url}
-                                        <a href={url} target="_blank" rel="noreferrer" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white text-sm transition-colors">
-                                            View Live Demo
-                                        </a>
-                                    {/if}
-                                {/if}
-                                {#if sub.repoUrl || sub.project.repoUrl}
-                                    <a href={sub.repoUrl || sub.project.repoUrl} target="_blank" rel="noreferrer" class="px-4 py-2 rounded-lg bg-ds-surface-inactive hover:bg-ds-surface-inactive border border-ds-border text-ds-text text-sm transition-colors">
-                                        View Repository
-                                    </a>
-                                    <a href={`https://airlock.hackclub.com/?r=${sub.repoUrl || sub.project.repoUrl}`} target="_blank" rel="noreferrer" class="px-4 py-2 rounded-lg bg-orange-700 hover:bg-orange-600 border border-orange-500 text-white text-sm transition-colors">
-                                        Open in Airlock
-                                    </a>
-                                {/if}
-                                {#if generateBillyLink(project.user.hackatimeAccount)}
-                                    <a href={generateBillyLink(project.user.hackatimeAccount)} target="_blank" rel="noreferrer" class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 border border-green-400 text-white text-sm transition-colors">
-                                        Billy
-                                    </a>
-                                {/if}
-                            </div>
-
-                            <!-- Billy date range -->
-                            <div class="grid gap-2 md:grid-cols-[1fr_1fr_auto] md:items-end pt-2">
-                                <div>
-                                    <label for="billy-start" class="block text-xs text-ds-text-secondary mb-1">Billy start</label>
-                                    <TextField id="billy-start" type="date" bind:value={dateRangeStart} />
-                                </div>
-                                <div>
-                                    <label for="billy-end" class="block text-xs text-ds-text-secondary mb-1">Billy end</label>
-                                    <TextField id="billy-end" type="date" bind:value={dateRangeEnd} />
-                                </div>
-                                <Button
-                                    variant="default"
-                                    onclick={() => {
-                                        const r = getDefaultDateRange();
-                                        dateRangeStart = r.startDate;
-                                        dateRangeEnd = r.endDate;
-                                    }}
-                                >
-                                    Reset
-                                </Button>
-                            </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-rv-dim">Approved</span>
+                            <span class="font-semibold {project.approvedHours !== null ? 'text-rv-green' : ''}">{formatHours(project.approvedHours)}h</span>
                         </div>
                     </div>
-
-                    <!-- Review controls -->
-                    {#if draft}
-                        <div class="border-t border-ds-border pt-4 space-y-4">
-                            <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Review Controls</h4>
-
-                            <div class="grid gap-4 md:grid-cols-3">
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-ds-text-secondary" for="rv-status">Status</label>
-                                    <Select id="rv-status" class="w-full" bind:value={draft.approvalStatus} disabled={!canFlipStatus}>
-                                        {#each statusOptions as option}
-                                            <option value={option}>{option}</option>
-                                        {/each}
-                                    </Select>
-                                    {#if !canFlipStatus}
-                                        <p class="text-xs text-ds-text-secondary">Superadmin only: flipping approved↔rejected.</p>
-                                    {/if}
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-ds-text-secondary" for="rv-hours">Approved Hours</label>
-                                    <TextField id="rv-hours" type="number" step="0.1" min="0" bind:value={draft.approvedHours} />
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-ds-text-secondary" for="rv-feedback">User Feedback (emailed)</label>
-                                    <TextField
-                                        id="rv-feedback"
-                                        multiline
-                                        class="min-w-0 border-blue-600 focus:border-blue-500 resize-y"
-                                        rows={2}
-                                        placeholder="Feedback to send to the user..."
-                                        bind:value={draft.userFeedback}
-                                    />
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-ds-text-secondary" for="rv-justify">Hours Justification (admin only, Airtable)</label>
-                                    <TextField
-                                        id="rv-justify"
-                                        multiline
-                                        class="min-w-0 border-purple-600 resize-y"
-                                        rows={2}
-                                        placeholder="Internal justification..."
-                                        bind:value={draft.hoursJustification}
-                                    />
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-ds-text-secondary" for="rv-admin-comment">Admin Comment (internal)</label>
-                                    <TextField
-                                        id="rv-admin-comment"
-                                        multiline
-                                        class="min-w-0 border-orange-600 focus:border-orange-500 resize-y"
-                                        rows={2}
-                                        placeholder="Internal comment..."
-                                        bind:value={draft.adminComment}
-                                    />
-                                </div>
+                    {#if billyUrl}
+                        <div class="flex items-end gap-1.5 pt-1">
+                            <div class="flex-1 min-w-0">
+                                <span class="block text-[10px] text-rv-dim mb-0.5">Billy start</span>
+                                <input type="date" class="{input} px-1.5 py-1 text-[11px]" bind:value={dateRangeStart} />
                             </div>
-
-                            <div class="flex items-center gap-3">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <Checkbox bind:checked={draft.sendEmailNotification} />
-                                    <span class="text-sm font-medium text-ds-text-secondary">Send email on status change</span>
-                                </label>
+                            <div class="flex-1 min-w-0">
+                                <span class="block text-[10px] text-rv-dim mb-0.5">Billy end</span>
+                                <input type="date" class="{input} px-1.5 py-1 text-[11px]" bind:value={dateRangeEnd} />
                             </div>
-
-                            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                <div class="flex flex-wrap gap-2">
-                                    {#if sub.approvalStatus !== 'approved' && (sub.approvalStatus === 'pending' || isSuperadmin)}
-                                        <Button variant="approve" onclick={() => quickApprove(sub)} disabled={submissionSaving[sub.submissionId]}>
-                                            Quick Approve
-                                        </Button>
-                                    {/if}
-                                    {#if sub.approvalStatus !== 'rejected' && (sub.approvalStatus === 'pending' || isSuperadmin)}
-                                        <Button variant="reject" onclick={() => quickDeny(sub.submissionId)} disabled={submissionSaving[sub.submissionId]}>
-                                            Quick Deny
-                                        </Button>
-                                    {/if}
-                                    {#if isSuperadmin && sub.approvalStatus === 'approved' && sub.airtableRecId}
-                                        <Button
-                                            variant="reject"
-                                            onclick={() => quickDenyAndDeleteAirtable(sub.submissionId)}
-                                            disabled={submissionSaving[sub.submissionId]}
-                                            title="Reject this submission and permanently delete the Airtable record (unrecoverable)"
-                                        >
-                                            Quick Deny + Delete Airtable
-                                        </Button>
-                                    {/if}
-                                    <Button
-                                        variant="default"
-                                        class="bg-ds-accent border-ds-accent hover:bg-ds-accent/80"
-                                        onclick={() => saveSubmission(sub.submissionId)}
-                                        disabled={submissionSaving[sub.submissionId]}
-                                    >
-                                        {submissionSaving[sub.submissionId] ? 'Saving...' : 'Save Changes'}
-                                    </Button>
-                                    <Button variant="default" onclick={() => resetDraft(sub)}>Reset</Button>
-                                </div>
-                                <div class="text-sm">
-                                    {#if submissionErrors[sub.submissionId]}
-                                        <span class="text-red-600">{submissionErrors[sub.submissionId]}</span>
-                                    {:else if submissionSuccess[sub.submissionId]}
-                                        <span class="text-green-700">{submissionSuccess[sub.submissionId]}</span>
-                                    {/if}
-                                </div>
-                            </div>
+                            <a href={billyUrl} target="_blank" rel="noreferrer" class="{btnSm} no-underline shrink-0">Billy ↗</a>
                         </div>
                     {/if}
-                </Card>
-            {/if}
+                </div>
 
-            <!-- ═══ Timeline ═══ -->
-            <Card class="p-6 backdrop-blur">
-                <Button
-                    variant="ghost"
-                    class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ds-text-secondary hover:text-ds-text border-none"
-                    onclick={loadTimeline}
-                    disabled={timelineLoading}
-                >
-                    {#if timelineLoading}
-                        <span class="animate-spin">⟳</span> Loading Timeline...
+                <hr class="border-none border-t border-rv-border m-0" />
+
+                <NotesSection
+                    title="Notes — Project"
+                    targetType="project"
+                    targetId={project.projectId}
+                    bind:content={projectNote}
+                    loading={notesLoading}
+                />
+
+                <hr class="border-none border-t border-rv-border m-0" />
+
+                <NotesSection
+                    title="Notes — User"
+                    targetType="user"
+                    targetId={project.user.userId}
+                    bind:content={userNote}
+                    loading={notesLoading}
+                />
+
+                <hr class="border-none border-t border-rv-border m-0" />
+
+                <!-- Submissions -->
+                <div class="p-4">
+                    <h3 class="{sectionTitle} mb-2">
+                        Submissions <span class="text-rv-text/60 font-normal normal-case ml-1">({submissions.length})</span>
+                    </h3>
+                    {#if submissionsLoading}
+                        <div class="flex flex-col gap-1.5">
+                            <Skeleton class="h-12 w-full" />
+                            <Skeleton class="h-12 w-full" />
+                        </div>
+                    {:else if submissions.length === 0}
+                        <p class="m-0 text-[12px] text-rv-dim">No submissions yet.</p>
                     {:else}
-                        <span>{timelineOpen ? '▼' : '▶'}</span> Project Timeline
+                        <div class="flex flex-col gap-1.5">
+                            {#each submissions as s, i (s.submissionId)}
+                                {@const isActive = s.submissionId === selectedSubmission?.submissionId && activeTab === 'submission'}
+                                <button
+                                    class="flex flex-col gap-1 px-2.5 py-2 rounded-md border text-left font-inherit cursor-pointer transition-all duration-150 {isActive ? 'bg-rv-surface2 border-rv-accent' : 'bg-rv-surface border-rv-border hover:border-rv-accent'}"
+                                    onclick={() => selectSubmission(s.submissionId)}
+                                >
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-[12px] font-semibold text-rv-text">
+                                            {i === 0 ? 'Latest' : `#${submissions.length - i}`}
+                                        </span>
+                                        <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold {statusPillClass(s.approvalStatus)}">
+                                            {statusLabel(s.approvalStatus)}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2 text-[11px] text-rv-dim">
+                                        <span>{timeAgo(s.createdAt)}</span>
+                                        <span>
+                                            {#if s.approvedHours != null}{s.approvedHours.toFixed(1)}h approved{:else if s.hackatimeHours != null}{s.hackatimeHours.toFixed(1)}h{/if}
+                                        </span>
+                                    </div>
+                                </button>
+                            {/each}
+                        </div>
                     {/if}
-                </Button>
+                </div>
+            </div>
 
-                {#if timelineOpen && timeline}
-                    <div class="mt-4 relative ml-3">
-                        <div class="absolute left-1 top-0 bottom-0 w-0.5 bg-ds-surface-inactive"></div>
-                        <div class="space-y-3">
-                            {#each timeline.timeline as event}
-                                <div class="relative pl-6">
-                                    <div class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full {timelineDotColor(event.type)} ring-2 ring-ds-surface"></div>
-                                    <div class="rounded-lg border p-3 {timelineEventColor(event.type)}">
-                                        <div class="flex flex-wrap items-center gap-2 mb-1">
-                                            <span class="text-xs font-bold uppercase tracking-wide text-ds-text">{timelineEventLabel(event.type)}</span>
-                                            <span class="text-xs text-ds-text-secondary">{formatDate(event.timestamp)}</span>
-                                            {#if event.actor}
-                                                <span class="text-xs text-ds-text-secondary">
-                                                    by {event.actor.firstName ?? ''} {event.actor.lastName ?? ''} ({event.actor.email})
-                                                </span>
-                                            {/if}
-                                        </div>
-                                        {#if event.details && Object.keys(event.details).length > 0}
-                                            <pre class="text-xs text-ds-text-secondary mt-1 whitespace-pre-wrap break-words">{JSON.stringify(event.details, null, 2)}</pre>
+            <!-- ═══ CENTER PANEL: overview / submission / timeline ═══ -->
+            <div class="flex flex-col overflow-hidden">
+                <TabBar tabs={centerTabs} {activeTab} onTabChange={handleTabChange} />
+
+                <div class="flex-1 overflow-y-auto">
+                    {#if activeTab === 'overview'}
+                        <div class="tab-content max-w-[860px] mx-auto p-5 flex flex-col gap-5">
+                            {#if effectiveScreenshot}
+                                <a href={effectiveScreenshot} target="_blank" rel="noreferrer" class="block">
+                                    <img
+                                        src={effectiveScreenshot}
+                                        alt="Project screenshot"
+                                        loading="lazy"
+                                        class="w-full max-h-90 object-cover rounded-lg border border-rv-border hover:border-rv-accent transition-colors"
+                                    />
+                                </a>
+                            {/if}
+
+                            <div class="flex items-start justify-between gap-4 flex-wrap">
+                                <div class="min-w-0">
+                                    <h2 class="text-xl font-semibold m-0 break-words">{project.projectTitle}</h2>
+                                    <p class="m-0 mt-1 text-[12px] text-rv-dim">
+                                        <span class="capitalize">{typeLabel(project.projectType)}</span>
+                                        · created {formatDate(project.createdAt)}
+                                        · updated {formatDate(project.updatedAt)}
+                                    </p>
+                                </div>
+                                <div class="flex flex-wrap gap-2 shrink-0">
+                                    {#if normalizeUrl(project.playableUrl)}
+                                        <a href={normalizeUrl(project.playableUrl)} target="_blank" rel="noreferrer" class="{btn} no-underline">Demo ↗</a>
+                                    {/if}
+                                    {#if project.repoUrl}
+                                        <a href={project.repoUrl} target="_blank" rel="noreferrer" class="{btn} no-underline">Repo ↗</a>
+                                        <a href={`https://airlock.hackclub.com/?r=${encodeURIComponent(project.repoUrl)}`} target="_blank" rel="noreferrer" class="{btn} no-underline">Airlock ↗</a>
+                                    {/if}
+                                    {#if normalizeUrl(project.readmeUrl)}
+                                        <a href={normalizeUrl(project.readmeUrl)} target="_blank" rel="noreferrer" class="{btn} no-underline">README ↗</a>
+                                    {/if}
+                                    {#if normalizeUrl(project.journalUrl)}
+                                        <a href={normalizeUrl(project.journalUrl)} target="_blank" rel="noreferrer" class="{btn} no-underline">Journal ↗</a>
+                                    {/if}
+                                </div>
+                            </div>
+
+                            {#if project.description}
+                                <p class="m-0 text-[13px] leading-relaxed text-rv-text/90 break-words">{project.description}</p>
+                            {:else}
+                                <p class="m-0 text-[13px] text-rv-dim italic">No description.</p>
+                            {/if}
+
+                            <div>
+                                <h3 class="{sectionTitle} mb-2">Linked Hackatime projects</h3>
+                                {#if (project.nowHackatimeProjects ?? []).length > 0}
+                                    <div class="flex flex-wrap gap-1.5">
+                                        {#each project.nowHackatimeProjects ?? [] as name}
+                                            <span class="py-1 px-2.5 rounded-xl text-[11px] bg-rv-surface2 border border-rv-border text-rv-text font-mono">{name}</span>
+                                        {/each}
+                                    </div>
+                                {:else}
+                                    <p class="m-0 text-[12px] text-rv-dim">None linked.</p>
+                                {/if}
+                            </div>
+
+                            <!-- Joe fraud review -->
+                            <div class="bg-rv-surface border border-rv-border rounded-lg p-4 flex flex-col gap-2">
+                                <div class="flex items-center justify-between gap-2 flex-wrap">
+                                    <h3 class="{sectionTitle} m-0">Fraud review (Joe)</h3>
+                                    <div class="flex items-center gap-2">
+                                        {#if project.joeTrustScore != null}
+                                            <span class="text-[11px] text-rv-dim">Trust score <span class="font-semibold text-rv-text">{project.joeTrustScore}</span></span>
+                                        {/if}
+                                        <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold {project.joeFraudPassed === true ? 'bg-rv-green-bg text-rv-green' : project.joeFraudPassed === false ? 'bg-rv-red-bg text-rv-red' : 'bg-rv-surface2 text-rv-dim'}">
+                                            {project.joeFraudPassed === true ? 'Passed' : project.joeFraudPassed === false ? 'Failed' : 'Pending'}
+                                        </span>
+                                        {#if joeUrl}
+                                            <a href={joeUrl} target="_blank" rel="noreferrer" class="text-[11px] text-rv-blue no-underline hover:underline">Open in Joe ↗</a>
                                         {/if}
                                     </div>
                                 </div>
-                            {/each}
-                        </div>
-                    </div>
-                {/if}
-            </Card>
+                                {#if project.joeJustification}
+                                    <p class="m-0 text-[12px] text-rv-dim leading-relaxed break-words">{project.joeJustification}</p>
+                                {:else}
+                                    <p class="m-0 text-[12px] text-rv-dim italic">No justification from Joe{project.joeProjectId ? '' : ' — not yet submitted to the fraud queue'}.</p>
+                                {/if}
+                            </div>
 
-            <!-- ═══ Edit form (collapsible, superadmin only) ═══ -->
-            <Card class="p-6 space-y-4 backdrop-blur">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold">Edit Project Metadata</h3>
-                    <Button variant="ghost" onclick={() => (editOpen = !editOpen)}>
-                        {editOpen ? 'Hide' : 'Show'}
-                    </Button>
+                            {#if project.adminComment}
+                                <div class="bg-rv-surface border-l-2 border-l-orange-500 border border-rv-border rounded-lg p-4">
+                                    <h3 class="{sectionTitle} mb-1 text-orange-500">Admin comment (internal)</h3>
+                                    <p class="m-0 text-[12px] text-rv-text/90 leading-relaxed break-words whitespace-pre-wrap">{project.adminComment}</p>
+                                </div>
+                            {/if}
+                            {#if project.hoursJustification}
+                                <div class="bg-rv-surface border-l-2 border-l-purple-500 border border-rv-border rounded-lg p-4">
+                                    <h3 class="{sectionTitle} mb-1 text-purple-500">Hours justification (internal, synced to Airtable)</h3>
+                                    <p class="m-0 text-[12px] text-rv-text/90 leading-relaxed break-words whitespace-pre-wrap">{project.hoursJustification}</p>
+                                </div>
+                            {/if}
+                        </div>
+                    {:else if activeTab === 'submission'}
+                        <div class="tab-content max-w-[860px] mx-auto p-5">
+                            {#if !selectedSubmission}
+                                <p class="text-[13px] text-rv-dim">No submissions yet — this project is still a draft.</p>
+                            {:else}
+                                {@const sub = selectedSubmission}
+                                {@const selectedIndex = submissions.indexOf(sub)}
+                                {@const previousSubmission = selectedIndex < submissions.length - 1 ? submissions[selectedIndex + 1] : null}
+                                {@const deltaHours = sub.approvedHours != null && previousSubmission?.approvedHours != null
+                                    ? sub.approvedHours - previousSubmission.approvedHours
+                                    : null}
+                                <div class="flex flex-col gap-4">
+                                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                                        <div class="flex items-center gap-2.5">
+                                            <h2 class="text-[15px] font-semibold m-0">
+                                                Submission {selectedIndex === 0 ? '(latest)' : `#${submissions.length - selectedIndex}`}
+                                            </h2>
+                                            <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold {statusPillClass(sub.approvalStatus)}">
+                                                {statusLabel(sub.approvalStatus)}
+                                            </span>
+                                        </div>
+                                        <a href="{base}/review/{project.projectId}?submissionId={sub.submissionId}" class="{btn} no-underline">
+                                            Review this submission →
+                                        </a>
+                                    </div>
+                                    <p class="m-0 text-[12px] text-rv-dim">
+                                        Submitted {formatDate(sub.createdAt)} ({timeAgo(sub.createdAt)})
+                                        {#if sub.airtableRecId}
+                                            · Airtable <span class="font-mono">{sub.airtableRecId}</span>
+                                        {/if}
+                                    </p>
+
+                                    <div class="grid grid-cols-3 gap-3">
+                                        <div class="bg-rv-surface border border-rv-border rounded-lg p-3">
+                                            <p class="m-0 text-[10px] uppercase tracking-wide text-rv-dim font-semibold">Hackatime at submit</p>
+                                            <p class="m-0 mt-1 text-[16px] font-semibold">{formatHours(sub.hackatimeHours)}h</p>
+                                        </div>
+                                        <div class="bg-rv-surface border border-rv-border rounded-lg p-3">
+                                            <p class="m-0 text-[10px] uppercase tracking-wide text-rv-dim font-semibold">Approved</p>
+                                            <p class="m-0 mt-1 text-[16px] font-semibold {sub.approvedHours != null ? 'text-rv-green' : ''}">{formatHours(sub.approvedHours)}h</p>
+                                        </div>
+                                        <div class="bg-rv-surface border border-rv-border rounded-lg p-3">
+                                            <p class="m-0 text-[10px] uppercase tracking-wide text-rv-dim font-semibold">Δ vs prior approval</p>
+                                            <p class="m-0 mt-1 text-[16px] font-semibold {deltaHours != null && deltaHours > 0 ? 'text-rv-blue' : ''}">{deltaHours != null ? `+${formatHours(deltaHours)}h` : '—'}</p>
+                                        </div>
+                                    </div>
+
+                                    {#if sub.screenshotUrl}
+                                        <a href={sub.screenshotUrl} target="_blank" rel="noreferrer" class="block">
+                                            <img
+                                                src={sub.screenshotUrl}
+                                                alt="Submission screenshot"
+                                                loading="lazy"
+                                                class="w-full max-h-72 object-cover rounded-lg border border-rv-border hover:border-rv-accent transition-colors"
+                                            />
+                                        </a>
+                                    {/if}
+
+                                    {#if sub.description}
+                                        <div>
+                                            <h3 class="{sectionTitle} mb-1">Description (at submission)</h3>
+                                            <p class="m-0 text-[13px] leading-relaxed text-rv-text/90 break-words">{sub.description}</p>
+                                        </div>
+                                    {/if}
+
+                                    {#if sub.hoursJustification}
+                                        <div class="bg-rv-surface border-l-2 border-l-rv-blue border border-rv-border rounded-lg p-4">
+                                            <h3 class="{sectionTitle} mb-1 text-rv-blue">Reviewer feedback (shown to user)</h3>
+                                            <p class="m-0 text-[12px] text-rv-text/90 leading-relaxed break-words whitespace-pre-wrap">{sub.hoursJustification}</p>
+                                        </div>
+                                    {/if}
+
+                                    <div class="flex flex-wrap gap-2">
+                                        {#if normalizeUrl(sub.playableUrl)}
+                                            <a href={normalizeUrl(sub.playableUrl)} target="_blank" rel="noreferrer" class="{btn} no-underline">Demo at submit ↗</a>
+                                        {/if}
+                                        {#if sub.repoUrl}
+                                            <a href={sub.repoUrl} target="_blank" rel="noreferrer" class="{btn} no-underline">Repo at submit ↗</a>
+                                        {/if}
+                                    </div>
+
+                                    <p class="m-0 text-[11px] text-rv-dim">
+                                        Verdicts, approved hours, and feedback are edited in the review dash — use “Review this submission” above.
+                                    </p>
+                                </div>
+                            {/if}
+                        </div>
+                    {:else if activeTab === 'timeline'}
+                        <div class="tab-content max-w-[860px] mx-auto p-5">
+                            {#if timelineLoading}
+                                <div class="flex flex-col gap-2">
+                                    <Skeleton class="h-14 w-full" />
+                                    <Skeleton class="h-14 w-full" />
+                                    <Skeleton class="h-14 w-full" />
+                                </div>
+                            {:else if timeline}
+                                <div class="relative ml-3">
+                                    <div class="absolute left-1 top-0 bottom-0 w-0.5 bg-rv-border"></div>
+                                    <div class="flex flex-col gap-2.5">
+                                        {#each timeline.timeline as event}
+                                            <div class="relative pl-6">
+                                                <div class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full {timelineDotColor(event.type)} ring-2 ring-rv-bg"></div>
+                                                <div class="rounded-lg border border-rv-border bg-rv-surface p-3">
+                                                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                                                        <span class="text-[11px] font-bold uppercase tracking-wide">{timelineEventLabel(event.type)}</span>
+                                                        <span class="text-[11px] text-rv-dim">{formatDate(event.timestamp)}</span>
+                                                        {#if event.actor}
+                                                            <span class="text-[11px] text-rv-dim">
+                                                                by {event.actor.firstName ?? ''} {event.actor.lastName ?? ''} ({event.actor.email})
+                                                            </span>
+                                                        {/if}
+                                                    </div>
+                                                    {#if event.details && Object.keys(event.details).length > 0}
+                                                        <pre class="m-0 text-[11px] text-rv-dim whitespace-pre-wrap break-words font-mono">{JSON.stringify(event.details, null, 2)}</pre>
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                </div>
+                            {:else}
+                                <p class="text-[13px] text-rv-dim">Couldn't load the timeline.</p>
+                            {/if}
+                        </div>
+                    {/if}
+                </div>
+            </div>
+
+            <!-- ═══ RIGHT PANEL: editor ═══ -->
+            <div class="bg-rv-surface border-l border-rv-border flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-2.5 border-b border-rv-border shrink-0">
+                    <h3 class="{sectionTitle} m-0">Edit project</h3>
+                    {#if !isSuperadmin && me}
+                        <span class="text-[10px] text-rv-dim">read-only · superadmin required</span>
+                    {/if}
                 </div>
 
-                {#if !isSuperadmin && me && editOpen}
-                    <div class="p-3 border border-yellow-500 bg-yellow-100 text-yellow-900 rounded-md text-sm">
-                        This section is read-only. Editing requires superadmin role.
-                    </div>
-                {/if}
-
-                {#if editOpen}
-                    <fieldset disabled={!isSuperadmin} class="space-y-5">
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <label class="space-y-1">
-                                <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Project Title</span>
-                                <TextField bind:value={projectTitle} maxlength={30} />
-                            </label>
-                            <label class="space-y-1">
-                                <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Project Type</span>
-                                <Select bind:value={projectType} class="w-full">
-                                    {#each projectTypes as t}
-                                        <option value={t}>{t}</option>
-                                    {/each}
-                                </Select>
-                            </label>
+                <div class="flex-1 overflow-y-auto">
+                    <fieldset disabled={!isSuperadmin} class="border-none m-0 p-4 flex flex-col gap-3.5">
+                        <div>
+                            <label class={label} for="ed-title">Title</label>
+                            <input id="ed-title" class={input} bind:value={projectTitle} maxlength={30} />
+                        </div>
+                        <div>
+                            <label class={label} for="ed-type">Type</label>
+                            <select id="ed-type" class={input} bind:value={projectType}>
+                                {#each projectTypes as t}
+                                    <option value={t}>{typeLabel(t)}</option>
+                                {/each}
+                            </select>
+                        </div>
+                        <div>
+                            <label class={label} for="ed-desc">Description</label>
+                            <textarea id="ed-desc" class="{input} resize-y min-h-[70px]" bind:value={description} maxlength={500}></textarea>
+                        </div>
+                        <div>
+                            <label class={label} for="ed-playable">Playable URL</label>
+                            <input id="ed-playable" class={input} bind:value={playableUrl} />
+                        </div>
+                        <div>
+                            <label class={label} for="ed-repo">Repo URL</label>
+                            <input id="ed-repo" class={input} bind:value={repoUrl} />
+                        </div>
+                        <div>
+                            <label class={label} for="ed-readme">README URL</label>
+                            <input id="ed-readme" class={input} bind:value={readmeUrl} />
+                        </div>
+                        <div>
+                            <label class={label} for="ed-journal">Journal URL</label>
+                            <input id="ed-journal" class={input} bind:value={journalUrl} />
+                        </div>
+                        <div>
+                            <label class={label} for="ed-screenshot">Screenshot URL</label>
+                            <input id="ed-screenshot" class={input} bind:value={screenshotUrl} />
+                        </div>
+                        <div>
+                            <label class={label} for="ed-hours">Approved hours (blank to clear)</label>
+                            <input id="ed-hours" class={input} type="number" min="0" step="0.1" bind:value={approvedHoursText} />
+                        </div>
+                        <div>
+                            <label class={label} for="ed-justify">Hours justification (internal, Airtable)</label>
+                            <textarea id="ed-justify" class="{input} resize-y min-h-[60px]" bind:value={hoursJustificationEdit}></textarea>
+                        </div>
+                        <div>
+                            <label class={label} for="ed-comment">Admin comment (internal)</label>
+                            <textarea id="ed-comment" class="{input} resize-y min-h-[60px]" bind:value={adminCommentEdit} maxlength={1000}></textarea>
                         </div>
 
-                        <label class="space-y-1 block">
-                            <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Description</span>
-                            <TextField bind:value={description} multiline maxlength={500} />
+                        <label class="flex items-center gap-2 cursor-pointer text-[12px]">
+                            <input type="checkbox" class="accent-rv-accent" bind:checked={isLocked} />
+                            Lock project (prevents owner edits)
                         </label>
 
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <label class="space-y-1">
-                                <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Playable URL</span>
-                                <TextField bind:value={playableUrl} />
-                            </label>
-                            <label class="space-y-1">
-                                <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Repo URL</span>
-                                <TextField bind:value={repoUrl} />
-                            </label>
-                            <label class="space-y-1">
-                                <span class="text-xs uppercase tracking-wide text-ds-text-secondary">README URL</span>
-                                <TextField bind:value={readmeUrl} />
-                            </label>
-                            <label class="space-y-1">
-                                <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Journal URL</span>
-                                <TextField bind:value={journalUrl} />
-                            </label>
-                            <label class="space-y-1 md:col-span-2">
-                                <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Screenshot URL</span>
-                                <TextField bind:value={screenshotUrl} />
-                            </label>
-                        </div>
-
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <label class="space-y-1">
-                                <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Approved hours (blank to clear)</span>
-                                <TextField type="number" min="0" step="0.1" bind:value={approvedHoursText} />
-                            </label>
-                            <label class="flex items-end gap-2 pb-2">
-                                <Checkbox bind:checked={isLocked} />
-                                <span class="text-sm text-ds-text-secondary">Lock project (prevents owner edits)</span>
-                            </label>
-                        </div>
-
-                        <div class="space-y-1 rounded-md border {permReject ? 'border-red-500/60 bg-red-500/5' : 'border-ds-border'} p-3">
-                            <label class="flex items-start gap-2">
-                                <Checkbox bind:checked={permReject} />
-                                <span class="text-sm">
-                                    <span class="font-semibold text-red-600 dark:text-red-400">Permanently reject project</span>
-                                    <span class="block text-xs text-ds-text-secondary">
+                        <div class="rounded-md border {permReject ? 'border-rv-red/60 bg-rv-red-bg' : 'border-rv-border'} p-3">
+                            <label class="flex items-start gap-2 cursor-pointer">
+                                <input type="checkbox" class="accent-red-500 mt-0.5" bind:checked={permReject} />
+                                <span class="text-[12px]">
+                                    <span class="font-semibold text-rv-red">Permanently reject project</span>
+                                    <span class="block text-[11px] text-rv-dim mt-0.5">
                                         User cannot resubmit or edit. The reason shown to the user is the latest submission's reviewer feedback — set it via the review page or the fraud-review flow before enabling. Untick to lift the perm-reject; this is the only undo path.
                                     </span>
                                 </span>
                             </label>
                         </div>
 
-                        <label class="space-y-1 block">
-                            <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Hours justification</span>
-                            <TextField bind:value={hoursJustificationEdit} multiline />
-                        </label>
-
-                        <label class="space-y-1 block">
-                            <span class="text-xs uppercase tracking-wide text-ds-text-secondary">Admin comment (max 1000 chars)</span>
-                            <TextField bind:value={adminCommentEdit} multiline maxlength={1000} />
-                        </label>
-
-                        <div class="space-y-3 border-t border-ds-border pt-5">
+                        <!-- Hackatime linking -->
+                        <div class="border-t border-rv-border pt-3.5 flex flex-col gap-2">
                             <div class="flex items-center justify-between gap-2">
-                                <div>
-                                    <h4 class="text-sm font-semibold uppercase tracking-wide text-ds-text-secondary">Linked Hackatime Projects</h4>
+                                <div class="min-w-0">
+                                    <h4 class="{sectionTitle} m-0">Linked Hackatime projects</h4>
                                     {#if hackatimeOwnerAccount}
-                                        <p class="text-xs text-ds-text-secondary">
-                                            Owner: {hackatimeOwnerAccount}
-                                            {#if hackatimeOwnerStartDate}
-                                                • start date {toDateInputValue(hackatimeOwnerStartDate)}
-                                            {/if}
+                                        <p class="m-0 mt-0.5 text-[11px] text-rv-dim truncate">
+                                            {hackatimeOwnerAccount}{hackatimeOwnerStartDate ? ` · from ${toDateInputValue(hackatimeOwnerStartDate)}` : ''}
                                         </p>
                                     {:else}
-                                        <p class="text-xs text-ds-text-placeholder">Owner has no Hackatime account linked.</p>
+                                        <p class="m-0 mt-0.5 text-[11px] text-rv-dim">Owner has no Hackatime account linked.</p>
                                     {/if}
                                 </div>
-                                <Button variant="ghost" onclick={loadHackatime} disabled={hackatimeLoading}>
-                                    {hackatimeLoading ? 'Loading…' : 'Refresh list'}
-                                </Button>
+                                <button class="{btnSm} shrink-0" onclick={loadHackatime} disabled={hackatimeLoading} type="button">
+                                    {hackatimeLoading ? 'Loading…' : 'Refresh'}
+                                </button>
                             </div>
 
                             {#if linkedProjects.length > 0}
-                                <div class="flex flex-wrap gap-2">
+                                <div class="flex flex-wrap gap-1.5">
                                     {#each linkedProjects as name}
-                                        <span class="inline-flex items-center gap-2 rounded-full border border-ds-border bg-ds-surface2 px-3 py-1 text-sm">
+                                        <span class="inline-flex items-center gap-1.5 rounded-xl border border-rv-border bg-rv-surface2 px-2.5 py-1 text-[11px] font-mono">
                                             {name}
                                             <button
                                                 type="button"
-                                                class="text-ds-text-placeholder hover:text-red-600"
+                                                class="bg-transparent border-none p-0 text-rv-dim hover:text-rv-red cursor-pointer leading-none"
                                                 onclick={() => toggleLinked(name)}
                                                 aria-label={`Remove ${name}`}
                                             >×</button>
@@ -1268,69 +1284,71 @@
                                     {/each}
                                 </div>
                             {:else}
-                                <p class="text-sm text-ds-text-placeholder">No Hackatime projects linked.</p>
+                                <p class="m-0 text-[12px] text-rv-dim">No Hackatime projects linked.</p>
                             {/if}
 
                             {#if hackatimeError}
-                                <p class="text-xs text-red-600">{hackatimeError}</p>
+                                <p class="m-0 text-[11px] text-rv-red">{hackatimeError}</p>
                             {/if}
 
                             {#if hackatimeProjects.length > 0}
-                                <div class="rounded-lg border border-ds-border bg-ds-surface2/50">
-                                    <p class="border-b border-ds-border px-3 py-2 text-xs text-ds-text-secondary">
-                                        Available Hackatime projects (hours shown are post-start-date)
+                                <div class="rounded-md border border-rv-border bg-rv-bg">
+                                    <p class="m-0 border-b border-rv-border px-2.5 py-1.5 text-[10px] text-rv-dim">
+                                        Available projects (post-start-date hours)
                                     </p>
-                                    <ul class="max-h-72 overflow-y-auto divide-y divide-ds-border text-sm">
+                                    <ul class="m-0 p-0 list-none max-h-56 overflow-y-auto divide-y divide-rv-divider text-[12px]">
                                         {#each hackatimeProjects as p}
                                             {@const linked = linkedProjects.includes(p.name)}
-                                            <li class="flex items-center justify-between gap-3 px-3 py-2">
-                                                <label class="flex flex-1 items-center gap-2 cursor-pointer">
-                                                    <Checkbox checked={linked} onchange={() => toggleLinked(p.name)} />
-                                                    <span class="font-medium">{p.name}</span>
+                                            <li class="flex items-center justify-between gap-2 px-2.5 py-1.5">
+                                                <label class="flex flex-1 items-center gap-2 cursor-pointer min-w-0">
+                                                    <input type="checkbox" class="accent-rv-accent shrink-0" checked={linked} onchange={() => toggleLinked(p.name)} />
+                                                    <span class="font-mono truncate">{p.name}</span>
                                                 </label>
-                                                <span class="text-xs text-ds-text-secondary">{p.totalHours.toFixed(1)}h</span>
+                                                <span class="text-[11px] text-rv-dim shrink-0">{p.totalHours.toFixed(1)}h</span>
                                             </li>
                                         {/each}
                                     </ul>
                                 </div>
                             {/if}
 
-                            <div class="flex gap-2">
-                                <TextField placeholder="Add Hackatime project name manually" bind:value={manualHackatimeInput} />
-                                <Button variant="ghost" onclick={addManualHackatime} disabled={!manualHackatimeInput.trim()}>
+                            <div class="flex gap-1.5">
+                                <input class={input} placeholder="Add project name manually" bind:value={manualHackatimeInput} />
+                                <button class="{btnSm} shrink-0" onclick={addManualHackatime} disabled={!manualHackatimeInput.trim()} type="button">
                                     Add
-                                </Button>
+                                </button>
                             </div>
                         </div>
                     </fieldset>
 
-                    <div class="flex items-center justify-between border-t border-ds-border pt-4">
-                        <div class="text-sm">
-                            {#if saveError}
-                                <span class="text-red-600">{saveError}</span>
-                            {:else if saveSuccess}
-                                <span class="text-green-700">{saveSuccess}</span>
-                            {/if}
-                        </div>
-                        <Button variant="approve" onclick={saveEdit} disabled={saving || !isSuperadmin}>
-                            {saving ? 'Saving…' : 'Save changes'}
-                        </Button>
+                    <!-- Danger zone -->
+                    <div class="border-t border-rv-border p-4 flex flex-col gap-2">
+                        <h4 class="{sectionTitle} m-0 text-rv-red">Danger zone</h4>
+                        {#if project.isLocked}
+                            <button class="{btn} self-start" onclick={unlockProject} disabled={projectBusy}>Unlock project</button>
+                        {/if}
+                        {#if project.joeFraudPassed === false || project.permReject}
+                            <button class="{btn} self-start border-rv-red/60 text-rv-red hover:border-rv-red" onclick={resetJoeAndRequeue} disabled={projectBusy}>
+                                Reset Joe & requeue
+                            </button>
+                        {/if}
+                        <button class="{btn} self-start border-rv-red/60 text-rv-red hover:border-rv-red" onclick={deleteProject} disabled={projectBusy}>
+                            Delete project
+                        </button>
+                        <p class="m-0 text-[11px] text-rv-dim">Deletion is permanent and cannot be undone.</p>
                     </div>
-                {/if}
-            </Card>
-
-            <!-- ═══ Danger zone ═══ -->
-            <Card class="p-6 border border-red-500 bg-red-600/5 backdrop-blur">
-                <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <h3 class="text-lg font-semibold text-red-600">Danger zone</h3>
-                        <p class="text-sm text-ds-text-secondary">Permanently delete this project. This cannot be undone.</p>
-                    </div>
-                    <Button variant="reject" onclick={deleteProject} disabled={projectBusy}>
-                        Delete project
-                    </Button>
                 </div>
-            </Card>
-        {/if}
-    </div>
+
+                <div class="flex items-center justify-between gap-2 px-4 py-3 border-t border-rv-border shrink-0">
+                    <span class="text-[11px] text-rv-red truncate">{saveError}</span>
+                    <button
+                        class="bg-rv-accent border border-rv-accent text-rv-bg px-4 py-1.5 rounded-md text-[12px] font-semibold cursor-pointer transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                        onclick={saveEdit}
+                        disabled={saving || !isSuperadmin}
+                    >
+                        {saving ? 'Saving…' : 'Save changes'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
 </div>
