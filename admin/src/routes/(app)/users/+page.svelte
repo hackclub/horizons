@@ -1,7 +1,8 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { afterNavigate } from '$app/navigation';
     import { base } from '$app/paths';
-    import { page as pageStore } from '$app/stores';
+    import { page as pageState } from '$app/state';
     import { api, type components } from '$lib/api';
     import { ensureUser } from '$lib/auth';
     import { Button, TextField, Card } from '$lib/components';
@@ -326,7 +327,7 @@
         // Deep-link support: ?q= seeds the search (e.g. the project detail
         // page links here with the owner's email). Applied before the initial
         // load so the list opens pre-filtered without a debounce round-trip.
-        const q = $pageStore.url.searchParams.get('q');
+        const q = pageState.url.searchParams.get('q');
         if (q) {
             userSearch = q;
             appliedSearch = q;
@@ -335,6 +336,19 @@
         ensureUser().then((me) => {
             currentUserRole = me?.role ?? null;
         });
+    });
+
+    // Navigating to /users?q= while already on this page (e.g. picking a
+    // user in the command palette) reuses the component, so onMount's ?q=
+    // seeding never re-runs. Re-apply the deep link here; the appliedSearch
+    // guard makes the mount-time firing (already handled above) a no-op.
+    afterNavigate(() => {
+        const q = pageState.url.searchParams.get('q');
+        if (q === null || q === appliedSearch) return;
+        userSearch = q;
+        appliedSearch = q;
+        page = 1;
+        loadUsers();
     });
 </script>
 
