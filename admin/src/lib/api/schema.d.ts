@@ -2789,6 +2789,8 @@ export interface components {
             user: components["schemas"]["AdminProjectListUserResponse"];
             latestSubmission: components["schemas"]["AdminProjectSubmissionResponse"] | null;
             submissionCount: number;
+            /** @description Airtable record ids across this project's submissions (approved reships can have several). */
+            airtableRecIds: string[];
         };
         ProjectManifestSummaryEntry: {
             projectId: number;

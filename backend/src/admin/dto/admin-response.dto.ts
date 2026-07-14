@@ -431,6 +431,10 @@ export class AdminProjectListItemResponse {
 
   @ApiProperty()
   submissionCount: number;
+
+  /** Airtable record ids across this project's submissions (approved reships can have several). */
+  @ApiProperty({ type: [String] })
+  airtableRecIds: string[];
 }
 
 class MetricsTotals {

@@ -199,10 +199,25 @@ export class AdminService {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Airtable record ids live on submissions (only approved ones carry one),
+    // and a project can have several across reships. Grouped in a separate
+    // query so the main one keeps its take-1 latest-submission shape.
+    const airtableRecs = await this.prisma.submission.findMany({
+      where: { airtableRecId: { not: null } },
+      select: { projectId: true, airtableRecId: true },
+    });
+    const airtableByProject = new Map<number, string[]>();
+    for (const rec of airtableRecs) {
+      const list = airtableByProject.get(rec.projectId) ?? [];
+      list.push(rec.airtableRecId!);
+      airtableByProject.set(rec.projectId, list);
+    }
+
     return projects.map(({ _count, submissions, ...project }) => ({
       ...project,
       latestSubmission: submissions[0] ?? null,
       submissionCount: _count.submissions,
+      airtableRecIds: airtableByProject.get(project.projectId) ?? [],
     }));
   }
 
