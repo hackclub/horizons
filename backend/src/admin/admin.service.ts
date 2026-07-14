@@ -3456,6 +3456,7 @@ export class AdminService {
             email: true,
             firstName: true,
             lastName: true,
+            slackUserId: true,
           },
         },
         item: { select: { itemId: true, name: true } },

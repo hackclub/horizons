@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { User, Package } from 'lucide-svelte';
 	import { Button, TextField, Tab, Card, Select } from '$lib/components';
 	import { api } from '$lib/api';
 
@@ -20,6 +21,7 @@
 			email: string;
 			firstName: string;
 			lastName: string;
+			slackUserId: string | null;
 		};
 		item: { itemId: number; name: string } | null;
 		event: { eventId: number; slug: string; title: string } | null;
@@ -61,6 +63,9 @@
 	let fulfilledFilter = $state<'all' | 'fulfilled' | 'unfulfilled'>('all');
 	let refundedFilter = $state<'all' | 'hide' | 'only'>('all');
 	let search = $state('');
+	// Flat-view search scope: match user identity (email/name/Slack ID) or
+	// item side (description/item/event). By-user view always matches both.
+	let flatSearchScope = $state<'user' | 'item'>('user');
 	// Defaults to the flat chronological ledger; switch to By User to fulfill
 	// purchases (e.g. travel grants) grouped per user.
 	let viewMode = $state<'flat' | 'by-user'>('flat');
@@ -180,16 +185,24 @@
 		}
 		const q = search.trim().toLowerCase();
 		if (q !== '') {
-			result = result.filter(
-				(e) =>
-					e.user.email.toLowerCase().includes(q) ||
-					`${e.user.firstName} ${e.user.lastName}`.toLowerCase().includes(q) ||
-					e.itemDescription.toLowerCase().includes(q) ||
-					e.event?.slug.toLowerCase().includes(q) ||
-					e.event?.title.toLowerCase().includes(q) ||
-					e.item?.name.toLowerCase().includes(q) ||
-					String(e.transactionId).includes(q),
-			);
+			const matchesUser = (e: LedgerEntry) =>
+				e.user.email.toLowerCase().includes(q) ||
+				`${e.user.firstName} ${e.user.lastName}`.toLowerCase().includes(q) ||
+				(e.user.slackUserId ?? '').toLowerCase().includes(q);
+			const matchesItem = (e: LedgerEntry) =>
+				e.itemDescription.toLowerCase().includes(q) ||
+				e.event?.slug.toLowerCase().includes(q) ||
+				e.event?.title.toLowerCase().includes(q) ||
+				e.item?.name.toLowerCase().includes(q);
+			result = result.filter((e) => {
+				if (String(e.transactionId).includes(q)) return true;
+				// Flat view scopes the search via the user/item toggle; by-user
+				// view keeps matching everything.
+				if (viewMode === 'flat') {
+					return flatSearchScope === 'user' ? matchesUser(e) : matchesItem(e);
+				}
+				return matchesUser(e) || matchesItem(e);
+			});
 		}
 		return result;
 	});
@@ -547,7 +560,41 @@
 				</div>
 				<div class="space-y-1">
 					<label class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary" for="ledger-search">Search</label>
-					<TextField id="ledger-search" placeholder="email, name, description, slug, txn id" bind:value={search} />
+					<div class="flex items-center gap-1.5">
+						<TextField
+							id="ledger-search"
+							placeholder={viewMode === 'flat'
+								? flatSearchScope === 'user'
+									? 'email, name, Slack ID, txn id'
+									: 'description, item, event slug, txn id'
+								: 'email, name, Slack ID, description, slug, txn id'}
+							bind:value={search}
+						/>
+						{#if viewMode === 'flat'}
+							<div class="flex items-center rounded-md border border-ds-border bg-ds-surface2 p-0.5 shrink-0 select-none">
+								<button
+									type="button"
+									class="p-1 rounded transition-colors cursor-pointer {flatSearchScope === 'user' ? 'bg-ds-surface border border-ds-border/40 text-ds-text' : 'border border-transparent text-ds-text-placeholder hover:text-ds-text'}"
+									onclick={() => (flatSearchScope = 'user')}
+									title="Search by user (email, name, Slack ID)"
+									aria-label="Search by user"
+									aria-pressed={flatSearchScope === 'user'}
+								>
+									<User class="w-3.5 h-3.5" />
+								</button>
+								<button
+									type="button"
+									class="p-1 rounded transition-colors cursor-pointer {flatSearchScope === 'item' ? 'bg-ds-surface border border-ds-border/40 text-ds-text' : 'border border-transparent text-ds-text-placeholder hover:text-ds-text'}"
+									onclick={() => (flatSearchScope = 'item')}
+									title="Search by item (description, item name, event)"
+									aria-label="Search by item"
+									aria-pressed={flatSearchScope === 'item'}
+								>
+									<Package class="w-3.5 h-3.5" />
+								</button>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
 			<div class="flex items-center justify-between">

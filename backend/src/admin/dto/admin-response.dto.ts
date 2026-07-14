@@ -1682,6 +1682,9 @@ export class LedgerEntryUserSummary {
 
   @ApiProperty()
   lastName: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  slackUserId: string | null;
 }
 
 export class LedgerEntryItemSummary {
