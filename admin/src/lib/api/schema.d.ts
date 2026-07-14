@@ -2779,6 +2779,8 @@ export interface components {
             repoUrl: string | null;
             isLocked: boolean;
             permReject: boolean;
+            /** @description Joe fraud-review project id, so a pasted Joe link resolves in search. */
+            joeProjectId: string | null;
             joeFraudPassed: boolean | null;
             joeTrustScore: number | null;
             /** Format: date-time */
@@ -3645,6 +3647,8 @@ export interface components {
             projectId: number;
             projectTitle: string;
             projectType: string;
+            /** @description Joe fraud-review project id, so a pasted Joe link resolves in search. */
+            joeProjectId: string | null;
             reviewerId: string | null;
             reviewerName: string;
             /** @enum {string} */
@@ -3665,6 +3669,8 @@ export interface components {
             projectId: number;
             projectTitle: string;
             projectType: string;
+            /** @description Joe fraud-review project id, so a pasted Joe link resolves in search. */
+            joeProjectId: string | null;
             /** Format: date-time */
             finalizedAt: string | null;
             /** Format: date-time */
@@ -3679,6 +3685,8 @@ export interface components {
             playableUrl: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
+            /** @description Joe fraud-review project id, so a pasted Joe link resolves in search. */
+            joeProjectId: string | null;
             joeFraudPassed: boolean | null;
             user: components["schemas"]["ScopedUserResponse"];
         };

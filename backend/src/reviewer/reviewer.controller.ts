@@ -76,21 +76,21 @@ export class ReviewerController {
   @Get('past-reviews')
   @ApiOkResponse({ type: PastReviewsResponse })
   async getPastReviews(@Req() req: Request) {
-    return this.reviewerService.getPastReviews(req.user.userId);
+    return this.reviewerService.getPastReviews(req.user.userId, req.user.role);
   }
 
   /** Submissions silently rejected by fraud — surfaced for reviewer search only */
   @Get('fraud-rejected')
   @ApiOkResponse({ type: [FraudRejectedEntry] })
-  async getFraudRejected() {
-    return this.reviewerService.getFraudRejectedSubmissions();
+  async getFraudRejected(@Req() req: Request) {
+    return this.reviewerService.getFraudRejectedSubmissions(req.user.role);
   }
 
   /** Get the pending submissions queue with scoped data */
   @Get('queue')
   @ApiOkResponse({ type: [QueueItemResponse] })
   async getQueue(@Req() req: Request) {
-    return this.reviewerService.getReviewQueue(req.user.userId);
+    return this.reviewerService.getReviewQueue(req.user.userId, req.user.role);
   }
 
   /** Get full scoped detail for a single submission */

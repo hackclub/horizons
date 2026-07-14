@@ -103,7 +103,10 @@ export class ReviewerService {
    * Get the review queue: all pending submissions with scoped project/user data.
    * Returns minimal info for the queue list, not full details.
    */
-  async getReviewQueue(viewerId?: number) {
+  async getReviewQueue(viewerId?: number, viewerRole?: string) {
+    // Joe fraud-review project id is an admin-only lookup handle — plain
+    // reviewers never see it, so a pasted Joe link resolves only for admins.
+    const isAdmin = viewerRole === 'admin' || viewerRole === 'superadmin';
     // Fraud sync runs in the background (5-minute @Interval) and is also
     // triggered by the gallery's "Refresh Queue" button via
     // /api/reviewer/fraud-review/refresh. Don't block the queue load on it —
@@ -124,6 +127,7 @@ export class ReviewerService {
             playableUrl: true,
             nowHackatimeHours: true,
             nowHackatimeProjects: true,
+            joeProjectId: true,
             joeFraudPassed: true,
             user: { select: SCOPED_USER_SELECT },
           },
@@ -210,6 +214,7 @@ export class ReviewerService {
         createdAt: submission.createdAt,
         project: {
           ...submission.project,
+          joeProjectId: isAdmin ? submission.project.joeProjectId : null,
           user: this.scopeUserData(submission.project.user, displayNameMap),
         },
         boughtTicket: ticket?.boughtTicket ?? false,
@@ -1305,7 +1310,9 @@ export class ReviewerService {
    * to a real submission instead of silently redirecting.
    * Frontend splits this into "mine" vs "all" using currentReviewerId.
    */
-  async getPastReviews(currentReviewerId: number) {
+  async getPastReviews(currentReviewerId: number, viewerRole?: string) {
+    // Joe project id is an admin-only lookup handle (see getReviewQueue).
+    const isAdmin = viewerRole === 'admin' || viewerRole === 'superadmin';
     const submissions = await this.prisma.submission.findMany({
       where: {
         reviewedBy: { not: null },
@@ -1325,6 +1332,7 @@ export class ReviewerService {
             projectId: true,
             projectTitle: true,
             projectType: true,
+            joeProjectId: true,
             user: { select: SCOPED_USER_SELECT },
           },
         },
@@ -1359,6 +1367,7 @@ export class ReviewerService {
         projectId: s.projectId,
         projectTitle: s.project.projectTitle,
         projectType: s.project.projectType,
+        joeProjectId: isAdmin ? s.project.joeProjectId : null,
         reviewerId: s.reviewedBy,
         reviewerName: reviewer
           ? `${reviewer.firstName} ${reviewer.lastName}`
@@ -1386,7 +1395,9 @@ export class ReviewerService {
    * reviewers see the truth here so they can search for fraud-killed
    * projects without combing the regular past-reviews list.
    */
-  async getFraudRejectedSubmissions() {
+  async getFraudRejectedSubmissions(viewerRole?: string) {
+    // Joe project id is an admin-only lookup handle (see getReviewQueue).
+    const isAdmin = viewerRole === 'admin' || viewerRole === 'superadmin';
     const submissions = await this.prisma.submission.findMany({
       where: { silentReject: true },
       orderBy: [{ finalizedAt: 'desc' }, { createdAt: 'desc' }],
@@ -1400,6 +1411,7 @@ export class ReviewerService {
             projectId: true,
             projectTitle: true,
             projectType: true,
+            joeProjectId: true,
             user: { select: SCOPED_USER_SELECT },
           },
         },
@@ -1415,6 +1427,7 @@ export class ReviewerService {
       projectId: s.projectId,
       projectTitle: s.project.projectTitle,
       projectType: s.project.projectType,
+      joeProjectId: isAdmin ? s.project.joeProjectId : null,
       finalizedAt: s.finalizedAt,
       createdAt: s.createdAt,
       user: this.scopeUserData(s.project.user, displayNameMap),

@@ -58,6 +58,10 @@ class QueueProjectResponse {
   @ApiProperty({ type: [String] })
   nowHackatimeProjects: string[];
 
+  /** Joe fraud-review project id, so a pasted Joe link resolves in search. */
+  @ApiProperty({ type: String, nullable: true })
+  joeProjectId: string | null;
+
   @ApiProperty({ type: Boolean, nullable: true })
   joeFraudPassed: boolean | null;
 
@@ -393,6 +397,10 @@ export class PastReviewEntry {
   @ApiProperty()
   projectType: string;
 
+  /** Joe fraud-review project id, so a pasted Joe link resolves in search. */
+  @ApiProperty({ type: String, nullable: true })
+  joeProjectId: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   reviewerId: string | null;
 
@@ -440,6 +448,10 @@ export class FraudRejectedEntry {
 
   @ApiProperty()
   projectType: string;
+
+  /** Joe fraud-review project id, so a pasted Joe link resolves in search. */
+  @ApiProperty({ type: String, nullable: true })
+  joeProjectId: string | null;
 
   @ApiProperty({ type: String, nullable: true, format: 'date-time' })
   finalizedAt: Date | null;

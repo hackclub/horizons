@@ -167,6 +167,7 @@ export class AdminService {
         repoUrl: true,
         isLocked: true,
         permReject: true,
+        joeProjectId: true,
         joeFraudPassed: true,
         joeTrustScore: true,
         createdAt: true,

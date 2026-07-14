@@ -396,6 +396,7 @@
 		slack: string | null;
 		eventSlug: string | null;
 		id: number;
+		joeProjectId: string | null;
 	};
 
 	function searchSubject(
@@ -403,6 +404,7 @@
 		projectTitle: string,
 		projectType: string,
 		user: { displayName: string | null; slackUserId: string | null; eventSlug: string | null },
+		joeProjectId: string | null,
 	): SearchSubject {
 		return {
 			title: projectTitle,
@@ -411,6 +413,7 @@
 			slack: user.slackUserId,
 			eventSlug: user.eventSlug,
 			id: projectId,
+			joeProjectId,
 		};
 	}
 
@@ -432,7 +435,9 @@
 					slack: s.slack ?? '',
 					event: eventTitle,
 					type: `${s.type}\n${formatTypeName(s.type)}`,
-					id: `${s.id}\n#${s.id}`,
+					// Bare number, "#123" form, and the Joe project id — a pasted
+					// Joe link resolves via normalizeSearchQuery.
+					id: `${s.id}\n#${s.id}\n${s.joeProjectId ?? ''}`,
 				},
 				searchField,
 				appliedSearch,
@@ -509,6 +514,7 @@
 							item.project.projectTitle,
 							item.project.projectType,
 							item.project.user,
+							item.project.joeProjectId,
 						),
 					) &&
 					matchesFraudFilter(item.project.joeFraudPassed) &&
@@ -554,6 +560,7 @@
 							item.project.projectTitle,
 							item.project.projectType,
 							item.project.user,
+							item.project.joeProjectId,
 						),
 					),
 			)
@@ -599,7 +606,7 @@
 					currentReviewerId !== null &&
 					r.reviewerId === String(currentReviewerId) &&
 					matchesFilters(
-						searchSubject(r.projectId, r.projectTitle, r.projectType, r.user),
+						searchSubject(r.projectId, r.projectTitle, r.projectType, r.user, r.joeProjectId),
 					),
 			),
 		),
@@ -609,7 +616,7 @@
 		dedupeByProject(
 			pastReviews.filter((r) =>
 				matchesFilters(
-					searchSubject(r.projectId, r.projectTitle, r.projectType, r.user),
+					searchSubject(r.projectId, r.projectTitle, r.projectType, r.user, r.joeProjectId),
 				),
 			),
 		),
@@ -624,7 +631,7 @@
 		if (appliedSearch.trim() === '') return [] as FraudRejected[];
 		const matched = fraudRejected.filter((r) =>
 			matchesFilters(
-				searchSubject(r.projectId, r.projectTitle, r.projectType, r.user),
+				searchSubject(r.projectId, r.projectTitle, r.projectType, r.user, r.joeProjectId),
 			),
 		);
 		const seen = new Set<number>();
