@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import { base } from '$app/paths';
-    import { Sidebar } from '$lib/components';
+    import { Sidebar, CommandPalette } from '$lib/components';
     import { ensureUser } from '$lib/auth';
 
     let { children } = $props();
@@ -58,5 +58,7 @@
     <main class="flex-1 overflow-x-hidden">
         {@render children()}
     </main>
+
+    <CommandPalette />
 </div>
 {/if}
