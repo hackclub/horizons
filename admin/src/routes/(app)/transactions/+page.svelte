@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import { Button, TextField, Tab, Card, Select } from '$lib/components';
 	import { api } from '$lib/api';
 
@@ -126,7 +127,13 @@
 		}
 	}
 
-	onMount(loadLedger);
+	onMount(() => {
+		// Deep-link support: ?q= seeds the search box (e.g. the users page
+		// links here with a user's email to show just their transactions).
+		const q = $page.url.searchParams.get('q');
+		if (q) search = q;
+		loadLedger();
+	});
 
 	$effect(() => {
 		kindFilter;

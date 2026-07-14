@@ -402,13 +402,22 @@
                                     <span class="text-ds-text-placeholder">·</span>
                                     Hackatime: <span class={user.hackatimeAccount ? '' : 'text-ds-text-placeholder'}>{#if user.hackatimeAccount}{@render highlighted(user.hackatimeAccount)}{:else}not linked{/if}</span>
                                 </p>
-                                <a
-                                    href="{base}/projects?field=user&q={encodeURIComponent(user.email)}"
-                                    class="text-sm text-ds-link hover:underline"
-                                    title="Open the projects page filtered to this user"
-                                >
-                                    Open in Projects →
-                                </a>
+                                <span class="flex flex-wrap gap-3">
+                                    <a
+                                        href="{base}/projects?field=user&q={encodeURIComponent(user.email)}"
+                                        class="text-sm text-ds-link hover:underline"
+                                        title="Open the projects page filtered to this user"
+                                    >
+                                        Open in Projects →
+                                    </a>
+                                    <a
+                                        href="{base}/transactions?q={encodeURIComponent(user.email)}"
+                                        class="text-sm text-ds-link hover:underline"
+                                        title="Open the transactions ledger filtered to this user"
+                                    >
+                                        View Transactions →
+                                    </a>
+                                </span>
                             </div>
                             <div
                                 class="flex flex-wrap gap-2 text-sm text-ds-text-secondary"
