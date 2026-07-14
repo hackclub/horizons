@@ -88,6 +88,9 @@ export class ProjectsService {
     | 'reviewedBy'
     | 'airtableRecId'
     | 'reviewerAnalysis'
+    | 'sentToAdminAt'
+    | 'sentToAdminById'
+    | 'sentToAdminNote'
   > & { verifyingHours: boolean } {
     const {
       reviewPassed: _rp,
@@ -97,6 +100,11 @@ export class ProjectsService {
       reviewedBy: _rb,
       airtableRecId: _ar,
       reviewerAnalysis: _ra,
+      // Admin-queue escalation is internal — users must not learn their
+      // submission was flagged for an admin look.
+      sentToAdminAt: _sa,
+      sentToAdminById: _sb,
+      sentToAdminNote: _sn,
       ...rest
     } = submission as any;
     return {

@@ -494,10 +494,13 @@
 		return `You rejected this project's previous submission${when} — the user has reshipped it.`;
 	}
 
+	// Escalated submissions live in the admin-only section below, not the
+	// regular pending queue — reviewers shouldn't pick them up.
 	let filteredItems = $derived(
 		items
 			.filter(
 				(item) =>
+					!item.sentToAdmin &&
 					!myReviewedSubmissionIds.has(item.submissionId) &&
 					!isActivelyClaimedByOther(item) &&
 					matchesFilters(
@@ -535,6 +538,30 @@
 				const bT = new Date(b.createdAt).getTime();
 				return sortOrder === 'longest-wait' ? aT - bT : bT - aT;
 			}),
+	);
+
+	// Secondary queue: submissions reviewers escalated for an admin decision.
+	// Search/type/event filters still apply; ordered oldest escalation first so
+	// admins clear the most-stale ones the same way reviewers triage waits.
+	let adminQueueItems = $derived(
+		items
+			.filter(
+				(item) =>
+					!!item.sentToAdmin &&
+					matchesFilters(
+						searchSubject(
+							item.project.projectId,
+							item.project.projectTitle,
+							item.project.projectType,
+							item.project.user,
+						),
+					),
+			)
+			.sort(
+				(a, b) =>
+					new Date(a.sentToAdmin!.sentAt).getTime() -
+					new Date(b.sentToAdmin!.sentAt).getTime(),
+			),
 	);
 
 	function sortByReviewedAt(a: PastReview, b: PastReview): number {
@@ -1129,6 +1156,64 @@
 				</div>
 			{/if}
 		</section>
+
+		{#if isAdmin && adminQueueItems.length > 0}
+			<hr class="border-none border-t border-rv-border mx-6 my-4" />
+
+			<section class="px-6 py-2">
+				<h2 class="text-[13px] uppercase tracking-wider font-semibold mb-1 text-amber-600">
+					Admin Queue
+					<span class="text-amber-600/60 font-normal normal-case ml-1">({adminQueueItems.length})</span>
+				</h2>
+				<p class="text-[12px] text-rv-dim mt-0 mb-3">
+					Escalated by reviewers — only admins can approve, reject, or return these to the reviewer queue.
+				</p>
+				<div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] content-start gap-4">
+					{#each adminQueueItems as item (item.submissionId)}
+						<a
+							href="{base}/review/{item.project.projectId}"
+							class="flex flex-col gap-1.5 p-5 bg-rv-surface border border-amber-500/40 rounded-[10px] cursor-pointer transition-all duration-150 text-left no-underline font-inherit hover:border-amber-500 hover:bg-rv-surface2"
+						>
+							<p class="text-[15px] font-semibold text-rv-text m-0">
+								<Highlight text={item.project.projectTitle} query={appliedSearch} />
+								<span class="text-[11px] font-normal text-rv-dim"><Highlight text={`#${item.project.projectId}`} query={appliedSearch} /></span>
+							</p>
+							<p class="text-[13px] text-rv-dim m-0">
+								<Highlight text={userLabel(item.project.user)} query={appliedSearch} />{#if slackSuffix(item.project.user)}
+									· <Highlight text={slackSuffix(item.project.user)!} query={appliedSearch} />{/if}
+							</p>
+							<div class="flex items-center gap-1.5 flex-wrap mt-1">
+								<span class="inline-block py-0.75 px-2.5 bg-rv-tag-bg text-rv-accent rounded-xl text-[11px]">{formatTypeName(item.project.projectType)}</span>
+								{#if item.hackatimeHours != null}
+									<span
+										class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border bg-rv-tag-bg text-rv-dim border-rv-border"
+										title="Hackatime hours submitted for this project"
+									>
+										{item.hackatimeHours.toFixed(1)}h
+									</span>
+								{/if}
+								<span
+									class="inline-flex items-center gap-1 py-0.5 px-2 rounded-xl text-[11px] border {waitingPillClass(item.createdAt)}"
+									title="Submitted {new Date(item.createdAt).toLocaleString()}"
+								>
+									<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+										<circle cx="12" cy="12" r="10" />
+										<polyline points="12 6 12 12 16 14" />
+									</svg>
+									Waiting {waitingFor(item.createdAt)}
+								</span>
+							</div>
+							{#if item.sentToAdmin}
+								<div class="mt-0.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[12px] leading-snug text-amber-700 dark:text-amber-300">
+									<span class="font-semibold">Sent by {item.sentToAdmin.byName} · {timeAgo(item.sentToAdmin.sentAt)}</span>
+									<p class="mt-0.5 mb-0 whitespace-pre-line wrap-break-word">{item.sentToAdmin.note}</p>
+								</div>
+							{/if}
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
 
 		{#if appliedSearch.trim() !== '' && filteredFraudRejected.length > 0}
 			<hr class="border-none border-t border-rv-border mx-6 my-4" />

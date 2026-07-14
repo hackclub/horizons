@@ -354,6 +354,14 @@
 						<div class="absolute inset-0" class:hidden={activeTab !== 'verdict'}>
 							<VerdictPanel
 								submissionId={currentSubmission.submissionId}
+								{isAdmin}
+								sentToAdmin={currentSubmission.sentToAdmin ?? null}
+								onSentToAdminChange={(info) => {
+									if (currentSubmission) {
+										currentSubmission = { ...currentSubmission, sentToAdmin: info };
+									}
+									handleReviewComplete();
+								}}
 								hackatimeHours={currentSubmission.hackatimeHours}
 								isResubmission={(currentSubmission.submissions ?? []).some(
 									(s) => s.submissionId !== currentSubmission!.submissionId

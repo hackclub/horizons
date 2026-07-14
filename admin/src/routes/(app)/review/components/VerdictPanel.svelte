@@ -1,7 +1,10 @@
 <script lang="ts">
-	import { api } from '$lib/api';
+	import { api, type components } from '$lib/api';
 	import { toast } from '$lib/toastStore';
+	import { timeAgo, formatDate } from '../utils';
 	import JustificationBuilder from './JustificationBuilder.svelte';
+
+	type SentToAdminInfo = components['schemas']['SentToAdminInfoResponse'];
 
 	interface Props {
 		submissionId: number;
@@ -11,6 +14,15 @@
 		/** Whether the active user is a superadmin. Required to flip a
 		 *  finalized submission's status (approved↔rejected). */
 		isSuperadmin?: boolean;
+		/** Whether the active user is an admin (or superadmin). Escalated
+		 *  submissions only accept verdicts from admins, and only admins can
+		 *  return one to the reviewer queue. */
+		isAdmin?: boolean;
+		/** Set when this submission is already in the admin queue. */
+		sentToAdmin?: SentToAdminInfo | null;
+		/** Called after a successful send-to-admin or return-to-queue, with the
+		 *  new escalation state (info object or null). */
+		onSentToAdminChange?: (info: SentToAdminInfo | null) => void;
 		/** Whether the submission has a per-project Airtable record. Drives
 		 *  the optional "+ Delete Airtable" button on the approved→rejected
 		 *  override path. */
@@ -38,6 +50,9 @@
 		submissionId,
 		approvalStatus = 'pending',
 		isSuperadmin = false,
+		isAdmin = false,
+		sentToAdmin = null,
+		onSentToAdminChange,
 		hasAirtableRecord = false,
 		hackatimeHours,
 		joeFraudPassed = null,
@@ -53,7 +68,7 @@
 		onReviewComplete,
 	}: Props = $props();
 
-	let activeForm = $state<'approve' | 'changes'>('changes');
+	let activeForm = $state<'approve' | 'changes' | 'admin'>('changes');
 
 	// True when the active form would flip a finalized submission to the
 	// opposite status — the backend blocks this for non-superadmins.
@@ -62,6 +77,9 @@
 			(approvalStatus === 'rejected' && activeForm === 'approve'),
 	);
 	let flipBlocked = $derived(isStatusFlip && !isSuperadmin);
+	// Escalated submissions only accept verdicts from admins — the backend
+	// refuses reviewer verdicts, so gray the submit buttons with a hint.
+	let escalationBlocked = $derived(!!sentToAdmin && !isAdmin);
 	let submitting = $state(false);
 	let savingDraft = $state(false);
 	let draftSavedFlash = $state(false);
@@ -85,6 +103,11 @@
 	// Internal note written to project.adminComment. Only shown when permReject
 	// is checked — the reject form is otherwise single-textarea.
 	let permRejectInternalNote = $state('');
+
+	// Send-to-admin form fields
+	let sendToAdminNote = $state('');
+	let sendingToAdmin = $state(false);
+	let returningToQueue = $state(false);
 
 	// Manifest dedupe math commented out — we no longer subtract prior YSWS
 	// hoursShipped from the granted credit, we just surface a notice that the
@@ -110,7 +133,14 @@
 	$effect(() => {
 		submissionId; // track
 		const reviewerApproved = reviewPassed === true;
-		activeForm = reviewerApproved ? 'approve' : 'changes';
+		// Escalated + undecided lands on the admin tab so whoever opens the
+		// verdict panel sees the escalation context first.
+		activeForm = reviewerApproved
+			? 'approve'
+			: sentToAdmin
+				? 'admin'
+				: 'changes';
+		sendToAdminNote = '';
 		hoursJustification = priorReviewerAnalysis ?? '';
 		approveComment = reviewerApproved ? priorUserFeedback ?? '' : '';
 		approvedHours = reviewerApproved
@@ -127,8 +157,71 @@
 		reshipNoticeDismissed = false;
 	});
 
-	function setVerdict(type: 'approve' | 'changes') {
+	function setVerdict(type: 'approve' | 'changes' | 'admin') {
 		activeForm = type;
+	}
+
+	async function submitSendToAdmin() {
+		const note = sendToAdminNote.trim();
+		if (!note) {
+			toast.error('A note explaining why this needs an admin is required.');
+			return;
+		}
+		sendingToAdmin = true;
+		try {
+			const { error } = await api.POST(
+				'/api/reviewer/submissions/{id}/send-to-admin',
+				{
+					params: { path: { id: submissionId } },
+					body: { note },
+				},
+			);
+			if (error)
+				throw new Error(
+					(error as { message?: string })?.message ??
+						`Failed to send submission ${submissionId} to the admin queue`,
+				);
+			toast.success('Sent to the admin queue');
+			justSubmitted = true;
+			// Optimistic local echo — the parent refetches on next load anyway.
+			onSentToAdminChange?.({
+				sentAt: new Date().toISOString(),
+				byUserId: null,
+				byName: 'you',
+				note,
+			});
+		} catch (error) {
+			console.error('Send to admin failed:', error);
+			toast.error(
+				`Send to admin failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
+		} finally {
+			sendingToAdmin = false;
+		}
+	}
+
+	async function returnToReviewerQueue() {
+		returningToQueue = true;
+		try {
+			const { error } = await api.DELETE(
+				'/api/reviewer/submissions/{id}/send-to-admin',
+				{ params: { path: { id: submissionId } } },
+			);
+			if (error)
+				throw new Error(
+					(error as { message?: string })?.message ??
+						`Failed to return submission ${submissionId} to the reviewer queue`,
+				);
+			toast.success('Returned to the reviewer queue');
+			onSentToAdminChange?.(null);
+		} catch (error) {
+			console.error('Return to queue failed:', error);
+			toast.error(
+				`Return to queue failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
+		} finally {
+			returningToQueue = false;
+		}
 	}
 
 	async function submitApproval() {
@@ -276,10 +369,21 @@
 </script>
 
 <div class="h-full overflow-y-auto bg-rv-bg p-5">
+	{#if sentToAdmin}
+		<div class="mb-4 rounded-md border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-rv-text">
+			<strong class="text-amber-600">In admin queue</strong>
+			<span class="text-rv-dim">
+				— sent by {sentToAdmin.byName}
+				<span class="border-b border-dotted border-rv-dim cursor-default" title={formatDate(sentToAdmin.sentAt)}>{timeAgo(sentToAdmin.sentAt)}</span>.
+				{isAdmin ? 'Decide it here or return it to the reviewer queue below.' : 'Only admins can submit a verdict on it.'}
+			</span>
+		</div>
+	{/if}
+
 	<!-- Full-width slide toggle -->
 	<div class="relative flex w-full rounded-lg bg-rv-surface border border-rv-border mb-4 overflow-hidden">
 		<div
-			class="absolute top-0 bottom-0 w-1/2 rounded-lg transition-all duration-200 ease-in-out {activeForm === 'changes' ? 'left-0 bg-rv-red' : 'left-1/2 bg-rv-green'}"
+			class="absolute top-0 bottom-0 w-1/3 rounded-lg transition-all duration-200 ease-in-out {activeForm === 'changes' ? 'left-0 bg-rv-red' : activeForm === 'approve' ? 'left-1/3 bg-rv-green' : 'left-2/3 bg-gray-500'}"
 		></div>
 		<button
 			class="relative z-10 flex-1 py-2.5 text-sm font-semibold font-inherit cursor-pointer bg-transparent border-none transition-colors duration-200 {activeForm === 'changes' ? 'text-white' : 'text-rv-dim hover:text-rv-text'}"
@@ -292,6 +396,12 @@
 			onclick={() => setVerdict('approve')}
 		>
 			Approve
+		</button>
+		<button
+			class="relative z-10 flex-1 py-2.5 text-sm font-semibold font-inherit cursor-pointer bg-transparent border-none transition-colors duration-200 {activeForm === 'admin' ? 'text-white' : 'text-rv-dim hover:text-rv-text'}"
+			onclick={() => setVerdict('admin')}
+		>
+			Send to Admin
 		</button>
 	</div>
 
@@ -423,8 +533,12 @@
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-green text-white border-rv-green disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={submitApproval}
-					disabled={submitting || savingDraft || justSubmitted || readOnly || flipBlocked}
-					title={flipBlocked ? 'Superadmin only: flipping a rejected submission to approved' : undefined}
+					disabled={submitting || savingDraft || justSubmitted || readOnly || flipBlocked || escalationBlocked}
+					title={flipBlocked
+						? 'Superadmin only: flipping a rejected submission to approved'
+						: escalationBlocked
+							? 'This submission is in the admin queue — only admins can submit a verdict'
+							: undefined}
 				>
 					{submitting
 						? 'Submitting...'
@@ -511,8 +625,12 @@
 				<button
 					class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-rv-red text-white border-rv-red disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={() => submitChangesNeeded()}
-					disabled={submitting || savingDraft || justSubmitted || readOnly || flipBlocked}
-					title={flipBlocked ? 'Superadmin only: flipping an approved submission to rejected' : undefined}
+					disabled={submitting || savingDraft || justSubmitted || readOnly || flipBlocked || escalationBlocked}
+					title={flipBlocked
+						? 'Superadmin only: flipping an approved submission to rejected'
+						: escalationBlocked
+							? 'This submission is in the admin queue — only admins can submit a verdict'
+							: undefined}
 				>
 					{submitting
 						? 'Submitting...'
@@ -539,6 +657,74 @@
 				<p class="mt-2 text-right text-[11px] text-rv-dim">
 					This submission is already approved. Only superadmins can flip it to rejected.
 				</p>
+			{/if}
+		</div>
+	{/if}
+
+	{#if activeForm === 'admin'}
+		<div class="pt-3 border-t border-rv-border">
+			<h3 class="text-sm font-bold mb-3 flex items-center gap-1.5">
+				<span class="w-2 h-2 rounded-full bg-gray-500"></span> Send to Admin
+			</h3>
+			{#if sentToAdmin}
+				<div class="mb-3 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-[13px] leading-relaxed text-rv-text">
+					<p class="m-0 text-[11px] uppercase tracking-wide text-amber-600 font-semibold">
+						Sent by {sentToAdmin.byName}
+						<span class="normal-case font-normal text-rv-dim">
+							· <span class="border-b border-dotted border-rv-dim cursor-default" title={formatDate(sentToAdmin.sentAt)}>{timeAgo(sentToAdmin.sentAt)}</span>
+						</span>
+					</p>
+					<p class="mt-1.5 mb-0 whitespace-pre-line wrap-break-word">{sentToAdmin.note}</p>
+				</div>
+				{#if isAdmin}
+					<p class="text-[12px] text-rv-dim mb-3">
+						Approve or request changes using the other tabs, or send it back to the regular reviewer queue.
+					</p>
+					<div class="flex gap-2 justify-end items-center">
+						<button
+							class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border border-rv-border transition-all duration-150 bg-transparent text-rv-dim hover:text-rv-text hover:border-rv-accent disabled:opacity-50 disabled:cursor-not-allowed"
+							onclick={returnToReviewerQueue}
+							disabled={returningToQueue || readOnly}
+						>
+							{returningToQueue ? 'Returning...' : 'Return to Reviewer Queue'}
+						</button>
+					</div>
+				{:else}
+					<p class="text-[12px] text-rv-dim mb-0">
+						An admin will pick this up from the admin queue — no further action needed from you.
+					</p>
+				{/if}
+			{:else if approvalStatus !== 'pending' || reviewPassed !== null}
+				<p class="text-[12px] text-rv-dim mb-0">
+					Only pending, unreviewed submissions can be sent to the admin queue.
+				</p>
+			{:else}
+				<p class="text-[12px] text-rv-dim mb-3">
+					Moves this submission out of the reviewer queue into a secondary queue that only admins act on. The user isn't notified.
+				</p>
+				<div class="mb-3">
+					<label for="send-to-admin-note" class="block text-xs font-semibold text-rv-dim mb-1">
+						Why does this need an admin?
+						<span class="font-normal opacity-80 italic">(required — internal, shown to admins)</span>
+					</label>
+					<textarea
+						id="send-to-admin-note"
+						bind:value={sendToAdminNote}
+						maxlength={2000}
+						placeholder="e.g. hours look inflated but I can't verify, user is claiming special circumstances, policy question..."
+						class="w-full bg-rv-surface border border-rv-border rounded-md p-2.5 text-rv-text font-inherit text-[13px] resize-vertical min-h-[80px] focus:outline-none focus:border-rv-accent"
+					></textarea>
+				</div>
+				<div class="flex gap-2 justify-end items-center">
+					<button
+						class="px-[18px] py-[7px] rounded-md text-[13px] font-semibold font-inherit cursor-pointer border transition-all duration-150 bg-gray-500 text-white border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+						onclick={submitSendToAdmin}
+						disabled={sendingToAdmin || submitting || savingDraft || justSubmitted || readOnly || !sendToAdminNote.trim()}
+						title={!sendToAdminNote.trim() ? 'A note is required' : undefined}
+					>
+						{sendingToAdmin ? 'Sending...' : justSubmitted ? 'Sent' : 'Send to Admin Queue'}
+					</button>
+				</div>
 			{/if}
 		</div>
 	{/if}

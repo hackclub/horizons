@@ -98,6 +98,22 @@ export class MyRereviewResponse {
   previousReviewedAt: Date | null;
 }
 
+export class SentToAdminInfoResponse {
+  @ApiProperty({ format: 'date-time' })
+  sentAt: Date;
+
+  @ApiProperty({ type: Number, nullable: true })
+  byUserId: number | null;
+
+  /** Full name of the reviewer who escalated (reviewers see each other's real names). */
+  @ApiProperty()
+  byName: string;
+
+  /** The reviewer's required explanation of why an admin needs to look. */
+  @ApiProperty()
+  note: string;
+}
+
 export class QueueItemResponse {
   @ApiProperty()
   submissionId: number;
@@ -136,6 +152,14 @@ export class QueueItemResponse {
       "Set when this submission is a reship after the requesting reviewer's own rejection — the same condition that triggers the Slack re-review ping. Null for everyone else.",
   })
   myRereview: MyRereviewResponse | null;
+
+  @ApiProperty({
+    type: SentToAdminInfoResponse,
+    nullable: true,
+    description:
+      'Set when a reviewer escalated this submission to the secondary admin queue. Null for regular queue items.',
+  })
+  sentToAdmin: SentToAdminInfoResponse | null;
 }
 
 export class ClaimResultResponse {
@@ -196,7 +220,16 @@ class SubmissionProjectResponse {
 }
 
 export class TimelineEntryResponse {
-  @ApiProperty({ enum: ['submitted', 'resubmitted', 'approved', 'rejected'] })
+  @ApiProperty({
+    enum: [
+      'submitted',
+      'resubmitted',
+      'approved',
+      'rejected',
+      'sent_to_admin',
+      'returned_to_queue',
+    ],
+  })
   type: string;
 
   @ApiPropertyOptional({ type: Number, nullable: true })
@@ -216,6 +249,10 @@ export class TimelineEntryResponse {
 
   @ApiPropertyOptional({ type: Number, nullable: true })
   submittedHours?: number | null;
+
+  /** Escalation note — only on 'sent_to_admin' entries. */
+  @ApiPropertyOptional({ type: String, nullable: true })
+  note?: string | null;
 
   @ApiProperty()
   timestamp: Date;
@@ -309,6 +346,17 @@ export class SubmissionDetailResponse {
 
   @ApiProperty({ type: ClaimInfoResponse, nullable: true })
   claim: ClaimInfoResponse | null;
+
+  @ApiProperty({ type: SentToAdminInfoResponse, nullable: true })
+  sentToAdmin: SentToAdminInfoResponse | null;
+}
+
+export class SendToAdminResultResponse {
+  @ApiProperty()
+  success: boolean;
+
+  @ApiProperty()
+  submissionId: number;
 }
 
 export class ReviewResultResponse {

@@ -33,6 +33,7 @@
 	type GitHubRepo = components['schemas']['GitHubRepoResponse'];
 	type ManifestLookupResponse = components['schemas']['ManifestLookupResponse'];
 	type ClaimInfo = components['schemas']['ClaimInfoResponse'];
+	type SentToAdminInfo = components['schemas']['SentToAdminInfoResponse'];
 
 	let projectId = $derived(Number($page.params.projectId));
 
@@ -101,6 +102,10 @@
 			if (seenProjectIds.has(item.projectId)) continue;
 			if (sessionSkippedProjectIds.has(item.projectId)) continue;
 			if (isActivelyClaimedByOther(item)) continue;
+			// Escalated submissions belong to the admin queue — Next/Skip should
+			// keep reviewers in the regular queue (admins enter them from the
+			// gallery's Admin Queue section).
+			if (item.sentToAdmin) continue;
 			return i;
 		}
 		return -1;
@@ -644,6 +649,29 @@
 		}
 		activeTab = 'card';
 	}
+
+	function handleSentToAdminChange(info: SentToAdminInfo | null) {
+		// The cached queue predates the escalation change — drop it so the
+		// gallery re-splits pending vs admin queue correctly.
+		invalidateReviewData();
+		if (currentSubmission) {
+			currentSubmission = { ...currentSubmission, sentToAdmin: info };
+		}
+		if (info) {
+			// Escalating released our claim server-side — stop heartbeating, and
+			// honor the same after-verdict preference as approve/reject since the
+			// reviewer's work on this project is done.
+			claimManager.destroy();
+			skipLeavePrompt = true;
+			if (currentSubmission) {
+				seenProjectIds = new Set([
+					...seenProjectIds,
+					currentSubmission.project.projectId,
+				]);
+			}
+			if (get(afterVerdict) === 'gallery') goBack();
+		}
+	}
 </script>
 
 <svelte:head>
@@ -821,6 +849,9 @@
 								submissionId={currentSubmission.submissionId}
 								approvalStatus={currentSubmission.approvalStatus as 'pending' | 'approved' | 'rejected'}
 								isSuperadmin={isSuperadmin}
+								{isAdmin}
+								sentToAdmin={currentSubmission.sentToAdmin ?? null}
+								onSentToAdminChange={handleSentToAdminChange}
 								hasAirtableRecord={!!currentSubmission.airtableRecId}
 								hackatimeHours={currentSubmission.hackatimeHours}
 								joeFraudPassed={currentSubmission.project.joeFraudPassed ?? null}
