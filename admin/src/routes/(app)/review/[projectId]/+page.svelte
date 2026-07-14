@@ -757,6 +757,7 @@
 			<div class="bg-rv-surface border-r border-rv-border overflow-y-auto">
 				<UserInfo
 					user={currentSubmission?.project.user}
+					projectId={currentSubmission?.project.projectId ?? null}
 					repoUrl={currentSubmission?.project.repoUrl ?? currentSubmission?.repoUrl ?? null}
 					playableUrl={currentSubmission?.project.playableUrl ?? currentSubmission?.playableUrl ?? null}
 					readmeUrl={currentSubmission?.project.readmeUrl ?? null}

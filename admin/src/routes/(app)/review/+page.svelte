@@ -288,6 +288,7 @@
 				{#if currentSubmission}
 					<UserInfo
 						user={currentSubmission.project.user}
+						projectId={currentSubmission.project.projectId}
 						repoUrl={currentSubmission.project.repoUrl ?? currentSubmission.repoUrl}
 						playableUrl={currentSubmission.project.playableUrl ?? currentSubmission.playableUrl}
 						readmeUrl={currentSubmission.project.readmeUrl}

@@ -685,6 +685,15 @@
                     Project {isNaN(projectId) ? '' : `#${projectId}`}
                 </h2>
             </div>
+            {#if !isNaN(projectId)}
+                <a
+                    href="{base}/review/{projectId}"
+                    class="shrink-0 px-4 py-2 rounded-lg bg-ds-surface-inactive hover:bg-ds-surface-inactive border border-ds-border text-ds-text text-sm transition-colors"
+                    title="Open this project in the review dashboard"
+                >
+                    Open in Review →
+                </a>
+            {/if}
         </div>
 
         {#if loading}

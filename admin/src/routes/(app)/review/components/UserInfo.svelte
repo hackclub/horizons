@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import type { components } from '$lib/api';
 	type ScopedUser = components['schemas']['ScopedUserResponse'];
 	import HoursBreakdown from './HoursBreakdown.svelte';
@@ -6,6 +7,8 @@
 
 	interface Props {
 		user?: ScopedUser;
+		/** Horizons project id — feeds the admin-only "Projects" deep link. */
+		projectId?: number | null;
 		repoUrl: string | null;
 		playableUrl: string | null;
 		readmeUrl: string | null;
@@ -25,6 +28,7 @@
 
 	let {
 		user,
+		projectId = null,
 		repoUrl,
 		playableUrl,
 		readmeUrl,
@@ -244,6 +248,14 @@
 					<line x1="12" y1="17" x2="12.01" y2="17" />
 				</svg>
 				Joe ↗
+			</a>
+		{/if}
+		{#if projectId != null && isAdmin}
+			<a href="{base}/projects/{projectId}" target="_blank" rel="noopener noreferrer" title="Open this project in the admin projects page">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+				</svg>
+				Projects ↗
 			</a>
 		{/if}
 	</div>
