@@ -209,11 +209,17 @@
 					href: `${base}/transactions?q=${e.transactionId}`,
 				}));
 		}
-		// users — already filtered server-side
+		// users — already filtered server-side (matches Slack display name too)
 		return users.slice(0, MAX_RESULTS).map((u) => ({
 			key: `u${u.userId}`,
 			title: fullName(u),
-			subtitle: u.slackUserId ? `${u.email} · @${u.slackUserId}` : u.email,
+			subtitle: [
+				u.email,
+				u.slackUsername ? `@${u.slackUsername}` : null,
+				u.slackUserId,
+			]
+				.filter(Boolean)
+				.join(' · '),
 			href: `${base}/users?q=${encodeURIComponent(u.email)}`,
 		}));
 	});

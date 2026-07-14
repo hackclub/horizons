@@ -1663,7 +1663,7 @@ export class AdminService {
       .slice(0, 5);
     const tokenFilters = tokens.map((token) => {
       const like = `%${token}%`;
-      return Prisma.sql`(u.first_name ILIKE ${like} OR u.last_name ILIKE ${like} OR u.email ILIKE ${like} OR u.slack_user_id ILIKE ${like} OR u.hackatime_account ILIKE ${like})`;
+      return Prisma.sql`(u.first_name ILIKE ${like} OR u.last_name ILIKE ${like} OR u.email ILIKE ${like} OR u.slack_user_id ILIKE ${like} OR u.slack_username ILIKE ${like} OR u.hackatime_account ILIKE ${like})`;
     });
     const whereSql = tokenFilters.length
       ? Prisma.sql`WHERE ${Prisma.join(tokenFilters, ' AND ')}`
