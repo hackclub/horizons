@@ -451,10 +451,28 @@
                                 </span>
                                 <span
                                     class="rounded-full border border-ds-border px-3 py-1"
+                                    title="Live Hackatime tracked hours across this user's projects"
+                                >
+                                    Hackatime: {formatHours(user.totalHackatimeHours)}h
+                                </span>
+                                <span
+                                    class="rounded-full border border-ds-border px-3 py-1"
+                                    title="Hours on each project's latest submission — what's been put up for review, regardless of verdict"
+                                >
+                                    Submitted: {formatHours(user.totalSubmittedHours)}h
+                                </span>
+                                <span
+                                    class="rounded-full border border-ds-border px-3 py-1"
+                                    title="Approved hours earned across this user's projects"
+                                >
+                                    Approved: {formatHours(user.totalApprovedHours)}h
+                                </span>
+                                <span
+                                    class="rounded-full border border-ds-border px-3 py-1"
                                     title="Spendable balance = approved hours earned minus unrefunded ledger spend"
                                 >
                                     Balance: {formatHours(user.balance)}h
-                                    <span class="text-ds-text-placeholder">· earned {formatHours(user.totalApprovedHours)} · spent {formatHours(user.totalSpent)}</span>
+                                    <span class="text-ds-text-placeholder">· spent {formatHours(user.totalSpent)}</span>
                                 </span>
                                 <span
                                     class="rounded-full border border-ds-border px-3 py-1"

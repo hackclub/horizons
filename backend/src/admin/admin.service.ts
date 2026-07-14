@@ -1716,6 +1716,7 @@ export class AdminService {
               approvedHours: true,
               isLocked: true,
               createdAt: true,
+              deletedAt: true,
               submissions: {
                 orderBy: { createdAt: 'desc' },
                 take: 1,
@@ -1723,6 +1724,7 @@ export class AdminService {
                   submissionId: true,
                   approvalStatus: true,
                   approvedHours: true,
+                  hackatimeHours: true,
                   createdAt: true,
                 },
               },
@@ -1761,6 +1763,24 @@ export class AdminService {
         .map((u) => {
           const totalApprovedHours = earnedById.get(u.userId) ?? 0;
           const totalSpent = spentById.get(u.userId) ?? 0;
+          // Hour funnel totals over non-deleted projects: live Hackatime
+          // tracked time, and hours on each project's latest submission
+          // (what's been put up for review, regardless of verdict).
+          const activeProjects = u.projects.filter((p) => !p.deletedAt);
+          const totalHackatimeHours =
+            Math.round(
+              activeProjects.reduce(
+                (sum, p) => sum + (p.nowHackatimeHours ?? 0),
+                0,
+              ) * 10,
+            ) / 10;
+          const totalSubmittedHours =
+            Math.round(
+              activeProjects.reduce(
+                (sum, p) => sum + (p.submissions[0]?.hackatimeHours ?? 0),
+                0,
+              ) * 10,
+            ) / 10;
           return {
             ...u,
             currentStreak: this.streakService.applyLazyDecay({
@@ -1768,6 +1788,8 @@ export class AdminService {
               lastActiveDate: u.lastActiveDate,
               timezone: u.timezone,
             }),
+            totalHackatimeHours,
+            totalSubmittedHours,
             totalApprovedHours,
             totalSpent,
             balance: Math.round((totalApprovedHours - totalSpent) * 10) / 10,

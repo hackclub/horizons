@@ -2861,6 +2861,7 @@ export interface components {
             submissionId: number;
             approvalStatus: string;
             approvedHours: number | null;
+            hackatimeHours: number | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -2873,6 +2874,8 @@ export interface components {
             isLocked: boolean;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            deletedAt: string | null;
             submissions: components["schemas"]["AdminUserSubmissionResponse"][];
         };
         AdminUserResponse: {
@@ -2906,6 +2909,10 @@ export interface components {
             updatedAt: string;
             role: string;
             projects: components["schemas"]["AdminUserProjectResponse"][];
+            /** @description Sum of live Hackatime tracked hours across non-deleted projects. */
+            totalHackatimeHours: number;
+            /** @description Sum of each non-deleted project's latest-submission Hackatime hours — what's been put up for review, regardless of verdict. */
+            totalSubmittedHours: number;
             /** @description Sum of approved hours across non-deleted projects. */
             totalApprovedHours: number;
             /** @description Sum of unrefunded ledger transaction costs. */

@@ -273,6 +273,9 @@ class AdminUserSubmissionResponse {
   @ApiProperty({ type: Number, nullable: true })
   approvedHours: number | null;
 
+  @ApiProperty({ type: Number, nullable: true })
+  hackatimeHours: number | null;
+
   @ApiProperty()
   createdAt: Date;
 }
@@ -299,6 +302,9 @@ class AdminUserProjectResponse {
   @ApiProperty()
   createdAt: Date;
 
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  deletedAt: Date | null;
+
   @ApiProperty({ type: [AdminUserSubmissionResponse] })
   submissions: AdminUserSubmissionResponse[];
 }
@@ -309,6 +315,18 @@ export class AdminUserResponse extends AdminLightUserResponse {
 
   @ApiProperty({ type: [AdminUserProjectResponse] })
   projects: AdminUserProjectResponse[];
+
+  @ApiProperty({
+    description:
+      'Sum of live Hackatime tracked hours across non-deleted projects.',
+  })
+  totalHackatimeHours: number;
+
+  @ApiProperty({
+    description:
+      "Sum of each non-deleted project's latest-submission Hackatime hours — what's been put up for review, regardless of verdict.",
+  })
+  totalSubmittedHours: number;
 
   @ApiProperty({
     description: 'Sum of approved hours across non-deleted projects.',
