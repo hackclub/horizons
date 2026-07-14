@@ -8,7 +8,6 @@
 
     type AdminUserResponse = components['schemas']['AdminUserResponse'];
     type AdminUserProjectResponse = components['schemas']['AdminUserProjectResponse'];
-    type SlackLookupResponse = components['schemas']['SlackLookupResponse'];
 
     let users = $state<AdminUserResponse[]>([]);
     let usersLoading = $state(false);
@@ -116,14 +115,6 @@
             hoursSaving = false;
         }
     }
-
-    // Slack editing state
-    let slackEditingUserId = $state<number | null>(null);
-    let slackEditValue = $state('');
-    let slackLookupLoading = $state(false);
-    let slackSaving = $state(false);
-    let slackError = $state('');
-    let slackLookupResult = $state<SlackLookupResponse | null>(null);
 
     // Hackatime start date editing state
     let startDateEditingUserId = $state<number | null>(null);
@@ -255,70 +246,44 @@
         return () => clearTimeout(timer);
     });
 
-    function startSlackEdit(user: AdminUserResponse) {
-        slackEditingUserId = user.userId;
-        slackEditValue = user.slackUserId ?? '';
-        slackError = '';
-        slackLookupResult = null;
-    }
 
-    function cancelSlackEdit() {
-        slackEditingUserId = null;
-        slackEditValue = '';
-        slackError = '';
-        slackLookupResult = null;
-    }
-
-    async function lookupSlackByEmail(email: string) {
-        slackLookupLoading = true;
-        slackError = '';
-        slackLookupResult = null;
-        try {
-            const { data, error } = await api.GET('/api/admin/slack/lookup-by-email', {
-                params: { query: { email } }
-            } as any);
-            if (error) {
-                slackError = 'Failed to lookup Slack user';
-                return;
-            }
-            if (data) {
-                slackLookupResult = data;
-                if (data.found && data.slackUserId) {
-                    slackEditValue = data.slackUserId;
+    // Split text into segments around the active search tokens so the template
+    // can wrap hits in <mark>. Token-aware to mirror the backend search, where
+    // every whitespace-separated token matches independently ("jane doe"
+    // highlights both names). Case-insensitive plain substring per token.
+    function highlightSegments(text: string): { text: string; hit: boolean }[] {
+        const tokens = appliedSearch
+            .trim()
+            .toLowerCase()
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 5);
+        if (!tokens.length || !text) return [{ text, hit: false }];
+        const lower = text.toLowerCase();
+        const segments: { text: string; hit: boolean }[] = [];
+        let pos = 0;
+        while (pos < text.length) {
+            // Earliest token match from the current position (longest wins ties
+            // so overlapping tokens like "ma" + "manitej" mark the full run).
+            let matchIdx = -1;
+            let matchLen = 0;
+            for (const token of tokens) {
+                const idx = lower.indexOf(token, pos);
+                if (idx === -1) continue;
+                if (matchIdx === -1 || idx < matchIdx || (idx === matchIdx && token.length > matchLen)) {
+                    matchIdx = idx;
+                    matchLen = token.length;
                 }
             }
-        } catch (e) {
-            slackError = 'Failed to lookup Slack user';
-        } finally {
-            slackLookupLoading = false;
-        }
-    }
-
-    async function saveSlackId(userId: number) {
-        slackSaving = true;
-        slackError = '';
-        try {
-            const { data, error } = await api.PUT('/api/admin/users/{id}/slack', {
-                params: { path: { id: userId } },
-                body: { slackUserId: slackEditValue.trim() || null }
-            } as any);
-            if (error) {
-                slackError = (error as any)?.message || 'Failed to save';
-                return;
+            if (matchIdx === -1) {
+                segments.push({ text: text.slice(pos), hit: false });
+                break;
             }
-            if (data) {
-                users = users.map((u) =>
-                    u.userId === userId
-                        ? { ...u, slackUserId: data.slackUserId }
-                        : u
-                );
-                cancelSlackEdit();
-            }
-        } catch (e) {
-            slackError = 'Failed to save Slack ID';
-        } finally {
-            slackSaving = false;
+            if (matchIdx > pos) segments.push({ text: text.slice(pos, matchIdx), hit: false });
+            segments.push({ text: text.slice(matchIdx, matchIdx + matchLen), hit: true });
+            pos = matchIdx + matchLen;
         }
+        return segments.length ? segments : [{ text, hit: false }];
     }
 
     function setUserFlag(userId: number, patch: Partial<AdminUserResponse>) {
@@ -373,13 +338,20 @@
     });
 </script>
 
+{#snippet highlighted(text: string)}
+    {#each highlightSegments(text) as segment}
+        {#if segment.hit}<mark class="rounded-xs bg-yellow-400/50 text-inherit dark:bg-yellow-500/40">{segment.text}</mark>{:else}{segment.text}{/if}
+    {/each}
+{/snippet}
+
 <div class="p-6"><div class="mx-auto max-w-6xl space-y-6">
 <section class="space-y-4">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 class="text-2xl font-semibold">Users</h2>
         <div class="flex items-center gap-3">
             <TextField
-                placeholder="Search users..."
+                class="min-w-72"
+                placeholder="Search by name, email, Slack ID, Hackatime ID..."
                 bind:value={userSearch}
             />
             <select
@@ -419,11 +391,16 @@
                         >
                             <div>
                                 <h3 class="text-xl font-semibold">
-                                    {fullName(user)}
+                                    {@render highlighted(fullName(user))}
                                     <span class="text-sm font-normal text-ds-text-placeholder">#{user.userId}</span>
                                 </h3>
                                 <p class="text-sm text-ds-text-secondary">
-                                    {user.email}
+                                    {@render highlighted(user.email)}
+                                </p>
+                                <p class="text-sm text-ds-text-secondary">
+                                    Slack: <span class={user.slackUserId ? '' : 'text-ds-text-placeholder'}>{#if user.slackUserId}{@render highlighted(user.slackUserId)}{:else}not linked{/if}</span>
+                                    <span class="text-ds-text-placeholder">·</span>
+                                    Hackatime: <span class={user.hackatimeAccount ? '' : 'text-ds-text-placeholder'}>{#if user.hackatimeAccount}{@render highlighted(user.hackatimeAccount)}{:else}not linked{/if}</span>
                                 </p>
                                 <a
                                     href="{base}/projects?field=user&q={encodeURIComponent(user.email)}"
@@ -515,99 +492,12 @@
                             </div>
                             <div class="space-y-2">
                                 <p>
-                                    Hackatime: {user.hackatimeAccount ?? 'Not linked'}
-                                </p>
-                                <p>
                                     Referral code: {(user as any).referralCode ?? '—'}
                                 </p>
                                 <p>
                                     Referred by: {(user as any).referredByUserId ? `User #${(user as any).referredByUserId}` : '—'}
                                 </p>
-                                {#if slackEditingUserId === user.userId}
-                                    <div
-                                        class="space-y-2 p-3 bg-ds-surface2 rounded-lg border border-ds-border"
-                                    >
-                                        <div class="flex gap-2">
-                                            <TextField
-                                                class="flex-1 text-xs"
-                                                placeholder="Slack User ID (e.g., U12345678)"
-                                                bind:value={slackEditValue}
-                                            />
-                                            <Button
-                                                class="bg-blue-600 hover:bg-blue-500 text-white border-none"
-                                                onclick={() =>
-                                                    lookupSlackByEmail(
-                                                        user.email,
-                                                    )}
-                                                disabled={slackLookupLoading}
-                                            >
-                                                {slackLookupLoading
-                                                    ? '...'
-                                                    : 'Lookup'}
-                                            </Button>
-                                        </div>
-                                        {#if slackLookupResult}
-                                            <p
-                                                class="text-xs {slackLookupResult.found
-                                                    ? 'text-green-700 dark:text-green-300'
-                                                    : 'text-yellow-700 dark:text-yellow-300'}"
-                                            >
-                                                {slackLookupResult.found
-                                                    ? `Found: ${slackLookupResult.displayName}`
-                                                    : slackLookupResult.message}
-                                            </p>
-                                        {/if}
-                                        {#if slackError}
-                                            <p
-                                                class="text-xs text-ds-red"
-                                            >
-                                                {slackError}
-                                            </p>
-                                        {/if}
-                                        <div class="flex gap-2">
-                                            <Button
-                                                variant="approve"
-                                                onclick={() =>
-                                                    saveSlackId(
-                                                        user.userId,
-                                                    )}
-                                                disabled={slackSaving}
-                                            >
-                                                {slackSaving
-                                                    ? 'Saving...'
-                                                    : 'Save'}
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                onclick={cancelSlackEdit}
-                                            >
-                                                Cancel
-                                            </Button>
-                                        </div>
-                                    </div>
-                                {:else}
-                                    <div
-                                        class="flex items-center gap-2"
-                                    >
-                                        <span
-                                            class={user.slackUserId
-                                                ? 'text-green-700 dark:text-green-300'
-                                                : 'text-ds-text-placeholder'}
-                                        >
-                                            Slack: {user.slackUserId
-                                                ? user.slackUserId
-                                                : 'Not linked'}
-                                        </span>
-                                        <Button
-                                            variant="ghost"
-                                            onclick={() =>
-                                                startSlackEdit(user)}
-                                        >
-                                            Edit
-                                        </Button>
-                                    </div>
-                                {/if}
-                                {#if startDateEditingUserId === user.userId}
+                                    {#if startDateEditingUserId === user.userId}
                                     <div
                                         class="space-y-2 p-3 bg-ds-surface2 rounded-lg border border-ds-border"
                                     >
