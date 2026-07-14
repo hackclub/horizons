@@ -3348,6 +3348,7 @@ export interface components {
             email: string;
             firstName: string;
             lastName: string;
+            slackUserId: string | null;
         };
         LedgerEntryItemSummary: {
             itemId: number;
