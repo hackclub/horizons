@@ -14,6 +14,10 @@
 		joeFraudPassed?: boolean | null;
 		joeTrustScore?: number | null;
 		joeJustification?: string | null;
+		/** Submission createdAt — feeds Introspect's submission_date param. */
+		submissionDate?: string | null;
+		/** Linked Hackatime project names — feeds Introspect's hackatime_projects params. */
+		hackatimeProjects?: string[];
 		/** Whether the current viewer is an admin/superadmin (gates the Joe deep link). */
 		isAdmin?: boolean;
 		loading?: boolean;
@@ -29,6 +33,8 @@
 		joeFraudPassed = null,
 		joeTrustScore = null,
 		joeJustification = null,
+		submissionDate = null,
+		hackatimeProjects = [],
 		isAdmin = false,
 		loading = false,
 	}: Props = $props();
@@ -62,6 +68,21 @@
 			? `https://joe.fraud.hackclub.com/ysws/horizons/projects/${joeProjectId}`
 			: null,
 	);
+
+	// Build Introspect deep link with everything it can prefill. Available to
+	// all reviewers (unlike Joe). hackatime_projects is repeated per project —
+	// that's the format Introspect expects for multiple values.
+	const introspectUrl = $derived.by(() => {
+		const params = new URLSearchParams();
+		if (repoUrl) params.append('repo_url', repoUrl);
+		if (playableUrl) params.append('demo_url', playableUrl);
+		if (user?.slackUserId) params.append('slack_id', user.slackUserId);
+		if (hackatimeHours != null) params.append('hours', String(hackatimeHours));
+		if (submissionDate) params.append('submission_date', submissionDate);
+		for (const name of hackatimeProjects) params.append('hackatime_projects', name);
+		const qs = params.toString();
+		return `https://introspect.sahil.ink/${qs ? `?${qs}` : ''}`;
+	});
 
 	const hackatimeStartDateLabel = $derived(
 		(user as any)?.hackatimeStartDate
@@ -208,6 +229,13 @@
 				Airlock ↗
 			</a>
 		{/if}
+		<a href={introspectUrl} target="_blank" rel="noopener noreferrer" class="border-rv-accent! text-rv-accent! hover:bg-rv-tag-bg!" title="Open in Introspect with this submission prefilled">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="11" cy="11" r="8" />
+				<line x1="21" y1="21" x2="16.65" y2="16.65" />
+			</svg>
+			Introspect ↗
+		</a>
 		{#if joeUrl && isAdmin}
 			<a href={joeUrl} target="_blank" rel="noopener noreferrer" class="border-ds-accent! text-ds-accent! hover:bg-ds-accent-bg!">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
