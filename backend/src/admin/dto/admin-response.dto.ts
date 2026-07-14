@@ -426,6 +426,10 @@ export class AdminProjectListItemResponse {
   @ApiProperty()
   permReject: boolean;
 
+  /** Joe fraud-review project id, so a pasted Joe link resolves in search. */
+  @ApiProperty({ type: String, nullable: true })
+  joeProjectId: string | null;
+
   @ApiProperty({ type: Boolean, nullable: true })
   joeFraudPassed: boolean | null;
 

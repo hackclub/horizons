@@ -5,6 +5,7 @@
     import { api, type components } from '$lib/api';
     import { Play, Snowflake, LoaderCircle, ListFilter } from 'lucide-svelte';
     import { Button, TextField, Card, Checkbox, Select, FilterTag } from '$lib/components';
+    import { normalizeSearchQuery } from '$lib/search';
 
     type AdminProject = components['schemas']['AdminProjectListItemResponse'];
     type AdminProjectUser = AdminProject['user'];
@@ -252,8 +253,9 @@
                     description: (p.description ?? '').toLowerCase(),
                     repo: (p.repoUrl ?? '').toLowerCase(),
                     playable: (p.playableUrl ?? '').toLowerCase(),
-                    // Bare number and "#123" form, so a pasted id matches either way.
-                    id: `${p.projectId}\n#${p.projectId}`,
+                    // Bare number, "#123" form, and the Joe project id, so a
+                    // pasted Joe link (normalized to its id) resolves too.
+                    id: `${p.projectId}\n#${p.projectId}\n${(p.joeProjectId ?? '').toLowerCase()}`,
                     // Airtable record ids across all submissions (rec…), so a
                     // record pasted from Airtable resolves to its project.
                     airtable: (p.airtableRecIds ?? []).join('\n').toLowerCase(),
@@ -267,7 +269,7 @@
     );
 
     function matchesSearch(project: AdminProject, query: string): boolean {
-        const q = query.trim().toLowerCase();
+        const q = normalizeSearchQuery(query);
         if (!q) return true;
         return (
             searchHaystacks.get(project.projectId)?.[searchField].includes(q) ??
@@ -279,7 +281,7 @@
     // can wrap hits in <mark>. Case-insensitive plain substring — the same
     // matching the filter itself uses.
     function highlightSegments(text: string): { text: string; hit: boolean }[] {
-        const q = appliedSearch.trim().toLowerCase();
+        const q = normalizeSearchQuery(appliedSearch);
         if (!q || !text) return [{ text, hit: false }];
         const lower = text.toLowerCase();
         const segments: { text: string; hit: boolean }[] = [];
