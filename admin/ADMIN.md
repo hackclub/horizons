@@ -170,7 +170,7 @@ The review page at `/admin/review` is a specialized interface for processing sub
 - **Gallery view**: Grid of pending submissions, click to select. Debounced field-scoped search (all/title/author/Slack ID/event/type/project ID) with match highlighting across the pending queue, past reviews, and fraud-rejected sections. Resubmissions of projects the current reviewer previously rejected carry a "Your re-review" badge and a "My re-reviews" filter chip (same condition as the Slack re-review ping)
 - **Admin queue**: Reviewers can escalate a submission via the "Send to Admin" verdict option (required note). Escalated submissions leave the pending queue and appear in an amber admin-only gallery section; only admins can approve/reject them or return them to the reviewer queue (the escalation shows in the review timeline)
 - **Detail view**: Multi-panel layout showing:
-  - User info and profile data
+  - User info and profile data, with external tool links: Airlock (sandboxed repo VM, all reviewers), Introspect (`introspect.sahil.ink` prefilled with repo/demo/Slack ID/hours/submission date/Hackatime projects, all reviewers), and Joe (fraud platform, admin-only)
   - Project screenshots gallery
   - GitHub repo panel (stats, language, README)
   - Demo iframe (sandboxed). On navigation it probes the demo URL via `/api/utils/check-url`; if the site blocks framing (`X-Frame-Options` / CSP `frame-ancestors`), the preview is replaced with an "Open in new tab" prompt instead of a silently blank frame. Falls back to attempting the iframe when embeddability can't be determined.

@@ -765,6 +765,8 @@
 					joeFraudPassed={currentSubmission?.project.joeFraudPassed ?? null}
 					joeTrustScore={currentSubmission?.project.joeTrustScore ?? null}
 					joeJustification={currentSubmission?.project.joeJustification ?? null}
+					submissionDate={currentSubmission?.createdAt ?? null}
+					hackatimeProjects={currentSubmission?.project.nowHackatimeProjects ?? []}
 					{isAdmin}
 					loading={submissionLoading}
 				/>
