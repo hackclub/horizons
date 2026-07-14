@@ -54,7 +54,8 @@
         | 'description'
         | 'repo'
         | 'playable'
-        | 'id';
+        | 'id'
+        | 'airtable';
     let searchField = $state<SearchField>('all');
     // No filters applied by default — admins see the full list until they opt in.
     let selectedStatuses = $state<Set<string>>(new Set());
@@ -252,6 +253,9 @@
                     playable: (p.playableUrl ?? '').toLowerCase(),
                     // Bare number and "#123" form, so a pasted id matches either way.
                     id: `${p.projectId}\n#${p.projectId}`,
+                    // Airtable record ids across all submissions (rec…), so a
+                    // record pasted from Airtable resolves to its project.
+                    airtable: (p.airtableRecIds ?? []).join('\n').toLowerCase(),
                 };
                 return [
                     p.projectId,
@@ -568,6 +572,7 @@
                         <option value="repo">Code URL</option>
                         <option value="playable">Playable URL</option>
                         <option value="id">Project ID</option>
+                        <option value="airtable">Airtable ID</option>
                     </Select>
                 </div>
 
