@@ -51,6 +51,7 @@ const projectAdminInclude = {
       hackatimeAccount: true,
       hackatimeAccessToken: true,
       hackatimeStartDate: true,
+      slackUserId: true,
       referralCode: true,
       referredByUserId: true,
       isFraud: true,

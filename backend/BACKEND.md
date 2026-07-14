@@ -164,6 +164,7 @@ Full administrative operations. Accessible to `admin` role only.
 | GET | `/submissions/:id/audit-logs` | Admin | Audit log history for a submission |
 | **Projects** |||
 | GET | `/projects` | Admin | Slim project list: latest submission + submission count and a PII-free owner summary (full detail via `/projects/:id`) |
+| GET | `/projects/:id` | Admin | Full project detail: all project fields incl. Joe fraud state (`joeProjectId`, `joeFraudPassed`, `joeTrustScore`, `joeJustification`), submissions, and full owner info (incl. `slackUserId`, raw birthday/address) — powers the admin project detail page |
 | GET | `/projects/:id/timeline` | Admin | Full project timeline (creation, submissions, reviews) |
 | POST | `/projects/:id/recalculate` | Admin | Recalculate hours from Hackatime |
 | POST | `/projects/recalculate-all` | Admin | Bulk recalculate all projects |

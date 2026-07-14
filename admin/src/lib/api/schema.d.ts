@@ -2725,8 +2725,11 @@ export interface components {
             isLocked: boolean;
             /** @description Permanent reject flag. User-facing reason is the latest submission's `hoursJustification`; audit (who/when) is in SubmissionAuditLog. */
             permReject: boolean;
+            /** @description Joe fraud-review project id, for deep-linking to Joe. */
+            joeProjectId: string | null;
             joeFraudPassed: boolean | null;
             joeTrustScore: number | null;
+            joeJustification: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
