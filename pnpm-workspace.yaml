@@ -55,7 +55,9 @@ overrides:
   http-proxy-middleware@>=3.0.0 <3.0.6: '>=3.0.6'
   http-proxy-middleware@>=3.0.4 <3.0.7: '>=3.0.7'
   js-yaml@<3.15.0: '>=3.15.0'
-  js-yaml@>=4.0.0 <=4.1.1: '>=4.2.0'
+  # Cap at v4: js-yaml 5 is ESM-only with no default export, which breaks
+  # every `import yaml from 'js-yaml'` call site under Vite SSR.
+  js-yaml@>=4.0.0 <=4.1.1: '>=4.2.0 <5'
   lodash@<=4.17.23: '>=4.18.0'
   lodash@>=4.0.0 <=4.17.22: '>=4.17.23'
   lodash@>=4.0.0 <=4.17.23: '>=4.18.0'
@@ -94,7 +96,9 @@ overrides:
   svelte@<=5.51.4: '>=5.51.5'
   svelte@<=5.53.4: '>=5.53.5'
   svelte@>=5.39.3 <5.51.5: '>=5.51.5'
-  vite@>=7.0.0 <=7.3.1: '>=7.3.2'
-  vite@>=7.0.0 <=7.3.4: '>=7.3.5'
-  vite@>=7.1.0 <=7.3.1: '>=7.3.2'
+  # Cap at v7: vite-plugin-svelte 6.x doesn't support Vite 8 — uncapped, these
+  # resolved vite to 8.x and broke dev-mode import hoisting/hydration.
+  vite@>=7.0.0 <=7.3.1: '>=7.3.2 <8'
+  vite@>=7.0.0 <=7.3.4: '>=7.3.5 <8'
+  vite@>=7.1.0 <=7.3.1: '>=7.3.2 <8'
   yauzl@=3.2.0: '>=3.2.1'
