@@ -14,6 +14,7 @@
     type PriorityQueueEntry = components['schemas']['PriorityQueueEntryResponse'];
 
     type SortField =
+        | 'shippedAt'
         | 'createdAt'
         | 'projectTitle'
         | 'userName'
@@ -62,8 +63,10 @@
     // No filters applied by default — admins see the full list until they opt in.
     let selectedStatuses = $state<Set<string>>(new Set());
     let selectedProjectTypes = $state<Set<string>>(new Set());
-    let sortField = $state<SortField>('createdAt');
-    let sortDirection = $state<SortDirection>('asc');
+    // Default view: most recently shipped first (latest submission date),
+    // never-shipped projects at the bottom.
+    let sortField = $state<SortField>('shippedAt');
+    let sortDirection = $state<SortDirection>('desc');
     let showFraudProjects = $state(true);
     let showSusProjects = $state(true);
     let showDeletedProjects = $state(false);
@@ -354,6 +357,11 @@
     function compareProjects(a: AdminProject, b: AdminProject): number {
         let c = 0;
         switch (sortField) {
+            case 'shippedAt':
+                c =
+                    new Date(a.latestSubmission?.createdAt ?? 0).getTime() -
+                    new Date(b.latestSubmission?.createdAt ?? 0).getTime();
+                break;
             case 'createdAt':
                 c = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
                 break;
@@ -714,6 +722,7 @@
                         <div class="block text-sm font-medium text-ds-text-secondary mb-2">Sort By</div>
                         <div class="flex gap-2">
                             <Select class="flex-1" bind:value={sortField}>
+                                <option value="shippedAt">Date Shipped</option>
                                 <option value="createdAt">Date Created</option>
                                 <option value="projectTitle">Project Title</option>
                                 <option value="userName">User Name</option>
