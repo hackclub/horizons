@@ -5,13 +5,19 @@ export type HighlightSegment = { text: string; hit: boolean };
 const JOE_LINK_RE =
 	/^(?:https?:\/\/)?joe\.fraud\.hackclub\.com\/ysws\/[^/]+\/projects\/([0-9a-f-]+)\/?$/i;
 
+// A pasted Airtable link (airtable.com/app…/tbl…/viw…/rec…) carries the record
+// id in its `rec…` path segment — that's what submission airtableRecIds hold.
+const AIRTABLE_LINK_RE = /^(?:https?:\/\/)?airtable\.com\/\S*?(rec[A-Za-z0-9]{8,})/i;
+
 /**
  * Trim + lowercase a raw search query, resolving a pasted Joe link to its Joe
- * project id so the link matches wherever the id is part of a haystack.
+ * project id and a pasted Airtable link to its record id, so links match
+ * wherever the id is part of a haystack.
  */
 export function normalizeSearchQuery(query: string): string {
 	const q = query.trim();
-	return (JOE_LINK_RE.exec(q)?.[1] ?? q).toLowerCase();
+	const resolved = JOE_LINK_RE.exec(q)?.[1] ?? AIRTABLE_LINK_RE.exec(q)?.[1] ?? q;
+	return resolved.toLowerCase();
 }
 
 /**
