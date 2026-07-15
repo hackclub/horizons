@@ -115,7 +115,116 @@ export class AdminService {
       orderBy: { createdAt: 'asc' },
     });
 
-    return submissions;
+    return submissions.map((s) => ({
+      ...s,
+      airtableRecordUrl: this.airtableRecordUrl(s.airtableRecId),
+    }));
+  }
+
+  // Deep link into the Approved Projects table for a synced submission.
+  private airtableRecordUrl(recId: string | null): string | null {
+    const baseId = process.env.YSWS_BASE_ID;
+    const tableId = process.env.YSWS_APPROVED_PROJECTS_TABLE_ID;
+    if (!recId || !baseId || !tableId) return null;
+    return `https://airtable.com/${baseId}/${tableId}/${recId}`;
+  }
+
+  /**
+   * Superadmin edit of a submission's snapshot fields. Only writes fields that
+   * actually changed, and records them in the submission audit log so the
+   * change shows up in the project timeline.
+   */
+  async updateSubmission(
+    submissionId: number,
+    dto: {
+      description?: string | null;
+      playableUrl?: string | null;
+      repoUrl?: string | null;
+      screenshotUrl?: string | null;
+      hackatimeHours?: number;
+    },
+    adminUserId: number,
+  ) {
+    const existing = await this.prisma.submission.findUnique({
+      where: { submissionId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Submission not found');
+    }
+
+    const data: Prisma.SubmissionUpdateInput = {};
+    const changes: Record<string, unknown> = {};
+    const stringFields = ['description', 'playableUrl', 'repoUrl', 'screenshotUrl'] as const;
+    for (const field of stringFields) {
+      const next = dto[field];
+      if (next !== undefined && next !== existing[field]) {
+        data[field] = next;
+        changes[field] = { from: existing[field], to: next };
+      }
+    }
+    if (
+      dto.hackatimeHours !== undefined &&
+      dto.hackatimeHours !== existing.hackatimeHours
+    ) {
+      data.hackatimeHours = dto.hackatimeHours;
+      changes.hackatimeHours = {
+        from: existing.hackatimeHours,
+        to: dto.hackatimeHours,
+      };
+    }
+
+    if (Object.keys(changes).length > 0) {
+      await this.prisma.submission.update({
+        where: { submissionId },
+        data,
+      });
+      await this.prisma.submissionAuditLog.create({
+        data: {
+          submissionId,
+          adminId: adminUserId ?? null,
+          action: AUDIT_ACTIONS.update,
+          changes: changes as any,
+        },
+      });
+    }
+
+    // Same shape as getAllSubmissions so the client can swap it in directly.
+    const updated = await this.prisma.submission.findUniqueOrThrow({
+      where: { submissionId },
+      include: {
+        project: {
+          include: {
+            user: {
+              select: {
+                userId: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                birthday: true,
+                addressLine1: true,
+                addressLine2: true,
+                city: true,
+                state: true,
+                country: true,
+                zipCode: true,
+                hackatimeAccount: true,
+                referralCode: true,
+                referredByUserId: true,
+                airtableRecId: true,
+                isFraud: true,
+                isSus: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    return {
+      ...updated,
+      airtableRecordUrl: this.airtableRecordUrl(updated.airtableRecId),
+    };
   }
 
   async unlockProject(projectId: number, adminUserId: number) {

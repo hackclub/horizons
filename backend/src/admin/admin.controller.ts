@@ -79,6 +79,7 @@ import {
 } from './dto/admin-request.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateAdminProjectDto } from './dto/update-admin-project.dto';
+import { UpdateAdminSubmissionDto } from './dto/update-submission.dto';
 import { ApiQuery } from '@nestjs/swagger';
 
 @Controller('api/admin')
@@ -114,6 +115,23 @@ export class AdminController {
   @ApiOkResponse({ type: [SubmissionAuditLogResponse] })
   async getSubmissionAuditLogs(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.getSubmissionAuditLogs(id);
+  }
+
+  /**
+   * Edit a submission's snapshot fields (description / URLs / hackatime hours
+   * captured at submit time). Verdict fields are deliberately excluded — they
+   * go through the reviewer review endpoint, which owns the side effects.
+   */
+  @Patch('submissions/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiOkResponse({ type: AdminSubmissionResponse })
+  async updateSubmission(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateAdminSubmissionDto,
+    @Req() req: Request,
+  ) {
+    return this.adminService.updateSubmission(id, body, req.user.userId);
   }
 
   @Put('projects/:id/unlock')

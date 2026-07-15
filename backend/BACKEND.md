@@ -160,8 +160,9 @@ Full administrative operations. Accessible to `admin` role only.
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | **Submissions** |||
-| GET | `/submissions` | Admin | All submissions with full user/project details; optional `?projectId=` scopes to one project |
+| GET | `/submissions` | Admin | All submissions with full user/project details; optional `?projectId=` scopes to one project. Each row carries `airtableRecordUrl` — a deep link into the Approved Projects table when synced |
 | GET | `/submissions/:id/audit-logs` | Admin | Audit log history for a submission |
+| PATCH | `/submissions/:id` | Superadmin | Edit a submission's snapshot fields (description, playable/repo/screenshot URLs, hackatime hours at submit). Changed fields are recorded in the submission audit log. Verdict fields are excluded — those go through `PUT /api/reviewer/submissions/:id/review` |
 | **Projects** |||
 | GET | `/projects` | Admin | Slim project list: latest submission + submission count and a PII-free owner summary (full detail via `/projects/:id`) |
 | GET | `/projects/:id` | Admin | Full project detail: all project fields incl. Joe fraud state (`joeProjectId`, `joeFraudPassed`, `joeTrustScore`, `joeJustification`), submissions, and full owner info (incl. `slackUserId`, raw birthday/address) — powers the admin project detail page |
