@@ -163,8 +163,8 @@ model Submission {
   silentReject       Boolean              @default(false) @map("silent_reject")
   reviewedBy         String?              @map("reviewed_by")
   reviewedAt         DateTime?            @map("reviewed_at")
-  // Reviewer escalation — "Send to admin" moves the submission out of the
-  // regular reviewer queue into a secondary admin-only queue. The note is the
+  // Reviewer escalation — "Second review" (send to admin) moves the submission
+  // out of the regular reviewer queue into a secondary admin-only queue. The note is the
   // reviewer's required explanation of why an admin needs to look at it.
   // Cleared when an admin returns the submission to the reviewer queue; left
   // in place once a verdict finalizes (the queue only shows pending rows).
