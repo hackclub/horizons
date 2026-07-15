@@ -179,9 +179,9 @@
 			if (error)
 				throw new Error(
 					(error as { message?: string })?.message ??
-						`Failed to send submission ${submissionId} to the admin queue`,
+						`Failed to send submission ${submissionId} to second review`,
 				);
-			toast.success('Sent to the admin queue');
+			toast.success('Sent to second review');
 			justSubmitted = true;
 			// Optimistic local echo — the parent refetches on next load anyway.
 			onSentToAdminChange?.({
@@ -191,9 +191,9 @@
 				note,
 			});
 		} catch (error) {
-			console.error('Send to admin failed:', error);
+			console.error('Send to second review failed:', error);
 			toast.error(
-				`Send to admin failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				`Send to second review failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			);
 		} finally {
 			sendingToAdmin = false;
@@ -371,7 +371,7 @@
 <div class="h-full overflow-y-auto bg-rv-bg p-5">
 	{#if sentToAdmin}
 		<div class="mb-4 rounded-md border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-rv-text">
-			<strong class="text-amber-600">In admin queue</strong>
+			<strong class="text-amber-600">In second review</strong>
 			<span class="text-rv-dim">
 				— sent by {sentToAdmin.byName}
 				<span class="border-b border-dotted border-rv-dim cursor-default" title={formatDate(sentToAdmin.sentAt)}>{timeAgo(sentToAdmin.sentAt)}</span>.
@@ -401,7 +401,7 @@
 			class="relative z-10 flex-1 py-2.5 text-sm font-semibold font-inherit cursor-pointer bg-transparent border-none transition-colors duration-200 {activeForm === 'admin' ? 'text-white' : 'text-rv-dim hover:text-rv-text'}"
 			onclick={() => setVerdict('admin')}
 		>
-			Send to Admin
+			Second Review
 		</button>
 	</div>
 
@@ -537,7 +537,7 @@
 					title={flipBlocked
 						? 'Superadmin only: flipping a rejected submission to approved'
 						: escalationBlocked
-							? 'This submission is in the admin queue — only admins can submit a verdict'
+							? 'This submission is in second review — only admins can submit a verdict'
 							: undefined}
 				>
 					{submitting
@@ -629,7 +629,7 @@
 					title={flipBlocked
 						? 'Superadmin only: flipping an approved submission to rejected'
 						: escalationBlocked
-							? 'This submission is in the admin queue — only admins can submit a verdict'
+							? 'This submission is in second review — only admins can submit a verdict'
 							: undefined}
 				>
 					{submitting
@@ -664,7 +664,8 @@
 	{#if activeForm === 'admin'}
 		<div class="pt-3 border-t border-rv-border">
 			<h3 class="text-sm font-bold mb-3 flex items-center gap-1.5">
-				<span class="w-2 h-2 rounded-full bg-gray-500"></span> Send to Admin
+				<span class="w-2 h-2 rounded-full bg-gray-500"></span> Second Review
+				<span class="text-[11px] font-normal text-rv-dim">(send to admin)</span>
 			</h3>
 			{#if sentToAdmin}
 				<div class="mb-3 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-[13px] leading-relaxed text-rv-text">
@@ -691,16 +692,16 @@
 					</div>
 				{:else}
 					<p class="text-[12px] text-rv-dim mb-0">
-						An admin will pick this up from the admin queue — no further action needed from you.
+						An admin will pick this up from the second review queue — no further action needed from you.
 					</p>
 				{/if}
 			{:else if approvalStatus !== 'pending' || reviewPassed !== null}
 				<p class="text-[12px] text-rv-dim mb-0">
-					Only pending, unreviewed submissions can be sent to the admin queue.
+					Only pending, unreviewed submissions can be sent to second review.
 				</p>
 			{:else}
 				<p class="text-[12px] text-rv-dim mb-3">
-					Moves this submission out of the reviewer queue into a secondary queue that only admins act on. The user isn't notified.
+					Moves this submission out of the reviewer queue into the second review queue that only admins act on. The user isn't notified.
 				</p>
 				<div class="mb-3">
 					<label for="send-to-admin-note" class="block text-xs font-semibold text-rv-dim mb-1">
@@ -722,7 +723,7 @@
 						disabled={sendingToAdmin || submitting || savingDraft || justSubmitted || readOnly || !sendToAdminNote.trim()}
 						title={!sendToAdminNote.trim() ? 'A note is required' : undefined}
 					>
-						{sendingToAdmin ? 'Sending...' : justSubmitted ? 'Sent' : 'Send to Admin Queue'}
+						{sendingToAdmin ? 'Sending...' : justSubmitted ? 'Sent' : 'Send to Second Review'}
 					</button>
 				</div>
 			{/if}

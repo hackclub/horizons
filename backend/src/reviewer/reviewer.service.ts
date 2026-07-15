@@ -634,7 +634,7 @@ export class ReviewerService {
       reviewerRole === 'reviewer'
     ) {
       throw new ForbiddenException(
-        'This submission was sent to the admin queue — only admins can submit a verdict on it',
+        'This submission is in second review (sent to admin) — only admins can submit a verdict on it',
       );
     }
 
@@ -830,7 +830,7 @@ export class ReviewerService {
     // Same gate as reviewSubmission — escalated submissions are admin-only.
     if (submission.sentToAdminAt && reviewerRole === 'reviewer') {
       throw new ForbiddenException(
-        'This submission was sent to the admin queue — only admins can submit a verdict on it',
+        'This submission is in second review (sent to admin) — only admins can submit a verdict on it',
       );
     }
 
@@ -903,9 +903,10 @@ export class ReviewerService {
   }
 
   /**
-   * Escalate a submission to the secondary admin queue. The required note
-   * explains why an admin needs to look (shown on the admin queue card and in
-   * the review timeline). The claim is released so the reviewer can move on;
+   * Escalate a submission to second review (the secondary admin-only queue,
+   * "send to admin"). The required note explains why an admin needs to look
+   * (shown on the second review queue card and in the review timeline). The
+   * claim is released so the reviewer can move on;
    * plain reviewers can no longer submit a verdict until an admin either
    * decides or returns it to the regular queue.
    */
@@ -928,12 +929,12 @@ export class ReviewerService {
     }
     if (submission.approvalStatus !== 'pending' || submission.reviewPassed !== null) {
       throw new BadRequestException(
-        'Only pending, unreviewed submissions can be sent to the admin queue',
+        'Only pending, unreviewed submissions can be sent to second review',
       );
     }
     if (submission.sentToAdminAt) {
       throw new BadRequestException(
-        'This submission is already in the admin queue',
+        'This submission is already in second review',
       );
     }
     const note = dto.note.trim();
@@ -983,7 +984,7 @@ export class ReviewerService {
     }
     if (!submission.sentToAdminAt) {
       throw new BadRequestException(
-        'This submission is not in the admin queue',
+        'This submission is not in second review',
       );
     }
 

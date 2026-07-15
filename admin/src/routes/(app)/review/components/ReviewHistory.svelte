@@ -93,7 +93,7 @@
 			{:else if event.type === 'sent_to_admin'}
 				<div class="pb-2.5 last:pb-0">
 					<span class="inline-block text-[10px] font-bold px-1.75 py-0.5 rounded mb-1 bg-amber-500/15 text-amber-600">
-						&#8593; Sent to Admin
+						&#8593; Sent to Second Review
 					</span>
 					{#if event.note}
 						<div class="text-[13px] leading-normal mt-1 whitespace-pre-line">{event.note}</div>

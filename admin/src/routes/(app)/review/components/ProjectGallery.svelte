@@ -1169,8 +1169,9 @@
 
 			<section class="px-6 py-2">
 				<h2 class="text-[13px] uppercase tracking-wider font-semibold mb-1 text-amber-600">
-					Admin Queue
+					Second Review
 					<span class="text-amber-600/60 font-normal normal-case ml-1">({adminQueueItems.length})</span>
+					<span class="text-[11px] text-amber-600/60 font-normal normal-case ml-1">(send to admin)</span>
 				</h2>
 				<p class="text-[12px] text-rv-dim mt-0 mb-3">
 					Escalated by reviewers — only admins can approve, reject, or return these to the reviewer queue.
