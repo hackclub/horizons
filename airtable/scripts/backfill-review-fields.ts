@@ -2,6 +2,9 @@
  * Backfill "Project Type" and "Reviewed By" on YSWS Approved Projects
  * Airtable records from the Horizons Postgres database.
  *
+ * The live backend sync now writes both fields on approval (create and edit),
+ * so this script is only needed for records created before that change.
+ *
  * DB-driven: fetch every submission linked to Airtable
  * (submission.airtableRecId set) and PATCH its record's two fields.
  * Submissions without a recId linkage are not covered — their Airtable rows
