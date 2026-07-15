@@ -151,6 +151,7 @@ europa:
       icon: huh
 
 sol:
+  hidden: true # finished event — hidden from onboarding
   name: Horizons Sol
   location: [-23.5506507, -46.6333824]
   locationText: "São Paulo, Brazil"
@@ -200,6 +201,7 @@ sol:
       icon: huh
 
 crux:
+  hidden: true # finished event — hidden from onboarding
   name: Horizons Crux
   location: [-33.8698439, 151.2082848]
   locationText: "Sydney, Australia"
