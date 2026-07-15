@@ -5,7 +5,7 @@
 	import { api, type components } from '$lib/api';
 	import { currentUser } from '$lib/auth';
 	import { cachedGet } from '$lib/swr';
-	import { matchesScopedQuery } from '$lib/search';
+	import { matchesScopedQuery, normalizeSearchQuery } from '$lib/search';
 	import Highlight from './Highlight.svelte';
 	import { Search, CornerDownLeft, ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from 'lucide-svelte';
 
@@ -173,12 +173,20 @@
 					),
 				)
 				.slice(0, MAX_RESULTS)
-				.map((p) => ({
-					key: `p${p.projectId}`,
-					title: p.projectTitle,
-					subtitle: `${fullName(p.user)} · ${p.user.email} · #${p.projectId}`,
-					href: `${base}/projects/${p.projectId}`,
-				}));
+				.map((p) => {
+					// When the query matched an Airtable record id (typed or pasted
+					// as a link), surface that id in the row so the hit is visible.
+					const nq = normalizeSearchQuery(query);
+					const recHit = nq
+						? (p.airtableRecIds ?? []).find((r) => r.toLowerCase().includes(nq))
+						: undefined;
+					return {
+						key: `p${p.projectId}`,
+						title: p.projectTitle,
+						subtitle: `${fullName(p.user)} · ${p.user.email} · #${p.projectId}${recHit ? ` · ${recHit}` : ''}`,
+						href: `${base}/projects/${p.projectId}`,
+					};
+				});
 		}
 		if (type === 'transactions') {
 			if (!query.trim()) return [];

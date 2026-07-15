@@ -145,11 +145,11 @@
     // URL (base + table only) when the env vars aren't set.
     function airtableRecordUrl(sub: AdminSubmission): string | null {
         if (!sub.airtableRecId) return null;
-        const base = env.PUBLIC_AIRTABLE_BASE_ID;
+        const baseId = env.PUBLIC_AIRTABLE_BASE_ID;
         const table = env.PUBLIC_AIRTABLE_TABLE_ID;
         const view = env.PUBLIC_AIRTABLE_VIEW_ID;
-        if (base && table && view) {
-            return `https://airtable.com/${base}/${table}/${view}/${sub.airtableRecId}`;
+        if (baseId && table && view) {
+            return `https://airtable.com/${baseId}/${table}/${view}/${sub.airtableRecId}`;
         }
         return sub.airtableRecordUrl;
     }
