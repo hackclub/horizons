@@ -3,6 +3,7 @@
     import { page } from '$app/state';
     import { base } from '$app/paths';
     import { afterNavigate, goto } from '$app/navigation';
+    import { env } from '$env/dynamic/public';
     import { api, type components } from '$lib/api';
     import { ensureUser } from '$lib/auth';
     import { addToast } from '$lib/toastStore';
@@ -137,6 +138,21 @@
     let selectedSubmissionNumber = $derived(
         selectedSubmission ? submissions.length - submissions.indexOf(selectedSubmission) : null,
     );
+
+    // Airtable record deep link. Prefer the frontend env config
+    // (PUBLIC_AIRTABLE_BASE_ID / _TABLE_ID / _VIEW_ID) — including the view id
+    // makes the link land on the right view. Falls back to the backend-built
+    // URL (base + table only) when the env vars aren't set.
+    function airtableRecordUrl(sub: AdminSubmission): string | null {
+        if (!sub.airtableRecId) return null;
+        const base = env.PUBLIC_AIRTABLE_BASE_ID;
+        const table = env.PUBLIC_AIRTABLE_TABLE_ID;
+        const view = env.PUBLIC_AIRTABLE_VIEW_ID;
+        if (base && table && view) {
+            return `https://airtable.com/${base}/${table}/${view}/${sub.airtableRecId}`;
+        }
+        return sub.airtableRecordUrl;
+    }
 
     // --- Helpers ---
     function formatDate(value: string) {
@@ -1701,11 +1717,12 @@
                                         <div>
                                             <span class={subLabel}>Airtable sync</span>
                                             {#if sub.airtableRecId}
+                                                {@const recordUrl = airtableRecordUrl(sub)}
                                                 <div class="flex items-center gap-2 min-w-0">
                                                     <span class="py-0.5 px-2 rounded-xl text-[10px] font-semibold bg-rv-green-bg text-rv-green shrink-0">Synced</span>
                                                     <span class="text-[11px] font-mono text-rv-dim truncate">{sub.airtableRecId}</span>
-                                                    {#if sub.airtableRecordUrl}
-                                                        <a href={sub.airtableRecordUrl} target="_blank" rel="noreferrer" class="inline-flex items-center gap-0.5 text-[11px] text-rv-blue no-underline hover:underline shrink-0">
+                                                    {#if recordUrl}
+                                                        <a href={recordUrl} target="_blank" rel="noreferrer" class="inline-flex items-center gap-0.5 text-[11px] text-rv-blue no-underline hover:underline shrink-0">
                                                             Open in Airtable <ExternalLink size={10} />
                                                         </a>
                                                     {/if}
