@@ -598,6 +598,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/submissions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminController_updateSubmission"];
+        trace?: never;
+    };
     "/api/admin/projects/{id}/unlock": {
         parameters: {
             query?: never;
@@ -2638,6 +2654,7 @@ export interface components {
             submissionId: number;
             approvalStatus: string;
             airtableRecId: string | null;
+            airtableRecordUrl: string | null;
             approvedHours: number | null;
             hoursJustification: string | null;
             description: string | null;
@@ -2810,6 +2827,13 @@ export interface components {
             entries: components["schemas"]["ProjectManifestSummaryEntry"][];
             /** @description True when Manifest is configured and reachable. False means the entries array is empty because the lookup was skipped. */
             enabled: boolean;
+        };
+        UpdateAdminSubmissionDto: {
+            description?: string | null;
+            playableUrl?: string | null;
+            repoUrl?: string | null;
+            screenshotUrl?: string | null;
+            hackatimeHours?: number | null;
         };
         UpdateAdminProjectDto: {
             projectTitle?: string;
@@ -5513,6 +5537,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeleteProjectResponse"];
+                };
+            };
+        };
+    };
+    AdminController_updateSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdminSubmissionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubmissionResponse"];
                 };
             };
         };

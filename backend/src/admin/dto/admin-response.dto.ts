@@ -137,6 +137,11 @@ export class AdminSubmissionResponse {
   @ApiProperty({ type: String, nullable: true })
   airtableRecId: string | null;
 
+  // Deep link into the Approved Projects table — null when the record isn't
+  // synced or the Airtable env config is missing.
+  @ApiProperty({ type: String, nullable: true })
+  airtableRecordUrl: string | null;
+
   @ApiProperty({ type: Number, nullable: true })
   approvedHours: number | null;
 
