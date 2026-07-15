@@ -85,6 +85,8 @@ Tracks each approved submission as a separate row.
 | Optional - Override Hours Spent Justification | `hoursJustification` | |
 | Description | `submission.description` | Optional |
 | Approved At | Today's date | YYYY-MM-DD at time of approval |
+| Project Type | `project.projectType` | Raw enum value (e.g. `web_playable`); written with `typecast` so single-select options auto-create |
+| Reviewed By | `submission.reviewedBy` | Reviewer's "First Last" name; `User <id>` if the account no longer exists |
 
 ### Trigger Points
 

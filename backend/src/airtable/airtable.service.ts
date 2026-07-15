@@ -715,6 +715,8 @@ export class AirtableService {
       approvedHours: number;
       hoursJustification: string;
       description?: string;
+      projectType?: string;
+      reviewedByName?: string;
     };
   }): Promise<{ recordId: string }> {
     if (!this.AIRTABLE_API_KEY) {
@@ -840,6 +842,14 @@ export class AirtableService {
         fields['Description'] = data.project.description;
       }
 
+      if (data.project.projectType) {
+        fields['Project Type'] = data.project.projectType;
+      }
+
+      if (data.project.reviewedByName) {
+        fields['Reviewed By'] = data.project.reviewedByName;
+      }
+
       if (!this.AIRTABLE_API_KEY) {
         throw new HttpException(
           'Airtable API key not configured for Unified YSWS',
@@ -861,6 +871,9 @@ export class AirtableService {
                 fields,
               },
             ],
+            // "Project Type" may be a single select — typecast lets Airtable
+            // auto-create missing options instead of failing the whole record.
+            typecast: true,
           }),
         },
       );
@@ -897,6 +910,8 @@ export class AirtableService {
       description?: string;
       approvedHours?: number;
       hoursJustification?: string;
+      projectType?: string;
+      reviewedByName?: string;
     },
   ): Promise<void> {
     if (!this.AIRTABLE_API_KEY) {
@@ -967,6 +982,14 @@ export class AirtableService {
           data.hoursJustification;
       }
 
+      if (data.projectType !== undefined) {
+        fields['Project Type'] = data.projectType;
+      }
+
+      if (data.reviewedByName !== undefined) {
+        fields['Reviewed By'] = data.reviewedByName;
+      }
+
       // Only make request if there are fields to update
       if (Object.keys(fields).length === 0) {
         return;
@@ -982,6 +1005,7 @@ export class AirtableService {
           },
           body: JSON.stringify({
             fields,
+            typecast: true,
           }),
         },
       );

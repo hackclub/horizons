@@ -757,6 +757,22 @@ export class SubmissionApprovalService {
     });
   }
 
+  /** "First Last" for the Airtable "Reviewed By" cell; "User <id>" when the account is gone. */
+  private async resolveReviewerName(
+    reviewedBy: string | null,
+  ): Promise<string | undefined> {
+    if (!reviewedBy) return undefined;
+    const reviewerId = Number(reviewedBy);
+    if (!Number.isFinite(reviewerId)) return `User ${reviewedBy}`;
+    const reviewer = await this.prisma.user.findUnique({
+      where: { userId: reviewerId },
+      select: { firstName: true, lastName: true },
+    });
+    return reviewer
+      ? `${reviewer.firstName} ${reviewer.lastName}`
+      : `User ${reviewedBy}`;
+  }
+
   /** Create the Airtable record on first approval. Delta hours vs the prior approved submission. */
   private async syncAirtable(
     submission: {
@@ -767,6 +783,7 @@ export class SubmissionApprovalService {
       repoUrl: string | null;
       screenshotUrl: string | null;
       description: string | null;
+      reviewedBy: string | null;
       project: {
         playableUrl: string | null;
         repoUrl: string | null;
@@ -834,6 +851,8 @@ export class SubmissionApprovalService {
             submission.description ||
             submission.project.description ||
             undefined,
+          projectType: project.projectType,
+          reviewedByName: await this.resolveReviewerName(submission.reviewedBy),
         },
       };
 
@@ -861,6 +880,8 @@ export class SubmissionApprovalService {
       repoUrl: string | null;
       screenshotUrl: string | null;
       description: string | null;
+      reviewedBy: string | null;
+      project: { projectType: string };
     },
     dto: { approvedHours?: number; hoursJustification?: string },
   ): Promise<void> {
@@ -892,6 +913,8 @@ export class SubmissionApprovalService {
           description: submission.description || undefined,
           approvedHours,
           hoursJustification: dto.hoursJustification,
+          projectType: submission.project.projectType,
+          reviewedByName: await this.resolveReviewerName(submission.reviewedBy),
         },
       );
     } catch (error) {

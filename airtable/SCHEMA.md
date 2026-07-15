@@ -70,10 +70,11 @@ One row per approved submission (the YSWS handoff). Env var:
 `YSWS_APPROVED_PROJECTS_TABLE_ID`. Fields documented in
 [`docs/airtable-sync.md`](../docs/airtable-sync.md#approved-projects-table).
 
-Script-backfilled fields (not written by the live backend sync — populated by
-[`scripts/backfill-review-fields.ts`](scripts/backfill-review-fields.ts)):
+Review-metadata fields, written by the live backend sync on approval (create
+and edit); records predating the live sync can be backfilled with
+[`scripts/backfill-review-fields.ts`](scripts/backfill-review-fields.ts):
 
 | Field name | Airtable type | Source |
 |---|---|---|
-| Project Type | Single line text (or single select with the `ProjectType` enum values; run the script with `--typecast`) | `project.projectType` raw enum value, e.g. `web_playable` |
-| Reviewed By | Single line text | reviewer's "First Last" name resolved from `submission.reviewedBy` |
+| Project Type | Single line text (or single select with the `ProjectType` enum values — the backend writes with `typecast` so missing options auto-create) | `project.projectType` raw enum value, e.g. `web_playable` |
+| Reviewed By | Single line text | reviewer's "First Last" name resolved from `submission.reviewedBy`; `User <id>` if the account no longer exists |
