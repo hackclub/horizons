@@ -177,7 +177,7 @@ Full administrative operations. Accessible to `admin` role only.
 | POST | `/fraud-review/:projectId/perm-reject` | Admin | Permanently reject a silently-rejected project |
 | POST | `/projects/:id/joe-reset` | Admin | Reset Joe state and re-enqueue for fraud review |
 | **Users** |||
-| GET | `/users` | Admin | Paginated users (`page`, `limit` ≤200, `q` search on name/email/Slack ID/Slack display name/Hackatime ID, `sort` incl. decay-aware streak sorts); each user's projects carry only the latest submission; each user carries hour balance fields (`totalApprovedHours`, `totalSpent`, `balance`) computed via per-page grouped aggregates matching `BalanceService` |
+| GET | `/users` | Admin | Paginated users (`page`, `limit` ≤200, `q` search on name/email/Slack ID/Hackatime ID; an `@`-prefixed token matches only the Slack display name, `sort` incl. decay-aware streak sorts); each user's projects carry only the latest submission; each user carries hour balance fields (`totalApprovedHours`, `totalSpent`, `balance`) computed via per-page grouped aggregates matching `BalanceService` |
 | PUT | `/users/:id/fraud-flag` | Admin | Toggle `isFraud` flag |
 | PUT | `/users/:id/sus-flag` | Admin | Toggle `isSus` flag |
 | PUT | `/users/:id/slack` | Admin | Manually set `slackUserId` |

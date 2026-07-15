@@ -2784,6 +2784,7 @@ export interface components {
             lastName: string | null;
             email: string;
             slackUserId: string | null;
+            slackUsername: string | null;
             isFraud: boolean;
             isSus: boolean;
             /** Format: date-time */
@@ -3382,6 +3383,7 @@ export interface components {
             firstName: string;
             lastName: string;
             slackUserId: string | null;
+            slackUsername: string | null;
         };
         LedgerEntryItemSummary: {
             itemId: number;
