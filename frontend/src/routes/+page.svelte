@@ -67,7 +67,10 @@
 
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 	// TODO: temporarily hidden from homepage — restore by removing the filter
-	const eventEntries = Object.entries(eventsMap).filter(([key]) => key !== 'sol');
+	const HOMEPAGE_HIDDEN_EVENTS = new Set(['sol', 'nexus', 'crux']);
+	const eventEntries = Object.entries(eventsMap).filter(
+		([key]) => !HOMEPAGE_HIDDEN_EVENTS.has(key)
+	);
 	const faqItems = yaml.load(faqRaw) as { question: string; answer: string }[];
 	let openFaqIndex = $state<number | null>(null);
 
