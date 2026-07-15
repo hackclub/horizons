@@ -365,7 +365,7 @@
         <div class="flex items-center gap-3">
             <TextField
                 class="min-w-72"
-                placeholder="Search by name, email, Slack name/ID, Hackatime ID..."
+                placeholder="Search by name, email, Slack ID, Hackatime ID, @slack-username..."
                 bind:value={userSearch}
             />
             <select

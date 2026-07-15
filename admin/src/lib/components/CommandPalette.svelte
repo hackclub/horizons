@@ -18,7 +18,13 @@
 		transactionId: number;
 		itemDescription: string;
 		cost: number;
-		user: { email: string; firstName: string; lastName: string; slackUserId: string | null };
+		user: {
+			email: string;
+			firstName: string;
+			lastName: string;
+			slackUserId: string | null;
+			slackUsername: string | null;
+		};
 		item: { name: string } | null;
 		event: { slug: string; title: string } | null;
 	};
@@ -40,13 +46,13 @@
 		{
 			key: 'projects',
 			label: 'Project',
-			placeholder: 'Look up a project',
+			placeholder: 'Look up a project (@ for Slack username)',
 			activeClass: 'border-ds-green/50 bg-ds-green-bg text-ds-green',
 		},
 		{
 			key: 'users',
 			label: 'Users',
-			placeholder: 'Look up a user',
+			placeholder: 'Look up a user (@ for Slack username)',
 			activeClass: 'border-ds-accent/50 bg-ds-accent-bg text-ds-accent',
 		},
 		{
@@ -150,70 +156,84 @@
 	const results = $derived.by<Result[]>(() => {
 		if (!open) return [];
 		const type = activeType.key;
+		const trimmed = query.trim();
+		// An @-prefixed query scopes the lookup to Slack usernames ONLY — it
+		// must never fall through to the plain substring match, where "@gmail"
+		// (or a bare "@") would hit every email in the haystack. Plain queries
+		// never match Slack usernames. (The users endpoint applies the same
+		// rule server-side.)
+		const slackQ = trimmed.startsWith('@') ? trimmed.slice(1).toLowerCase() : null;
 		if (type === 'projects') {
-			if (!query.trim()) return [];
+			if (!trimmed) return [];
 			return projects
 				.filter((p) =>
-					matchesScopedQuery(
-						{
-							all: [
-								p.projectTitle,
-								fullName(p.user),
-								p.user.email,
-								p.user.slackUserId ?? '',
-								p.description ?? '',
-								p.repoUrl ?? '',
-								p.playableUrl ?? '',
-								`${p.projectId} #${p.projectId} ${p.joeProjectId ?? ''}`,
-								(p.airtableRecIds ?? []).join(' '),
-							].join('\n'),
-						},
-						'all',
-						query,
-					),
+					slackQ !== null
+						? !!p.user.slackUsername && p.user.slackUsername.toLowerCase().includes(slackQ)
+						: matchesScopedQuery(
+								{
+									all: [
+										p.projectTitle,
+										fullName(p.user),
+										p.user.email,
+										p.user.slackUserId ?? '',
+										p.description ?? '',
+										p.repoUrl ?? '',
+										p.playableUrl ?? '',
+										`${p.projectId} #${p.projectId} ${p.joeProjectId ?? ''}`,
+										(p.airtableRecIds ?? []).join(' '),
+									].join('\n'),
+								},
+								'all',
+								query,
+							),
 				)
 				.slice(0, MAX_RESULTS)
 				.map((p) => {
 					// When the query matched an Airtable record id (typed or pasted
 					// as a link), surface that id in the row so the hit is visible.
 					const nq = normalizeSearchQuery(query);
-					const recHit = nq
-						? (p.airtableRecIds ?? []).find((r) => r.toLowerCase().includes(nq))
-						: undefined;
+					const recHit =
+						nq && slackQ === null
+							? (p.airtableRecIds ?? []).find((r) => r.toLowerCase().includes(nq))
+							: undefined;
+					const slackHit =
+						slackQ !== null && p.user.slackUsername ? `@${p.user.slackUsername}` : null;
 					return {
 						key: `p${p.projectId}`,
 						title: p.projectTitle,
-						subtitle: `${fullName(p.user)} · ${p.user.email} · #${p.projectId}${recHit ? ` · ${recHit}` : ''}`,
+						subtitle: `${fullName(p.user)}${slackHit ? ` · ${slackHit}` : ''} · ${p.user.email} · #${p.projectId}${recHit ? ` · ${recHit}` : ''}`,
 						href: `${base}/projects/${p.projectId}`,
 					};
 				});
 		}
 		if (type === 'transactions') {
-			if (!query.trim()) return [];
+			if (!trimmed) return [];
 			return transactions
 				.filter((e) =>
-					matchesScopedQuery(
-						{
-							all: [
-								e.user.email,
-								fullName(e.user),
-								e.user.slackUserId ?? '',
-								e.itemDescription,
-								e.event?.slug ?? '',
-								e.event?.title ?? '',
-								e.item?.name ?? '',
-								String(e.transactionId),
-							].join('\n'),
-						},
-						'all',
-						query,
-					),
+					slackQ !== null
+						? !!e.user.slackUsername && e.user.slackUsername.toLowerCase().includes(slackQ)
+						: matchesScopedQuery(
+								{
+									all: [
+										e.user.email,
+										fullName(e.user),
+										e.user.slackUserId ?? '',
+										e.itemDescription,
+										e.event?.slug ?? '',
+										e.event?.title ?? '',
+										e.item?.name ?? '',
+										String(e.transactionId),
+									].join('\n'),
+								},
+								'all',
+								query,
+							),
 				)
 				.slice(0, MAX_RESULTS)
 				.map((e) => ({
 					key: `t${e.transactionId}`,
 					title: e.itemDescription,
-					subtitle: `${fullName(e.user)} · ${e.user.email} · #${e.transactionId}`,
+					subtitle: `${fullName(e.user)}${slackQ !== null && e.user.slackUsername ? ` · @${e.user.slackUsername}` : ''} · ${e.user.email} · #${e.transactionId}`,
 					href: `${base}/transactions?q=${e.transactionId}`,
 				}));
 		}

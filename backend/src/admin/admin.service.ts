@@ -290,6 +290,7 @@ export class AdminService {
             lastName: true,
             email: true,
             slackUserId: true,
+            slackUsername: true,
             isFraud: true,
             isSus: true,
             hackatimeStartDate: true,
@@ -1764,15 +1765,24 @@ export class AdminService {
     const sort: AdminUserSort = opts.sort ?? 'recent';
 
     // Every whitespace-separated token must match at least one identity
-    // field, so "jane doe" matches firstName=Jane lastName=Doe.
+    // field, so "jane doe" matches firstName=Jane lastName=Doe. Slack
+    // usernames are opt-in: only an @-prefixed token matches them (and
+    // matches nothing else), so plain-name queries don't drag in Slack
+    // handle noise.
     const tokens = (opts.q ?? '')
       .trim()
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 5);
     const tokenFilters = tokens.map((token) => {
+      // Any @-token is slack-username-only — a bare "@" must not fall through
+      // to the plain path, where it would substring-match every email.
+      if (token.startsWith('@')) {
+        const like = `%${token.slice(1)}%`;
+        return Prisma.sql`(u.slack_username ILIKE ${like})`;
+      }
       const like = `%${token}%`;
-      return Prisma.sql`(u.first_name ILIKE ${like} OR u.last_name ILIKE ${like} OR u.email ILIKE ${like} OR u.slack_user_id ILIKE ${like} OR u.slack_username ILIKE ${like} OR u.hackatime_account ILIKE ${like})`;
+      return Prisma.sql`(u.first_name ILIKE ${like} OR u.last_name ILIKE ${like} OR u.email ILIKE ${like} OR u.slack_user_id ILIKE ${like} OR u.hackatime_account ILIKE ${like})`;
     });
     const whereSql = tokenFilters.length
       ? Prisma.sql`WHERE ${Prisma.join(tokenFilters, ' AND ')}`
@@ -3568,6 +3578,7 @@ export class AdminService {
             firstName: true,
             lastName: true,
             slackUserId: true,
+            slackUsername: true,
           },
         },
         item: { select: { itemId: true, name: true } },

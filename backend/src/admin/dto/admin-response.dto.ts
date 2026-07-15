@@ -397,6 +397,9 @@ class AdminProjectListUserResponse {
   @ApiProperty({ type: String, nullable: true })
   slackUserId: string | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  slackUsername: string | null;
+
   @ApiProperty()
   isFraud: boolean;
 
@@ -1711,6 +1714,9 @@ export class LedgerEntryUserSummary {
 
   @ApiProperty({ type: String, nullable: true })
   slackUserId: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  slackUsername: string | null;
 }
 
 export class LedgerEntryItemSummary {
