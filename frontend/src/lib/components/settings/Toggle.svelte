@@ -31,7 +31,7 @@
 			: 'bg-[#e7dac6]'}"
 	>
 		<span
-			class="absolute size-[10px] rounded-full border-2 border-black bg-[#f3e8d8] transition-all duration-150 {checked
+			class="absolute size-[10px] rounded-full bg-black transition-all duration-150 {checked
 				? 'left-[15px]'
 				: 'left-[1px]'}"
 		></span>
