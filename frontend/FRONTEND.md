@@ -219,3 +219,40 @@ The app layout (`routes/app/+layout.svelte`) calls this on mount.
 - **TTL caching**: Avoids redundant API calls within 3-5 minute windows
 - **Smart invalidation**: Caches cleared on mutations (create, edit, submit)
 - **Scroll-aware**: Only preloads data for projects visible/near viewport
+
+### Performance Modes (user setting)
+
+Settings → Preferences exposes two opt-in resource-saving tiers, persisted as
+`localStorage: 'settings:perfMode'` (`off | high | ultra`) and exposed by
+`lib/store/settingsCache.ts` (`perfMode`, `highPerf`, `ultraPerf`,
+`suppressAmbientMotion`).
+
+**High Performance Mode** targets things that run forever in a long-lived tab:
+
+- Stops continuous decorative animation: the BG pattern scroll, header text
+  wave, SlackCard logo rotation, GuidesCard puzzle spin, event-card `bg-drift`
+  pans, pulse dots/blinks. Components opt in with a
+  `:global(html.perf-high) .class { animation: none; }` override next to their
+  existing `prefers-reduced-motion` fallback; the `/app` layout applies the
+  `perf-high` class to `<html>`.
+- Doubles every polling interval and pauses all pollers/tick clocks while the
+  tab is hidden, via `pollWhileVisible()` in `lib/perf.ts` (huddle status,
+  community-event "live" clocks, countdown ticks). On return to visibility the
+  callback runs immediately so stale UI corrects instantly.
+
+**Ultra Performance Mode** includes everything above, plus:
+
+- 4× polling intervals.
+- `html.perf-ultra` (rule in `routes/layout.css`) zeroes every CSS
+  animation/transition duration — durations are near-zero rather than `none` so
+  `animationend` handlers still fire and `both`-filled keyframes land on their
+  end state.
+- Event countdown ticks once per minute (seconds hidden from the label).
+- ProjectsCard idle slideshow never starts (it also pauses while the tab is
+  hidden in every mode).
+- Music player: no muted autoplay (muted playback still downloads/decodes audio
+  forever) and volume fades set directly instead of running a rAF loop.
+
+New pollers should use `pollWhileVisible()` instead of raw `setInterval`, and
+new infinite decorative animations should ship with `prefers-reduced-motion`
+and `html.perf-high` overrides.

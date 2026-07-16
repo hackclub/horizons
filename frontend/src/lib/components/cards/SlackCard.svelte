@@ -150,6 +150,12 @@
 		.slack-logo img { animation: none; transform: rotate(-19.31deg); }
 	}
 
+	/* High Performance Mode stops always-running decorative loops. */
+	:global(html.perf-high) .slack-logo img {
+		animation: none;
+		transform: rotate(-19.31deg);
+	}
+
 	.member-pill {
 		position: absolute;
 		top: 10px;

@@ -3,6 +3,7 @@
 	import { fade } from 'svelte/transition';
 	import { api } from '$lib/api';
 	import { projectsStore, fetchProjects } from '$lib/store/projectCache';
+	import { ultraPerf } from '$lib/store/settingsCache';
 	import enterSvg from '$lib/assets/prompts/enter.svg';
 	import clickSvg from '$lib/assets/prompts/click.svg';
 
@@ -101,6 +102,7 @@
 	}
 
 	let animationsEnabled = $state(true);
+	let pageVisible = $state(true);
 	let mq: MediaQueryList | null = null;
 
 	onMount(() => {
@@ -114,11 +116,20 @@
 		animationsEnabled = mq.matches;
 		const onChange = (e: MediaQueryListEvent) => { animationsEnabled = e.matches; };
 		mq.addEventListener('change', onChange);
-		return () => mq?.removeEventListener('change', onChange);
+
+		pageVisible = !document.hidden;
+		const onVisibility = () => { pageVisible = !document.hidden; };
+		document.addEventListener('visibilitychange', onVisibility);
+		return () => {
+			mq?.removeEventListener('change', onChange);
+			document.removeEventListener('visibilitychange', onVisibility);
+		};
 	});
 
+	// The idle slideshow keeps timers and screenshot decodes churning forever,
+	// so it stays off while the tab is hidden and under Ultra Performance Mode.
 	$effect(() => {
-		if (animationsEnabled) {
+		if (animationsEnabled && pageVisible && !$ultraPerf) {
 			scheduleNextCycle();
 		} else {
 			cancelAll();

@@ -4,14 +4,16 @@
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { music, musicPrefs, playerOpen, tracks } from '$lib/store/musicCache';
+	import { ultraPerf } from '$lib/store/settingsCache';
 
 	let audioEl = $state<HTMLAudioElement>();
 	let index = $state(0);
 	// Playback intent. Kept separate from the element's `paused` so switching
 	// tracks (which reloads `src`) resumes automatically via the effect below.
 	// Autoplays on load — muted by default, so it's silent until the user
-	// unmutes (muted autoplay is permitted by browsers).
-	let playing = $state(true);
+	// unmutes (muted autoplay is permitted by browsers). Ultra Performance Mode
+	// skips autoplay: muted playback still downloads and decodes audio forever.
+	let playing = $state(!get(ultraPerf));
 	// Mute/volume initialize from persisted prefs so they carry across pages
 	// (player remounts on focused flows) and full reloads. Muted by default;
 	// once unmuted, that state sticks.
@@ -103,6 +105,8 @@
 	// rather than cutting. This drives `audioEl.volume` directly (no bind:volume)
 	// so it never disturbs the persisted `volume` pref / slider position.
 	const FADE_MS = 450;
+	// Ultra Performance Mode sets volume directly instead of running the rAF fade.
+	const fadeMs = () => (get(ultraPerf) ? 0 : FADE_MS);
 	let fadeRAF: number | null = null;
 
 	function cancelFade() {
@@ -148,12 +152,12 @@
 		if (!el || !url) return;
 		if (wantPlay) {
 			el.play()
-				.then(() => fadeVolume(untrack(() => volume), FADE_MS))
+				.then(() => fadeVolume(untrack(() => volume), fadeMs()))
 				.catch(() => {
 					playing = false;
 				});
 		} else {
-			fadeVolume(0, FADE_MS, () => el.pause());
+			fadeVolume(0, fadeMs(), () => el.pause());
 		}
 	});
 

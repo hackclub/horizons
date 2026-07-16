@@ -3,6 +3,8 @@
 	import BG from "$lib/components/BG.svelte";
 	import AppNav from "$lib/components/AppNav.svelte";
 	import Announcements from "$lib/components/announcements/Announcements.svelte";
+	import Settings from "$lib/components/settings/Settings.svelte";
+	import { highPerf, suppressAmbientMotion, ultraPerf } from "$lib/store/settingsCache";
 	import MusicPlayer from "$lib/components/music/MusicPlayer.svelte";
 	import type { InputPromptType } from "$lib/input";
 	import BobaText from "$lib/components/BobaText.svelte";
@@ -116,7 +118,20 @@
 		}
 	});
 
-	let disableAnimations = false;
+	// The BG pattern scroll runs forever, so it's gated on ambient motion:
+	// suppressed by "Reduce Animations" or either performance mode.
+	const disableAnimations = $derived($suppressAmbientMotion);
+
+	// Performance-mode root classes. `perf-high` (both tiers) lets components
+	// stop their own infinite decorative loops via `:global(html.perf-high)`
+	// overrides; `perf-ultra` zeroes every CSS animation/transition duration in
+	// layout.css (see `html.perf-ultra`).
+	$effect(() => {
+		document.documentElement.classList.toggle("perf-high", $highPerf);
+		document.documentElement.classList.toggle("perf-ultra", $ultraPerf);
+		return () =>
+			document.documentElement.classList.remove("perf-high", "perf-ultra");
+	});
 
 	// Preload critical data and assets on app load
 	onMount(async () => {
@@ -225,6 +240,7 @@
 		{#if showNav}
 			<AppNav segments={navSegments} />
 			<Announcements />
+			<Settings />
 			<MusicPlayer />
 		{/if}
 	</BG>

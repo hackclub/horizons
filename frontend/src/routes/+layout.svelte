@@ -2,6 +2,7 @@
 	import texture from '$lib/assets/texture.png'
 	import './layout.css';
 	import { onMount } from 'svelte';
+	import { bordersHidden, onlyBorder } from '$lib/store/settingsCache';
 
 	let { children } = $props();
 
@@ -75,7 +76,16 @@
 			<div class="w-full h-full bg-cover bg-center -rotate-90 scale-150" style="background-image: url({texture});"></div>
 		</div>
 
-		<div class="content-area absolute inset-10 overflow-hidden" style="background-color: var(--layout-bg, #f3e8d8)">
+		<!-- background-color switches instantly (not transitioned): the beige is
+		     provided by BG's clippable `.decor` layer, so the content-area itself
+		     must be transparent the moment "I only want border" is on, letting the
+		     brown texture show at the edges as .decor closes in. -->
+		<div
+			class="content-area absolute overflow-hidden {$bordersHidden ? 'inset-0' : 'inset-10'}"
+			style="transition: inset 0.3s ease; background-color: {$onlyBorder
+				? 'transparent'
+				: 'var(--layout-bg, #f3e8d8)'};"
+		>
 			{@render children()}
 		</div>
 	</div>
