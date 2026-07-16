@@ -13,11 +13,23 @@ const AIRTABLE_LINK_RE = /^(?:https?:\/\/)?airtable\.com\/\S*?(rec[A-Za-z0-9]{8,
  * Trim + lowercase a raw search query, resolving a pasted Joe link to its Joe
  * project id and a pasted Airtable link to its record id, so links match
  * wherever the id is part of a haystack.
+ *
+ * A pasted project URL is stripped of its protocol and any trailing slash, so
+ * a link copied from the browser address bar (e.g.
+ * "https://foo.onrender.com/") still matches a stored playable/repo URL that
+ * differs only by protocol or a missing trailing slash.
  */
 export function normalizeSearchQuery(query: string): string {
 	const q = query.trim();
-	const resolved = JOE_LINK_RE.exec(q)?.[1] ?? AIRTABLE_LINK_RE.exec(q)?.[1] ?? q;
-	return resolved.toLowerCase();
+	const linkId = JOE_LINK_RE.exec(q)?.[1] ?? AIRTABLE_LINK_RE.exec(q)?.[1];
+	if (linkId) return linkId.toLowerCase();
+	if (/^https?:\/\//i.test(q)) {
+		return q
+			.replace(/^https?:\/\//i, '')
+			.replace(/\/+$/, '')
+			.toLowerCase();
+	}
+	return q.toLowerCase();
 }
 
 /**

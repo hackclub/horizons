@@ -4,7 +4,7 @@
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
 	import { currentUser } from '$lib/auth';
-	import { cachedGet } from '$lib/swr';
+	import { cachedGet, peek } from '$lib/swr';
 	import { matchesScopedQuery, normalizeSearchQuery } from '$lib/search';
 	import Highlight from './Highlight.svelte';
 	import { Search, CornerDownLeft, ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from 'lucide-svelte';
@@ -92,22 +92,32 @@
 	}
 
 	async function loadProjects() {
-		const data = await cachedGet<AdminProject[]>(
-			'cmdk:projects',
-			async () => (await api.GET('/api/admin/projects')).data ?? [],
-			{ maxAgeMs: 60_000 },
-		);
-		projects = data;
+		// Only show the loading bar on a cold fetch — a cache hit resolves on the
+		// next microtask, so gating on peek() avoids a pointless flash.
+		if (!peek('cmdk:projects')) loading = true;
+		try {
+			projects = await cachedGet<AdminProject[]>(
+				'cmdk:projects',
+				async () => (await api.GET('/api/admin/projects')).data ?? [],
+				{ maxAgeMs: 60_000 },
+			);
+		} finally {
+			loading = false;
+		}
 	}
 
 	async function loadTransactions() {
-		const data = await cachedGet<LedgerEntry[]>(
-			'cmdk:transactions',
-			async () =>
-				((await api.GET('/api/admin/transactions')).data?.entries ?? []) as LedgerEntry[],
-			{ maxAgeMs: 60_000 },
-		);
-		transactions = data;
+		if (!peek('cmdk:transactions')) loading = true;
+		try {
+			transactions = await cachedGet<LedgerEntry[]>(
+				'cmdk:transactions',
+				async () =>
+					((await api.GET('/api/admin/transactions')).data?.entries ?? []) as LedgerEntry[],
+				{ maxAgeMs: 60_000 },
+			);
+		} finally {
+			loading = false;
+		}
 	}
 
 	// Server-side user search, debounced + sequenced so a slow response can't
@@ -381,7 +391,7 @@
 			tabindex="-1"
 		>
 			<!-- Search input -->
-			<div class="flex items-center gap-3 border-b border-ds-border-divider px-4 py-3.5">
+			<div class="relative flex items-center gap-3 border-b border-ds-border-divider px-4 py-3.5">
 				<Search class="h-5 w-5 shrink-0 text-ds-text-tertiary" />
 				<input
 					bind:this={inputEl}
@@ -392,6 +402,13 @@
 					autocomplete="off"
 					class="w-full bg-transparent text-lg text-ds-text placeholder:text-ds-text-placeholder focus:outline-none"
 				/>
+				<!-- Indeterminate loading bar, overlaid on the divider so it never
+				     shifts layout. Visible while a fetch is in flight. -->
+				{#if loading}
+					<div class="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden">
+						<div class="cmdk-progress h-full w-1/3 bg-ds-accent"></div>
+					</div>
+				{/if}
 			</div>
 
 			<!-- Type pills -->
@@ -468,3 +485,17 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	.cmdk-progress {
+		animation: cmdk-indeterminate 1.1s ease-in-out infinite;
+	}
+	@keyframes cmdk-indeterminate {
+		0% {
+			transform: translateX(-100%);
+		}
+		100% {
+			transform: translateX(400%);
+		}
+	}
+</style>
