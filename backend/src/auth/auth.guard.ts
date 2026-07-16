@@ -2,6 +2,7 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -38,6 +39,10 @@ export class AuthGuard implements CanActivate {
 
     if (!session || session.expiresAt < new Date()) {
       throw new UnauthorizedException('Invalid or expired session');
+    }
+
+    if (session.user.banned) {
+      throw new ForbiddenException('Your account has been banned.');
     }
 
     request.user = session.user;

@@ -180,6 +180,7 @@ Full administrative operations. Accessible to `admin` role only.
 | GET | `/users` | Admin | Paginated users (`page`, `limit` ≤200, `q` search on name/email/Slack ID/Hackatime ID; an `@`-prefixed token matches only the Slack display name, `sort` incl. decay-aware streak sorts); each user's projects carry only the latest submission; each user carries hour balance fields (`totalApprovedHours`, `totalSpent`, `balance`) computed via per-page grouped aggregates matching `BalanceService` |
 | PUT | `/users/:id/fraud-flag` | Admin | Toggle `isFraud` flag |
 | PUT | `/users/:id/sus-flag` | Admin | Toggle `isSus` flag |
+| PUT | `/users/:id/ban` | Admin | Set/clear `banned` (+ optional `reason`). Banning deletes the user's active sessions; the `AuthGuard` and login callback reject banned users |
 | PUT | `/users/:id/slack` | Admin | Manually set `slackUserId` |
 | **Metrics** |||
 | GET | `/metrics` | Admin | Dashboard metrics (total hours, users, projects, submitted projects) |
@@ -471,7 +472,7 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 
 | Model | Key Fields | Purpose |
 |-------|------------|---------|
-| **User** | hcaId, email, firstName, lastName, birthday, address fields, role, onboardComplete, hackatimeAccount, hackatimeAccessToken, rafflePos, airtableRecId, isFraud, isSus | Student profiles |
+| **User** | hcaId, email, firstName, lastName, birthday, address fields, role, onboardComplete, hackatimeAccount, hackatimeAccessToken, rafflePos, airtableRecId, isFraud, isSus, banned, bannedReason, bannedAt | Student profiles |
 | **Project** | userId, projectTitle, projectType, description, approvedHours, nowHackatimeHours, nowHackatimeProjects[], URLs, isLocked, joeFraudPassed, joeTrustScore (+ other joe\*) | Student projects |
 | **Submission** | projectId, approvalStatus (reconciled final outcome), reviewPassed (reviewer gate), approvedHours, hackatimeHours, hoursJustification, reviewerAnalysis, pendingSendEmail, reviewedBy, reviewedAt, finalizedAt, airtableRecId, sentToAdminAt/ById/Note (reviewer escalation to the admin queue — never exposed to users) | Per-project submissions |
 | **SubmissionAuditLog** | submissionId, adminId, action, newStatus, approvedHours, changes (JSON) | Review audit trail |

@@ -1030,6 +1030,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{id}/ban": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminController_setUserBan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/{id}/slack": {
         parameters: {
             query?: never;
@@ -2620,10 +2636,16 @@ export interface components {
             /** Format: date-time */
             hackatimeStartDate: string | null;
             slackUserId: string | null;
+            /** @description Cached Slack display name (refreshed on login). */
+            slackUsername: string | null;
             referralCode: string | null;
             referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
+            banned: boolean;
+            bannedReason: string | null;
+            /** Format: date-time */
+            bannedAt: string | null;
             timezone: string | null;
             currentStreak: number;
             longestStreak: number;
@@ -2686,6 +2708,13 @@ export interface components {
             createdAt: string;
             admin: components["schemas"]["AuditLogAdminResponse"] | null;
         };
+        UpdateAdminSubmissionDto: {
+            description?: string | null;
+            playableUrl?: string | null;
+            repoUrl?: string | null;
+            screenshotUrl?: string | null;
+            hackatimeHours?: number | null;
+        };
         AdminLightUserResponse: {
             userId: number;
             firstName: string | null;
@@ -2708,6 +2737,10 @@ export interface components {
             referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
+            banned: boolean;
+            bannedReason: string | null;
+            /** Format: date-time */
+            bannedAt: string | null;
             timezone: string | null;
             currentStreak: number;
             longestStreak: number;
@@ -2802,7 +2835,6 @@ export interface components {
             repoUrl: string | null;
             isLocked: boolean;
             permReject: boolean;
-            /** @description Joe fraud-review project id, so a pasted Joe link resolves in search. */
             joeProjectId: string | null;
             joeFraudPassed: boolean | null;
             joeTrustScore: number | null;
@@ -2814,7 +2846,6 @@ export interface components {
             user: components["schemas"]["AdminProjectListUserResponse"];
             latestSubmission: components["schemas"]["AdminProjectSubmissionResponse"] | null;
             submissionCount: number;
-            /** @description Airtable record ids across this project's submissions (approved reships can have several). */
             airtableRecIds: string[];
         };
         ProjectManifestSummaryEntry: {
@@ -2828,13 +2859,6 @@ export interface components {
             entries: components["schemas"]["ProjectManifestSummaryEntry"][];
             /** @description True when Manifest is configured and reachable. False means the entries array is empty because the lookup was skipped. */
             enabled: boolean;
-        };
-        UpdateAdminSubmissionDto: {
-            description?: string | null;
-            playableUrl?: string | null;
-            repoUrl?: string | null;
-            screenshotUrl?: string | null;
-            hackatimeHours?: number | null;
         };
         UpdateAdminProjectDto: {
             projectTitle?: string;
@@ -2932,6 +2956,10 @@ export interface components {
             referredByUserId: number | null;
             isFraud: boolean;
             isSus: boolean;
+            banned: boolean;
+            bannedReason: string | null;
+            /** Format: date-time */
+            bannedAt: string | null;
             timezone: string | null;
             currentStreak: number;
             longestStreak: number;
@@ -3466,6 +3494,21 @@ export interface components {
             lastName: string | null;
             isSus: boolean;
         };
+        ToggleBanDto: {
+            banned: boolean;
+            /** @description Admin-only note explaining why the user was banned. */
+            reason?: string | null;
+        };
+        AdminUserBanResponse: {
+            userId: number;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            banned: boolean;
+            bannedReason: string | null;
+            /** Format: date-time */
+            bannedAt: string | null;
+        };
         UpdateSlackIdDto: {
             slackUserId: string | null;
         };
@@ -3680,7 +3723,6 @@ export interface components {
             projectId: number;
             projectTitle: string;
             projectType: string;
-            /** @description Joe fraud-review project id, so a pasted Joe link resolves in search. */
             joeProjectId: string | null;
             reviewerId: string | null;
             reviewerName: string;
@@ -3702,7 +3744,6 @@ export interface components {
             projectId: number;
             projectTitle: string;
             projectType: string;
-            /** @description Joe fraud-review project id, so a pasted Joe link resolves in search. */
             joeProjectId: string | null;
             /** Format: date-time */
             finalizedAt: string | null;
@@ -3718,7 +3759,6 @@ export interface components {
             playableUrl: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
-            /** @description Joe fraud-review project id, so a pasted Joe link resolves in search. */
             joeProjectId: string | null;
             joeFraudPassed: boolean | null;
             user: components["schemas"]["ScopedUserResponse"];
@@ -5418,6 +5458,31 @@ export interface operations {
             };
         };
     };
+    AdminController_updateSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdminSubmissionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubmissionResponse"];
+                };
+            };
+        };
+    };
     AdminController_unlockProject: {
         parameters: {
             query?: never;
@@ -5539,31 +5604,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeleteProjectResponse"];
-                };
-            };
-        };
-    };
-    AdminController_updateSubmission: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateAdminSubmissionDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminSubmissionResponse"];
                 };
             };
         };
@@ -6037,6 +6077,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserSusFlagResponse"];
+                };
+            };
+        };
+    };
+    AdminController_setUserBan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleBanDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserBanResponse"];
                 };
             };
         };

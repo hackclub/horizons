@@ -62,6 +62,15 @@ export class AdminLightUserResponse {
   @ApiProperty()
   isSus: boolean;
 
+  @ApiProperty()
+  banned: boolean;
+
+  @ApiProperty({ type: String, nullable: true })
+  bannedReason: string | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  bannedAt: Date | null;
+
   @ApiProperty({ type: String, nullable: true })
   timezone: string | null;
 
@@ -564,6 +573,29 @@ export class AdminUserSusFlagResponse {
 
   @ApiProperty()
   isSus: boolean;
+}
+
+export class AdminUserBanResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastName: string | null;
+
+  @ApiProperty()
+  banned: boolean;
+
+  @ApiProperty({ type: String, nullable: true })
+  bannedReason: string | null;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  bannedAt: Date | null;
 }
 
 export class AdminUserSlackResponse {

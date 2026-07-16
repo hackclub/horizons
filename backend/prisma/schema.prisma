@@ -50,6 +50,12 @@ model User {
   ageOverride  Boolean @default(false) @map("age_override")
   adminComment String? @map("admin_comment") @db.VarChar(1000)
 
+  // Banned users are blocked at the AuthGuard: existing sessions are rejected
+  // and new logins are refused. bannedReason is admin-only context.
+  banned       Boolean   @default(false) @map("banned")
+  bannedAt     DateTime? @map("banned_at")
+  bannedReason String?   @map("banned_reason") @db.VarChar(1000)
+
   timezone       String?   @map("timezone")
   currentStreak  Int       @default(0) @map("current_streak")
   longestStreak  Int       @default(0) @map("longest_streak")

@@ -21,6 +21,23 @@ export class ToggleSusFlagDto {
   isSus: boolean;
 }
 
+export class ToggleBanDto {
+  @ApiProperty()
+  @IsBoolean()
+  banned: boolean;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    maxLength: 1000,
+    description: 'Admin-only note explaining why the user was banned.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  reason?: string | null;
+}
+
 export class UpdateSlackIdDto {
   @ApiProperty({ type: String, nullable: true })
   @IsString()

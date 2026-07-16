@@ -44,6 +44,7 @@ import {
   ReviewerLeaderboardEntry,
   AdminUserFlagResponse,
   AdminUserSusFlagResponse,
+  AdminUserBanResponse,
   AdminUserSlackResponse,
   SlackLookupResponse,
   PriorityUserResponse,
@@ -71,6 +72,7 @@ import {
 import {
   ToggleFraudFlagDto,
   ToggleSusFlagDto,
+  ToggleBanDto,
   UpdateSlackIdDto,
   ToggleSubmissionsFrozenDto,
   UpdateUserRoleDto,
@@ -475,6 +477,17 @@ export class AdminController {
     @Body() body: ToggleSusFlagDto,
   ) {
     return this.adminService.toggleUserSusFlag(id, body.isSus);
+  }
+
+  @Put('users/:id/ban')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminUserBanResponse })
+  async setUserBan(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: ToggleBanDto,
+  ) {
+    return this.adminService.setUserBan(id, body.banned, body.reason);
   }
 
   @Put('users/:id/slack')
