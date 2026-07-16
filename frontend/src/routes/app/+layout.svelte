@@ -210,7 +210,7 @@
 		{/key}
 		{#if showNavLoading}
 			<div
-				class="absolute bottom-8 right-10 z-50 flex flex-col items-end"
+				class="absolute right-10 z-50 flex flex-col items-end {showNav ? 'bottom-8 sm:bottom-20' : 'bottom-8'}"
 				transition:fade={{ duration: 300 }}
 			>
 				<BobaText text="LOADING..." fontSize={32} wave />

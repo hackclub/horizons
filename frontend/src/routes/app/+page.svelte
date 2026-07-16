@@ -246,8 +246,11 @@
 
 	// When the community-events column is hidden (no upcoming events) the in-column
 	// huddle card has nowhere to live, so surface an active huddle as a compact
-	// green tag in the page header instead.
-	const showHuddleTag = $derived(hideCE && effectiveHuddleActive && !postOnboarding);
+	// tag in the page header instead — styled to match the announcement tag.
+	let huddleTagDismissed = $state(false);
+	const showHuddleTag = $derived(
+		hideCE && effectiveHuddleActive && !postOnboarding && !huddleTagDismissed,
+	);
 	const HUDDLE_HREF = `https://hackclub.enterprise.slack.com/archives/${HORIZONS_SLACK_CHANNEL}`;
 
 	// Sample community events for debugging the card variants. Returns null when no
@@ -703,15 +706,37 @@
 				<TextWave text={headerText} disabled={disableAnimations} />
 			</p>
 			{#if showHuddleTag}
-				<a
-					class="huddle-tag ml-auto shrink-0"
-					href={HUDDLE_HREF}
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					<span class="huddle-tag-dot"></span>
-					<span class="font-cook whitespace-nowrap">HUDDLE IS LIVE</span>
-				</a>
+				<div class="ml-auto flex shrink-0 items-center gap-2.5 rounded-lg bg-[#88DE3C] p-2">
+					<p class="m-0 whitespace-nowrap font-bricolage text-[14px] font-semibold text-black">
+						Huddle is live.
+						<a
+							href={HUDDLE_HREF}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="cursor-pointer underline outline-none"
+						>Join now.</a>
+					</p>
+					<button
+						type="button"
+						class="flex cursor-pointer items-center text-black outline-none"
+						aria-label="Dismiss huddle notice"
+						onclick={() => (huddleTagDismissed = true)}
+					>
+						<svg
+							class="size-4"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="M18 6 6 18" />
+							<path d="m6 6 12 12" />
+						</svg>
+					</button>
+				</div>
 			{/if}
 		</div>
 
@@ -1096,42 +1121,6 @@
 		/* Extra bottom gap above the persistent AppNav (the bar's own space is
 		   reserved by the layout's .page-transition). */
 		padding: 32px 40px 48px;
-	}
-
-	/* Compact "huddle is live" tag shown in the header when the community-events
-	   column (which normally hosts the huddle card) is hidden. */
-	.huddle-tag {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		padding: 6px 14px;
-		background-color: #2fbf5b;
-		color: black;
-		font-size: 15px;
-		border: 3px solid black;
-		border-radius: 999px;
-		box-shadow: 3px 3px 0 0 black;
-		text-decoration: none;
-		transition: transform var(--juice-duration) var(--juice-easing);
-	}
-
-	.huddle-tag:hover {
-		transform: scale(var(--juice-scale));
-	}
-
-	.huddle-tag-dot {
-		width: 9px;
-		height: 9px;
-		border-radius: 50%;
-		background-color: #ffffff;
-		border: 1.5px solid black;
-		flex-shrink: 0;
-		animation: huddle-tag-pulse 1.4s ease-in-out infinite;
-	}
-
-	@keyframes huddle-tag-pulse {
-		0%, 100% { opacity: 1; transform: scale(1); }
-		50% { opacity: 0.4; transform: scale(0.75); }
 	}
 
 	/* Scrollable cards area — only horizontal scroll, fills remaining vertical space */
