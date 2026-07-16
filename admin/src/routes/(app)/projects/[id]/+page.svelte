@@ -1088,6 +1088,7 @@
                         {#if introspectUrl}
                             <a href={introspectUrl} target="_blank" rel="noreferrer" class="border-rv-accent! text-rv-accent! hover:bg-rv-tag-bg!" title="Open in Introspect with this submission prefilled">Introspect ↗</a>
                         {/if}
+                        <a href="/app/projects/{project.projectId}" target="_blank" rel="noreferrer">Horizons ↗</a>
                         <a
                             href="{base}/review/{project.projectId}{selectedSubmission ? `?submissionId=${selectedSubmission.submissionId}` : ''}"
                         >Review Dash →</a>
