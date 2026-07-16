@@ -657,6 +657,17 @@
     let verdictFeedback = $state('');
     let verdictSendEmail = $state(false);
     let verdictPermReject = $state(false);
+    let verdictDeleteAirtable = $state(false);
+
+    // Superadmin-only: flipping an already-approved submission (with an Airtable
+    // record) to rejected can also delete the per-project Airtable record. Mirrors
+    // the "Override → Reject + Delete Airtable" action in the review dash.
+    let canDeleteAirtable = $derived(
+        isSuperadmin &&
+            verdictStatus === 'rejected' &&
+            selectedSubmission?.approvalStatus === 'approved' &&
+            !!selectedSubmission?.airtableRecId,
+    );
 
     function openVerdictEditor() {
         const sub = selectedSubmission;
@@ -666,6 +677,7 @@
         verdictFeedback = sub.hoursJustification ?? '';
         verdictSendEmail = false;
         verdictPermReject = project?.permReject ?? false;
+        verdictDeleteAirtable = false;
         hoursJustificationEdit = project?.hoursJustification ?? '';
         saveError = '';
         editing = 'verdict';
@@ -688,6 +700,17 @@
             approvedHours = parsed;
         }
 
+        const deleteAirtable = canDeleteAirtable && verdictDeleteAirtable;
+        if (deleteAirtable) {
+            const confirmed = window.confirm(
+                'Reject this submission AND permanently delete the Airtable record? Airtable has no undo — this cannot be recovered.',
+            );
+            if (!confirmed) {
+                saving = false;
+                return;
+            }
+        }
+
         try {
             const { error } = await api.PUT('/api/reviewer/submissions/{id}/review', {
                 params: { path: { id: sub.submissionId } },
@@ -697,7 +720,8 @@
                     userFeedback: verdictFeedback,
                     sendEmail: verdictSendEmail,
                     ...(verdictStatus === 'rejected' ? { permReject: verdictPermReject } : {}),
-                },
+                    ...(deleteAirtable ? { deleteAirtableRecord: true } : {}),
+                } as any,
             });
             if (error) {
                 saveError = errorMessage(error, 'Failed to save verdict');
@@ -1677,6 +1701,19 @@
                                                     </span>
                                                 </label>
                                             </div>
+                                            {#if canDeleteAirtable}
+                                                <div class="rounded-md border {verdictDeleteAirtable ? 'border-rv-red/60 bg-rv-red-bg' : 'border-rv-border'} p-3">
+                                                    <label class="flex items-start gap-2 cursor-pointer">
+                                                        <input type="checkbox" class="accent-red-500 mt-0.5" bind:checked={verdictDeleteAirtable} />
+                                                        <span class="text-[12px]">
+                                                            <span class="font-semibold text-rv-red">Delete Airtable record</span>
+                                                            <span class="block text-[11px] text-rv-dim mt-0.5">
+                                                                Removes this project's record from the Approved Projects table. Airtable has no undo — this cannot be recovered.
+                                                            </span>
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            {/if}
                                         {/if}
                                         <label class="flex items-center gap-2 cursor-pointer text-[12px]">
                                             <input type="checkbox" class="accent-rv-accent" bind:checked={verdictSendEmail} />
