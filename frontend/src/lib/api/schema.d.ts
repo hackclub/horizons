@@ -2854,7 +2854,7 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
-            role: string;
+            roles: string[];
             projects: components["schemas"]["AdminUserProjectResponse"][];
         };
         AdminUserListResponse: {
@@ -3408,20 +3408,20 @@ export interface components {
             email: string;
             firstName: string | null;
             lastName: string | null;
-            role: string;
+            roles: string[];
             /** Format: date-time */
             createdAt: string;
         };
         UpdateUserRoleDto: {
-            /** @enum {string} */
-            role: "user" | "admin" | "reviewer" | "event_viewer";
+            /** @description Full set of roles to assign. Superadmin cannot be assigned here. */
+            roles: ("user" | "admin" | "reviewer" | "event_viewer")[];
         };
         UpdateUserRoleResponse: {
             userId: number;
             email: string;
             firstName: string | null;
             lastName: string | null;
-            role: string;
+            roles: string[];
         };
         UpdateUserDto: {
             hackatimeStartDate?: string | null;

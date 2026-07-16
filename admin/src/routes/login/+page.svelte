@@ -5,9 +5,8 @@
 	import { page } from '$app/stores';
 	import { api } from '$lib/api';
 	import { ensureUser, clearUser, type CurrentUser } from '$lib/auth';
+	import { isPrivileged } from '$lib/roles';
 	import { theme } from '$lib/themeStore';
-
-	const PRIVILEGED_ROLES = ['admin', 'superadmin', 'reviewer', 'event_viewer'];
 
 	// 'checking' while the session resolves, 'signin' when logged out,
 	// 'unauthorized' when signed in without a reviewer/admin role.
@@ -26,7 +25,7 @@
 
 	onMount(async () => {
 		user = await ensureUser();
-		if (user && PRIVILEGED_ROLES.includes(user.role)) {
+		if (user && isPrivileged(user.roles)) {
 			goto(nextPath());
 			return;
 		}

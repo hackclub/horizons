@@ -2566,7 +2566,9 @@ export class AdminService {
 
     return this.prisma.user.findMany({
       where: {
-        role: 'user',
+        NOT: {
+          roles: { hasSome: ['admin', 'reviewer', 'event_viewer', 'superadmin'] },
+        },
         OR: [
           { email: { contains: searchTerm, mode: 'insensitive' } },
           { firstName: { contains: searchTerm, mode: 'insensitive' } },
@@ -2578,7 +2580,7 @@ export class AdminService {
         email: true,
         firstName: true,
         lastName: true,
-        role: true,
+        roles: true,
         createdAt: true,
       },
       take: 10,
@@ -2589,23 +2591,40 @@ export class AdminService {
   async getElevatedUsers() {
     return this.prisma.user.findMany({
       where: {
-        role: { in: ['admin', 'reviewer', 'event_viewer', 'superadmin'] },
+        roles: { hasSome: ['admin', 'reviewer', 'event_viewer', 'superadmin'] },
       },
       select: {
         userId: true,
         email: true,
         firstName: true,
         lastName: true,
-        role: true,
+        roles: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async updateUserRole(userId: number, role: string, requestingUserId: number) {
+  async updateUserRoles(
+    userId: number,
+    roles: string[],
+    requestingUserId: number,
+  ) {
     if (userId === requestingUserId) {
-      throw new BadRequestException('Cannot change your own role');
+      throw new BadRequestException('Cannot change your own roles');
+    }
+
+    // Normalize: dedupe and enforce the assignable set. Superadmin is never
+    // assignable via this endpoint (it's all-encompassing and set out-of-band).
+    const assignable = ['user', 'admin', 'reviewer', 'event_viewer'];
+    const nextRoles = [...new Set(roles)];
+
+    if (nextRoles.length === 0) {
+      throw new BadRequestException('At least one role is required');
+    }
+
+    if (nextRoles.some((r) => !assignable.includes(r))) {
+      throw new ForbiddenException('Cannot assign that role');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -2616,23 +2635,19 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.role === 'superadmin') {
-      throw new ForbiddenException('Cannot modify another superadmin\'s role');
-    }
-
-    if (role === 'superadmin') {
-      throw new ForbiddenException('Cannot promote users to superadmin');
+    if (user.roles.includes('superadmin')) {
+      throw new ForbiddenException("Cannot modify another superadmin's roles");
     }
 
     return this.prisma.user.update({
       where: { userId },
-      data: { role },
+      data: { roles: nextRoles },
       select: {
         userId: true,
         email: true,
         firstName: true,
         lastName: true,
-        role: true,
+        roles: true,
       },
     });
   }

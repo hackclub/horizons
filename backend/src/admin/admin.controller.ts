@@ -591,7 +591,7 @@ export class AdminController {
     @Body() body: UpdateUserRoleDto,
     @Req() req: Request,
   ) {
-    return this.adminService.updateUserRole(id, body.role, req.user.userId);
+    return this.adminService.updateUserRoles(id, body.roles, req.user.userId);
   }
 
   @Patch('users/:id')

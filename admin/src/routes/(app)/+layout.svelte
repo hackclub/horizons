@@ -4,10 +4,11 @@
     import { base } from '$app/paths';
     import { Sidebar, CommandPalette } from '$lib/components';
     import { ensureUser } from '$lib/auth';
+    import { isPrivileged } from '$lib/roles';
 
     let { children } = $props();
 
-    let user = $state<{ email: string; role: string; name?: string } | null>(null);
+    let user = $state<{ email: string; roles: string[]; name?: string } | null>(null);
     let loading = $state(true);
     let sidebarCollapsed = $state(false);
     let wasOnReview = $state(false);
@@ -25,12 +26,7 @@
             window.location.href = `${base}/login?next=${next}`;
             return;
         }
-        if (
-            userData.role !== 'admin' &&
-            userData.role !== 'superadmin' &&
-            userData.role !== 'reviewer' &&
-            userData.role !== 'event_viewer'
-        ) {
+        if (!isPrivileged(userData.roles)) {
             window.location.href = `${base}/login`;
             return;
         }

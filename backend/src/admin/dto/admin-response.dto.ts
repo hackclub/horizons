@@ -341,8 +341,8 @@ class AdminUserProjectResponse {
 }
 
 export class AdminUserResponse extends AdminLightUserResponse {
-  @ApiProperty()
-  role: string;
+  @ApiProperty({ type: [String] })
+  roles: string[];
 
   @ApiProperty({ type: [AdminUserProjectResponse] })
   projects: AdminUserProjectResponse[];
@@ -753,8 +753,8 @@ export class ElevatedUserResponse {
   @ApiProperty({ type: String, nullable: true })
   lastName: string | null;
 
-  @ApiProperty()
-  role: string;
+  @ApiProperty({ type: [String] })
+  roles: string[];
 
   @ApiProperty()
   createdAt: Date;
@@ -773,8 +773,8 @@ export class UpdateUserRoleResponse {
   @ApiProperty({ type: String, nullable: true })
   lastName: string | null;
 
-  @ApiProperty()
-  role: string;
+  @ApiProperty({ type: [String] })
+  roles: string[];
 }
 
 export class UpdateUserResponse {

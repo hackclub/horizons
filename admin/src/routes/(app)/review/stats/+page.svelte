@@ -5,6 +5,7 @@
 	import { theme, toggleTheme } from '$lib/themeStore';
 	import { api, type components } from '$lib/api';
 	import { ensureUser } from '$lib/auth';
+	import { hasRole } from '$lib/roles';
 	import type * as EChartsModule from 'echarts';
 	import { Skeleton } from '$lib/components';
 	import StatCard from './StatCard.svelte';
@@ -155,7 +156,7 @@
 			goto(`${base}/login`);
 			return;
 		}
-		if (me.role !== 'admin' && me.role !== 'superadmin' && me.role !== 'reviewer') {
+		if (!hasRole(me.roles, 'admin', 'reviewer')) {
 			// event_viewer can use the app but not review stats — keep them
 			// inside the admin app instead of bouncing to the participant site.
 			goto(`${base}/home`);

@@ -4,6 +4,7 @@
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
 	import { currentUser } from '$lib/auth';
+	import { hasRole } from '$lib/roles';
 	import { cachedGet, peek } from '$lib/swr';
 	import { matchesScopedQuery, normalizeSearchQuery } from '$lib/search';
 	import Highlight from './Highlight.svelte';
@@ -67,9 +68,7 @@
 
 	// Only admins can hit /api/admin/* — reviewers/event-viewers share this
 	// layout, so the palette is inert for them (Cmd+K does nothing).
-	let enabled = $derived(
-		$currentUser?.role === 'admin' || $currentUser?.role === 'superadmin',
-	);
+	let enabled = $derived(hasRole($currentUser?.roles, 'admin'));
 
 	let open = $state(false);
 	let query = $state('');

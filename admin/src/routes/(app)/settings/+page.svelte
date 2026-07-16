@@ -36,8 +36,8 @@
     let leaderboardLoaded = $state(false);
 
     // Manual leaderboard send (superadmin only)
-    let currentUserRole = $state<string | null>(null);
-    const isSuperadmin = $derived(currentUserRole === 'superadmin');
+    let currentUserRoles = $state<string[]>([]);
+    const isSuperadmin = $derived(currentUserRoles.includes('superadmin'));
     let leaderboardSendBusy = $state(false);
     let leaderboardSendMessage = $state('');
     let leaderboardSendError = $state('');
@@ -238,7 +238,7 @@
         loadReviewerLeaderboard();
         loadPriorityUsers();
         const me = await ensureUser();
-        currentUserRole = me?.role ?? null;
+        currentUserRoles = me?.roles ?? [];
     });
 </script>
 

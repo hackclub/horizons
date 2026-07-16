@@ -5,6 +5,9 @@ import {
   IsOptional,
   IsIn,
   IsNumber,
+  IsArray,
+  ArrayNotEmpty,
+  ArrayUnique,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -52,10 +55,18 @@ export class ToggleSubmissionsFrozenDto {
 }
 
 export class UpdateUserRoleDto {
-  @ApiProperty({ enum: ['user', 'admin', 'reviewer', 'event_viewer'] })
-  @IsString()
-  @IsIn(['user', 'admin', 'reviewer', 'event_viewer'])
-  role: 'user' | 'admin' | 'reviewer' | 'event_viewer';
+  @ApiProperty({
+    isArray: true,
+    enum: ['user', 'admin', 'reviewer', 'event_viewer'],
+    description:
+      'Full set of roles to assign. Superadmin cannot be assigned here.',
+  })
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayUnique()
+  @IsString({ each: true })
+  @IsIn(['user', 'admin', 'reviewer', 'event_viewer'], { each: true })
+  roles: ('user' | 'admin' | 'reviewer' | 'event_viewer')[];
 }
 
 export class AdjustUserHoursDto {

@@ -3,6 +3,7 @@
 	import { base } from '$app/paths';
 	import { type components } from '$lib/api';
 	import { ensureUser } from '$lib/auth';
+	import { hasRole } from '$lib/roles';
 	import { getFraudRejected, getEvents, getPriorityQueue, getPastReviews } from '$lib/reviewCache';
 	import { mostUpcomingEventSlug } from '$lib/events';
 	import { timeAgo, waitingFor } from '../utils';
@@ -356,7 +357,7 @@
 			if (slug) selectedEvents = new Set([slug]);
 			needsDefaultEventSeed = false;
 		}
-		isAdmin = me?.role === 'admin' || me?.role === 'superadmin';
+		isAdmin = hasRole(me?.roles, 'admin');
 	});
 
 	async function loadPastReviews() {
