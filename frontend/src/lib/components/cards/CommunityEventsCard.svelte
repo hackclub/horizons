@@ -4,6 +4,7 @@
 	import clickSvg from '$lib/assets/prompts/click.svg';
 	import { parseNavKey } from '$lib/nav/wasd.svelte';
 	import { api } from '$lib/api';
+	import type { components } from '$lib/api';
 
 	interface Props {
 		element?: HTMLElement | null;
@@ -20,6 +21,9 @@
 		onReleaseDown?: () => void;
 		focusedEventId?: string | null;
 		hasLiveEvent?: boolean;
+		/** Events already fetched by the page's load function. When provided the
+		 *  card renders these instead of fetching on its own. */
+		initialEvents?: components['schemas']['CommunityEventResponse'][] | null;
 		debugEvents?: CommunityEvent[] | null;
 	}
 
@@ -47,10 +51,27 @@
 		onReleaseDown,
 		focusedEventId = $bindable(null),
 		hasLiveEvent = $bindable(false),
+		initialEvents = null,
 		debugEvents = null,
 	}: Props = $props();
 
-	let fetchedEvents = $state<CommunityEvent[]>([]);
+	function mapEvents(
+		data: components['schemas']['CommunityEventResponse'][],
+	): CommunityEvent[] {
+		return data.map((item) => ({
+			id: item.communityEventId,
+			name: item.name,
+			start: new Date(item.start),
+			end: new Date(item.end),
+			tagline: item.tagline ?? '',
+			joinInfo: item.joinInfo ?? '',
+			description: item.description ?? '',
+			actionUrl: item.actionUrl ?? '',
+			actionLabel: item.actionLabel ?? '',
+		}));
+	}
+
+	let fetchedEvents = $state<CommunityEvent[]>(initialEvents ? mapEvents(initialEvents) : []);
 	let events = $derived<CommunityEvent[]>(debugEvents ?? fetchedEvents);
 	let now = $state(new Date());
 
@@ -124,22 +145,15 @@
 	}
 
 	onMount(() => {
-		api.GET('/api/community-events')
-			.then(({ data }) => {
-				if (!data) return;
-				fetchedEvents = data.map((item) => ({
-					id: item.communityEventId,
-					name: item.name,
-					start: new Date(item.start),
-					end: new Date(item.end),
-					tagline: item.tagline ?? '',
-					joinInfo: item.joinInfo ?? '',
-					description: item.description ?? '',
-					actionUrl: item.actionUrl ?? '',
-					actionLabel: item.actionLabel ?? '',
-				}));
-			})
-			.catch(() => {});
+		// The page's load function normally supplies events via `initialEvents`;
+		// only fetch here as a fallback when it didn't.
+		if (initialEvents == null) {
+			api.GET('/api/community-events')
+				.then(({ data }) => {
+					if (data) fetchedEvents = mapEvents(data);
+				})
+				.catch(() => {});
+		}
 
 		const interval = setInterval(() => { now = new Date(); }, 60000);
 		return () => clearInterval(interval);
