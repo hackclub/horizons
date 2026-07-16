@@ -710,7 +710,7 @@ export class GlobalSettingsResponse {
   submissionsFrozenBy: string | null;
 }
 
-export class DeleteProjectResponse {
+export class AdminDeleteProjectResponse {
   @ApiProperty()
   deleted: boolean;
 
@@ -1565,7 +1565,7 @@ class EventStatsQualification {
   modes: StatsSignupQualificationModes;
 }
 
-export class EventStatsResponse {
+export class AdminEventStatsResponse {
   @ApiProperty({ type: EventStatsEventDetail })
   event: EventStatsEventDetail;
 

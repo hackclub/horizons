@@ -38,7 +38,7 @@ import {
   ProjectTimelineResponse,
   RecalculateProjectResponse,
   RecalculateAllResponse,
-  DeleteProjectResponse,
+  AdminDeleteProjectResponse,
   AdjustUserHoursResponse,
   AdminMetricsResponse,
   ReviewerLeaderboardEntry,
@@ -57,7 +57,7 @@ import {
   AdminStatsResponse,
   BackfillResponse,
   StreakBackfillResponse,
-  EventStatsResponse,
+  AdminEventStatsResponse,
   ImportCsvResponse,
   ProjectOwnerHackatimeProjectsResponse,
   FraudQueueResponse,
@@ -226,7 +226,7 @@ export class AdminController {
   @Delete('projects/:id')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @ApiOkResponse({ type: DeleteProjectResponse })
+  @ApiOkResponse({ type: AdminDeleteProjectResponse })
   async deleteProject(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.deleteProject(id);
   }
@@ -369,7 +369,7 @@ export class AdminController {
   @Get('events/:slug/stats')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin, Role.EventViewer)
-  @ApiOkResponse({ type: EventStatsResponse })
+  @ApiOkResponse({ type: AdminEventStatsResponse })
   async getEventStats(@Param('slug') slug: string) {
     const stats = await this.adminService.getEventStats(slug);
     if (!stats) throw new NotFoundException('Event not found');
