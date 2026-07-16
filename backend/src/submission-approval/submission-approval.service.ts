@@ -39,6 +39,7 @@ interface FraudReviewInfo {
   joeProjectId: string;
   reviewedAt: Date;
   hackatimeProjects: string[];
+  hackatimeUserId: string | null;
 }
 
 // Most recent prior APPROVED submission of the same project — presence means
@@ -103,9 +104,12 @@ function buildFullJustification(
 
   if (fraudReview) {
     const fraudDate = fraudReview.reviewedAt.toISOString().split('T')[0];
+    const userSuffix = fraudReview.hackatimeUserId
+      ? ` on Hackatime user #${fraudReview.hackatimeUserId}`
+      : '';
     const projectsSuffix =
       fraudReview.hackatimeProjects.length > 0
-        ? `, who reviewed the time tracked on ${fraudReview.hackatimeProjects.join(', ')}`
+        ? `, who reviewed the time tracked on ${fraudReview.hackatimeProjects.join(', ')}${userSuffix}`
         : '';
     parts.push(
       `Project passed fraud review (case ${fraudReview.joeProjectId}) from the Fraud Squad on ${fraudDate}${projectsSuffix}.`,
@@ -508,7 +512,11 @@ export class SubmissionApprovalService {
         joeFraudPassed: boolean | null;
         joeFraudReviewedAt: Date | null;
         nowHackatimeProjects: string[];
-        user: { email: string; slackUserId: string | null };
+        user: {
+          email: string;
+          slackUserId: string | null;
+          hackatimeAccount: string | null;
+        };
       };
     },
     newStatus: 'approved' | 'rejected',
@@ -582,7 +590,11 @@ export class SubmissionApprovalService {
         joeFraudPassed: boolean | null;
         joeFraudReviewedAt: Date | null;
         nowHackatimeProjects: string[];
-        user: { email: string; slackUserId: string | null };
+        user: {
+          email: string;
+          slackUserId: string | null;
+          hackatimeAccount: string | null;
+        };
       };
     },
     finalizedAt: Date,
@@ -715,12 +727,14 @@ export class SubmissionApprovalService {
     joeFraudPassed: boolean | null;
     joeFraudReviewedAt: Date | null;
     nowHackatimeProjects: string[];
+    user: { hackatimeAccount: string | null };
   }): FraudReviewInfo | null {
     if (!project.joeFraudPassed || !project.joeProjectId) return null;
     return {
       joeProjectId: project.joeProjectId,
       reviewedAt: project.joeFraudReviewedAt ?? new Date(),
       hackatimeProjects: project.nowHackatimeProjects,
+      hackatimeUserId: project.user.hackatimeAccount,
     };
   }
 
