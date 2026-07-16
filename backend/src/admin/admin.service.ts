@@ -2060,6 +2060,42 @@ export class AdminService {
     return updatedUser;
   }
 
+  async setUserBan(userId: number, banned: boolean, reason?: string | null) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { userId },
+      data: {
+        banned,
+        bannedAt: banned ? new Date() : null,
+        bannedReason: banned ? (reason ?? null) : null,
+      },
+      select: {
+        userId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        banned: true,
+        bannedReason: true,
+        bannedAt: true,
+      },
+    });
+
+    // Kill active sessions on ban so the block takes effect immediately
+    // rather than waiting for the current session to expire.
+    if (banned) {
+      await this.prisma.userSession.deleteMany({ where: { userId } });
+    }
+
+    return updatedUser;
+  }
+
   async updateUserSlackId(userId: number, slackUserId: string | null) {
     const user = await this.prisma.user.findUnique({
       where: { userId },

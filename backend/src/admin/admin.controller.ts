@@ -38,12 +38,13 @@ import {
   ProjectTimelineResponse,
   RecalculateProjectResponse,
   RecalculateAllResponse,
-  DeleteProjectResponse,
+  AdminDeleteProjectResponse,
   AdjustUserHoursResponse,
   AdminMetricsResponse,
   ReviewerLeaderboardEntry,
   AdminUserFlagResponse,
   AdminUserSusFlagResponse,
+  AdminUserBanResponse,
   AdminUserSlackResponse,
   SlackLookupResponse,
   PriorityUserResponse,
@@ -56,7 +57,7 @@ import {
   AdminStatsResponse,
   BackfillResponse,
   StreakBackfillResponse,
-  EventStatsResponse,
+  AdminEventStatsResponse,
   ImportCsvResponse,
   ProjectOwnerHackatimeProjectsResponse,
   FraudQueueResponse,
@@ -71,6 +72,7 @@ import {
 import {
   ToggleFraudFlagDto,
   ToggleSusFlagDto,
+  ToggleBanDto,
   UpdateSlackIdDto,
   ToggleSubmissionsFrozenDto,
   UpdateUserRoleDto,
@@ -224,7 +226,7 @@ export class AdminController {
   @Delete('projects/:id')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin)
-  @ApiOkResponse({ type: DeleteProjectResponse })
+  @ApiOkResponse({ type: AdminDeleteProjectResponse })
   async deleteProject(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.deleteProject(id);
   }
@@ -367,7 +369,7 @@ export class AdminController {
   @Get('events/:slug/stats')
   @UseGuards(RolesGuard)
   @Roles(Role.Admin, Role.EventViewer)
-  @ApiOkResponse({ type: EventStatsResponse })
+  @ApiOkResponse({ type: AdminEventStatsResponse })
   async getEventStats(@Param('slug') slug: string) {
     const stats = await this.adminService.getEventStats(slug);
     if (!stats) throw new NotFoundException('Event not found');
@@ -475,6 +477,17 @@ export class AdminController {
     @Body() body: ToggleSusFlagDto,
   ) {
     return this.adminService.toggleUserSusFlag(id, body.isSus);
+  }
+
+  @Put('users/:id/ban')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminUserBanResponse })
+  async setUserBan(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: ToggleBanDto,
+  ) {
+    return this.adminService.setUserBan(id, body.banned, body.reason);
   }
 
   @Put('users/:id/slack')

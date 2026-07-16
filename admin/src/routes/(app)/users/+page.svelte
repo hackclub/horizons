@@ -323,6 +323,31 @@
         }
     }
 
+    // Banning blocks all authenticated requests for the user and kills their
+    // active sessions server-side. Banning collects a reason; unbanning clears
+    // it. Not optimistic — we wait for the server so the reason round-trips.
+    async function toggleBan(userId: number, currentValue: boolean) {
+        let reason: string | null = null;
+        if (!currentValue) {
+            reason = window.prompt('Reason for banning this user? (optional)') ?? null;
+        }
+        try {
+            const { data, error } = await api.PUT('/api/admin/users/{id}/ban', {
+                params: { path: { id: userId } },
+                body: { banned: !currentValue, reason }
+            } as any);
+            if (error) throw error;
+            if (data)
+                setUserFlag(userId, {
+                    banned: data.banned,
+                    bannedReason: data.bannedReason,
+                    bannedAt: data.bannedAt
+                });
+        } catch (err) {
+            console.error('Failed to toggle ban:', err);
+        }
+    }
+
     onMount(() => {
         // Deep-link support: ?q= seeds the search (e.g. the project detail
         // page links here with the owner's email). Applied before the initial
@@ -613,7 +638,27 @@
                                     ? 'Sus Flagged'
                                     : 'Flag as Sus'}
                             </Button>
+                            <Button
+                                class={`px-3 py-2 text-sm transition-colors ${
+                                    user.banned
+                                        ? 'bg-red-700/25 border-red-600 text-red-800 dark:text-red-200 hover:bg-red-700/35'
+                                        : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
+                                }`}
+                                onclick={() =>
+                                    toggleBan(user.userId, user.banned)}
+                            >
+                                {user.banned ? 'Banned — Unban' : 'Ban User'}
+                            </Button>
                         </div>
+
+                        {#if user.banned}
+                            <div class="rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+                                <span class="font-semibold">Banned</span>
+                                {#if user.bannedReason}
+                                    — {user.bannedReason}
+                                {/if}
+                            </div>
+                        {/if}
 
                         {#if isSuperadmin}
                             <div class="rounded-xl border border-purple-500/40 bg-purple-500/5 p-4 space-y-3">

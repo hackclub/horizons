@@ -141,6 +141,7 @@ Admins have **full access** to all data.
 | User birthdays | Raw dates, not just age |
 | User addresses | Complete: line 1, line 2, city, state, country, zip |
 | Fraud signals | `User.isFraud`, `User.isSus` (manual admin flags) and `Project.joeFraudPassed` / `joeTrustScore` / `joeJustification` (Joe-driven) |
+| Ban state | `User.banned`, `User.bannedReason`, `User.bannedAt` |
 | Admin comments | Read/write on users and projects |
 | Submission audit logs | Full history: who reviewed, what changed, before/after values |
 | Hackatime access tokens | Stored but not returned in API responses |
@@ -156,6 +157,7 @@ const projectAdminInclude = {
       addressLine1, addressLine2, city, state, country, zipCode,
       hackatimeAccount,
       isFraud, isSus, // user-level manual flags
+      banned, bannedReason, bannedAt, // ban state (admin-only)
       createdAt, updatedAt,
     },
   },
@@ -169,6 +171,7 @@ const projectAdminInclude = {
 |------|-------|
 | Fraud flag on users | `PUT /api/admin/users/:id/fraud-flag` (project-level fraud is read-only, driven by Joe) |
 | Sus flag on users | `PUT /api/admin/users/:id/sus-flag` |
+| Ban users | `PUT /api/admin/users/:id/ban` — sets `banned` (+ admin-only `bannedReason`); enforced in `AuthGuard`. `banned`/`bannedReason` are admin-only and never returned to users or reviewers |
 | Slack ID on users | `PUT /api/admin/users/:id/slack` |
 | Unlock projects | `PUT /api/admin/projects/:id/unlock` |
 | Delete projects | `DELETE /api/admin/projects/:id` |

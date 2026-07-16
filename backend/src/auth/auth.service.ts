@@ -290,6 +290,10 @@ export class AuthService {
       utmSource,
     );
 
+    if (user.banned) {
+      throw new ForbiddenException('Your account has been banned.');
+    }
+
     const yswsExemptRoles: string[] = [
       Role.Reviewer,
       Role.Admin,
