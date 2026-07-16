@@ -24,6 +24,9 @@
 	import yaml from 'js-yaml';
 	import type { EventConfig } from '$lib/events/types';
 	import eventsRaw from '$lib/events/events.yaml?raw';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	const phrases = [
 		"IT'S! TIME! TO! COOK!",
@@ -36,8 +39,22 @@
 	// Post-onboarding popovers
 	let postOnboarding = $state(page.url.searchParams.has('post-onboarding'));
 
-	// Temporarily hide the community events card; flip to false to restore it.
-	const HIDE_COMMUNITY_EVENTS = false;
+	// Manual override to force-hide the community events column. Normally the
+	// column auto-hides only when there are no upcoming events (see `hideCE`).
+	const FORCE_HIDE_CE = false;
+
+	// Events are prefetched by the load function so the column layout can be
+	// decided once, at mount — this keeps all the column-index constants below
+	// fixed for the component's lifetime (no runtime reflow) and avoids a
+	// flash-then-collapse. `null` means the prefetch failed: treat that as
+	// "has events" so the column stays and the card fetches for itself.
+	const nowAtMount = new Date();
+	const hasUpcomingCommunityEvents =
+		data.communityEvents == null ||
+		data.communityEvents.some((e) => new Date(e.end) >= nowAtMount);
+
+	// Hide the whole community-events column when there are no upcoming events.
+	const hideCE = FORCE_HIDE_CE || !hasUpcomingCommunityEvents;
 
 	// CE and the streaks leaderboard alternate sides — deterministic, not
 	// random: each /app mount flips the previous mount's choice via
@@ -55,18 +72,20 @@
 			return 'left';
 		}
 	}
-	const leaderboardOnRight = !HIDE_COMMUNITY_EVENTS && pickCardOrder() === 'right';
+	const leaderboardOnRight = !hideCE && pickCardOrder() === 'right';
 
 	// Column index constants — when CE is hidden, all columns to its right shift
 	// left by 1. When CE is shown, the leaderboard sits either to the left of CE
 	// (col 0) or to the right (col 1) depending on the per-session pick.
-	const COL_LEADERBOARD = HIDE_COMMUNITY_EVENTS ? 0 : leaderboardOnRight ? 1 : 0;
-	const COL_CE = leaderboardOnRight ? 0 : 1;
-	const COL_LEFT = HIDE_COMMUNITY_EVENTS ? 1 : 2;
-	const COL_PINNED_EVENT = HIDE_COMMUNITY_EVENTS ? 2 : 3;
-	const COL_MIDDLE = HIDE_COMMUNITY_EVENTS ? 3 : 4;
-	const COL_FAQ = HIDE_COMMUNITY_EVENTS ? 4 : 5;
-	const COL_ADMIN = HIDE_COMMUNITY_EVENTS ? 5 : 6;
+	const COL_LEADERBOARD = hideCE ? 0 : leaderboardOnRight ? 1 : 0;
+	// -1 when hidden: the CE column isn't rendered, so this sentinel keeps it from
+	// colliding with COL_LEFT (also 1 when hidden) in the few script-side checks.
+	const COL_CE = hideCE ? -1 : leaderboardOnRight ? 0 : 1;
+	const COL_LEFT = hideCE ? 1 : 2;
+	const COL_PINNED_EVENT = hideCE ? 2 : 3;
+	const COL_MIDDLE = hideCE ? 3 : 4;
+	const COL_FAQ = hideCE ? 4 : 5;
+	const COL_ADMIN = hideCE ? 5 : 6;
 
 	// Pre-compute the cards-row's resting horizontal offset for the default
 	// selected column (col 1) so the very first paint is already shifted —
@@ -75,7 +94,7 @@
 	const COL_WIDTH = 471;
 	const COL_GAP = 24;
 	const PEEK_AMOUNT = 60;
-	const initialCardsRowTx = HIDE_COMMUNITY_EVENTS
+	const initialCardsRowTx = hideCE
 		? 0
 		: -(COL_WIDTH + COL_GAP - PEEK_AMOUNT);
 
@@ -87,7 +106,7 @@
 		[`${COL_MIDDLE}-1`]: 'Spend your approved hours on rewards!',
 		[`${COL_FAQ}-0`]: 'Got questions? Find answers here.',
 	};
-	if (!HIDE_COMMUNITY_EVENTS) {
+	if (!hideCE) {
 		cardDescriptions[`${COL_CE}-0`] = 'See what\'s coming up in the community!';
 	}
 
@@ -224,6 +243,12 @@
 	// Live community events take precedence over huddles, and the huddle card stays
 	// hidden during the post-onboarding tour to avoid drowning out the highlight popovers.
 	const showHuddleCard = $derived(effectiveHuddleActive && !ceHasLiveEvent && !postOnboarding);
+
+	// When the community-events column is hidden (no upcoming events) the in-column
+	// huddle card has nowhere to live, so surface an active huddle as a compact
+	// green tag in the page header instead.
+	const showHuddleTag = $derived(hideCE && effectiveHuddleActive && !postOnboarding);
+	const HUDDLE_HREF = `https://hackclub.enterprise.slack.com/archives/${HORIZONS_SLACK_CHANNEL}`;
 
 	// Sample community events for debugging the card variants. Returns null when no
 	// override is selected — the card falls back to live data.
@@ -409,7 +434,7 @@
 		}
 	});
 
-	const hrefs: string[][] = HIDE_COMMUNITY_EVENTS
+	const hrefs: string[][] = hideCE
 		? [
 			[''],
 			['/app/projects?back', 'https://guides.horizons.hackclub.com'],
@@ -537,7 +562,7 @@
 	const nav = createGridNav({
 		columns: () => {
 			// First slot is the streaks leaderboard (passive display column).
-			const base = HIDE_COMMUNITY_EVENTS ? [1, 2, 1, 2, 1] : [1, 1, 2, 1, 2, 1];
+			const base = hideCE ? [1, 2, 1, 2, 1] : [1, 1, 2, 1, 2, 1];
 			return isAdmin ? [...base, 1] : base;
 		},
 		onSelect: (col, row) => {
@@ -546,7 +571,7 @@
 			} else if (col === COL_LEADERBOARD) {
 				// Passive display — no action on Enter.
 				return;
-			} else if (!HIDE_COMMUNITY_EVENTS && col === COL_CE && ceFocusedEventId) {
+			} else if (!hideCE && col === COL_CE && ceFocusedEventId) {
 				navigateTo(`/app/community?event=${encodeURIComponent(ceFocusedEventId)}`);
 			} else {
 				const href = hrefs[col][row];
@@ -564,7 +589,7 @@
 	// "CE spot". Depending on the per-session swap, this is either CE or the
 	// leaderboard, with the col-0 card peeking from behind it on the left.
 	// When CE is hidden entirely, fall back to the left column's first row.
-	nav.col = HIDE_COMMUNITY_EVENTS ? COL_LEFT : 1;
+	nav.col = hideCE ? COL_LEFT : 1;
 
 	// Refs for scroll targets (index = nav column)
 	let scrollContainer = $state<HTMLElement | null>(null);
@@ -607,7 +632,7 @@
 			// Col 1 is the "CE spot" — sit it near the left edge with a sliver
 			// of the col-0 card peeking from behind it. Used when CE is shown
 			// (col 1 is either CE or the leaderboard, depending on the swap).
-			const isCeSpot = !HIDE_COMMUNITY_EVENTS && nav.col === 1;
+			const isCeSpot = !hideCE && nav.col === 1;
 			const colCount = isAdmin ? COL_ADMIN + 1 : COL_FAQ + 1;
 			const isLast = nav.col === colCount - 1;
 
@@ -677,6 +702,17 @@
 			<p class="font-cook text-[18px] font-semibold text-black m-0 whitespace-nowrap">
 				<TextWave text={headerText} disabled={disableAnimations} />
 			</p>
+			{#if showHuddleTag}
+				<a
+					class="huddle-tag ml-auto shrink-0"
+					href={HUDDLE_HREF}
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					<span class="huddle-tag-dot"></span>
+					<span class="font-cook whitespace-nowrap">HUDDLE IS LIVE</span>
+				</a>
+			{/if}
 		</div>
 
 		<!-- Scrollable Content -->
@@ -703,6 +739,7 @@
 								usingKeyboard={nav.usingKeyboard}
 								postOnboarding={postOnboarding}
 								description={cardDescriptions[`${COL_CE}-0`]}
+								initialEvents={data.communityEvents}
 								debugEvents={debugCommunityEvents}
 								onmouseenter={() => { handleCardHover(COL_CE, 0); huddleNavSelected = false; }}
 								onclick={(e) => { e.preventDefault(); navigateTo('/app/community'); }}
@@ -721,7 +758,7 @@
 					</div>
 				{/snippet}
 
-				{#if HIDE_COMMUNITY_EVENTS}
+				{#if hideCE}
 					{@render leaderboardCol()}
 				{:else if leaderboardOnRight}
 					{@render ceCol()}
@@ -1059,6 +1096,42 @@
 		/* Extra bottom gap above the persistent AppNav (the bar's own space is
 		   reserved by the layout's .page-transition). */
 		padding: 32px 40px 48px;
+	}
+
+	/* Compact "huddle is live" tag shown in the header when the community-events
+	   column (which normally hosts the huddle card) is hidden. */
+	.huddle-tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 14px;
+		background-color: #2fbf5b;
+		color: black;
+		font-size: 15px;
+		border: 3px solid black;
+		border-radius: 999px;
+		box-shadow: 3px 3px 0 0 black;
+		text-decoration: none;
+		transition: transform var(--juice-duration) var(--juice-easing);
+	}
+
+	.huddle-tag:hover {
+		transform: scale(var(--juice-scale));
+	}
+
+	.huddle-tag-dot {
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background-color: #ffffff;
+		border: 1.5px solid black;
+		flex-shrink: 0;
+		animation: huddle-tag-pulse 1.4s ease-in-out infinite;
+	}
+
+	@keyframes huddle-tag-pulse {
+		0%, 100% { opacity: 1; transform: scale(1); }
+		50% { opacity: 0.4; transform: scale(0.75); }
 	}
 
 	/* Scrollable cards area — only horizontal scroll, fills remaining vertical space */
