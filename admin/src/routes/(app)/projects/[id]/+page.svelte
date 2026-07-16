@@ -1101,7 +1101,7 @@
                     {#if editing === 'hours'}
                         <div>
                             <label class={label} for="ih-hours">Approved Hours (latest submission)</label>
-                            <input id="ih-hours" class={input} type="number" min="0" step="0.1" bind:value={latestHoursText} />
+                            <input id="ih-hours" class={input} type="text" inputmode="decimal" bind:value={latestHoursText} />
                         </div>
                         <div class="flex items-center gap-1.5">
                             <button class={saveBtnSm} onclick={saveLatestHours} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
@@ -1554,7 +1554,7 @@
                                         </div>
                                         <div>
                                             <label class={label} for="sn-hours">Hackatime hours at submit</label>
-                                            <input id="sn-hours" class={input} type="number" min="0" step="0.1" bind:value={snapHoursText} />
+                                            <input id="sn-hours" class={input} type="text" inputmode="decimal" bind:value={snapHoursText} />
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-1.5">
@@ -1651,7 +1651,7 @@
                                             </div>
                                             <div>
                                                 <label class={label} for="vd-hours">Approved Hours</label>
-                                                <input id="vd-hours" class={input} type="number" min="0" step="0.1" bind:value={verdictHoursText} placeholder="Blank to keep current" />
+                                                <input id="vd-hours" class={input} type="text" inputmode="decimal" bind:value={verdictHoursText} placeholder="Blank to keep current" />
                                             </div>
                                         </div>
                                         <div>
