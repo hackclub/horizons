@@ -6,6 +6,7 @@
 	import { onMount } from "svelte";
 	import { createListNav } from "$lib/nav/wasd.svelte";
 	import { api } from "$lib/api";
+	import { pollWhileVisible } from "$lib/perf";
 
 	let entered = $state(false);
 	let navigating = $state(false);
@@ -166,10 +167,9 @@
 			})
 			.catch(() => {});
 
-		const interval = setInterval(() => {
-			now = new Date();
-		}, 60000);
-		return () => clearInterval(interval);
+		// Live/upcoming status clock — pauses while the tab is hidden and slows
+		// under the performance modes.
+		return pollWhileVisible(() => { now = new Date(); }, 60000);
 	});
 
 	let initialEventApplied = false;
@@ -576,6 +576,15 @@
 			animation: none;
 			background-color: #ffa936;
 		}
+	}
+
+	/* High Performance Mode stops always-running decorative loops. */
+	:global(html.perf-high) .action-btn {
+		animation: none;
+		background-color: #ffa936;
+	}
+	:global(html.perf-high) .live-dot {
+		animation: none;
 	}
 
 	/* Live badge */

@@ -4,6 +4,7 @@
 	import clickSvg from '$lib/assets/prompts/click.svg';
 	import { parseNavKey } from '$lib/nav/wasd.svelte';
 	import { api } from '$lib/api';
+	import { pollWhileVisible } from '$lib/perf';
 	import type { components } from '$lib/api';
 
 	interface Props {
@@ -155,8 +156,9 @@
 				.catch(() => {});
 		}
 
-		const interval = setInterval(() => { now = new Date(); }, 60000);
-		return () => clearInterval(interval);
+		// Live/upcoming status clock — pauses while the tab is hidden and slows
+		// under the performance modes.
+		return pollWhileVisible(() => { now = new Date(); }, 60000);
 	});
 </script>
 

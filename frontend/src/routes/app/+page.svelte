@@ -18,6 +18,9 @@
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
+	import { reduceAnimations, suppressAmbientMotion, ultraPerf } from '$lib/store/settingsCache';
+	import { pollWhileVisible } from '$lib/perf';
+	import { get } from 'svelte/store';
 	import { hasRole } from '$lib/roles';
 	import { getCachedPinnedEvent, setCachedPinnedEvent } from '$lib/store/pinnedEventCache';
 	import { homeExiting } from '$lib/store/homeExiting';
@@ -34,8 +37,11 @@
 	];
 	const headerText = phrases[Math.floor(Math.random() * phrases.length)];
 
-	let disableAnimations = false;
-	let hideCirc = $state(page.url.searchParams.has('noanimate') || disableAnimations);
+	// The header wave loops forever, so it's also suppressed by the performance modes.
+	const disableAnimations = $derived($suppressAmbientMotion);
+	let hideCirc = $state(
+		page.url.searchParams.has('noanimate') || get(reduceAnimations) || get(ultraPerf),
+	);
 
 	// Post-onboarding popovers
 	let postOnboarding = $state(page.url.searchParams.has('post-onboarding'));
@@ -392,8 +398,8 @@
 		// Cleared once home is back so the tag can fly in again next visit.
 		homeExiting.set(false);
 		fetchHuddleStatus();
-		const huddleInterval = setInterval(fetchHuddleStatus, 60_000);
-		return () => clearInterval(huddleInterval);
+		// Visibility-aware and stretched by the performance modes (60s → 2m/4m).
+		return pollWhileVisible(fetchHuddleStatus, 60_000);
 	});
 
 	onMount(async () => {

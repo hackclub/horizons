@@ -127,6 +127,11 @@
 		.puzzle-icon { animation: none; }
 	}
 
+	/* High Performance Mode stops always-running decorative loops. */
+	:global(html.perf-high) .puzzle-icon {
+		animation: none;
+	}
+
 	.card-text {
 		position: relative;
 		display: flex;

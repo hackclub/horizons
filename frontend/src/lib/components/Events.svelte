@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { pollWhileVisible } from '$lib/perf';
 
 	interface Props {
 		markdown?: string;
@@ -215,8 +216,9 @@
 	}
 
 	onMount(() => {
-		const interval = setInterval(() => { now = new Date(); }, 60000);
-		return () => clearInterval(interval);
+		// Ongoing/upcoming status clock — pauses while the tab is hidden and
+		// slows under the performance modes.
+		return pollWhileVisible(() => { now = new Date(); }, 60000);
 	});
 </script>
 
@@ -408,6 +410,11 @@
 	@keyframes pulse {
 		0%, 100% { opacity: 1; transform: scale(1); }
 		50%       { opacity: 0.4; transform: scale(0.7); }
+	}
+
+	/* High Performance Mode stops always-running decorative loops. */
+	:global(html.perf-high) .live-dot {
+		animation: none;
 	}
 
 	@keyframes fade-in {

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { EventConfig } from '$lib/events/types';
+	import { ultraPerf } from '$lib/store/settingsCache';
+	import { pollWhileVisible } from '$lib/perf';
 
 	interface Props {
 		slug: string;
@@ -102,10 +104,13 @@
 	);
 
 	let now = $state(Date.now());
+	// Pauses while the tab is hidden (catch-up on return). Ultra Performance
+	// drops the tick to minute granularity — seconds are hidden from the text
+	// below so the countdown never looks stuck.
 	$effect(() => {
 		if (deadlineMs === null) return;
-		const id = setInterval(() => (now = Date.now()), 1000);
-		return () => clearInterval(id);
+		const tickMs = $ultraPerf ? 60_000 : 1000;
+		return pollWhileVisible(() => (now = Date.now()), tickMs, { scaled: false });
 	});
 
 	const pad = (n: number) => String(n).padStart(2, '0');
@@ -118,7 +123,8 @@
 		const hours = Math.floor((totalSec % 86400) / 3600);
 		const minutes = Math.floor((totalSec % 3600) / 60);
 		const seconds = totalSec % 60;
-		return `Announcement in ${pad(days)}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+		const base = `Announcement in ${pad(days)}:${pad(hours)}:${pad(minutes)}`;
+		return $ultraPerf ? base : `${base}:${pad(seconds)}`;
 	});
 </script>
 
@@ -330,6 +336,12 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.card-bg-img { animation: none; }
+	}
+
+	/* High Performance Mode stops always-running decorative loops. */
+	:global(html.perf-high) .card-bg-img {
+		animation: none;
+		will-change: auto;
 	}
 
 	.card-bg-gradient {

@@ -38,11 +38,15 @@ $effect.root(() => {
 		}
 	});
 	if (typeof window !== 'undefined') {
-		window.addEventListener('mousemove', () => {
-			if (navMode === 'keyboard') {
-				navMode = 'mouse';
-			}
-		});
+		window.addEventListener(
+			'mousemove',
+			() => {
+				if (navMode === 'keyboard') {
+					navMode = 'mouse';
+				}
+			},
+			{ passive: true },
+		);
 	}
 });
 

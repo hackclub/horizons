@@ -753,6 +753,16 @@
 		.hero-img { animation: none; }
 	}
 
+	/* High Performance Mode stops always-running decorative loops. */
+	:global(html.perf-high) .hero-img,
+	:global(html.perf-high) .event-card-img {
+		animation: none;
+		will-change: auto;
+	}
+	:global(html.perf-high) .nav-item.pulsing:not(.shaking) {
+		animation: none;
+	}
+
 	.content-grid {
 		position: absolute;
 		inset: 0;

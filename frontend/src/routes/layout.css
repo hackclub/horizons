@@ -50,3 +50,17 @@
 .font-cook {
 	font-synthesis: none;
 }
+
+/* Ultra Performance Mode (settings → "Enable Ultra Performance Mode"): zero
+   out every CSS animation and transition so the compositor idles. The class is
+   applied to <html> by the /app layout. Durations are near-zero rather than
+   `animation: none` so animationend/transitionend handlers still fire and
+   `both`-filled keyframes land on their end state. */
+html.perf-ultra *,
+html.perf-ultra *::before,
+html.perf-ultra *::after {
+	animation-duration: 0.01ms !important;
+	animation-iteration-count: 1 !important;
+	transition-duration: 0.01ms !important;
+	scroll-behavior: auto !important;
+}

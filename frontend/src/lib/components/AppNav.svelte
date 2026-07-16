@@ -5,6 +5,7 @@
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
 	import { announcements, unreadCount } from '$lib/store/announcementsCache';
+	import { settings, settingsOpen, suppressAmbientMotion } from '$lib/store/settingsCache';
 	import { music, playerOpen } from '$lib/store/musicCache';
 	import PulseDot from './announcements/PulseDot.svelte';
 	import type { InputPromptType } from '$lib/input';
@@ -100,11 +101,19 @@
 
 	onMount(() => {
 		userStore.load();
-		const onMove = () => markMouse();
+		// mousemove fires per pixel; marking more than ~6×/s only re-arms the
+		// same 1.2s decay timer, so throttle the timeout churn away.
+		let lastMark = 0;
+		const onMove = () => {
+			const now = performance.now();
+			if (now - lastMark < 150) return;
+			lastMark = now;
+			markMouse();
+		};
 		const onDown = () => markMouse();
 		window.addEventListener('keydown', handleKeydown);
-		window.addEventListener('mousemove', onMove);
-		window.addEventListener('mousedown', onDown);
+		window.addEventListener('mousemove', onMove, { passive: true });
+		window.addEventListener('mousedown', onDown, { passive: true });
 		return () => {
 			window.removeEventListener('keydown', handleKeydown);
 			window.removeEventListener('mousemove', onMove);
@@ -228,7 +237,9 @@
 
 			{#if referralCode && !onReferPage}
 				<button
-					class="flex items-center justify-center rounded-sm border border-[#f3e8d8] px-2.5 py-1 font-bricolage text-sm font-bold text-black whitespace-nowrap cursor-pointer animate-refer-pulse transition-transform hover:scale-[1.04] outline-none"
+					class="flex items-center justify-center rounded-sm border border-[#f3e8d8] px-2.5 py-1 font-bricolage text-sm font-bold text-black whitespace-nowrap cursor-pointer transition-transform hover:scale-[1.04] outline-none {$suppressAmbientMotion
+						? 'bg-[#fdd9a8]'
+						: 'animate-refer-pulse'}"
 					onclick={handleRefer}
 				>
 					Refer A Friend
@@ -279,8 +290,29 @@
 				/>
 			</svg>
 			{#if $unreadCount > 0}
-				<PulseDot size={8} class="absolute -right-1 -top-1" />
+				<PulseDot size={8} class="absolute -right-1 -top-1" animate={!$suppressAmbientMotion} />
 			{/if}
+		</button>
+
+		<button
+			class="flex items-center transition-colors cursor-pointer outline-none {$settingsOpen ? 'text-[#ffa936]' : 'text-white/80 hover:text-white'}"
+			onclick={() => settings.toggle()}
+			aria-label="Settings"
+			aria-pressed={$settingsOpen}
+		>
+			<svg
+				class="size-5"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+			>
+				<circle cx="12" cy="12" r="3" />
+				<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+			</svg>
 		</button>
 
 		<button

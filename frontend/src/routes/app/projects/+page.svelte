@@ -316,4 +316,9 @@
 		0%, 100% { opacity: 1; }
 		50%      { opacity: 0.4; }
 	}
+
+	/* High Performance Mode stops always-running decorative loops. */
+	:global(html.perf-high) .link-hackatime-blink {
+		animation: none;
+	}
 </style>
