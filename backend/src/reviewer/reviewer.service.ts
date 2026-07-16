@@ -6,6 +6,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { Role } from '../auth/enums/role.enum';
+import { hasRole } from '../auth/roles.util';
 import {
   ReviewSubmissionDto,
   QuickApproveDto,
@@ -103,10 +105,10 @@ export class ReviewerService {
    * Get the review queue: all pending submissions with scoped project/user data.
    * Returns minimal info for the queue list, not full details.
    */
-  async getReviewQueue(viewerId?: number, viewerRole?: string) {
+  async getReviewQueue(viewerId?: number, viewerRoles?: string[]) {
     // Joe fraud-review project id is an admin-only lookup handle — plain
     // reviewers never see it, so a pasted Joe link resolves only for admins.
-    const isAdmin = viewerRole === 'admin' || viewerRole === 'superadmin';
+    const isAdmin = hasRole(viewerRoles, Role.Admin);
     // Fraud sync runs in the background (5-minute @Interval) and is also
     // triggered by the gallery's "Refresh Queue" button via
     // /api/reviewer/fraud-review/refresh. Don't block the queue load on it —
@@ -611,7 +613,7 @@ export class ReviewerService {
     submissionId: number,
     dto: ReviewSubmissionDto,
     reviewerId: number,
-    reviewerRole?: string,
+    reviewerRoles?: string[],
   ) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
@@ -631,7 +633,7 @@ export class ReviewerService {
     if (
       dto.approvalStatus !== undefined &&
       submission.sentToAdminAt &&
-      reviewerRole === 'reviewer'
+      !hasRole(reviewerRoles, Role.Admin)
     ) {
       throw new ForbiddenException(
         'This submission is in second review (sent to admin) — only admins can submit a verdict on it',
@@ -646,7 +648,7 @@ export class ReviewerService {
       submission.approvalStatus !== 'pending' &&
       dto.approvalStatus !== submission.approvalStatus &&
       (dto.approvalStatus === 'approved' || dto.approvalStatus === 'rejected');
-    if (isStatusFlip && reviewerRole !== 'superadmin') {
+    if (isStatusFlip && !hasRole(reviewerRoles, Role.Superadmin)) {
       throw new ForbiddenException(
         'Only superadmins can flip an already-finalized submission between approved and rejected',
       );
@@ -817,7 +819,7 @@ export class ReviewerService {
     submissionId: number,
     reviewerId: number,
     dto: QuickApproveDto,
-    reviewerRole?: string,
+    reviewerRoles?: string[],
   ) {
     const submission = await this.prisma.submission.findUnique({
       where: { submissionId },
@@ -828,7 +830,7 @@ export class ReviewerService {
     }
 
     // Same gate as reviewSubmission — escalated submissions are admin-only.
-    if (submission.sentToAdminAt && reviewerRole === 'reviewer') {
+    if (submission.sentToAdminAt && !hasRole(reviewerRoles, Role.Admin)) {
       throw new ForbiddenException(
         'This submission is in second review (sent to admin) — only admins can submit a verdict on it',
       );
@@ -1311,9 +1313,9 @@ export class ReviewerService {
    * to a real submission instead of silently redirecting.
    * Frontend splits this into "mine" vs "all" using currentReviewerId.
    */
-  async getPastReviews(currentReviewerId: number, viewerRole?: string) {
+  async getPastReviews(currentReviewerId: number, viewerRoles?: string[]) {
     // Joe project id is an admin-only lookup handle (see getReviewQueue).
-    const isAdmin = viewerRole === 'admin' || viewerRole === 'superadmin';
+    const isAdmin = hasRole(viewerRoles, Role.Admin);
     const submissions = await this.prisma.submission.findMany({
       where: {
         reviewedBy: { not: null },
@@ -1396,9 +1398,9 @@ export class ReviewerService {
    * reviewers see the truth here so they can search for fraud-killed
    * projects without combing the regular past-reviews list.
    */
-  async getFraudRejectedSubmissions(viewerRole?: string) {
+  async getFraudRejectedSubmissions(viewerRoles?: string[]) {
     // Joe project id is an admin-only lookup handle (see getReviewQueue).
-    const isAdmin = viewerRole === 'admin' || viewerRole === 'superadmin';
+    const isAdmin = hasRole(viewerRoles, Role.Admin);
     const submissions = await this.prisma.submission.findMany({
       where: { silentReject: true },
       orderBy: [{ finalizedAt: 'desc' }, { createdAt: 'desc' }],

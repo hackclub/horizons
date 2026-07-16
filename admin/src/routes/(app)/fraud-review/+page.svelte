@@ -3,6 +3,7 @@
 	import { base } from '$app/paths';
 	import { api, type components } from '$lib/api';
 	import { ensureUser } from '$lib/auth';
+	import { hasRole } from '$lib/roles';
 	import { getEvents, getPriorityQueue } from '$lib/reviewCache';
 	import { Skeleton, Highlight } from '$lib/components';
 	import { matchesScopedQuery } from '$lib/search';
@@ -198,7 +199,7 @@
 
 	onMount(async () => {
 		const me = await ensureUser();
-		if (me && me.role !== 'admin' && me.role !== 'superadmin') {
+		if (me && !hasRole(me.roles, 'admin')) {
 			window.location.href = `${base}/review`;
 			return;
 		}

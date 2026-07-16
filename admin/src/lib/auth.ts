@@ -7,7 +7,7 @@ import { api } from '$lib/api';
 // admin app actually reads) while preserving access to the rest.
 export interface CurrentUser {
 	email: string;
-	role: string;
+	roles: string[];
 	name?: string;
 	[key: string]: unknown;
 }

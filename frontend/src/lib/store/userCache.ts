@@ -7,7 +7,7 @@ const STREAK_REFRESH_COOLDOWN_MS = 30 * 60 * 1000;
 interface UserCache {
 	userName: string;
 	referralCode: string;
-	role: string;
+	roles: string[];
 	currentStreak: number;
 	longestStreak: number;
 	loaded: boolean;
@@ -16,7 +16,7 @@ interface UserCache {
 const store = writable<UserCache>({
 	userName: '',
 	referralCode: '',
-	role: '',
+	roles: [],
 	currentStreak: 0,
 	longestStreak: 0,
 	loaded: false,
@@ -45,7 +45,7 @@ export const userStore = {
 				store.set({
 					userName: slackDisplayName || 'you',
 					referralCode: referralRes.data?.referralCode ?? '',
-					role: (userRes.data?.role as string) ?? '',
+					roles: (userRes.data?.roles as string[]) ?? [],
 					currentStreak: (userRes.data?.currentStreak as number) ?? 0,
 					longestStreak: (userRes.data?.longestStreak as number) ?? 0,
 					loaded: true,

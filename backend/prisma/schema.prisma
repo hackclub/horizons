@@ -20,7 +20,7 @@ model User {
   slackUsername      String?   @map("slack_username")
   verificationStatus String?   @map("verification_status")
 
-  role String @default("user")
+  roles String[] @default(["user"])
 
   onboardComplete Boolean   @default(false) @map("onboard_complete")
   onboardedAt     DateTime? @map("onboarded_at")

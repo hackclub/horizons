@@ -76,21 +76,21 @@ export class ReviewerController {
   @Get('past-reviews')
   @ApiOkResponse({ type: PastReviewsResponse })
   async getPastReviews(@Req() req: Request) {
-    return this.reviewerService.getPastReviews(req.user.userId, req.user.role);
+    return this.reviewerService.getPastReviews(req.user.userId, req.user.roles);
   }
 
   /** Submissions silently rejected by fraud — surfaced for reviewer search only */
   @Get('fraud-rejected')
   @ApiOkResponse({ type: [FraudRejectedEntry] })
   async getFraudRejected(@Req() req: Request) {
-    return this.reviewerService.getFraudRejectedSubmissions(req.user.role);
+    return this.reviewerService.getFraudRejectedSubmissions(req.user.roles);
   }
 
   /** Get the pending submissions queue with scoped data */
   @Get('queue')
   @ApiOkResponse({ type: [QueueItemResponse] })
   async getQueue(@Req() req: Request) {
-    return this.reviewerService.getReviewQueue(req.user.userId, req.user.role);
+    return this.reviewerService.getReviewQueue(req.user.userId, req.user.roles);
   }
 
   /** Get full scoped detail for a single submission */
@@ -160,7 +160,7 @@ export class ReviewerController {
       id,
       dto,
       req.user.userId,
-      req.user.role,
+      req.user.roles,
     );
   }
 
@@ -187,7 +187,7 @@ export class ReviewerController {
       id,
       req.user.userId,
       dto,
-      req.user.role,
+      req.user.roles,
     );
   }
 

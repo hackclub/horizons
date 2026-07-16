@@ -18,6 +18,7 @@
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
+	import { hasRole } from '$lib/roles';
 	import { getCachedPinnedEvent, setCachedPinnedEvent } from '$lib/store/pinnedEventCache';
 	import { homeExiting } from '$lib/store/homeExiting';
 	import { onMount } from 'svelte';
@@ -113,10 +114,7 @@
 	let currentStreak = $derived($userStore.currentStreak);
 	let longestStreak = $derived($userStore.longestStreak);
 	let isAdmin = $derived(
-		$userStore.role === 'admin' ||
-			$userStore.role === 'superadmin' ||
-			$userStore.role === 'reviewer' ||
-			$userStore.role === 'event_viewer',
+		hasRole($userStore.roles, 'admin', 'reviewer', 'event_viewer'),
 	);
 	const eventsMap = yaml.load(eventsRaw) as Record<string, EventConfig>;
 	let pinnedEventConfig = $state<EventConfig>(eventsMap['nexus']);

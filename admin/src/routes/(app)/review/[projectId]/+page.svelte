@@ -23,6 +23,7 @@
 	import { createClaimManager } from '../claimManager';
 	import { api, type components } from '$lib/api';
 	import { ensureUser } from '$lib/auth';
+	import { hasRole } from '$lib/roles';
 	import { getQueue, getPastReviews, getFraudRejected, invalidateReviewData } from '$lib/reviewCache';
 	import { get } from 'svelte/store';
 	import { afterVerdict } from '$lib/reviewSettingsStore';
@@ -39,9 +40,9 @@
 
 	// Current user role — gates superadmin-only verdict overrides on finalized
 	// submissions (approved↔rejected flips).
-	let me = $state<{ role: string } | null>(null);
-	let isSuperadmin = $derived(me?.role === 'superadmin');
-	let isAdmin = $derived(me?.role === 'admin' || me?.role === 'superadmin');
+	let me = $state<{ roles: string[] } | null>(null);
+	let isSuperadmin = $derived(!!me?.roles?.includes('superadmin'));
+	let isAdmin = $derived(hasRole(me?.roles, 'admin'));
 
 	// Queue state (for next/prev)
 	let queue = $state<QueueItem[]>([]);
@@ -256,7 +257,7 @@
 
 		// Role comes from the shared store — never blocks the submission.
 		void ensureUser().then((meData) => {
-			if (meData) me = { role: meData.role };
+			if (meData) me = { roles: meData.roles };
 		});
 
 		// Queue, past reviews, and fraud-rejected only power next/prev

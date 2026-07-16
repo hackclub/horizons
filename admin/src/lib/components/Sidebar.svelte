@@ -4,6 +4,7 @@
 	import { theme, toggleTheme } from '$lib/themeStore';
 	import { api } from '$lib/api';
 	import { clearUser } from '$lib/auth';
+	import { hasRole } from '$lib/roles';
 	import {
 		Home,
 		PlaySquare,
@@ -34,12 +35,19 @@
 	};
 
 	type Props = {
-		user?: { email?: string; name?: string; role?: string } | null;
+		user?: { email?: string; name?: string; roles?: string[] } | null;
 		collapsed?: boolean;
 		class?: string;
 	};
 
 	let { user = null, collapsed = $bindable(false), class: className = '' }: Props = $props();
+
+	// Restrict the menu only when event_viewer is the user's *sole* elevated
+	// role — an event_viewer who is also an admin/reviewer sees the full menu.
+	const isEventViewerOnly = $derived(
+		!!user?.roles?.includes('event_viewer') && !hasRole(user?.roles, 'admin', 'reviewer'),
+	);
+	const isSuperadmin = $derived(!!user?.roles?.includes('superadmin'));
 
 	const allNavItems: NavItem[] = [
 		{ href: '/home', label: 'Home', icon: Home },
@@ -57,7 +65,7 @@
 
 	// event_viewer is scoped to event management + homepage stats; hide everything else.
 	const navItems = $derived<NavItem[]>(
-		user?.role === 'event_viewer'
+		isEventViewerOnly
 			? allNavItems.filter((i) => i.href === '/home' || i.href === '/events' || i.href === '/announcements')
 			: allNavItems,
 	);
@@ -171,7 +179,7 @@
 			</button>
 
 			<!-- Settings link (admin/superadmin only) -->
-			{#if user?.role !== 'event_viewer'}
+			{#if !isEventViewerOnly}
 				<a
 					href="{base}{settingsItem.href}"
 					class="flex items-center rounded-lg border border-transparent transition-[border-color,box-shadow,background-color] duration-200
@@ -189,7 +197,7 @@
 			{/if}
 
 			<!-- Superadmin-only links -->
-			{#if user?.role === 'superadmin'}
+			{#if isSuperadmin}
 				<a
 					href="{base}/manage-admins"
 					class="flex items-center rounded-lg border border-transparent transition-[border-color,box-shadow,background-color] duration-200

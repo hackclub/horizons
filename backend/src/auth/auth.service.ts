@@ -302,7 +302,7 @@ export class AuthService {
     ];
     if (
       claims.ysws_eligible === false &&
-      !yswsExemptRoles.includes(user.role)
+      !user.roles.some((r) => yswsExemptRoles.includes(r))
     ) {
       throw new ForbiddenException('You are not eligible for YSWS.');
     }
@@ -451,7 +451,7 @@ export class AuthService {
           state: claims.address?.region || null,
           zipCode: claims.address?.postal_code || null,
           country: claims.address?.country || null,
-          role: 'user',
+          roles: ['user'],
           hackatimeAccount: hackatimeAccount?.toString() || null,
           ...(referredByUserId
             ? { referredBy: { connect: { userId: referredByUserId } } }
@@ -608,7 +608,7 @@ export class AuthService {
             birthday: true,
             slackUserId: true,
             verificationStatus: true,
-            role: true,
+            roles: true,
             onboardComplete: true,
             onboardedAt: true,
             hackatimeAccount: true,

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Role } from '../enums/role.enum';
+import { hasRole } from '../roles.util';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
 @Injectable()
@@ -24,19 +25,12 @@ export class RolesGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest();
 
-    if (!user || !user.role) {
+    if (!user || !user.roles?.length) {
       throw new ForbiddenException('User not authenticated');
     }
 
-    // Superadmin inherits all admin and reviewer permissions
-    const hasRole = requiredRoles.some(
-      (role) =>
-        user.role === role ||
-        (user.role === Role.Superadmin &&
-          (role === Role.Admin || role === Role.Reviewer)),
-    );
-
-    if (!hasRole) {
+    // hasRole bakes in the superadmin-covers-all rule.
+    if (!hasRole(user.roles, ...requiredRoles)) {
       throw new ForbiddenException('Insufficient permissions');
     }
 

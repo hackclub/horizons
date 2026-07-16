@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api, type components } from '$lib/api';
-    import { Button, TextField, Card, Select } from '$lib/components';
+    import { Button, TextField, Card } from '$lib/components';
 
     type ElevatedUser = components['schemas']['ElevatedUserResponse'];
 
@@ -11,13 +11,15 @@
 
     // Search for adding new users
     let searchQuery = $state('');
-    let searchResults = $state<{ userId: number; email: string; firstName: string | null; lastName: string | null; role: string }[]>([]);
+    let searchResults = $state<{ userId: number; email: string; firstName: string | null; lastName: string | null; roles: string[] }[]>([]);
     let searchLoading = $state(false);
 
-    // Pending role change
-    let pendingChange = $state<{ userId: number; role: string } | null>(null);
+    // userId currently being saved (disables its controls)
+    let pendingUserId = $state<number | null>(null);
 
-    const roleOptions = ['user', 'admin', 'reviewer', 'event_viewer'] as const;
+    // Roles a superadmin may hand out. superadmin is intentionally excluded —
+    // it's all-encompassing and can't be assigned through this UI.
+    const assignableRoles = ['admin', 'reviewer', 'event_viewer'] as const;
 
     const roleBadgeClass: Record<string, string> = {
         superadmin: 'bg-purple-600/20 border-purple-500 text-purple-700 dark:text-purple-300',
@@ -36,12 +38,16 @@
         user: 'Users'
     };
 
+    // A user with multiple roles appears under each role's group so the whole
+    // set is visible at a glance. Grouped by every role the user holds.
     const groupedUsers = $derived.by(() => {
         const groups = new Map<string, ElevatedUser[]>();
         for (const user of elevatedUsers) {
-            const list = groups.get(user.role) ?? [];
-            list.push(user);
-            groups.set(user.role, list);
+            for (const role of user.roles) {
+                const list = groups.get(role) ?? [];
+                list.push(user);
+                groups.set(role, list);
+            }
         }
         return roleOrder
             .filter((role) => groups.has(role))
@@ -97,30 +103,41 @@
                 email: u.email,
                 firstName: u.firstName,
                 lastName: u.lastName,
-                role: u.role
+                roles: u.roles ?? []
             }));
         } finally {
             searchLoading = false;
         }
     }
 
-    async function updateRole(userId: number, role: string) {
-        pendingChange = { userId, role };
+    // Persist the full role set. An empty elevated set demotes the user back to
+    // a plain participant (['user']) — the backend rejects an empty array.
+    async function updateRoles(userId: number, roles: string[]) {
+        const nextRoles = roles.length ? roles : ['user'];
+        pendingUserId = userId;
         try {
             const { error: err } = await api.PUT('/api/admin/users/{id}/role', {
                 params: { path: { id: userId } },
-                body: { role: role as any }
+                body: { roles: nextRoles as any }
             });
             if (err) {
-                alert('Failed to update role. You may not have permission.');
+                alert('Failed to update roles. You may not have permission.');
                 return;
             }
             await loadElevatedUsers();
             searchResults = [];
             searchQuery = '';
         } finally {
-            pendingChange = null;
+            pendingUserId = null;
         }
+    }
+
+    // Add/remove a single elevated role from a user's current set.
+    function toggleRole(user: ElevatedUser, role: string, checked: boolean) {
+        const current = new Set(user.roles.filter((r) => r !== 'user'));
+        if (checked) current.add(role);
+        else current.delete(role);
+        updateRoles(user.userId, [...current]);
     }
 
     onMount(() => {
@@ -132,7 +149,8 @@
     <div class="mx-auto max-w-4xl space-y-6">
         <h1 class="text-3xl font-bold">Manage Admins</h1>
         <p class="text-ds-text-secondary text-sm">
-            Add, remove, or change roles for users with elevated privileges. Only superadmins can access this page.
+            Add, remove, or change roles for users with elevated privileges. Users can hold
+            multiple roles at once. Only superadmins can access this page.
         </p>
 
         <!-- Add User Section -->
@@ -162,22 +180,22 @@
                             <div class="flex gap-2">
                                 <Button
                                     variant="approve"
-                                    onclick={() => updateRole(result.userId, 'reviewer')}
-                                    disabled={pendingChange?.userId === result.userId}
+                                    onclick={() => updateRoles(result.userId, ['reviewer'])}
+                                    disabled={pendingUserId === result.userId}
                                 >
                                     Make Reviewer
                                 </Button>
                                 <Button
                                     class="bg-amber-600/20 border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-amber-600/30"
-                                    onclick={() => updateRole(result.userId, 'event_viewer')}
-                                    disabled={pendingChange?.userId === result.userId}
+                                    onclick={() => updateRoles(result.userId, ['event_viewer'])}
+                                    disabled={pendingUserId === result.userId}
                                 >
                                     Make Event Viewer
                                 </Button>
                                 <Button
                                     class="bg-blue-600/20 border-blue-500 text-blue-700 dark:text-blue-300 hover:bg-blue-600/30"
-                                    onclick={() => updateRole(result.userId, 'admin')}
-                                    disabled={pendingChange?.userId === result.userId}
+                                    onclick={() => updateRoles(result.userId, ['admin'])}
+                                    disabled={pendingUserId === result.userId}
                                 >
                                     Make Admin
                                 </Button>
@@ -221,7 +239,7 @@
                                         <tr>
                                             <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">User</th>
                                             <th class="px-4 py-3 text-left text-sm font-semibold text-ds-text-secondary">Email</th>
-                                            <th class="px-4 py-3 text-center text-sm font-semibold text-ds-text-secondary">Role</th>
+                                            <th class="px-4 py-3 text-center text-sm font-semibold text-ds-text-secondary">Roles</th>
                                             <th class="px-4 py-3 text-center text-sm font-semibold text-ds-text-secondary">Actions</th>
                                         </tr>
                                     </thead>
@@ -238,29 +256,35 @@
                                                     {user.email}
                                                 </td>
                                                 <td class="px-4 py-3 text-center">
-                                                    <span class="inline-block rounded-full border px-3 py-0.5 text-xs font-semibold capitalize {roleBadgeClass[user.role] || roleBadgeClass.user}">
-                                                        {user.role}
-                                                    </span>
+                                                    <div class="flex flex-wrap justify-center gap-1">
+                                                        {#each user.roles as role}
+                                                            <span class="inline-block rounded-full border px-3 py-0.5 text-xs font-semibold capitalize {roleBadgeClass[role] || roleBadgeClass.user}">
+                                                                {role}
+                                                            </span>
+                                                        {/each}
+                                                    </div>
                                                 </td>
                                                 <td class="px-4 py-3 text-center">
-                                                    {#if user.role === 'superadmin'}
+                                                    {#if user.roles.includes('superadmin')}
                                                         <span class="text-xs text-ds-text-placeholder">—</span>
                                                     {:else}
-                                                        <div class="flex justify-center gap-2">
-                                                            <Select
-                                                                value={user.role}
-                                                                onchange={(e) => {
-                                                                    const target = e.target as HTMLSelectElement;
-                                                                    if (target.value !== user.role) {
-                                                                        updateRole(user.userId, target.value);
-                                                                    }
-                                                                }}
-                                                                disabled={pendingChange?.userId === user.userId}
-                                                            >
-                                                                {#each roleOptions as opt}
-                                                                    <option value={opt} selected={user.role === opt}>{opt}</option>
-                                                                {/each}
-                                                            </Select>
+                                                        <div class="flex flex-wrap justify-center gap-3">
+                                                            {#each assignableRoles as role}
+                                                                <label class="flex items-center gap-1.5 text-xs text-ds-text-secondary capitalize">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={user.roles.includes(role)}
+                                                                        disabled={pendingUserId === user.userId}
+                                                                        onchange={(e) =>
+                                                                            toggleRole(
+                                                                                user,
+                                                                                role,
+                                                                                (e.target as HTMLInputElement).checked
+                                                                            )}
+                                                                    />
+                                                                    {role.replace('_', ' ')}
+                                                                </label>
+                                                            {/each}
                                                         </div>
                                                     {/if}
                                                 </td>

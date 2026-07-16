@@ -4,11 +4,15 @@
     import { base } from '$app/paths';
     import { api } from '$lib/api';
     import { ensureUser } from '$lib/auth';
+    import { hasRole } from '$lib/roles';
     import { Button, TextField, Checkbox } from '$lib/components';
 
     onMount(async () => {
         const me = await ensureUser();
-        if (me?.role === 'event_viewer') goto(`${base}/events`);
+        // event_viewer-only users can't create events; admins/reviewers can.
+        if (me?.roles?.includes('event_viewer') && !hasRole(me.roles, 'admin', 'reviewer')) {
+            goto(`${base}/events`);
+        }
     });
 
     let eventForm = $state<{

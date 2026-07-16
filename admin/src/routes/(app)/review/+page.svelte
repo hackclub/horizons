@@ -17,6 +17,7 @@
 	import ProjectGallery from './components/ProjectGallery.svelte';
 	import { api, type components } from '$lib/api';
 	import { ensureUser } from '$lib/auth';
+	import { hasRole } from '$lib/roles';
 	import { getQueue } from '$lib/reviewCache';
 
 	type QueueItem = components['schemas']['QueueItemResponse'];
@@ -24,8 +25,8 @@
 	type GitHubRepo = components['schemas']['GitHubRepoResponse'];
 
 	// Current user role — gates the admin-only Joe deep link in UserInfo.
-	let me = $state<{ role: string } | null>(null);
-	let isAdmin = $derived(me?.role === 'admin' || me?.role === 'superadmin');
+	let me = $state<{ roles: string[] } | null>(null);
+	let isAdmin = $derived(hasRole(me?.roles, 'admin'));
 
 	// Queue state
 	let queue = $state<QueueItem[]>([]);
@@ -68,7 +69,7 @@
 		// Role comes from the shared store (populated by the layout gate) —
 		// no reason to serialize it in front of the queue fetch.
 		void ensureUser().then((meData) => {
-			if (meData) me = { role: meData.role };
+			if (meData) me = { roles: meData.roles };
 		});
 
 		await loadQueue();

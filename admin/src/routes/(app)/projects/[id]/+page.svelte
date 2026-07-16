@@ -6,6 +6,7 @@
     import { env } from '$env/dynamic/public';
     import { api, type components } from '$lib/api';
     import { ensureUser } from '$lib/auth';
+    import { hasRole } from '$lib/roles';
     import { addToast } from '$lib/toastStore';
     import { Skeleton } from '$lib/components';
     import { Pencil, Timer, Send, CircleCheck, CircleX, Hourglass, ExternalLink, History, ChevronsRight } from 'lucide-svelte';
@@ -33,9 +34,9 @@
     let projectId = $derived(parseInt(page.params.id ?? '', 10));
 
     // --- Auth ---
-    let me = $state<{ role: string } | null>(null);
-    let isSuperadmin = $derived(me?.role === 'superadmin');
-    let isAdminOrAbove = $derived(me?.role === 'admin' || me?.role === 'superadmin');
+    let me = $state<{ roles: string[] } | null>(null);
+    let isSuperadmin = $derived(!!me?.roles?.includes('superadmin'));
+    let isAdminOrAbove = $derived(hasRole(me?.roles, 'admin'));
 
     // --- Project ---
     let project = $state<AdminProject | null>(null);
@@ -338,7 +339,7 @@
 
     async function loadMe() {
         const data = await ensureUser();
-        if (data) me = { role: data.role };
+        if (data) me = { roles: data.roles };
     }
 
     async function loadProject() {

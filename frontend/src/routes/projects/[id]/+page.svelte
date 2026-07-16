@@ -6,6 +6,7 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { api, type components } from '$lib/api';
 	import { EXIT_DURATION } from '$lib';
+	import { hasRole } from '$lib/roles';
 	import { onMount } from 'svelte';
 
 	type PublicProject = components['schemas']['PublicProjectResponse'];
@@ -27,8 +28,7 @@
 		api
 			.GET('/api/user/auth/me')
 			.then(({ data }) => {
-				const role = data?.role;
-				canReview = role === 'reviewer' || role === 'admin' || role === 'superadmin';
+				canReview = hasRole(data?.roles as string[] | undefined, 'reviewer', 'admin');
 			})
 			.catch(() => {});
 	});

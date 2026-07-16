@@ -25,8 +25,8 @@
     let appliedSearch = $state('');
     const totalPages = $derived(Math.max(1, Math.ceil(total / PAGE_SIZE)));
 
-    let currentUserRole = $state<string | null>(null);
-    const isSuperadmin = $derived(currentUserRole === 'superadmin');
+    let currentUserRoles = $state<string[]>([]);
+    const isSuperadmin = $derived(currentUserRoles.includes('superadmin'));
 
     // Hours adjustment state (superadmin only)
     let hoursEditingUserId = $state<number | null>(null);
@@ -359,7 +359,7 @@
         }
         loadUsers();
         ensureUser().then((me) => {
-            currentUserRole = me?.role ?? null;
+            currentUserRoles = me?.roles ?? [];
         });
     });
 
@@ -463,7 +463,7 @@
                             >
                                 <span
                                     class="rounded-full border border-ds-border px-3 py-1 capitalize"
-                                >{user.role}</span>
+                                >{((user as any).roles ?? []).join(', ')}</span>
                                 <span
                                     class="rounded-full border border-ds-border px-3 py-1"
                                 >{(user as any).onboardComplete

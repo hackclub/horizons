@@ -3,6 +3,7 @@
 	import { base } from '$app/paths';
 	import { api } from '$lib/api';
 	import { ensureUser } from '$lib/auth';
+	import { hasRole } from '$lib/roles';
 	import { toast } from '$lib/toastStore';
 
 	// Locally-typed to keep this file resilient to schema regen ordering. After
@@ -72,7 +73,7 @@
 
 	onMount(async () => {
 		const me = await ensureUser();
-		if (me && me.role !== 'admin' && me.role !== 'superadmin') {
+		if (me && !hasRole(me.roles, 'admin')) {
 			window.location.href = `${base}/review`;
 			return;
 		}

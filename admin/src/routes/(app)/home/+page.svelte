@@ -3,6 +3,7 @@
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { api, type components } from '$lib/api';
 	import { ensureUser } from '$lib/auth';
+	import { hasRole } from '$lib/roles';
 	import { Button } from '$lib/components';
 	import { theme } from '$lib/themeStore';
 	import type * as EChartsModule from 'echarts';
@@ -25,7 +26,7 @@
 	let reviewStats = $state<ReviewStats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let userRole = $state<string | null>(null);
+	let userRoles = $state<string[]>([]);
 	let selectedEventFilter = $state<string>('all');
 	let selectedFunnelEvent = $state<string>('all');
 	let selectedUserHoursEvent = $state<string>('all');
@@ -111,7 +112,7 @@
 	onMount(async () => {
 		echartsReady = import('echarts').then((mod) => (echarts = mod));
 		const me = await ensureUser();
-		userRole = me?.role ?? null;
+		userRoles = me?.roles ?? [];
 		loadStats();
 		window.addEventListener('resize', handleResize);
 	});
@@ -1255,7 +1256,7 @@
 
 <div class="p-6">
 	<div class="mx-auto max-w-6xl space-y-8">
-		{#if userRole === 'admin' || userRole === 'superadmin' || userRole === 'reviewer'}
+		{#if hasRole(userRoles, 'admin', 'reviewer')}
 			<div class="flex justify-end">
 				<a
 					href="{base}/review/stats"
