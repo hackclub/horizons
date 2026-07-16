@@ -209,6 +209,9 @@
 							{:else}
 								<p class="font-bricolage font-semibold text-black m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style={!isMobile && selected ? 'font-size: 32px;' : ''}>{project.nowHackatimeHours} hrs tracked</p>
 							{/if}
+							{#if (project.approvedHours ?? 0) > 0}
+								<p class="font-bricolage font-semibold m-0 transition-[font-size_0.3s_ease] text-[16px] sm:text-[20px]" style="color: #1f9d55;{!isMobile && selected ? ' font-size: 32px;' : ''}">{project.approvedHours} hrs approved</p>
+							{/if}
 						</div>
 
 						<div
