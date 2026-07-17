@@ -160,7 +160,7 @@ pnpm --filter admin generate:api
 | Users | `/admin/users` | Server-paginated user list (50/page, debounced server-side search + sort — matches name, email, Slack ID, and Hackatime ID; an `@`-prefixed token matches only the cached Slack display name), hour balance chip per user (spendable balance + earned/spent breakdown, kept in sync after superadmin hours adjustments), Slack display name shown next to the Slack ID, Slack ID editing, fraud/sus flag toggles |
 | Shop | `/admin/shop` | Shop item CRUD |
 | Gift Codes | `/admin/giftcodes` | Gift code generation and management |
-| Events | `/admin/events` | Event list and creation |
+| Events | `/admin/events` | Event list and creation. Per-event dashboard (`/admin/events/{slug}`) shows stats, attendees, and a "Push to Attend" button that sends all active ticket holders to attend.hackclub.com (per-event API key entered at push time; Attend event name defaults to `horizons-{slug}`) |
 | Announcements | `/admin/announcements` | Create/edit announcements — markdown body with live preview, event tags (none = everyone), and "show on open" / "show as tag" / active toggles. Admin, Superadmin, and Event Viewer. |
 | Settings | `/admin/settings` | Global submissions freeze toggle, reviewer leaderboard, priority users |
 

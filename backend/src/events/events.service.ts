@@ -389,6 +389,87 @@ export class EventsService {
     }));
   }
 
+  async pushAttendeesToAttend(
+    slug: string,
+    attendApiKey: string,
+    attendEventName?: string,
+  ) {
+    const event = await this.prisma.event.findUnique({ where: { slug } });
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    const apiKey = attendApiKey.trim();
+    if (!apiKey) {
+      throw new BadRequestException('Attend API key is required');
+    }
+
+    const targetName = attendEventName?.trim() || `horizons-${event.slug}`;
+    const url = `https://attend.hackclub.com/api/v1/events/${encodeURIComponent(targetName)}/participants`;
+
+    // Only active (non-refunded) tickets count as attendance.
+    const txns = await this.prisma.transaction.findMany({
+      where: {
+        eventId: event.eventId,
+        kind: 'EventTicket',
+        refundedAt: null,
+      },
+      include: {
+        user: {
+          select: { email: true, firstName: true, lastName: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    let pushed = 0;
+    let alreadyAdded = 0;
+    const failures: { email: string; error: string }[] = [];
+    for (const txn of txns) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            first_name: txn.user.firstName,
+            last_name: txn.user.lastName,
+            email: txn.user.email,
+          }),
+        });
+        if (res.status === 409) {
+          // Participant already exists on Attend
+          alreadyAdded++;
+          continue;
+        }
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          failures.push({
+            email: txn.user.email,
+            error: `HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ''}`,
+          });
+          continue;
+        }
+        pushed++;
+      } catch (err) {
+        failures.push({
+          email: txn.user.email,
+          error: err instanceof Error ? err.message : 'Request failed',
+        });
+      }
+    }
+
+    return {
+      attendEventName: targetName,
+      total: txns.length,
+      pushed,
+      alreadyAdded,
+      failures,
+    };
+  }
+
   private async sendTicketConfirmation(userId: number, eventTitle: string) {
     const user = await this.prisma.user.findUnique({
       where: { userId },
