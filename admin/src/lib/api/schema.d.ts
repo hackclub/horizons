@@ -1910,6 +1910,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/events/admin/{slug}/push-to-attend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsAdminController_pushToAttend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events/auth/pinned-event": {
         parameters: {
             query?: never;
@@ -2540,7 +2556,9 @@ export interface components {
             longestStreak: number;
         };
         DeleteProjectResponse: {
+            /** @description Whether the project was deleted */
             deleted: boolean;
+            /** @description Deleted project ID */
             projectId: number;
         };
         PublicProjectAuthor: {
@@ -2912,6 +2930,10 @@ export interface components {
             updated: number;
             skipped: components["schemas"]["RecalculateAllSkipped"][];
             errors: components["schemas"]["RecalculateAllError"][];
+        };
+        AdminDeleteProjectResponse: {
+            deleted: boolean;
+            projectId: number;
         };
         AdminUserSubmissionResponse: {
             submissionId: number;
@@ -3388,22 +3410,15 @@ export interface components {
             qualified: number;
             modes: components["schemas"]["StatsSignupQualificationModes"];
         };
-        EventStatsResponse: {
-            event: components["schemas"]["EventStatsEventInfo"];
-            /** @description Total users currently pinned to this sub-event */
+        AdminEventStatsResponse: {
+            event: components["schemas"]["EventStatsEventDetail"];
             pinnedCount: number;
-            /** @description Pinned users whose approved hours ≥ hourCost */
             metHourGoal: number;
-            /** @description Pinned users whose approved hours < hourCost */
             notMetHourGoal: number;
-            /** @description Yesterday's DAU for this sub-event — read from the historical metric snapshot (today is mid-stream and intentionally omitted) */
             dauYesterday: number;
-            /** @description Aggregate hour buckets across users pinned to this sub-event — definitions match the admin dashboard / user CSV export */
-            hours: components["schemas"]["EventHourTotals"];
-            /** @description Funnel counts among pinned users, by approved hours */
-            qualification: components["schemas"]["QualificationFunnel"];
-            /** @description ISO timestamp when this response was generated */
-            generatedAt: string;
+            pinnedTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
+            dauTimeline: components["schemas"]["EventStatsPinnedTimelineEntry"][];
+            qualification: components["schemas"]["EventStatsQualification"];
         };
         LedgerEntryUserSummary: {
             userId: number;
@@ -3565,8 +3580,11 @@ export interface components {
             createdAt: string;
         };
         UpdateUserRoleDto: {
-            /** @description Full set of roles to assign. Superadmin cannot be assigned here. */
-            roles: ("user" | "admin" | "reviewer" | "event_viewer")[];
+            /**
+             * @description Full set of roles to assign. Superadmin cannot be assigned here.
+             * @enum {array}
+             */
+            roles: "user" | "admin" | "reviewer" | "event_viewer";
         };
         UpdateUserRoleResponse: {
             userId: number;
@@ -4253,6 +4271,26 @@ export interface components {
             ticketAt: string | null;
             totalSpent: number;
         };
+        PushToAttendDto: {
+            attendApiKey: string;
+            /** @description Defaults to horizons-{slug} */
+            attendEventName?: string;
+        };
+        PushToAttendFailure: {
+            email: string;
+            error: string;
+        };
+        PushToAttendResponse: {
+            /** @description Attend event name the participants were pushed to */
+            attendEventName: string;
+            /** @description Active ticket holders found for the event */
+            total: number;
+            /** @description Participants successfully pushed to Attend */
+            pushed: number;
+            /** @description Participants Attend already had (409) */
+            alreadyAdded: number;
+            failures: components["schemas"]["PushToAttendFailure"][];
+        };
         PinnedEventDetailResponse: {
             eventId: number;
             slug: string;
@@ -4562,6 +4600,23 @@ export interface components {
             rsvped: number;
             /** @description Pinned users with ≥30h of approved work (qualified) */
             qualified: number;
+        };
+        EventStatsResponse: {
+            event: components["schemas"]["EventStatsEventInfo"];
+            /** @description Total users currently pinned to this sub-event */
+            pinnedCount: number;
+            /** @description Pinned users whose approved hours ≥ hourCost */
+            metHourGoal: number;
+            /** @description Pinned users whose approved hours < hourCost */
+            notMetHourGoal: number;
+            /** @description Yesterday's DAU for this sub-event — read from the historical metric snapshot (today is mid-stream and intentionally omitted) */
+            dauYesterday: number;
+            /** @description Aggregate hour buckets across users pinned to this sub-event — definitions match the admin dashboard / user CSV export */
+            hours: components["schemas"]["EventHourTotals"];
+            /** @description Funnel counts among pinned users, by approved hours */
+            qualification: components["schemas"]["QualificationFunnel"];
+            /** @description ISO timestamp when this response was generated */
+            generatedAt: string;
         };
     };
     responses: never;
@@ -5603,7 +5658,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DeleteProjectResponse"];
+                    "application/json": components["schemas"]["AdminDeleteProjectResponse"];
                 };
             };
         };
@@ -5925,7 +5980,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventStatsResponse"];
+                    "application/json": components["schemas"]["AdminEventStatsResponse"];
                 };
             };
         };
@@ -7623,6 +7678,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttendeeResponse"][];
+                };
+            };
+        };
+    };
+    EventsAdminController_pushToAttend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushToAttendDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushToAttendResponse"];
                 };
             };
         };

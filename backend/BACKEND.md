@@ -343,6 +343,8 @@ Event (hackathon) management.
 | POST | `/admin` | Admin | Create event |
 | PUT | `/admin/:slug` | Admin | Update event |
 | DELETE | `/admin/:slug` | Admin | Delete event |
+| GET | `/admin/:slug/attendees` | Admin/EventViewer | List ticket holders (name, email, ticket date, spend) |
+| POST | `/admin/:slug/push-to-attend` | Admin/EventViewer | Push active (non-refunded) ticket holders as participants to attend.hackclub.com. Body: `attendApiKey` (per-event key, entered in the UI), optional `attendEventName` (defaults to `horizons-{slug}`). Returns pushed/alreadyAdded/total counts + per-email failures |
 
 ---
 
