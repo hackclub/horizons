@@ -220,12 +220,35 @@ The app layout (`routes/app/+layout.svelte`) calls this on mount.
 - **Smart invalidation**: Caches cleared on mutations (create, edit, submit)
 - **Scroll-aware**: Only preloads data for projects visible/near viewport
 
-### Performance Modes (user setting)
+### Motion & Performance Modes (user settings)
 
-Settings → Preferences exposes two opt-in resource-saving tiers, persisted as
+Settings → Preferences exposes three related toggles. **Reduce Animations**
+(`localStorage: 'disableAnimations'`) is a motion-comfort setting: inside
+`/app` it applies the `reduce-anim` class to `<html>` and swaps nauseating
+motion for calmer alternatives rather than merely slowing it:
+
+- Page transitions become **fades** instead of 120vw/vh card flights — a
+  global block in `routes/layout.css` (`reduce-fade-in/out`) retargets the
+  shared page-transition classes (`enter-up`, `fly-right`, `project-card`,
+  `.fly-top`-style transition flights, …); durations/easings come from the
+  softened shared vars in the root layout (no overshoot/wind-up curves).
+- Modal pop-ins (settings, announcements), the music toast, and the
+  announcement tag fade in instead of scale-popping / flying (conditional
+  Svelte transition params on `$reduceAnimations`).
+- Keyboard nav auto-repeat is paced (~6 moves/s) and wheel navigation needs a
+  more deliberate scroll (`lib/nav/wasd.svelte.ts`); the `/app` cards-row
+  glides with ease-out instead of whipping; shakes become small nudges.
+- Text waves (TextWave/BobaText) are **disabled** — perpetual per-character
+  micro-motion. Other decorative loops (background scroll, card drifts,
+  pulses) run at half speed via per-component `html.reduce-anim` overrides.
+- Big full-screen wipes (CircleIn) are skipped entirely.
+
+Public pages (FAQ, event landings) read the same localStorage flag directly
+and still treat it as "animations off".
+
+The two performance tiers are opt-in resource savers, persisted as
 `localStorage: 'settings:perfMode'` (`off | high | ultra`) and exposed by
-`lib/store/settingsCache.ts` (`perfMode`, `highPerf`, `ultraPerf`,
-`suppressAmbientMotion`).
+`lib/store/settingsCache.ts` (`perfMode`, `highPerf`, `ultraPerf`).
 
 **High Performance Mode** targets things that run forever in a long-lived tab:
 
@@ -252,6 +275,18 @@ Settings → Preferences exposes two opt-in resource-saving tiers, persisted as
   hidden in every mode).
 - Music player: no muted autoplay (muted playback still downloads/decodes audio
   forever) and volume fades set directly instead of running a rAF loop.
+- The `/app` cards-row nav caches its per-column layout measurements
+  (invalidated on resize), so each keyboard/mouse move skips the forced
+  synchronous layout reads.
+
+**Rendering** (`localStorage: 'settings:renderMode'`, `auto | gpu | cpu`)
+biases where animation work runs via `render-gpu`/`render-cpu` root classes:
+"Prefer GPU" pins the big movers (cards-row, BG pattern) onto compositor
+layers with `will-change: transform`; "Prefer CPU" strips every `will-change`
+hint (`will-change: auto !important`) for VRAM-starved or integrated GPUs;
+Auto leaves it to browser heuristics. Note the BG pattern scroll animates
+`transform` (compositor-driven) rather than `background-position` (main-thread
+repaint) in all modes.
 
 New pollers should use `pollWhileVisible()` instead of raw `setInterval`, and
 new infinite decorative animations should ship with `prefers-reduced-motion`

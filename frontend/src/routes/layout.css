@@ -51,6 +51,72 @@
 	font-synthesis: none;
 }
 
+/* Reduce Animations: the looping attention-pulses keep running but at half
+   speed, so they read as a slow breathe instead of a blink. Timing/easing vars
+   are overridden in the root layout; per-component loops carry their own
+   `html.reduce-anim` slowdowns. */
+html.reduce-anim .animate-refer-pulse {
+	animation-duration: 3s;
+}
+html.reduce-anim .animate-slow-ping {
+	animation-duration: 4s;
+}
+
+/* Reduce Animations: page transitions become fades instead of the 120vw/vh
+   card flights — an alternative animation, not just a slower flight. The
+   class names are shared page-transition vocabulary, so one global block
+   covers every route.
+
+   Keyframe-based flights only swap animation-name; each page's durations,
+   stagger delays, and `both` fill still apply. */
+@keyframes reduce-fade-in {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+@keyframes reduce-fade-out {
+	from { opacity: 1; }
+	to   { opacity: 0; }
+}
+html.reduce-anim
+	:is(.enter-up, .enter-down, .fly-right, .fly-up, .project-card, .detail-card, .event-card) {
+	animation-name: reduce-fade-in;
+}
+html.reduce-anim
+	:is(.enter-up, .enter-down, .exit-right, .fly-right, .fly-up, .project-card, .detail-card, .event-card).exiting {
+	animation-name: reduce-fade-out;
+}
+
+/* Transition-based flights (.fly-top on community, .fly-left on refer):
+   the transform is pinned in place and the enter/exit transition moves
+   opacity instead. Delay var names differ per page, hence the fallbacks. */
+html.reduce-anim :is(.fly-top, .fly-left) {
+	transform: none !important;
+	opacity: 0;
+	transition: opacity var(--enter-duration) ease-out
+		var(--fly-delay, var(--fly-in-delay, 0ms)) !important;
+}
+html.reduce-anim :is(.fly-top, .fly-left).entered {
+	opacity: 1;
+}
+html.reduce-anim :is(.fly-top, .fly-left).exiting {
+	opacity: 0;
+	transition-duration: var(--exit-duration) !important;
+	transition-delay: var(--fly-exit-delay, var(--fly-out-delay, 0ms)) !important;
+}
+
+/* Rendering preference (settings → Performance → Rendering). "Prefer GPU"
+   pins the big movers onto compositor layers so glides/scrolls never repaint
+   on the main thread — costs VRAM. "Prefer CPU" strips every will-change hint
+   for VRAM-starved or weak integrated GPUs, letting the browser rasterize on
+   demand instead of holding layers. Absent class = browser heuristics. */
+html.render-gpu .cards-row,
+html.render-gpu .pattern-slide {
+	will-change: transform;
+}
+html.render-cpu * {
+	will-change: auto !important;
+}
+
 /* Ultra Performance Mode (settings → "Enable Ultra Performance Mode"): zero
    out every CSS animation and transition so the compositor idles. The class is
    applied to <html> by the /app layout. Durations are near-zero rather than

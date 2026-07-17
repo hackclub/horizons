@@ -344,6 +344,11 @@
 		will-change: auto;
 	}
 
+	/* Reduce Animations: half-speed drift. */
+	:global(html.reduce-anim) .card-bg-img {
+		animation-duration: 24s;
+	}
+
 	.card-bg-gradient {
 		position: absolute;
 		inset: 0;

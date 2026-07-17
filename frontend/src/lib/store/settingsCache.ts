@@ -9,15 +9,31 @@ export type SettingsTab = 'preferences' | 'hackatime';
  */
 export type PerfMode = 'off' | 'high' | 'ultra';
 
+/**
+ * Rendering preference for animations. 'gpu' promotes the big movers onto
+ * compositor layers (`will-change`) — less main-thread repainting, more VRAM.
+ * 'cpu' strips every `will-change` hint — fewer GPU layers for VRAM-starved
+ * or weak integrated GPUs. 'auto' leaves it to the browser's heuristics.
+ */
+export type RenderMode = 'auto' | 'gpu' | 'cpu';
+
 interface SettingsState {
 	/** Whether the settings modal is open. */
 	open: boolean;
 	/** Active sidebar tab. */
 	tab: SettingsTab;
-	/** Utility — suppress non-essential motion across the site. */
+	/**
+	 * Utility — gentler motion, not less CPU. In /app this slows every
+	 * animation down and swaps bouncy easings for smooth ones (via the
+	 * `html.reduce-anim` class); big full-screen wipes are skipped entirely.
+	 * Public pages (FAQ, event landings) read the shared localStorage flag
+	 * directly and still treat it as "animations off".
+	 */
 	reduceAnimations: boolean;
 	/** Utility — trade visual flourish for CPU/RAM savings. */
 	perfMode: PerfMode;
+	/** Utility — bias animation work toward the GPU or the CPU. */
+	renderMode: RenderMode;
 	/** Utility — hide the decorative frame that wraps the app. */
 	hideBorders: boolean;
 	/**
@@ -32,6 +48,7 @@ interface SettingsState {
 // across the whole site.
 const REDUCE_ANIM_KEY = 'disableAnimations';
 const PERF_MODE_KEY = 'settings:perfMode';
+const RENDER_MODE_KEY = 'settings:renderMode';
 const HIDE_BORDERS_KEY = 'settings:hideBorders';
 const FUN_KEY = 'settings:fun';
 
@@ -60,6 +77,16 @@ function loadPerfMode(): PerfMode {
 	}
 }
 
+function loadRenderMode(): RenderMode {
+	if (typeof window === 'undefined') return 'auto';
+	try {
+		const raw = localStorage.getItem(RENDER_MODE_KEY);
+		return raw === 'gpu' || raw === 'cpu' ? raw : 'auto';
+	} catch {
+		return 'auto';
+	}
+}
+
 function loadFun(): Record<string, boolean> {
 	if (typeof window === 'undefined') return {};
 	try {
@@ -83,6 +110,7 @@ const store = writable<SettingsState>({
 	tab: 'preferences',
 	reduceAnimations: loadBool(REDUCE_ANIM_KEY),
 	perfMode: loadPerfMode(),
+	renderMode: loadRenderMode(),
 	hideBorders: loadBool(HIDE_BORDERS_KEY),
 	fun: loadFun(),
 });
@@ -109,6 +137,10 @@ export const settings = {
 		persist(PERF_MODE_KEY, mode);
 		store.update((s) => ({ ...s, perfMode: mode }));
 	},
+	setRenderMode(mode: RenderMode) {
+		persist(RENDER_MODE_KEY, mode);
+		store.update((s) => ({ ...s, renderMode: mode }));
+	},
 	setHideBorders(value: boolean) {
 		persist(HIDE_BORDERS_KEY, String(value));
 		store.update((s) => {
@@ -132,19 +164,17 @@ export const settingsOpen = derived(store, (s) => s.open);
 export const reduceAnimations = derived(store, (s) => s.reduceAnimations);
 
 export const perfMode = derived(store, (s) => s.perfMode);
-/** High or Ultra Performance Mode is on. */
+/**
+ * High or Ultra Performance Mode is on. Stops continuous decorative motion
+ * (background scroll, text waves, pulses) — these animate forever, so they
+ * dominate long-tab CPU/GPU use. Reduce Animations slows the same loops
+ * instead of stopping them (see `html.reduce-anim`).
+ */
 export const highPerf = derived(store, (s) => s.perfMode !== 'off');
 /** Ultra Performance Mode is on. */
 export const ultraPerf = derived(store, (s) => s.perfMode === 'ultra');
-/**
- * Continuous decorative motion (background scroll, text waves, pulses) should
- * be suppressed — these animate forever, so they dominate long-tab CPU/GPU use.
- * One-shot transitions are governed separately (Ultra kills them via CSS).
- */
-export const suppressAmbientMotion = derived(
-	store,
-	(s) => s.reduceAnimations || s.perfMode !== 'off',
-);
+
+export const renderMode = derived(store, (s) => s.renderMode);
 
 // The decorative frame is collapsed only while "Hide borders" is on and the
 // "bring the border back" gag hasn't overridden it.

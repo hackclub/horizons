@@ -156,6 +156,11 @@
 		transform: rotate(-19.31deg);
 	}
 
+	/* Reduce Animations: half-speed rotation. */
+	:global(html.reduce-anim) .slack-logo img {
+		animation-duration: 240s;
+	}
+
 	.member-pill {
 		position: absolute;
 		top: 10px;

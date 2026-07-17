@@ -293,6 +293,11 @@
 		}
 	}
 
+	/* Reduce Animations: the slideshow's Ken Burns pan slows to a crawl. */
+	:global(html.reduce-anim) .project-slide-bg {
+		animation-duration: 18s;
+	}
+
 	.project-slide-overlay {
 		position: absolute;
 		inset: 0;

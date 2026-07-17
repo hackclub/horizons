@@ -763,6 +763,17 @@
 		animation: none;
 	}
 
+	/* Reduce Animations: half-speed drifts and pulses. */
+	:global(html.reduce-anim) .hero-img {
+		animation-duration: 28s;
+	}
+	:global(html.reduce-anim) .event-card-img {
+		animation-duration: 24s;
+	}
+	:global(html.reduce-anim) .nav-item.pulsing:not(.shaking) {
+		animation-duration: 2.8s;
+	}
+
 	.content-grid {
 		position: absolute;
 		inset: 0;
@@ -992,6 +1003,20 @@
 		40%       { translate: 8px 0; }
 		60%       { translate: -6px 0; }
 		80%       { translate: 6px 0; }
+	}
+
+	/* Reduce Animations: same "nope" feedback at a third of the amplitude and
+	   slightly slower, so it reads as a nudge rather than a rattle. */
+	@keyframes -global-shake-gentle-events {
+		0%, 100% { translate: 0 0; }
+		20%       { translate: -3px 0; }
+		40%       { translate: 3px 0; }
+		60%       { translate: -2px 0; }
+		80%       { translate: 2px 0; }
+	}
+	:global(html.reduce-anim) .nav-item.shaking {
+		animation-name: shake-gentle-events;
+		animation-duration: 0.55s;
 	}
 	.nav-item.shaking {
 		animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;

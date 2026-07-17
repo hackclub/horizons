@@ -18,7 +18,7 @@
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
-	import { reduceAnimations, suppressAmbientMotion, ultraPerf } from '$lib/store/settingsCache';
+	import { highPerf, reduceAnimations, ultraPerf } from '$lib/store/settingsCache';
 	import { pollWhileVisible } from '$lib/perf';
 	import { get } from 'svelte/store';
 	import { hasRole } from '$lib/roles';
@@ -37,8 +37,11 @@
 	];
 	const headerText = phrases[Math.floor(Math.random() * phrases.length)];
 
-	// The header wave loops forever, so it's also suppressed by the performance modes.
-	const disableAnimations = $derived($suppressAmbientMotion);
+	// The header wave loops forever, so the performance modes stop it. "Reduce
+	// Animations" slows it instead (html.reduce-anim rule in TextWave). The
+	// CircleIn full-screen wipe stays skipped under Reduce Animations — big
+	// wipes are the motion-sickness worst case.
+	const disableAnimations = $derived($highPerf);
 	let hideCirc = $state(
 		page.url.searchParams.has('noanimate') || get(reduceAnimations) || get(ultraPerf),
 	);
@@ -607,23 +610,52 @@
 	// visibly slide horizontally during the fly-in animation.
 	let cardsRowPositioned = false;
 
+	// Ultra Performance Mode: the grid's geometry is static after mount, so
+	// per-column measurements are cached and each nav move skips the forced
+	// synchronous layout (offsetParent walk + width reads). Dropped on resize.
+	let measureCache: {
+		containerWidth: number;
+		totalWidth: number;
+		cols: Map<number, { left: number; width: number }>;
+	} | null = null;
+
+	onMount(() => {
+		const onResize = () => (measureCache = null);
+		window.addEventListener('resize', onResize);
+		return () => window.removeEventListener('resize', onResize);
+	});
+
 	// Slide cards row so selected card is visible with a peek of the next card.
 	// Use offsetLeft (layout position, unaffected by transform) to avoid mid-transition jitter.
 	$effect(() => {
 		const el = cardRefs[nav.col];
 		if (el && scrollContainer && cardsRow) {
-			const containerWidth = scrollContainer.clientWidth;
-
-			// Walk up offsetParents to get position relative to cardsRow
-			let elLeft = 0;
-			let node: HTMLElement | null = el;
-			while (node && node !== cardsRow) {
-				elLeft += node.offsetLeft;
-				node = node.offsetParent as HTMLElement | null;
+			let m = $ultraPerf ? measureCache : null;
+			if (!m) {
+				m = {
+					containerWidth: scrollContainer.clientWidth,
+					totalWidth: cardsRow.scrollWidth,
+					cols: new Map(),
+				};
+				if ($ultraPerf) measureCache = m;
+			}
+			let colM = m.cols.get(nav.col);
+			if (!colM) {
+				// Walk up offsetParents to get position relative to cardsRow
+				let elLeft = 0;
+				let node: HTMLElement | null = el;
+				while (node && node !== cardsRow) {
+					elLeft += node.offsetLeft;
+					node = node.offsetParent as HTMLElement | null;
+				}
+				colM = { left: elLeft, width: el.offsetWidth };
+				m.cols.set(nav.col, colM);
 			}
 
-			const elWidth = el.offsetWidth;
-			const totalWidth = cardsRow.scrollWidth;
+			const containerWidth = m.containerWidth;
+			const elLeft = colM.left;
+			const elWidth = colM.width;
+			const totalWidth = m.totalWidth;
 			const maxShift = totalWidth - containerWidth;
 
 			// If everything fits, no shift needed
@@ -1145,6 +1177,13 @@
 		transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 	}
 
+	/* Reduce Animations: the row glides instead of whipping — this transform
+	   moves the whole viewport's content, so it's the page's biggest single
+	   motion. Key auto-repeat is paced to match (see wasd.svelte.ts). */
+	:global(html.reduce-anim) .cards-row {
+		transition: transform 0.65s ease-out;
+	}
+
 	/* Middle column layout — Shop + Community stacked */
 	.middle-col {
 		display: flex;
@@ -1313,6 +1352,20 @@
 		40%       { translate: 8px 0; }
 		60%       { translate: -6px 0; }
 		80%       { translate: 6px 0; }
+	}
+
+	/* Reduce Animations: same "nope" feedback at a third of the amplitude and
+	   slightly slower, so it reads as a nudge rather than a rattle. */
+	@keyframes -global-shake-gentle {
+		0%, 100% { translate: 0 0; }
+		20%       { translate: -3px 0; }
+		40%       { translate: 3px 0; }
+		60%       { translate: -2px 0; }
+		80%       { translate: 2px 0; }
+	}
+	:global(html.reduce-anim) .card.shaking {
+		animation-name: shake-gentle;
+		animation-duration: 0.55s;
 	}
 
 	.card.shaking {

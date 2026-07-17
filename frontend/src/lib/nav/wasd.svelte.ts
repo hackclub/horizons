@@ -1,4 +1,29 @@
+import { get } from 'svelte/store';
+import { reduceAnimations } from '$lib/store/settingsCache';
+
 export type NavDirection = 'up' | 'down' | 'left' | 'right';
+
+/**
+ * Reduce Animations: pace held-key auto-repeat so selection moves at a rate
+ * the slowed transitions can follow, instead of whipping across the UI.
+ * Discrete presses are never delayed. Shared across nav instances — only one
+ * grid/list has focus at a time.
+ */
+const REPEAT_PACE_MS = 160;
+let lastPacedNavMove = 0;
+
+function acceptNavMove(e: KeyboardEvent): boolean {
+	if (!get(reduceAnimations)) return true;
+	const now = performance.now();
+	if (e.repeat && now - lastPacedNavMove < REPEAT_PACE_MS) return false;
+	lastPacedNavMove = now;
+	return true;
+}
+
+/** Reduce Animations: wheel navigation takes a more deliberate scroll. */
+function wheelThresholdScale(): number {
+	return get(reduceAnimations) ? 1.5 : 1;
+}
 
 /** Parse a keyboard event key into a navigation direction, or null. */
 export function parseNavKey(key: string): NavDirection | null {
@@ -100,10 +125,10 @@ export function createListNav(options: ListNavOptions) {
 
 		if (dir === prevDir) {
 			e.preventDefault();
-			move(-1);
+			if (acceptNavMove(e)) move(-1);
 		} else if (dir === nextDir) {
 			e.preventDefault();
-			move(1);
+			if (acceptNavMove(e)) move(1);
 		} else if (e.key === 'Enter') {
 			options.onSelect?.(selectedIndex);
 		} else if (e.key === 'Escape') {
@@ -117,10 +142,11 @@ export function createListNav(options: ListNavOptions) {
 		const delta = options.horizontal ? (e.deltaX || -e.deltaY) : e.deltaY;
 		wheelAccumulator += delta;
 
-		if (wheelAccumulator > wheelThreshold) {
+		const threshold = wheelThreshold * wheelThresholdScale();
+		if (wheelAccumulator > threshold) {
 			wheelAccumulator = 0;
 			move(1);
-		} else if (wheelAccumulator < -wheelThreshold) {
+		} else if (wheelAccumulator < -threshold) {
 			wheelAccumulator = 0;
 			move(-1);
 		}
@@ -171,18 +197,22 @@ export function createGridNav(options: GridNavOptions) {
 
 		if (dir === 'up') {
 			e.preventDefault();
-			row = clampIndex(row - 1, cols[col] - 1);
+			if (acceptNavMove(e)) row = clampIndex(row - 1, cols[col] - 1);
 		} else if (dir === 'down') {
 			e.preventDefault();
-			row = clampIndex(row + 1, cols[col] - 1);
+			if (acceptNavMove(e)) row = clampIndex(row + 1, cols[col] - 1);
 		} else if (dir === 'left') {
 			e.preventDefault();
-			col = clampIndex(col - 1, cols.length - 1);
-			row = clampIndex(row, cols[col] - 1);
+			if (acceptNavMove(e)) {
+				col = clampIndex(col - 1, cols.length - 1);
+				row = clampIndex(row, cols[col] - 1);
+			}
 		} else if (dir === 'right') {
 			e.preventDefault();
-			col = clampIndex(col + 1, cols.length - 1);
-			row = clampIndex(row, cols[col] - 1);
+			if (acceptNavMove(e)) {
+				col = clampIndex(col + 1, cols.length - 1);
+				row = clampIndex(row, cols[col] - 1);
+			}
 		} else if (e.key === 'Enter') {
 			options.onSelect?.(col, row);
 		} else if (e.key === 'Escape') {

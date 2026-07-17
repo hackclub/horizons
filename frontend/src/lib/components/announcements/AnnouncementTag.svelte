@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
-	import { backOut, cubicIn } from 'svelte/easing';
+	import { backOut, cubicIn, cubicOut } from 'svelte/easing';
+	import { reduceAnimations } from '$lib/store/settingsCache';
 	import PulseDot from './PulseDot.svelte';
 	import type { UserAnnouncement } from '$lib/store/announcementsCache';
 
@@ -17,8 +18,12 @@
 
 <div
 	class="pointer-events-auto absolute right-6 top-8 z-40 hidden h-[75.13px] items-end sm:flex"
-	in:fly={{ x: 48, duration: 320, delay: 600, easing: backOut }}
-	out:fly={{ x: 48, duration: 250, easing: cubicIn }}
+	in:fly={$reduceAnimations
+		? { x: 0, opacity: 0, duration: 300, delay: 600, easing: cubicOut }
+		: { x: 48, duration: 320, delay: 600, easing: backOut }}
+	out:fly={$reduceAnimations
+		? { x: 0, opacity: 0, duration: 250, easing: cubicOut }
+		: { x: 48, duration: 250, easing: cubicIn }}
 >
 	<div class="relative flex items-center gap-2.5 rounded-lg bg-[#1a140c] p-2">
 		<p class="m-0 whitespace-nowrap text-right font-bricolage text-[14px] font-semibold text-white">

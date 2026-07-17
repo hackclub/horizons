@@ -4,7 +4,7 @@
 	import AppNav from "$lib/components/AppNav.svelte";
 	import Announcements from "$lib/components/announcements/Announcements.svelte";
 	import Settings from "$lib/components/settings/Settings.svelte";
-	import { highPerf, suppressAmbientMotion, ultraPerf } from "$lib/store/settingsCache";
+	import { highPerf, reduceAnimations, renderMode, ultraPerf } from "$lib/store/settingsCache";
 	import MusicPlayer from "$lib/components/music/MusicPlayer.svelte";
 	import type { InputPromptType } from "$lib/input";
 	import BobaText from "$lib/components/BobaText.svelte";
@@ -118,19 +118,33 @@
 		}
 	});
 
-	// The BG pattern scroll runs forever, so it's gated on ambient motion:
-	// suppressed by "Reduce Animations" or either performance mode.
-	const disableAnimations = $derived($suppressAmbientMotion);
+	// The BG pattern scroll runs forever, so the performance modes stop it.
+	// "Reduce Animations" slows it instead (html.reduce-anim rule in BG).
+	const disableAnimations = $derived($highPerf);
 
-	// Performance-mode root classes. `perf-high` (both tiers) lets components
-	// stop their own infinite decorative loops via `:global(html.perf-high)`
-	// overrides; `perf-ultra` zeroes every CSS animation/transition duration in
-	// layout.css (see `html.perf-ultra`).
+	// Motion/performance root classes. `reduce-anim` slows every animation and
+	// softens easings (shared vars in the root layout + per-component
+	// slowdowns); `perf-high` (both tiers) lets components stop their own
+	// infinite decorative loops via `:global(html.perf-high)` overrides;
+	// `perf-ultra` zeroes every CSS animation/transition duration in layout.css
+	// (see `html.perf-ultra`).
+	// `render-gpu`/`render-cpu` bias animation work toward compositor layers
+	// or away from them (will-change rules in layout.css); absent = browser
+	// heuristics ("auto").
 	$effect(() => {
+		document.documentElement.classList.toggle("reduce-anim", $reduceAnimations);
 		document.documentElement.classList.toggle("perf-high", $highPerf);
 		document.documentElement.classList.toggle("perf-ultra", $ultraPerf);
+		document.documentElement.classList.toggle("render-gpu", $renderMode === "gpu");
+		document.documentElement.classList.toggle("render-cpu", $renderMode === "cpu");
 		return () =>
-			document.documentElement.classList.remove("perf-high", "perf-ultra");
+			document.documentElement.classList.remove(
+				"reduce-anim",
+				"perf-high",
+				"perf-ultra",
+				"render-gpu",
+				"render-cpu",
+			);
 	});
 
 	// Preload critical data and assets on app load

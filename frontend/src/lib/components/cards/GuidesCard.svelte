@@ -132,6 +132,11 @@
 		animation: none;
 	}
 
+	/* Reduce Animations: the spin comes around half as often. */
+	:global(html.reduce-anim) .puzzle-icon {
+		animation-duration: 16s;
+	}
+
 	.card-text {
 		position: relative;
 		display: flex;

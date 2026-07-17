@@ -143,4 +143,10 @@
     .wave-char.pressed {
         animation: none;
     }
+
+    /* Reduce Animations: per-character bobbing is exactly the kind of
+       perpetual micro-motion the setting exists to remove — off entirely. */
+    :global(html.reduce-anim) .wave-char {
+        animation: none;
+    }
 </style>

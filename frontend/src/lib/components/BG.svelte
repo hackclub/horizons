@@ -36,9 +36,11 @@
 			</div>
 		{/if}
 		{#if showPattern}
-			<div class="absolute -inset-[50%] flex items-center justify-center -rotate-[19.54deg]" style={patternBlend ? `mix-blend-mode: ${patternBlend};` : ''}>
+			<div class="absolute -inset-[50%] -rotate-[19.54deg]" style={patternBlend ? `mix-blend-mode: ${patternBlend};` : ''}>
+				<!-- Oversized by one tile period (1600px) on every side so the
+				     transform-based scroll below never exposes an edge. -->
 				<div
-					class="w-[300%] h-[300%] pointer-events-none bg-repeat"
+					class="absolute -inset-[1600px] pointer-events-none bg-repeat"
 					class:pattern-slide={!disableAnimations}
 					style="background-image: url({bgPattern}); background-size: 1600px; opacity: {backgroundOpacity};"
 				></div>
@@ -57,12 +59,21 @@
 		animation: slide 40s linear infinite;
 	}
 
+	/* Reduce Animations: keep the texture drifting, but ~3× slower. */
+	:global(html.reduce-anim) .pattern-slide {
+		animation-duration: 120s;
+	}
+
+	/* Scroll via transform, not background-position: transforms interpolate on
+	   the compositor (GPU), while background-position repaints this huge layer
+	   on the main thread every frame. One full 1600px tile period keeps the
+	   loop seamless. */
 	@keyframes slide {
 		from {
-			background-position: 0 0;
+			transform: translate(0, 0);
 		}
 		to {
-			background-position: -1600px 1600px;
+			transform: translate(-1600px, 1600px);
 		}
 	}
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { scale } from 'svelte/transition';
-	import { backOut } from 'svelte/easing';
+	import { backOut, cubicOut } from 'svelte/easing';
+	import { reduceAnimations } from '$lib/store/settingsCache';
 	import Markdown from './Markdown.svelte';
 	import PulseDot from './PulseDot.svelte';
 	import type { UserAnnouncement } from '$lib/store/announcementsCache';
@@ -51,7 +52,9 @@
 >
 	<div
 		class="pointer-events-auto relative h-[639px] max-h-[85vh] w-[471px] max-w-[92vw] overflow-hidden rounded-[20px] border-4 border-black bg-[#f3e8d8] shadow-[4px_4px_0px_0px_black]"
-		transition:scale={{ start: 0.9, opacity: 0, duration: 260, easing: backOut }}
+		transition:scale={$reduceAnimations
+			? { start: 1, opacity: 0, duration: 250, easing: cubicOut }
+			: { start: 0.9, opacity: 0, duration: 260, easing: backOut }}
 		data-announcement-modal
 	>
 		<!-- Fixed close — stays put while the inner panes slide. -->

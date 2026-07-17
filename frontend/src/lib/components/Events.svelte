@@ -417,6 +417,11 @@
 		animation: none;
 	}
 
+	/* Reduce Animations: half-speed pulse. */
+	:global(html.reduce-anim) .live-dot {
+		animation-duration: 2.8s;
+	}
+
 	@keyframes fade-in {
 		from { opacity: 0; }
 		to   { opacity: 1; }

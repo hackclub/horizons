@@ -321,4 +321,9 @@
 	:global(html.perf-high) .link-hackatime-blink {
 		animation: none;
 	}
+
+	/* Reduce Animations: blink becomes a slow breathe. */
+	:global(html.reduce-anim) .link-hackatime-blink {
+		animation-duration: 3s;
+	}
 </style>

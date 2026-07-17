@@ -2,7 +2,13 @@
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { fade } from 'svelte/transition';
-	import { settings, settingsOpen, reduceAnimations, perfMode } from '$lib/store/settingsCache';
+	import {
+		settings,
+		settingsOpen,
+		reduceAnimations,
+		perfMode,
+		renderMode,
+	} from '$lib/store/settingsCache';
 	import SettingsModal from './SettingsModal.svelte';
 
 	// Block the page's keyboard navigation while the modal is open. A capture-phase
@@ -51,6 +57,7 @@
 		tab={$settings.tab}
 		reduceAnimations={$reduceAnimations}
 		perfMode={$perfMode}
+		renderMode={$renderMode}
 		hideBorders={$settings.hideBorders}
 		fun={$settings.fun}
 		onClose={() => settings.close()}
