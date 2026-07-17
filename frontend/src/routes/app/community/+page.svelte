@@ -587,6 +587,14 @@
 		animation: none;
 	}
 
+	/* Reduce Animations: half-speed pulses. */
+	:global(html.reduce-anim) .action-btn {
+		animation-duration: 3s;
+	}
+	:global(html.reduce-anim) .live-dot {
+		animation-duration: 2.8s;
+	}
+
 	/* Live badge */
 	.live-badge {
 		display: flex;

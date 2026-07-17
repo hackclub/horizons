@@ -5,7 +5,7 @@
 	import { api } from '$lib/api';
 	import { userStore } from '$lib/store/userCache';
 	import { announcements, unreadCount } from '$lib/store/announcementsCache';
-	import { settings, settingsOpen, suppressAmbientMotion } from '$lib/store/settingsCache';
+	import { settings, settingsOpen, highPerf } from '$lib/store/settingsCache';
 	import { music, playerOpen } from '$lib/store/musicCache';
 	import PulseDot from './announcements/PulseDot.svelte';
 	import type { InputPromptType } from '$lib/input';
@@ -237,7 +237,7 @@
 
 			{#if referralCode && !onReferPage}
 				<button
-					class="flex items-center justify-center rounded-sm border border-[#f3e8d8] px-2.5 py-1 font-bricolage text-sm font-bold text-black whitespace-nowrap cursor-pointer transition-transform hover:scale-[1.04] outline-none {$suppressAmbientMotion
+					class="flex items-center justify-center rounded-sm border border-[#f3e8d8] px-2.5 py-1 font-bricolage text-sm font-bold text-black whitespace-nowrap cursor-pointer transition-transform hover:scale-[1.04] outline-none {$highPerf
 						? 'bg-[#fdd9a8]'
 						: 'animate-refer-pulse'}"
 					onclick={handleRefer}
@@ -290,7 +290,7 @@
 				/>
 			</svg>
 			{#if $unreadCount > 0}
-				<PulseDot size={8} class="absolute -right-1 -top-1" animate={!$suppressAmbientMotion} />
+				<PulseDot size={8} class="absolute -right-1 -top-1" animate={!$highPerf} />
 			{/if}
 		</button>
 

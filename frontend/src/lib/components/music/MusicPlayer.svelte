@@ -4,7 +4,7 @@
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { music, musicPrefs, playerOpen, tracks } from '$lib/store/musicCache';
-	import { ultraPerf } from '$lib/store/settingsCache';
+	import { reduceAnimations, ultraPerf } from '$lib/store/settingsCache';
 
 	let audioEl = $state<HTMLAudioElement>();
 	let index = $state(0);
@@ -231,7 +231,9 @@
 		class="absolute bottom-14 right-2 z-[60] hidden w-[300px] rounded-lg bg-[#1a140c] p-3 text-center sm:block"
 		role="region"
 		aria-label="Music player"
-		transition:fly={{ x: 340, opacity: 1, duration: 320, easing: cubicOut }}
+		transition:fly={$reduceAnimations
+			? { x: 0, opacity: 0, duration: 300, easing: cubicOut }
+			: { x: 340, opacity: 1, duration: 320, easing: cubicOut }}
 		onmouseenter={onEnter}
 		onmouseleave={onLeave}
 		onfocusin={onEnter}
@@ -359,6 +361,10 @@
 	@media (hover: hover) {
 		.ctrl:not(:disabled):hover {
 			transform: scale(1.12);
+		}
+		/* Reduce Animations: smaller hover pop. */
+		:global(html.reduce-anim) .ctrl:not(:disabled):hover {
+			transform: scale(1.05);
 		}
 	}
 	.ctrl:disabled {

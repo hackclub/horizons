@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { scale } from 'svelte/transition';
-	import { backOut } from 'svelte/easing';
+	import { backOut, cubicOut } from 'svelte/easing';
 	import { api } from '$lib/api';
-	import { settings, type PerfMode, type SettingsTab } from '$lib/store/settingsCache';
+	import {
+		settings,
+		type PerfMode,
+		type RenderMode,
+		type SettingsTab,
+	} from '$lib/store/settingsCache';
 	import { invalidateAllProjectCaches } from '$lib/store/projectDetailCache';
 	import HackatimeLinkButton from '$lib/components/HackatimeLinkButton.svelte';
 	import Toggle from './Toggle.svelte';
@@ -11,13 +16,21 @@
 		tab: SettingsTab;
 		reduceAnimations: boolean;
 		perfMode: PerfMode;
+		renderMode: RenderMode;
 		hideBorders: boolean;
 		/** For-fun toggle state, keyed by toggle id. */
 		fun: Record<string, boolean>;
 		onClose: () => void;
 	}
 
-	let { tab, reduceAnimations, perfMode, hideBorders, fun, onClose }: Props = $props();
+	let { tab, reduceAnimations, perfMode, renderMode, hideBorders, fun, onClose }: Props =
+		$props();
+
+	const renderModes: { id: RenderMode; label: string }[] = [
+		{ id: 'auto', label: 'Auto' },
+		{ id: 'gpu', label: 'Prefer GPU' },
+		{ id: 'cpu', label: 'Prefer CPU' },
+	];
 
 	const tabs: { id: SettingsTab; label: string }[] = [
 		{ id: 'preferences', label: 'Preferences' },
@@ -68,7 +81,9 @@
 >
 	<div
 		class="pointer-events-auto relative flex h-[640px] max-h-[85vh] w-[800px] max-w-[92vw] overflow-hidden rounded-[20px] border-4 border-black bg-[#f3e8d8] p-3 shadow-[4px_4px_0px_0px_black]"
-		transition:scale={{ start: 0.9, opacity: 0, duration: 260, easing: backOut }}
+		transition:scale={reduceAnimations
+			? { start: 1, opacity: 0, duration: 250, easing: cubicOut }
+			: { start: 0.9, opacity: 0, duration: 260, easing: backOut }}
 		data-settings-modal
 	>
 		<!-- Close -->
@@ -142,6 +157,33 @@
 								High: pauses decorative motion and halves background refresh rates.
 							{:else}
 								Performance modes cut CPU and memory use for long sessions or slower devices.
+							{/if}
+						</p>
+					</div>
+					<div class="mt-2 flex flex-col gap-2">
+						<h3 class="m-0 font-bricolage text-[15px] font-bold text-black">Rendering</h3>
+						<div class="flex gap-1.5">
+							{#each renderModes as mode (mode.id)}
+								<button
+									type="button"
+									class="cursor-pointer rounded-lg border-2 border-black px-3 py-1 font-bricolage text-[14px] font-semibold outline-none transition-colors {renderMode ===
+									mode.id
+										? 'bg-[#88de3c] text-black'
+										: 'bg-[#e7dac6] text-black hover:bg-[#e0cfb4]'}"
+									aria-pressed={renderMode === mode.id}
+									onclick={() => settings.setRenderMode(mode.id)}
+								>
+									{mode.label}
+								</button>
+							{/each}
+						</div>
+						<p class="m-0 font-bricolage text-[14px] text-black/50">
+							{#if renderMode === 'gpu'}
+								Animations stay on dedicated GPU layers — least CPU use, more video memory.
+							{:else if renderMode === 'cpu'}
+								No GPU layer pinning — least video memory, better for weak or integrated GPUs.
+							{:else}
+								Your browser decides where animation work runs.
 							{/if}
 						</p>
 					</div>

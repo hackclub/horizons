@@ -45,6 +45,11 @@
         animation: none;
     }
 
+    /* Reduce Animations: blink becomes a slow breathe. */
+    :global(html.reduce-anim) .boba-container.blink {
+        animation-duration: 2.5s;
+    }
+
     @keyframes blink {
         0%, 100% {
             opacity: 1;

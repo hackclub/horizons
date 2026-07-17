@@ -41,6 +41,23 @@
 		--exit-easing: cubic-bezier(0.55, -0.2, 1, 0.45);
 
 }
+
+	/* Reduce Animations: gentler motion. Page enters/exits become fades (see
+	   layout.css `reduce-fade-*`), so these durations are tuned for opacity,
+	   not flight distance; the springy/anticipating easings (overshoot and
+	   wind-up are the big motion-sickness triggers) become plain ease curves.
+	   The exit stays comfortably under navigateTo()'s fixed 1100ms wait. */
+	:global(html.reduce-anim) {
+		--juice-easing: ease-out;
+		--juice-duration: 0.5s;
+		--juice-scale: 1.02;
+
+		--enter-duration: 500ms;
+		--enter-easing: ease-out;
+
+		--exit-duration: 650ms;
+		--exit-easing: ease-out;
+	}
 </style>
 
 <svelte:head>
