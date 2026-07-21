@@ -18,6 +18,7 @@
 		Receipt,
 		Settings,
 		ShieldCheck,
+		HandCoins,
 		ShieldAlert,
 		Upload,
 		PanelLeftClose,
@@ -58,6 +59,7 @@
 		{ href: '/shop', label: 'Shop', icon: ShoppingBag },
 		{ href: '/giftcodes', label: 'Gift Codes', icon: Gift },
 		{ href: '/transactions', label: 'Transactions', icon: Receipt },
+		{ href: '/reviewer-payouts', label: 'Reviewer Payouts', icon: HandCoins },
 		{ href: '/events', label: 'Events', icon: ArrowRightLeft },
 		{ href: '/community-events', label: 'Community Events', icon: CalendarDays },
 		{ href: '/announcements', label: 'Announcements', icon: Megaphone }
