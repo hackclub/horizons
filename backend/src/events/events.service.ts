@@ -238,15 +238,15 @@ export class EventsService {
 
     await this.balanceService.verifyEligibility(userId, 'Event Ticket');
 
-    // Threshold gates eligibility on approved hours earned, not on balance —
-    // users may still buy when their balance can't cover the full price
-    // (balance is allowed to go negative).
+    // Threshold gates eligibility on balance (approved hours minus spending,
+    // including admin adjustments) — spending below the bar disqualifies.
+    // The ticket cost itself may still push the balance negative; only the
+    // threshold is enforced here.
     if (event.ticketThreshold !== null) {
-      const { totalApprovedHours } =
-        await this.balanceService.getUserBalance(userId);
-      if (totalApprovedHours < event.ticketThreshold) {
+      const { balance } = await this.balanceService.getUserBalance(userId);
+      if (balance < event.ticketThreshold) {
         throw new BadRequestException(
-          `You need ${event.ticketThreshold} approved hours to buy a ticket. You have ${Math.round(totalApprovedHours * 10) / 10}.`,
+          `You need ${event.ticketThreshold} hours to buy a ticket. You have ${Math.round(balance * 10) / 10}.`,
         );
       }
     }

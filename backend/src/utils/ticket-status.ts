@@ -5,9 +5,10 @@ export interface UserTicketStatus {
   /** User holds an EventTicket transaction for their pinned event. */
   boughtTicket: boolean;
   /**
-   * User hasn't bought yet, but their approved hours plus the hackatime_hours
-   * of any still-pending latest submission would clear the pinned event's
-   * ticket threshold — i.e. they'd qualify once their pending reviews approve.
+   * User hasn't bought yet, but their projected balance — approved hours
+   * (counting the hackatime_hours of any still-pending latest submission)
+   * minus non-refunded spend — would clear the pinned event's ticket
+   * threshold, i.e. they'd qualify once their pending reviews approve.
    */
   canBuyTicketIfApproved: boolean;
 }
@@ -18,10 +19,12 @@ export interface UserTicketStatus {
  * "Can buy if approved" mirrors the metrics `approved_plus_pending_total`
  * projection (see AdminService.getStats): for each of the user's non-deleted
  * projects we count the still-pending latest submission's hackatime_hours
- * snapshot in place of approved hours, then sum across projects and gate on the
- * pinned event's ticketThreshold (`rsvp_cost`; null = no gate, always
- * qualifies). Users with no pinned event get `{ false, false }` — there's no
- * event context to gate against.
+ * snapshot in place of approved hours, sum across projects, then subtract the
+ * user's non-refunded transaction spend — the real ticket gate is on balance
+ * (see EventsService.buyTicket), so spending and admin adjustments count.
+ * Gate on the pinned event's ticketThreshold (`rsvp_cost`; null = no gate,
+ * always qualifies). Users with no pinned event get `{ false, false }` —
+ * there's no event context to gate against.
  *
  * Lives in utils (not a service) so both AdminService and ReviewerService can
  * call it with their injected PrismaService without cross-module wiring.
@@ -39,7 +42,7 @@ export async function computeUserTicketStatuses(
       threshold: number | null;
       has_event: boolean;
       bought: boolean;
-      approved_plus_pending: number | string | null;
+      projected_balance: number | string | null;
     }>
   >(Prisma.sql`
     SELECT
@@ -47,7 +50,7 @@ export async function computeUserTicketStatuses(
       e.rsvp_cost AS threshold,
       (pe.user_id IS NOT NULL) AS has_event,
       (et.user_id IS NOT NULL) AS bought,
-      COALESCE(ut.approved_plus_pending, 0) AS approved_plus_pending
+      COALESCE(ut.approved_plus_pending, 0) - COALESCE(sp.spent, 0) AS projected_balance
     FROM users u
     LEFT JOIN pinned_events pe ON pe.user_id = u.user_id
     LEFT JOIN events e ON e.event_id = pe.event_id
@@ -94,6 +97,12 @@ export async function computeUserTicketStatuses(
       WHERE p.deleted_at IS NULL
       GROUP BY p.user_id
     ) ut ON ut.user_id = u.user_id
+    LEFT JOIN (
+      SELECT user_id, SUM(cost) AS spent
+      FROM transactions
+      WHERE refunded_at IS NULL
+      GROUP BY user_id
+    ) sp ON sp.user_id = u.user_id
     WHERE u.user_id IN (${Prisma.join(userIds)})
   `);
 
@@ -101,9 +110,9 @@ export async function computeUserTicketStatuses(
     const bought = Boolean(r.bought);
     const hasEvent = Boolean(r.has_event);
     const threshold = r.threshold == null ? null : Number(r.threshold);
-    const approvedPlusPending = Number(r.approved_plus_pending ?? 0);
+    const projectedBalance = Number(r.projected_balance ?? 0);
     const qualifies =
-      hasEvent && (threshold == null || approvedPlusPending >= threshold);
+      hasEvent && (threshold == null || projectedBalance >= threshold);
     result.set(Number(r.user_id), {
       boughtTicket: bought,
       canBuyTicketIfApproved: !bought && qualifies,

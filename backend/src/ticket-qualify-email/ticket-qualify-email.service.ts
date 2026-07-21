@@ -31,7 +31,8 @@ export class TicketQualifyEmailService {
    * - The pinned event has no `ticketThreshold` (no bar means no crossing
    *   moment to congratulate — anyone can buy from the start)
    * - The user already bought a ticket for the pinned event
-   * - The user's total approved hours are still below the event's bar
+   * - The user's balance (approved hours minus non-refunded spend, matching
+   *   the buyTicket gate) is still below the event's bar
    *
    * Returns `true` iff the email was sent (and the flag stamped) on this
    * call. Callers can use this to suppress overlapping notifications — e.g.
@@ -82,7 +83,14 @@ export class TicketQualifyEmailService {
       (sum, p) => sum + (p.approvedHours ?? 0),
       0,
     );
-    if (totalApproved < ticketThreshold) return false;
+    // Mirror the buyTicket gate: the bar is on balance, so shop spend and
+    // admin adjustments count against (or toward) qualification.
+    const totalSpent = await this.prisma.transaction.aggregate({
+      where: { userId: user.userId, refundedAt: null },
+      _sum: { cost: true },
+    });
+    const balance = totalApproved - (totalSpent._sum.cost ?? 0);
+    if (balance < ticketThreshold) return false;
 
     const result = await this.loopsService.sendTicketQualifyEmail(
       user.email,
