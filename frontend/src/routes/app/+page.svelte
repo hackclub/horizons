@@ -142,6 +142,7 @@
 	let pinnedTicketCost = $state<number | null>(null);
 	let pinnedTicketEnabled = $state(false);
 	let pinnedHasTicket = $state(false);
+	let pinnedBalance = $state<number | null>(null);
 
 	// #horizons huddle state — populated by polling /api/huddles/status. When `huddleActive`
 	// is true, a LiveHuddleCard is rendered beneath the community-events card.
@@ -330,6 +331,11 @@
 				? false
 				: pinnedHasTicket
 	);
+	// Balance gates the buy-ticket indicator. Debug hour overrides treat the
+	// approved slider as the balance so the indicator stays exercisable.
+	const eventColumnBalance = $derived(
+		debugHoursOverride ? debugApproved : pinnedBalance
+	);
 	const eventColumnValues = $derived.by(() => {
 		if (debugHoursOverride) {
 			return { completed: debugCompleted, approved: debugApproved, pending: debugPending };
@@ -373,6 +379,7 @@
 					ticketCost: number | null;
 					ticketEnabled: boolean;
 					hasTicket: boolean;
+					balance: number;
 				}
 			| undefined;
 		if (!data) return;
@@ -380,6 +387,7 @@
 		pinnedTicketCost = data.ticketCost;
 		pinnedTicketEnabled = data.ticketEnabled;
 		pinnedHasTicket = data.hasTicket;
+		pinnedBalance = typeof data.balance === 'number' ? Math.round(data.balance * 10) / 10 : null;
 	}
 
 	async function fetchHuddleStatus() {
@@ -868,6 +876,7 @@
 						approvedHours={eventColumnValues.approved}
 						pendingHours={eventColumnValues.pending}
 						ticketThreshold={eventColumnTicketThreshold}
+						balance={eventColumnBalance}
 						ticketCost={eventColumnTicketCost}
 						ticketEnabled={eventColumnTicketEnabled}
 						hasTicket={eventColumnHasTicket}

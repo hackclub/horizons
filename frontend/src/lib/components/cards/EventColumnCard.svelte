@@ -14,8 +14,11 @@
 		/** Hours that are submitted/shipped and awaiting review. */
 		pendingHours?: number;
 		attendCount?: number | null;
-		/** Approved-hour threshold a user must hit before they can buy a ticket. Null = no gate. */
+		/** Balance threshold a user must hit before they can buy a ticket. Null = no gate. */
 		ticketThreshold?: number | null;
+		/** Spendable balance (approved hours minus spending) — gates the buy-ticket
+		 *  prompt against ticketThreshold. Null until ticket-status loads. */
+		balance?: number | null;
 		/** Approved-hour cost deducted on ticket purchase. Null = ticket not yet available. */
 		ticketCost?: number | null;
 		/** Whether ticket purchase is currently open. */
@@ -37,6 +40,7 @@
 		pendingHours = 0,
 		attendCount = null,
 		ticketThreshold = null,
+		balance = null,
 		ticketCost = null,
 		ticketEnabled = false,
 		hasTicket = false,
@@ -63,14 +67,16 @@
 	const progressState = $derived<ProgressState>((() => {
 		// Ticket already bought — fully qualified regardless of running hour total.
 		if (hasTicket) return 'qualified';
-		// Threshold of approved hours hit and the purchase window is open.
-		// Null threshold means no eligibility gate; only ticketCost+ticketEnabled
-		// need to be set for the purchase prompt to show.
+		// Balance threshold hit and the purchase window is open. Null threshold
+		// means no eligibility gate; only ticketCost+ticketEnabled need to be
+		// set for the purchase prompt to show. Falls back to approved hours
+		// until the ticket-status balance loads.
 		if (
 			ticketCost !== null &&
 			ticketEnabled &&
 			!hasTicket &&
-			(ticketThreshold === null || approvedDisplay >= ticketThreshold)
+			(ticketThreshold === null ||
+				round1(balance ?? approvedHours) >= ticketThreshold)
 		) {
 			return 'buy-ticket';
 		}

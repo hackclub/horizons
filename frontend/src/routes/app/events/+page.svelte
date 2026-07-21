@@ -50,8 +50,8 @@
 	let loading = $state(true);
 	let shakingKey = $state<string | null>(null);
 	// Purchase state mirrors /api/events/auth/:slug/ticket-status. ticketThreshold
-	// gates eligibility on approved hours; ticketCost is the deducted price
-	// (balance is allowed to go negative).
+	// gates eligibility on balance (approved hours minus spending); ticketCost is
+	// the deducted price (the cost itself may push the balance negative).
 	let ticketThreshold = $state<number | null>(null);
 	let ticketCost = $state<number | null>(null);
 	let hasTicket = $state(false);
@@ -205,11 +205,11 @@
 		if (item.colorKey) {
 			const cost = costFor(item);
 			if (cost === null) return 'locked';
-			// Threshold gates eligibility on approved hours earned; balance is
-			// allowed to go negative so it doesn't gate purchase.
+			// Threshold gates eligibility on balance — spending below the bar
+			// disqualifies; only the ticket cost itself may push it negative.
 			if (
 				effectiveTicketThreshold !== null &&
-				effectiveApprovedHours < effectiveTicketThreshold
+				effectiveBalance < effectiveTicketThreshold
 			) {
 				return 'locked';
 			}
@@ -247,9 +247,9 @@
 			if (
 				item.key === 'ticket' &&
 				effectiveTicketThreshold !== null &&
-				effectiveApprovedHours < effectiveTicketThreshold
+				effectiveBalance < effectiveTicketThreshold
 			) {
-				return `Earn ${effectiveTicketThreshold} approved hours to unlock`;
+				return `You need ${effectiveTicketThreshold} hours to unlock`;
 			}
 			if (cost !== null) return `Purchase for ${cost} hours`;
 			return null;

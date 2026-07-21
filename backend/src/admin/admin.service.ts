@@ -952,7 +952,9 @@ export class AdminService {
       this.countUsersWithApprovedHoursGte(10),
       // "Can buy ticket" is scoped to each user's pinned event: their approved
       // hours must clear that specific event's ticketThreshold (null = no gate).
-      // Users without a pinned event are excluded.
+      // Users without a pinned event are excluded. Deliberately approved-hours
+      // based, unlike the live buyTicket gate (which uses balance) — the funnel
+      // needs Bought ⊆ CanBuy, and buying spends balance below the bar.
       this.countUsersWhoCanBuyTheirPinnedTicket(),
       this.countUsersWithApprovedHoursGte(60),
       this.prisma.user.count({
