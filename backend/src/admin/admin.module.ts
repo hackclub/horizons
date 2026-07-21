@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { MetricsSnapshotService } from './metrics-snapshot.service';
+import { ReviewerPayoutsController } from './reviewer-payouts.controller';
+import { ReviewerPayoutsService } from './reviewer-payouts.service';
 import { PrismaService } from '../prisma.service';
 import { SlackModule } from '../slack/slack.module';
 import { ManifestModule } from '../manifest/manifest.module';
@@ -27,7 +29,12 @@ import { AirtableModule } from '../airtable/airtable.module';
     ReviewerModule,
     AirtableModule,
   ],
-  controllers: [AdminController],
-  providers: [AdminService, MetricsSnapshotService, PrismaService],
+  controllers: [AdminController, ReviewerPayoutsController],
+  providers: [
+    AdminService,
+    MetricsSnapshotService,
+    ReviewerPayoutsService,
+    PrismaService,
+  ],
 })
 export class AdminModule {}

@@ -63,6 +63,36 @@ bun scripts/backfill-review-fields.ts --dry-run   # preview
 bun scripts/backfill-review-fields.ts             # write
 ```
 
+### `check-records` — data-quality checks over every row
+
+Runs a set of modular checks against every Approved Projects record and
+reports failures. Current checks:
+
+| Check                  | Fails when                                            |
+| ---------------------- | ----------------------------------------------------- |
+| `missing-screenshot`   | **Screenshot** attachment is empty                    |
+| `missing-playable-url` | **Playable URL** is empty                             |
+| `dead-playable-url`    | **Playable URL** doesn't respond (DNS failure, connection error, timeout, or HTTP ≥ 400) |
+| `missing-code-url`     | **Code URL** is empty                                 |
+| `dead-code-url`        | **Code URL** doesn't respond                          |
+
+Read-only by default. With `--write`, findings are also PATCHed into a
+long-text **Check Issues** field (create it in Airtable first; the backend
+sync never touches it) and cleared on records that pass — so you can
+group/filter on it in Airtable. HTTP 403s are flagged but annotated as
+possible bot-blocking; eyeball those before treating them as dead.
+
+```bash
+cd airtable
+bun scripts/check-records.ts                          # report only
+bun scripts/check-records.ts --only=missing-screenshot,dead-playable-url
+bun scripts/check-records.ts --write                  # write "Check Issues"
+bun scripts/check-records.ts --write --field="QA Notes"
+```
+
+To add a new check, add an entry to the `CHECKS` array in the script — a
+name plus a function that takes a record and returns an issue or `null`.
+
 ## Adding a new script
 
 Drop a `.ts` file in `scripts/`, import from `lib/airtable.ts` for Airtable

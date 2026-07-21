@@ -182,6 +182,11 @@ Full administrative operations. Accessible to `admin` role only.
 | PUT | `/users/:id/sus-flag` | Admin | Toggle `isSus` flag |
 | PUT | `/users/:id/ban` | Admin | Set/clear `banned` (+ optional `reason`). Banning deletes the user's active sessions; the `AuthGuard` and login callback reject banned users |
 | PUT | `/users/:id/slack` | Admin | Manually set `slackUserId` |
+| **Reviewer payouts** |||
+| GET | `/reviewer-payouts` | Admin | Per-reviewer payout summary: review counts split at the July 13 2026 rate cutoff (00:00 ET), unpaid counts, whole-block owed hours under the reviewer's current rate flags, carryover, total paid, flags |
+| GET | `/reviewer-payouts/:userId/history` | Admin | Past payouts for a reviewer (hours, counted reviews, rate applied, `refunded` from the backing transaction) |
+| PUT | `/reviewer-payouts/:userId/flags` | Superadmin | Toggle `reviewerPayoutsEnabled` (can be paid at all) and/or `reviewerBoostedRateEnabled` (1h/5 for post-cutoff reviews instead of the 1h/15 base rate) |
+| POST | `/reviewer-payouts/:userId/payout` | Superadmin | Atomically pay all whole blocks of unpaid reviews as one `AdminAdjustment` credit; marks paid reviews via `Submission.reviewerPayoutId` so they can never be paid twice. Optional `expectedHours` rejects with 409 when counts changed since the UI loaded |
 | **Metrics** |||
 | GET | `/metrics` | Admin | Dashboard metrics (total hours, users, projects, submitted projects) |
 | GET | `/reviewer-leaderboard` | Admin | Reviewer stats (approved, rejected, total, last reviewed) |
@@ -472,10 +477,11 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 
 | Model | Key Fields | Purpose |
 |-------|------------|---------|
-| **User** | hcaId, email, firstName, lastName, birthday, address fields, role, onboardComplete, hackatimeAccount, hackatimeAccessToken, rafflePos, airtableRecId, isFraud, isSus, banned, bannedReason, bannedAt | Student profiles |
+| **User** | hcaId, email, firstName, lastName, birthday, address fields, role, onboardComplete, hackatimeAccount, hackatimeAccessToken, rafflePos, airtableRecId, isFraud, isSus, banned, bannedReason, bannedAt, reviewerPayoutsEnabled, reviewerBoostedRateEnabled | Student profiles |
 | **Project** | userId, projectTitle, projectType, description, approvedHours, nowHackatimeHours, nowHackatimeProjects[], URLs, isLocked, joeFraudPassed, joeTrustScore (+ other joe\*) | Student projects |
-| **Submission** | projectId, approvalStatus (reconciled final outcome), reviewPassed (reviewer gate), approvedHours, hackatimeHours, hoursJustification, reviewerAnalysis, pendingSendEmail, reviewedBy, reviewedAt, finalizedAt, airtableRecId, sentToAdminAt/ById/Note (reviewer escalation to the admin queue — never exposed to users) | Per-project submissions |
+| **Submission** | projectId, approvalStatus (reconciled final outcome), reviewPassed (reviewer gate), approvedHours, hackatimeHours, hoursJustification, reviewerAnalysis, pendingSendEmail, reviewedBy, reviewedAt, finalizedAt, airtableRecId, reviewerPayoutId (null = review not yet paid), sentToAdminAt/ById/Note (reviewer escalation to the admin queue — never exposed to users) | Per-project submissions |
 | **SubmissionAuditLog** | submissionId, adminId, action, newStatus, approvedHours, changes (JSON) | Review audit trail |
+| **ReviewerPayout** | reviewerUserId, hours, reviewsCountedBefore/After (split at the July 13 2026 rate cutoff), boostedRateApplied, transactionId (unique, the AdminAdjustment credit), createdByUserId | Audit trail linking a reviewer payout transaction to the exact reviews it paid (via Submission.reviewerPayoutId) |
 | **ReviewerNote** | projectId or userId, content | Shared reviewer notes |
 | **ReviewerChecklist** | submissionId, checkedItems (JSON) | 7-item per-submission checklist |
 

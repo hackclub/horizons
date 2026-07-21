@@ -50,6 +50,12 @@ model User {
   ageOverride  Boolean @default(false) @map("age_override")
   adminComment String? @map("admin_comment") @db.VarChar(1000)
 
+  // Reviewer payout flags — superadmin-set, admin-dashboard-only (never exposed
+  // to the user). payoutsEnabled gates payouts entirely; boostedRateEnabled
+  // upgrades post-cutoff reviews from 1h/15 to 1h/5 (see ReviewerPayoutsService).
+  reviewerPayoutsEnabled     Boolean @default(false) @map("reviewer_payouts_enabled")
+  reviewerBoostedRateEnabled Boolean @default(false) @map("reviewer_boosted_rate_enabled")
+
   // Banned users are blocked at the AuthGuard: existing sessions are rejected
   // and new logins are refused. bannedReason is admin-only context.
   banned       Boolean   @default(false) @map("banned")
@@ -77,6 +83,7 @@ model User {
   claimedSubmissions Submission[]        @relation("SubmissionClaimedBy")
   dailyActivity      UserDailyActivity[]
   announcementReads  AnnouncementRead[]
+  reviewerPayouts    ReviewerPayout[]
 
   @@index([currentStreak(sort: Desc), lastActiveDate(sort: Desc), userId], name: "users_streak_leaderboard_idx")
   @@map("users")
@@ -187,16 +194,45 @@ model Submission {
   claimedById        Int?                 @map("claimed_by_id")
   claimedAt          DateTime?            @map("claimed_at")
   claimHeartbeatAt   DateTime?            @map("claim_heartbeat_at")
+  // Set when this review was counted toward a reviewer payout. Null = unpaid.
+  reviewerPayoutId   Int?                 @map("reviewer_payout_id")
   createdAt          DateTime             @default(now()) @map("created_at")
   updatedAt          DateTime             @updatedAt @map("updated_at")
   project            Project              @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
   claimedBy          User?                @relation("SubmissionClaimedBy", fields: [claimedById], references: [userId], onDelete: SetNull)
+  reviewerPayout     ReviewerPayout?      @relation(fields: [reviewerPayoutId], references: [id], onDelete: SetNull)
   auditLogs          SubmissionAuditLog[]
   checklist          ReviewerChecklist?
 
   @@index([projectId])
   @@index([claimedById])
+  @@index([reviewerPayoutId])
   @@map("submissions")
+}
+
+// One row per reviewer payout action — the audit trail linking an
+// AdminAdjustment transaction to the exact reviews it paid for (via
+// Submission.reviewerPayoutId). Counts are split by the July 13 2026 rate
+// cutoff even when the unboosted single-pool rate was applied.
+model ReviewerPayout {
+  id                   Int          @id @default(autoincrement())
+  reviewerUserId       Int          @map("reviewer_user_id")
+  hours                Float
+  reviewsCountedBefore Int          @map("reviews_counted_before")
+  reviewsCountedAfter  Int          @map("reviews_counted_after")
+  // Whether the reviewer's boosted 1h/5 rate was active for this payout.
+  boostedRateApplied   Boolean      @map("boosted_rate_applied")
+  transactionId        Int          @unique @map("transaction_id")
+  // Plain int, no FK — matches SubmissionAuditLog.adminId so deleting an
+  // admin never disturbs payout history.
+  createdByUserId      Int          @map("created_by_user_id")
+  createdAt            DateTime     @default(now()) @map("created_at")
+  reviewer             User         @relation(fields: [reviewerUserId], references: [userId], onDelete: Cascade)
+  transaction          Transaction  @relation(fields: [transactionId], references: [transactionId], onDelete: Cascade)
+  submissions          Submission[]
+
+  @@index([reviewerUserId])
+  @@map("reviewer_payouts")
 }
 
 model SubmissionAuditLog {
@@ -378,6 +414,7 @@ model Transaction {
   item            ShopItem?        @relation(fields: [itemId], references: [itemId], onDelete: Cascade)
   variant         ShopItemVariant? @relation(fields: [variantId], references: [variantId], onDelete: SetNull)
   event           Event?           @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+  reviewerPayouts ReviewerPayout[]
 
   @@unique([userId, eventId, kind], name: "uniq_user_event_kind")
   @@index([userId])
