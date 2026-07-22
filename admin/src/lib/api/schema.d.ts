@@ -3292,6 +3292,7 @@ export interface components {
             fraudCheckedThisWeek: number;
             reviewedThisWeek: number;
             funnelMatrix: components["schemas"]["StatsFunnelMatrix"];
+            funnelMatrixHours: components["schemas"]["StatsFunnelMatrix"];
         };
         StatsSignupEventEntry: {
             eventId: number;
@@ -3833,6 +3834,7 @@ export interface components {
             fraudCheckedThisWeek: number;
             reviewedThisWeek: number;
             funnelMatrix: components["schemas"]["FunnelMatrix"];
+            funnelMatrixHours: components["schemas"]["FunnelMatrix"];
         };
         ReviewHistorical: {
             reviewsCompleted: components["schemas"]["HistoricalDataPoint"][];

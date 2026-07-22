@@ -656,7 +656,8 @@ export class MetricsService {
       }),
     ]);
 
-    const funnelMatrix = await this.computeFunnelMatrix(asOf);
+    const { funnelMatrix, funnelMatrixHours } =
+      await this.computeFunnelMatrix(asOf);
 
     return {
       shipped,
@@ -671,13 +672,18 @@ export class MetricsService {
       fraudCheckedThisWeek,
       reviewedThisWeek,
       funnelMatrix,
+      funnelMatrixHours,
     };
   }
 
   /**
    * For every project with ≥1 submission, compute where it currently sits in the
    * two-gate flow — reviewer gate × fraud gate — using the project's most recent
-   * submission. Returns a 3×3 count matrix.
+   * submission. Returns a 3×3 count matrix plus a parallel 3×3 matrix of summed
+   * shipped hours (the latest submission's hackatime_hours), so the funnel can
+   * show hours flowing along each path. hackatime_hours rather than
+   * approved_hours keeps the sum conserved across every gate — approved_hours
+   * only exists after a reviewer verdict.
    *
    * Under the fraud-wins rule (fraud=false → silent reject regardless of reviewer),
    * fraud-failed column cells are all silent-rejects.
@@ -689,6 +695,7 @@ export class MetricsService {
         review_bucket: 'approved' | 'rejected' | 'pending';
         fraud_bucket: 'passed' | 'failed' | 'pending';
         count: bigint;
+        hours: number;
       }>
     >`
       WITH latest_submission AS (
@@ -696,7 +703,8 @@ export class MetricsService {
           project_id,
           review_passed,
           approval_status,
-          silent_reject
+          silent_reject,
+          hackatime_hours
         FROM submissions
         WHERE created_at <= ${ceiling}
         ORDER BY project_id, created_at DESC
@@ -712,7 +720,8 @@ export class MetricsService {
           WHEN p.joe_fraud_passed = false THEN 'failed'
           ELSE 'pending'
         END AS fraud_bucket,
-        COUNT(*)::bigint AS count
+        COUNT(*)::bigint AS count,
+        COALESCE(SUM(ls.hackatime_hours), 0)::float AS hours
       FROM latest_submission ls
       JOIN projects p ON p.project_id = ls.project_id
       WHERE p.created_at <= ${ceiling}
@@ -720,30 +729,54 @@ export class MetricsService {
       GROUP BY review_bucket, fraud_bucket;
     `;
 
-    const cell = (
+    const find = (
       review: 'approved' | 'rejected' | 'pending',
       fraud: 'passed' | 'failed' | 'pending',
     ) =>
-      Number(
-        rows.find((r) => r.review_bucket === review && r.fraud_bucket === fraud)
-          ?.count ?? 0,
-      );
+      rows.find((r) => r.review_bucket === review && r.fraud_bucket === fraud);
+    const cell = (
+      review: 'approved' | 'rejected' | 'pending',
+      fraud: 'passed' | 'failed' | 'pending',
+    ) => Number(find(review, fraud)?.count ?? 0);
+    const hoursCell = (
+      review: 'approved' | 'rejected' | 'pending',
+      fraud: 'passed' | 'failed' | 'pending',
+    ) => Math.round(Number(find(review, fraud)?.hours ?? 0) * 100) / 100;
 
     return {
-      reviewApproved: {
-        fraudPassed: cell('approved', 'passed'),
-        fraudFailed: cell('approved', 'failed'),
-        fraudPending: cell('approved', 'pending'),
+      funnelMatrix: {
+        reviewApproved: {
+          fraudPassed: cell('approved', 'passed'),
+          fraudFailed: cell('approved', 'failed'),
+          fraudPending: cell('approved', 'pending'),
+        },
+        reviewRejected: {
+          fraudPassed: cell('rejected', 'passed'),
+          fraudFailed: cell('rejected', 'failed'),
+          fraudPending: cell('rejected', 'pending'),
+        },
+        reviewPending: {
+          fraudPassed: cell('pending', 'passed'),
+          fraudFailed: cell('pending', 'failed'),
+          fraudPending: cell('pending', 'pending'),
+        },
       },
-      reviewRejected: {
-        fraudPassed: cell('rejected', 'passed'),
-        fraudFailed: cell('rejected', 'failed'),
-        fraudPending: cell('rejected', 'pending'),
-      },
-      reviewPending: {
-        fraudPassed: cell('pending', 'passed'),
-        fraudFailed: cell('pending', 'failed'),
-        fraudPending: cell('pending', 'pending'),
+      funnelMatrixHours: {
+        reviewApproved: {
+          fraudPassed: hoursCell('approved', 'passed'),
+          fraudFailed: hoursCell('approved', 'failed'),
+          fraudPending: hoursCell('approved', 'pending'),
+        },
+        reviewRejected: {
+          fraudPassed: hoursCell('rejected', 'passed'),
+          fraudFailed: hoursCell('rejected', 'failed'),
+          fraudPending: hoursCell('rejected', 'pending'),
+        },
+        reviewPending: {
+          fraudPassed: hoursCell('pending', 'passed'),
+          fraudFailed: hoursCell('pending', 'failed'),
+          fraudPending: hoursCell('pending', 'pending'),
+        },
       },
     };
   }

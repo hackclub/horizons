@@ -1099,6 +1099,10 @@ class StatsReviewProjects {
 
   @ApiProperty({ type: StatsFunnelMatrix })
   funnelMatrix: StatsFunnelMatrix;
+
+  /** Same 3×3 shape as funnelMatrix, but summed shipped (hackatime) hours per cell. */
+  @ApiProperty({ type: StatsFunnelMatrix })
+  funnelMatrixHours: StatsFunnelMatrix;
 }
 
 class StatsSignupEventEntry {

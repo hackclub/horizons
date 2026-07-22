@@ -364,7 +364,8 @@
 		if (!chart || !stats) return;
 
 		const m = stats.reviewProjects.funnelMatrix;
-		if (!m) return;
+		const mh = stats.reviewProjects.funnelMatrixHours;
+		if (!m || !mh) return;
 		const dark = isDark();
 		const axis = textColor();
 
@@ -378,6 +379,10 @@
 			m.reviewApproved.fraudPassed + m.reviewApproved.fraudFailed + m.reviewApproved.fraudPending +
 			m.reviewPending.fraudPassed + m.reviewPending.fraudFailed + m.reviewPending.fraudPending +
 			m.reviewRejected.fraudPassed + m.reviewRejected.fraudFailed + m.reviewRejected.fraudPending;
+		const shippedHours =
+			mh.reviewApproved.fraudPassed + mh.reviewApproved.fraudFailed + mh.reviewApproved.fraudPending +
+			mh.reviewPending.fraudPassed + mh.reviewPending.fraudFailed + mh.reviewPending.fraudPending +
+			mh.reviewRejected.fraudPassed + mh.reviewRejected.fraudFailed + mh.reviewRejected.fraudPending;
 
 		const fraudPassedTotal =
 			m.reviewApproved.fraudPassed + m.reviewPending.fraudPassed + m.reviewRejected.fraudPassed;
@@ -385,33 +390,44 @@
 			m.reviewApproved.fraudPending + m.reviewPending.fraudPending + m.reviewRejected.fraudPending;
 		const fraudFailedTotal =
 			m.reviewApproved.fraudFailed + m.reviewPending.fraudFailed + m.reviewRejected.fraudFailed;
+		const fraudPassedHours =
+			mh.reviewApproved.fraudPassed + mh.reviewPending.fraudPassed + mh.reviewRejected.fraudPassed;
+		const fraudPendingHours =
+			mh.reviewApproved.fraudPending + mh.reviewPending.fraudPending + mh.reviewRejected.fraudPending;
+		const fraudFailedHours =
+			mh.reviewApproved.fraudFailed + mh.reviewPending.fraudFailed + mh.reviewRejected.fraudFailed;
 
 		const reviewerApprovedTotal = m.reviewApproved.fraudPassed + m.reviewApproved.fraudPending;
 		const reviewerPendingTotal = m.reviewPending.fraudPassed + m.reviewPending.fraudPending;
 		const reviewerRejectedTotal = m.reviewRejected.fraudPassed + m.reviewRejected.fraudPending;
+		const reviewerApprovedHours = mh.reviewApproved.fraudPassed + mh.reviewApproved.fraudPending;
+		const reviewerPendingHours = mh.reviewPending.fraudPassed + mh.reviewPending.fraudPending;
+		const reviewerRejectedHours = mh.reviewRejected.fraudPassed + mh.reviewRejected.fraudPending;
+
+		const fmtHours = (h: number) => `${Math.round(h).toLocaleString()}h`;
 
 		const nodes = [
-			{ name: `Shipped\n${shippedTotal}`, itemStyle: { color: blueBg } },
-			{ name: `Fraud: passed\n${fraudPassedTotal}`, itemStyle: { color: greenBg } },
-			{ name: `Fraud: pending\n${fraudPendingTotal}`, itemStyle: { color: yellowBg } },
-			{ name: `Fraud: failed\n${fraudFailedTotal}`, itemStyle: { color: redBg } },
-			{ name: `Reviewer: approved\n${reviewerApprovedTotal}`, itemStyle: { color: greenBg } },
-			{ name: `Reviewer: pending\n${reviewerPendingTotal}`, itemStyle: { color: yellowBg } },
-			{ name: `Reviewer: rejected\n${reviewerRejectedTotal}`, itemStyle: { color: redBg } },
-			{ name: `Silent reject\n${fraudFailedTotal}`, itemStyle: { color: orangeBg } },
+			{ name: `Shipped\n${shippedTotal} projects\n${fmtHours(shippedHours)}`, itemStyle: { color: blueBg } },
+			{ name: `Fraud: passed\n${fraudPassedTotal} projects\n${fmtHours(fraudPassedHours)}`, itemStyle: { color: greenBg } },
+			{ name: `Fraud: pending\n${fraudPendingTotal} projects\n${fmtHours(fraudPendingHours)}`, itemStyle: { color: yellowBg } },
+			{ name: `Fraud: failed\n${fraudFailedTotal} projects\n${fmtHours(fraudFailedHours)}`, itemStyle: { color: redBg } },
+			{ name: `Reviewer: approved\n${reviewerApprovedTotal} projects\n${fmtHours(reviewerApprovedHours)}`, itemStyle: { color: greenBg } },
+			{ name: `Reviewer: pending\n${reviewerPendingTotal} projects\n${fmtHours(reviewerPendingHours)}`, itemStyle: { color: yellowBg } },
+			{ name: `Reviewer: rejected\n${reviewerRejectedTotal} projects\n${fmtHours(reviewerRejectedHours)}`, itemStyle: { color: redBg } },
+			{ name: `Silent reject\n${fraudFailedTotal} projects\n${fmtHours(fraudFailedHours)}`, itemStyle: { color: orangeBg } },
 		];
 
 		const links = [
-			{ source: nodes[0].name, target: nodes[1].name, value: fraudPassedTotal || 0.0001 },
-			{ source: nodes[0].name, target: nodes[2].name, value: fraudPendingTotal || 0.0001 },
-			{ source: nodes[0].name, target: nodes[3].name, value: fraudFailedTotal || 0.0001 },
-			{ source: nodes[1].name, target: nodes[4].name, value: m.reviewApproved.fraudPassed || 0.0001 },
-			{ source: nodes[1].name, target: nodes[5].name, value: m.reviewPending.fraudPassed || 0.0001 },
-			{ source: nodes[1].name, target: nodes[6].name, value: m.reviewRejected.fraudPassed || 0.0001 },
-			{ source: nodes[2].name, target: nodes[4].name, value: m.reviewApproved.fraudPending || 0.0001 },
-			{ source: nodes[2].name, target: nodes[5].name, value: m.reviewPending.fraudPending || 0.0001 },
-			{ source: nodes[2].name, target: nodes[6].name, value: m.reviewRejected.fraudPending || 0.0001 },
-			{ source: nodes[3].name, target: nodes[7].name, value: fraudFailedTotal || 0.0001 },
+			{ source: nodes[0].name, target: nodes[1].name, value: fraudPassedTotal || 0.0001, hours: fraudPassedHours },
+			{ source: nodes[0].name, target: nodes[2].name, value: fraudPendingTotal || 0.0001, hours: fraudPendingHours },
+			{ source: nodes[0].name, target: nodes[3].name, value: fraudFailedTotal || 0.0001, hours: fraudFailedHours },
+			{ source: nodes[1].name, target: nodes[4].name, value: m.reviewApproved.fraudPassed || 0.0001, hours: mh.reviewApproved.fraudPassed },
+			{ source: nodes[1].name, target: nodes[5].name, value: m.reviewPending.fraudPassed || 0.0001, hours: mh.reviewPending.fraudPassed },
+			{ source: nodes[1].name, target: nodes[6].name, value: m.reviewRejected.fraudPassed || 0.0001, hours: mh.reviewRejected.fraudPassed },
+			{ source: nodes[2].name, target: nodes[4].name, value: m.reviewApproved.fraudPending || 0.0001, hours: mh.reviewApproved.fraudPending },
+			{ source: nodes[2].name, target: nodes[5].name, value: m.reviewPending.fraudPending || 0.0001, hours: mh.reviewPending.fraudPending },
+			{ source: nodes[2].name, target: nodes[6].name, value: m.reviewRejected.fraudPending || 0.0001, hours: mh.reviewRejected.fraudPending },
+			{ source: nodes[3].name, target: nodes[7].name, value: fraudFailedTotal || 0.0001, hours: fraudFailedHours },
 		];
 
 		chart.setOption({
@@ -421,9 +437,10 @@
 				triggerOn: 'mousemove',
 				formatter: (p: any) => {
 					if (p.dataType === 'edge') {
-						return `${p.data.source.split('\n')[0]} → ${p.data.target.split('\n')[0]}<br/><b>${Math.round(p.data.value).toLocaleString()}</b> projects`;
+						return `${p.data.source.split('\n')[0]} → ${p.data.target.split('\n')[0]}<br/><b>${Math.round(p.data.value).toLocaleString()}</b> projects<br/><b>${fmtHours(p.data.hours ?? 0)}</b>`;
 					}
-					return `<b>${p.name.split('\n')[0]}</b><br/>${p.name.split('\n')[1]} projects`;
+					const [title, ...rest] = p.name.split('\n');
+					return `<b>${title}</b><br/>${rest.join('<br/>')}`;
 				},
 			},
 			series: [
@@ -440,6 +457,13 @@
 					links,
 					lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.5 },
 					label: { color: axis, fontSize: 11, fontWeight: 600 },
+					edgeLabel: {
+						show: true,
+						color: axis,
+						fontSize: 9,
+						opacity: 0.85,
+						formatter: (p: any) => (p.data.value >= 1 ? fmtHours(p.data.hours ?? 0) : ''),
+					},
 					emphasis: { focus: 'adjacency' },
 				},
 			],
