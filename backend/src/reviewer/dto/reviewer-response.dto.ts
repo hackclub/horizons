@@ -630,6 +630,10 @@ class ReviewProjects {
 
   @ApiProperty({ type: FunnelMatrix })
   funnelMatrix: FunnelMatrix;
+
+  /** Same 3×3 shape as funnelMatrix, but summed shipped (hackatime) hours per cell. */
+  @ApiProperty({ type: FunnelMatrix })
+  funnelMatrixHours: FunnelMatrix;
 }
 
 class HistoricalDataPoint {
