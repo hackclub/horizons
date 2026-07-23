@@ -341,6 +341,12 @@ class AdminUserProjectResponse {
 }
 
 export class AdminUserResponse extends AdminLightUserResponse {
+  @ApiProperty({
+    description:
+      'When true, the user skips the HCA identity-verification check on submission.',
+  })
+  bypassIdv: boolean;
+
   @ApiProperty({ type: [String] })
   roles: string[];
 
@@ -573,6 +579,23 @@ export class AdminUserSusFlagResponse {
 
   @ApiProperty()
   isSus: boolean;
+}
+
+export class AdminUserBypassIdvResponse {
+  @ApiProperty()
+  userId: number;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastName: string | null;
+
+  @ApiProperty()
+  bypassIdv: boolean;
 }
 
 export class AdminUserBanResponse {

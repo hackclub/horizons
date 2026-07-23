@@ -202,6 +202,7 @@ The admin app is served under `/admin` (configured in `svelte.config.js`). All r
 - `/api/admin/users/{id}/slack` - Update Slack ID
 - `/api/admin/users/{id}/fraud-flag` - Toggle fraud flag
 - `/api/admin/users/{id}/sus-flag` - Toggle sus flag
+- `/api/admin/users/{id}/bypass-idv` - Toggle IDV bypass (user skips the HCA identity-verification check on submission)
 - `/api/admin/projects/{id}/timeline` - Project event timeline
 - `/api/admin/projects/{id}/recalculate` - Recalculate hours
 - `/api/admin/projects/{id}/unlock` - Unlock project

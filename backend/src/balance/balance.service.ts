@@ -129,7 +129,11 @@ export class BalanceService {
     return lastTxn;
   }
 
-  async verifyEligibility(userId: number, context: string): Promise<void> {
+  async verifyEligibility(
+    userId: number,
+    context: string,
+    ineligibleMessage = 'You must be verified eligible to complete this action',
+  ): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { userId },
       select: { email: true },
@@ -166,9 +170,7 @@ export class BalanceService {
         debugLog(
           `[${context}] User ${userId} (${user.email}) is not verified_eligible. Result: ${verificationData.result}`,
         );
-        throw new BadRequestException(
-          'You must be verified eligible to complete this action',
-        );
+        throw new BadRequestException(ineligibleMessage);
       }
 
       debugLog(`[${context}] User ${userId} verification check passed`);

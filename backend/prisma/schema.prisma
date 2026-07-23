@@ -48,6 +48,9 @@ model User {
   isFraud      Boolean @default(false) @map("is_fraud")
   isSus        Boolean @default(false) @map("is_sus")
   ageOverride  Boolean @default(false) @map("age_override")
+  // Admin-set escape hatch: skips the HCA identity-verification eligibility
+  // check when creating a submission. IDV is enforced for everyone else.
+  bypassIdv    Boolean @default(false) @map("bypass_idv")
   adminComment String? @map("admin_comment") @db.VarChar(1000)
 
   // Reviewer payout flags — superadmin-set, admin-dashboard-only (never exposed

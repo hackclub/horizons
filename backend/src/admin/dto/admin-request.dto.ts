@@ -24,6 +24,15 @@ export class ToggleSusFlagDto {
   isSus: boolean;
 }
 
+export class ToggleBypassIdvDto {
+  @ApiProperty({
+    description:
+      'When true, the user skips the HCA identity-verification check on submission.',
+  })
+  @IsBoolean()
+  bypassIdv: boolean;
+}
+
 export class ToggleBanDto {
   @ApiProperty()
   @IsBoolean()

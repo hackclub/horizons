@@ -19,6 +19,7 @@ import { ManifestService } from '../manifest/manifest.service';
 import { StreakService } from '../streaks/streak.service';
 import { HackatimeService } from '../hackatime/hackatime.service';
 import { SlackService } from '../slack/slack.service';
+import { BalanceService } from '../balance/balance.service';
 import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 
 @Injectable()
@@ -33,6 +34,7 @@ export class ProjectsService {
     private streakService: StreakService,
     private hackatimeService: HackatimeService,
     private slackService: SlackService,
+    private balanceService: BalanceService,
   ) {}
 
   private excludeAdminFields<T extends Record<string, any>>(
@@ -432,6 +434,17 @@ export class ProjectsService {
 
     if (this.calculateAge(user.birthday) >= 19 && !user.ageOverride) {
       throw new ForbiddenException('You must be under 19 to submit projects.');
+    }
+
+    // IDV gate: submitting requires a verified-eligible identity through Hack
+    // Club Auth (same check as shop purchases and event tickets), unless an
+    // admin set bypassIdv on the user.
+    if (!user.bypassIdv) {
+      await this.balanceService.verifyEligibility(
+        userId,
+        'Project Submission',
+        'You must verify your identity through Hack Club Auth (auth.hackclub.com) before submitting.',
+      );
     }
 
     if (!user.hackatimeAccount) {
