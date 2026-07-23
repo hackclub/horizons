@@ -103,6 +103,7 @@ User-facing project creation, editing, submission, and Hackatime linking.
 **Submission validation rules:**
 - User must be under 19 years old
 - User address must be complete
+- User must pass the HCA identity-verification eligibility check (`BalanceService.verifyEligibility`, same gate as shop purchases and event tickets) — skipped when the admin-set `bypassIdv` flag is on the user
 - Hackatime account must be linked
 - All required project fields must be filled (title, description, repo URL, playable URL, screenshot)
 - Global submissions freeze must be off
@@ -180,6 +181,7 @@ Full administrative operations. Accessible to `admin` role only.
 | GET | `/users` | Admin | Paginated users (`page`, `limit` ≤200, `q` search on name/email/Slack ID/Hackatime ID; an `@`-prefixed token matches only the Slack display name, `sort` incl. decay-aware streak sorts); each user's projects carry only the latest submission; each user carries hour balance fields (`totalApprovedHours`, `totalSpent`, `balance`) computed via per-page grouped aggregates matching `BalanceService` |
 | PUT | `/users/:id/fraud-flag` | Admin | Toggle `isFraud` flag |
 | PUT | `/users/:id/sus-flag` | Admin | Toggle `isSus` flag |
+| PUT | `/users/:id/bypass-idv` | Admin | Toggle `bypassIdv` flag (skips the IDV check on submission) |
 | PUT | `/users/:id/ban` | Admin | Set/clear `banned` (+ optional `reason`). Banning deletes the user's active sessions; the `AuthGuard` and login callback reject banned users |
 | PUT | `/users/:id/slack` | Admin | Manually set `slackUserId` |
 | **Reviewer payouts** |||

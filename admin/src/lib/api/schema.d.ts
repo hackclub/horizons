@@ -1030,6 +1030,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{id}/bypass-idv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminController_toggleUserBypassIdv"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/{id}/ban": {
         parameters: {
             query?: never;
@@ -3039,6 +3055,8 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /** @description When true, the user skips the HCA identity-verification check on submission. */
+            bypassIdv: boolean;
             roles: string[];
             projects: components["schemas"]["AdminUserProjectResponse"][];
             /** @description Sum of live Hackatime tracked hours across non-deleted projects. */
@@ -3557,6 +3575,17 @@ export interface components {
             firstName: string | null;
             lastName: string | null;
             isSus: boolean;
+        };
+        ToggleBypassIdvDto: {
+            /** @description When true, the user skips the HCA identity-verification check on submission. */
+            bypassIdv: boolean;
+        };
+        AdminUserBypassIdvResponse: {
+            userId: number;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            bypassIdv: boolean;
         };
         ToggleBanDto: {
             banned: boolean;
@@ -6240,6 +6269,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserSusFlagResponse"];
+                };
+            };
+        };
+    };
+    AdminController_toggleUserBypassIdv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleBypassIdvDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserBypassIdvResponse"];
                 };
             };
         };

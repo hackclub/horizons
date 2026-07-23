@@ -171,6 +171,7 @@ const projectAdminInclude = {
 |------|-------|
 | Fraud flag on users | `PUT /api/admin/users/:id/fraud-flag` (project-level fraud is read-only, driven by Joe) |
 | Sus flag on users | `PUT /api/admin/users/:id/sus-flag` |
+| IDV bypass on users | `PUT /api/admin/users/:id/bypass-idv` — sets `bypassIdv`, which skips the HCA identity-verification check in `createSubmission`. Admin-dashboard-only: `/api/user/auth/me` uses an explicit select, so it is never returned to the user |
 | Ban users | `PUT /api/admin/users/:id/ban` — sets `banned` (+ admin-only `bannedReason`); enforced in `AuthGuard`. `banned`/`bannedReason` are admin-only and never returned to users or reviewers |
 | Reviewer payout flags | `PUT /api/admin/reviewer-payouts/:userId/flags` (superadmin) — sets `reviewerPayoutsEnabled`/`reviewerBoostedRateEnabled`. Both flags are admin-dashboard-only: `/api/user/auth/me` uses an explicit select, so they are never returned to the user |
 | Slack ID on users | `PUT /api/admin/users/:id/slack` |

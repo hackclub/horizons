@@ -2062,6 +2062,30 @@ export class AdminService {
     return updatedUser;
   }
 
+  async toggleUserBypassIdv(userId: number, bypassIdv: boolean) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { userId },
+      data: { bypassIdv },
+      select: {
+        userId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        bypassIdv: true,
+      },
+    });
+
+    return updatedUser;
+  }
+
   async setUserBan(userId: number, banned: boolean, reason?: string | null) {
     const user = await this.prisma.user.findUnique({
       where: { userId },

@@ -44,6 +44,7 @@ import {
   ReviewerLeaderboardEntry,
   AdminUserFlagResponse,
   AdminUserSusFlagResponse,
+  AdminUserBypassIdvResponse,
   AdminUserBanResponse,
   AdminUserSlackResponse,
   SlackLookupResponse,
@@ -72,6 +73,7 @@ import {
 import {
   ToggleFraudFlagDto,
   ToggleSusFlagDto,
+  ToggleBypassIdvDto,
   ToggleBanDto,
   UpdateSlackIdDto,
   ToggleSubmissionsFrozenDto,
@@ -477,6 +479,17 @@ export class AdminController {
     @Body() body: ToggleSusFlagDto,
   ) {
     return this.adminService.toggleUserSusFlag(id, body.isSus);
+  }
+
+  @Put('users/:id/bypass-idv')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: AdminUserBypassIdvResponse })
+  async toggleUserBypassIdv(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: ToggleBypassIdvDto,
+  ) {
+    return this.adminService.toggleUserBypassIdv(id, body.bypassIdv);
   }
 
   @Put('users/:id/ban')

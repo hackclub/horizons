@@ -323,6 +323,21 @@
         }
     }
 
+    async function toggleBypassIdv(userId: number, currentValue: boolean) {
+        setUserFlag(userId, { bypassIdv: !currentValue });
+        try {
+            const { data, error } = await api.PUT('/api/admin/users/{id}/bypass-idv', {
+                params: { path: { id: userId } },
+                body: { bypassIdv: !currentValue }
+            } as any);
+            if (error) throw error;
+            if (data) setUserFlag(userId, { bypassIdv: data.bypassIdv });
+        } catch (err) {
+            console.error('Failed to toggle IDV bypass:', err);
+            setUserFlag(userId, { bypassIdv: currentValue });
+        }
+    }
+
     // Banning blocks all authenticated requests for the user and kills their
     // active sessions server-side. Banning collects a reason; unbanning clears
     // it. Not optimistic — we wait for the server so the reason round-trips.
@@ -637,6 +652,22 @@
                                 {user.isSus
                                     ? 'Sus Flagged'
                                     : 'Flag as Sus'}
+                            </Button>
+                            <Button
+                                class={`px-3 py-2 text-sm transition-colors ${
+                                    user.bypassIdv
+                                        ? 'bg-blue-600/20 border-blue-500 text-blue-700 dark:text-blue-300 hover:bg-blue-600/30'
+                                        : 'bg-ds-surface2 border-ds-border text-ds-text-secondary hover:bg-ds-surface-inactive'
+                                }`}
+                                onclick={() =>
+                                    toggleBypassIdv(
+                                        user.userId,
+                                        user.bypassIdv,
+                                    )}
+                            >
+                                {user.bypassIdv
+                                    ? 'IDV Bypassed'
+                                    : 'Bypass IDV'}
                             </Button>
                             <Button
                                 class={`px-3 py-2 text-sm transition-colors ${
