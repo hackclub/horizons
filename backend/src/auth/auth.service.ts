@@ -532,30 +532,28 @@ export class AuthService {
         updateData.birthday = incomingBirthday;
       }
     }
-    if (claims.address) {
-      const line1 = claims.address.street_address?.split('\n')[0] || null;
-      const line2 = claims.address.street_address?.split('\n')[1] || null;
-      if (line1 && existingUser.addressLine1 !== line1)
-        updateData.addressLine1 = line1;
-      if (line2 && existingUser.addressLine2 !== line2)
-        updateData.addressLine2 = line2;
+    // The HCA address replaces ours as a unit, so a changed address can't
+    // leave stale pieces (a dropped line 2, a missing region) merged into the
+    // new one. A claim without a street address is skipped rather than
+    // applied, so a transiently empty claim never wipes a stored address.
+    if (claims.address?.street_address) {
+      const line1 = claims.address.street_address.split('\n')[0] || null;
+      const line2 = claims.address.street_address.split('\n')[1] || null;
+      const incomingAddress = {
+        addressLine1: line1,
+        addressLine2: line2,
+        city: claims.address.locality || null,
+        state: claims.address.region || null,
+        zipCode: claims.address.postal_code || null,
+        country: claims.address.country || null,
+      };
       if (
-        claims.address.locality &&
-        existingUser.city !== claims.address.locality
-      )
-        updateData.city = claims.address.locality;
-      if (claims.address.region && existingUser.state !== claims.address.region)
-        updateData.state = claims.address.region;
-      if (
-        claims.address.postal_code &&
-        existingUser.zipCode !== claims.address.postal_code
-      )
-        updateData.zipCode = claims.address.postal_code;
-      if (
-        claims.address.country &&
-        existingUser.country !== claims.address.country
-      )
-        updateData.country = claims.address.country;
+        Object.entries(incomingAddress).some(
+          ([field, value]) => existingUser[field] !== value,
+        )
+      ) {
+        Object.assign(updateData, incomingAddress);
+      }
     }
 
     if (Object.keys(updateData).length > 0) {

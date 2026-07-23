@@ -117,7 +117,8 @@ On every request, the global `AuthGuard` (unless `@Public()`):
 - Triggers Airtable `signUp` event sync
 
 **Existing user updates**:
-- `firstName`, `lastName`, `slackUserId`, `verificationStatus`, `birthday`, address fields updated if changed
+- `firstName`, `lastName`, `slackUserId`, `verificationStatus`, `birthday` updated if changed
+- Address replaced as a unit from the HCA claim (all six fields, including clearing a dropped line 2); skipped when the claim has no street address so a transiently empty claim never wipes a stored address
 - `hcaId`, `referralCode` set only if previously missing
 
 ## Roles & Guards
