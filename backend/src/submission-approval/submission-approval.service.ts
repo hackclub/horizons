@@ -813,7 +813,11 @@ export class SubmissionApprovalService {
     try {
       const project = await this.prisma.project.findUnique({
         where: { projectId: submission.projectId },
-        include: { user: true },
+        include: {
+          user: {
+            include: { pinnedEvent: { include: { event: true } } },
+          },
+        },
       });
       if (!project) return;
 
@@ -867,6 +871,7 @@ export class SubmissionApprovalService {
             undefined,
           projectType: project.projectType,
           reviewedByName: await this.resolveReviewerName(submission.reviewedBy),
+          eventSubmittedTo: project.user.pinnedEvent?.event?.slug ?? undefined,
         },
       };
 

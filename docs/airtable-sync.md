@@ -87,6 +87,7 @@ Tracks each approved submission as a separate row.
 | Approved At | Today's date | YYYY-MM-DD at time of approval |
 | Project Type | `project.projectType` | Raw enum value (e.g. `web_playable`); written with `typecast` so single-select options auto-create |
 | Reviewed By | `submission.reviewedBy` | Reviewer's "First Last" name; `User <id>` if the account no longer exists |
+| Event Submitted To | `user.pinnedEvent.event.slug` | Slug of the submitter's pinned event (e.g. `horizons-sf`); blank if none pinned. Set on create only |
 
 ### Trigger Points
 

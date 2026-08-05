@@ -7,3 +7,5 @@ backend/mail-service/certs/
 *.pfx
 *.pem
 .DS_Store
+
+scripts/

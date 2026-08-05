@@ -78,3 +78,4 @@ and edit); records predating the live sync can be backfilled with
 |---|---|---|
 | Project Type | Single line text (or single select with the `ProjectType` enum values — the backend writes with `typecast` so missing options auto-create) | `project.projectType` raw enum value, e.g. `web_playable` |
 | Reviewed By | Single line text | reviewer's "First Last" name resolved from `submission.reviewedBy`; `User <id>` if the account no longer exists |
+| Event Submitted To | Single line text | slug of the event the submitter has pinned (`user.pinnedEvent.event.slug`), e.g. `horizons-sf`; blank if the user has no pinned event. Set on create only. |

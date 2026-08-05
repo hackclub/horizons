@@ -1,6 +1,6 @@
 /**
- * Backfill "Project Type" and "Reviewed By" on YSWS Approved Projects
- * Airtable records from the Horizons Postgres database.
+ * Backfill "Project Type", "Reviewed By", and "Event Submitted To" on YSWS
+ * Approved Projects Airtable records from the Horizons Postgres database.
  *
  * The live backend sync now writes both fields on approval (create and edit),
  * so this script is only needed for records created before that change.
@@ -16,14 +16,17 @@
  *   - Reviewed By: reviewer's "First Last" name resolved from
  *     submission.reviewedBy (a user id); falls back to "User <id>" when the
  *     account no longer exists; omitted when the submission has no reviewer
+ *   - Event Submitted To: slug of the submitter's currently pinned event
+ *     (user.pinnedEvent.event.slug); omitted when the user has no pinned event
  *
  * Writes are blind (no read-before-write) but idempotent. A failed batch is
  * retried record-by-record so one deleted Airtable record doesn't sink the
  * other nine in its batch.
  *
- * Both fields must already exist in Airtable. Create them as single line
- * text, or make "Project Type" a single select and run with --typecast so
- * Airtable auto-creates the options.
+ * All three fields must already exist in Airtable. "Event Submitted To" is a
+ * single line text field. "Reviewed By" is single line text too; "Project
+ * Type" may be single line text or a single select — run with --typecast so
+ * Airtable auto-creates its options.
  *
  * Usage (from airtable/):
  *   bun scripts/backfill-review-fields.ts             # write changes
@@ -45,6 +48,7 @@ import { disconnectPrisma, prisma } from '../lib/prisma';
 
 const FIELD_PROJECT_TYPE = 'Project Type';
 const FIELD_REVIEWED_BY = 'Reviewed By';
+const FIELD_EVENT_SUBMITTED_TO = 'Event Submitted To';
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
@@ -62,7 +66,16 @@ async function loadUpdates(): Promise<Update[]> {
     select: {
       airtableRecId: true,
       reviewedBy: true,
-      project: { select: { projectType: true } },
+      project: {
+        select: {
+          projectType: true,
+          user: {
+            select: {
+              pinnedEvent: { select: { event: { select: { slug: true } } } },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -99,6 +112,10 @@ async function loadUpdates(): Promise<Update[]> {
     if (s.reviewedBy) {
       fields[FIELD_REVIEWED_BY] =
         reviewerNames.get(s.reviewedBy) ?? `User ${s.reviewedBy}`;
+    }
+    const eventSlug = s.project.user?.pinnedEvent?.event?.slug;
+    if (eventSlug) {
+      fields[FIELD_EVENT_SUBMITTED_TO] = eventSlug;
     }
     updates.push({ id: s.airtableRecId!, fields });
   }

@@ -717,6 +717,7 @@ export class AirtableService {
       description?: string;
       projectType?: string;
       reviewedByName?: string;
+      eventSubmittedTo?: string;
     };
   }): Promise<{ recordId: string }> {
     if (!this.AIRTABLE_API_KEY) {
@@ -848,6 +849,10 @@ export class AirtableService {
 
       if (data.project.reviewedByName) {
         fields['Reviewed By'] = data.project.reviewedByName;
+      }
+
+      if (data.project.eventSubmittedTo) {
+        fields['Event Submitted To'] = data.project.eventSubmittedTo;
       }
 
       if (!this.AIRTABLE_API_KEY) {
