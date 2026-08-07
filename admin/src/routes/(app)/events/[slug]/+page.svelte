@@ -103,6 +103,46 @@
 	let attendeesError = $state<string | null>(null);
 	let exporting = $state(false);
 
+	let attendModalOpen = $state(false);
+	let attendApiKey = $state('');
+	let attendEventName = $state('');
+	let attendPushing = $state(false);
+	let attendResult = $state<{ pushed: number; alreadyAdded: number; total: number; failures: { email: string; error: string }[] } | null>(null);
+	let attendError = $state<string | null>(null);
+
+	function openAttendModal() {
+		attendApiKey = '';
+		attendEventName = `horizons-${slug}`;
+		attendResult = null;
+		attendError = null;
+		attendModalOpen = true;
+	}
+
+	async function pushToAttend() {
+		if (!slug || attendPushing || !attendApiKey.trim()) return;
+		attendPushing = true;
+		attendError = null;
+		attendResult = null;
+		try {
+			const { data, error: err } = await api.POST('/api/events/admin/{slug}/push-to-attend', {
+				params: { path: { slug } },
+				body: {
+					attendApiKey: attendApiKey.trim(),
+					attendEventName: attendEventName.trim() || undefined
+				}
+			});
+			if (err || !data) {
+				attendError = (err as { message?: string } | undefined)?.message ?? 'Push failed';
+				return;
+			}
+			attendResult = data;
+		} catch {
+			attendError = 'Push failed';
+		} finally {
+			attendPushing = false;
+		}
+	}
+
 	async function exportCsv() {
 		if (!slug) return;
 		exporting = true;
@@ -496,10 +536,55 @@
 			<div class="rounded-lg border border-ds-border bg-ds-surface p-4 shadow-[var(--color-ds-shadow)]">
 				<div class="mb-3 flex items-center justify-between">
 					<p class="text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Attendees ({attendees.length})</p>
-					<Button onclick={loadAttendees} disabled={attendeesLoading}>
-						{attendeesLoading ? 'Refreshing…' : 'Refresh'}
-					</Button>
+					<div class="flex gap-2">
+						<Button onclick={openAttendModal} disabled={attendees.length === 0}>
+							Push to Attend
+						</Button>
+						<Button onclick={loadAttendees} disabled={attendeesLoading}>
+							{attendeesLoading ? 'Refreshing…' : 'Refresh'}
+						</Button>
+					</div>
 				</div>
+				{#if attendModalOpen}
+					<div class="mb-3 space-y-3 rounded-lg border border-ds-border bg-ds-surface2/50 p-4">
+						<p class="text-sm font-medium text-ds-text">Push ticket holders to attend.hackclub.com</p>
+						<div class="grid gap-3 sm:grid-cols-2">
+							<div class="space-y-1">
+								<label class="text-xs font-medium text-ds-text-secondary" for="attend-api-key">Attend API key</label>
+								<TextField id="attend-api-key" type="password" bind:value={attendApiKey} placeholder="Event's API key on Attend" />
+							</div>
+							<div class="space-y-1">
+								<label class="text-xs font-medium text-ds-text-secondary" for="attend-event-name">Attend event name</label>
+								<TextField id="attend-event-name" bind:value={attendEventName} placeholder={`horizons-${slug}`} />
+							</div>
+						</div>
+						{#if attendError}
+							<p class="text-sm text-ds-red">{attendError}</p>
+						{/if}
+						{#if attendResult}
+							<p class="text-sm {attendResult.failures.length > 0 ? 'text-ds-red' : 'text-ds-text'}">
+								Pushed {attendResult.pushed}/{attendResult.total} participants to “{attendEventName.trim() || `horizons-${slug}`}”{attendResult.alreadyAdded > 0 ? ` (${attendResult.alreadyAdded} already added)` : ''}.
+							</p>
+							{#if attendResult.failures.length > 0}
+								<ul class="max-h-32 space-y-1 overflow-y-auto text-xs text-ds-red">
+									{#each attendResult.failures as f (f.email)}
+										<li>{f.email} — {f.error}</li>
+									{/each}
+								</ul>
+							{/if}
+						{/if}
+						<div class="flex justify-end gap-2">
+							<Button onclick={() => (attendModalOpen = false)} disabled={attendPushing}>
+								{attendResult ? 'Close' : 'Cancel'}
+							</Button>
+							{#if !attendResult}
+								<Button variant="approve" onclick={pushToAttend} disabled={attendPushing || !slug || !attendApiKey.trim()}>
+									{attendPushing ? 'Pushing…' : `Push ${attendees.length} participants`}
+								</Button>
+							{/if}
+						</div>
+					</div>
+				{/if}
 				{#if attendeesError}
 					<p class="text-sm text-ds-red">{attendeesError}</p>
 				{:else if attendees.length === 0}

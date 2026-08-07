@@ -142,6 +142,31 @@ export class TicketTransactionResponse {
   newBalance: number;
 }
 
+export class PushToAttendFailure {
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  error: string;
+}
+
+export class PushToAttendResponse {
+  @ApiProperty({ description: 'Attend event name the participants were pushed to' })
+  attendEventName: string;
+
+  @ApiProperty({ description: 'Active ticket holders found for the event' })
+  total: number;
+
+  @ApiProperty({ description: 'Participants successfully pushed to Attend' })
+  pushed: number;
+
+  @ApiProperty({ description: 'Participants Attend already had (409)' })
+  alreadyAdded: number;
+
+  @ApiProperty({ type: [PushToAttendFailure] })
+  failures: PushToAttendFailure[];
+}
+
 export class AttendeeResponse {
   @ApiProperty()
   userId: number;

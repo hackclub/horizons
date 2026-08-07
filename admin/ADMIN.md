@@ -161,7 +161,7 @@ pnpm --filter admin generate:api
 | Reviewer Payouts | `/admin/reviewer-payouts` | Pay reviewers hours for reviews performed, via `AdminAdjustment` transactions. Table of everyone with recorded reviews: counts split at the July 13 2026 rate cutoff (00:00 ET), unpaid counts, whole-block owed hours (base 1h/15; a per-reviewer boosted flag pays 1h/5 for post-cutoff reviews), carryover, total paid, last payout, and expandable payout history (with Refunded badges). Admins view read-only; superadmins toggle the payouts-enabled and boosted-rate flags and trigger payouts (confirm dialog, stale-count 409 guard). Paid reviews are tracked server-side so double payouts are impossible |
 | Shop | `/admin/shop` | Shop item CRUD |
 | Gift Codes | `/admin/giftcodes` | Gift code generation and management |
-| Events | `/admin/events` | Event list and creation |
+| Events | `/admin/events` | Event list and creation. Per-event dashboard (`/admin/events/{slug}`) shows stats, attendees, and a "Push to Attend" button that sends all active ticket holders to attend.hackclub.com (per-event API key entered at push time; Attend event name defaults to `horizons-{slug}`) |
 | Announcements | `/admin/announcements` | Create/edit announcements — markdown body with live preview, event tags (none = everyone), and "show on open" / "show as tag" / active toggles. Admin, Superadmin, and Event Viewer. |
 | Settings | `/admin/settings` | Global submissions freeze toggle, reviewer leaderboard, priority users |
 

@@ -1990,6 +1990,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/events/admin/{slug}/push-to-attend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsAdminController_pushToAttend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events/auth/pinned-event": {
         parameters: {
             query?: never;
@@ -4427,6 +4443,26 @@ export interface components {
             /** Format: date-time */
             ticketAt: string | null;
             totalSpent: number;
+        };
+        PushToAttendDto: {
+            attendApiKey: string;
+            /** @description Defaults to horizons-{slug} */
+            attendEventName?: string;
+        };
+        PushToAttendFailure: {
+            email: string;
+            error: string;
+        };
+        PushToAttendResponse: {
+            /** @description Attend event name the participants were pushed to */
+            attendEventName: string;
+            /** @description Active ticket holders found for the event */
+            total: number;
+            /** @description Participants successfully pushed to Attend */
+            pushed: number;
+            /** @description Participants Attend already had (409) */
+            alreadyAdded: number;
+            failures: components["schemas"]["PushToAttendFailure"][];
         };
         PinnedEventDetailResponse: {
             eventId: number;
@@ -7930,6 +7966,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttendeeResponse"][];
+                };
+            };
+        };
+    };
+    EventsAdminController_pushToAttend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushToAttendDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushToAttendResponse"];
                 };
             };
         };

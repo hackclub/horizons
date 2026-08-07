@@ -23,7 +23,9 @@ import {
   TicketStatusResponse,
   TicketTransactionResponse,
   AttendeeResponse,
+  PushToAttendResponse,
 } from './dto/events-response.dto';
+import { PushToAttendDto } from './dto/push-to-attend.dto';
 import { Public } from '../auth/public.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -121,5 +123,19 @@ export class EventsAdminController {
   @ApiOkResponse({ type: [AttendeeResponse] })
   async getAttendees(@Param('slug') slug: string) {
     return this.eventsService.getEventAttendees(slug);
+  }
+
+  /** Push active ticket holders to attend.hackclub.com as participants. */
+  @Post(':slug/push-to-attend')
+  @ApiCreatedResponse({ type: PushToAttendResponse })
+  async pushToAttend(
+    @Param('slug') slug: string,
+    @Body() dto: PushToAttendDto,
+  ) {
+    return this.eventsService.pushAttendeesToAttend(
+      slug,
+      dto.attendApiKey,
+      dto.attendEventName,
+    );
   }
 }
