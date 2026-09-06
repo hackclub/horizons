@@ -264,7 +264,8 @@
 				: 'changes';
 		sendToAdminNote = '';
 		hoursJustification = priorReviewerAnalysis ?? '';
-		approveComment = reviewerApproved ? priorUserFeedback ?? '' : '';
+		const feedback = priorUserFeedback ?? '';
+		approveComment = reviewPassed === false ? '' : feedback;
 		approvedHours = reviewerApproved
 			? priorApprovedHours ?? hackatimeHours ?? 0
 			: hackatimeHours ?? 0;
@@ -277,7 +278,7 @@
 		reviewerManuallyEditedHours = reviewerApproved;
 		approvedHoursLocked = true;
 		sendEmail = true;
-		changesComment = reviewerApproved ? '' : priorUserFeedback ?? '';
+		changesComment = reviewPassed === true ? '' : feedback;
 		rejectSendEmail = true;
 		permReject = false;
 		permRejectInternalNote = '';
