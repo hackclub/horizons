@@ -41,7 +41,8 @@ Users can only see **their own data**. All project/submission endpoints check `u
 |------|---------|-------|
 | Project fields (title, description, URLs, hours) | Yes | |
 | Submissions (status, hours) | Yes | |
-| `hoursJustification` | **No** | Stripped via `excludeAdminFields()` |
+| Project `hoursJustification` | **No** | Stripped via `excludeAdminFields()` |
+| Submission `hoursJustification` (reviewer feedback) | Only once finalized | Reviewers save feedback drafts here before issuing a verdict. `scopeSubmissionForUser()` nulls it while the user-visible `approvalStatus` is `pending` (which includes silent-rejects), so users only see feedback on approved or rejected submissions. |
 | Fraud review fields (`joeFraudPassed`, `joeTrustScore`, `joeJustification`, etc.) | **No** | Stripped via `excludeAdminFields()` |
 | `adminComment` on project | **No** | Never included |
 | Submission `reviewPassed` | **No** | Reviewer gate — stripped via `scopeSubmissionForUser()` |

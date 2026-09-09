@@ -712,9 +712,14 @@ export class AuthService {
               sentToAdminNote: _sn,
               ...safe
             } = s;
+            const approvalStatus = s.silentReject
+              ? 'pending'
+              : s.approvalStatus;
             return {
               ...safe,
-              approvalStatus: s.silentReject ? 'pending' : s.approvalStatus,
+              approvalStatus,
+              hoursJustification:
+                approvalStatus === 'pending' ? null : safe.hoursJustification,
             };
           }),
         }),
