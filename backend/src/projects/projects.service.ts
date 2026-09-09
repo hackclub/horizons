@@ -114,9 +114,17 @@ export class ProjectsService {
       sentToAdminNote: _sn,
       ...rest
     } = submission as any;
+    const approvalStatus = submission.silentReject
+      ? 'pending'
+      : submission.approvalStatus;
     return {
       ...rest,
-      approvalStatus: submission.silentReject ? 'pending' : submission.approvalStatus,
+      approvalStatus,
+      // Reviewers save feedback drafts to hoursJustification before finalizing
+      // a verdict. Hide it until the submission is approved or rejected so
+      // users only see finished feedback (and silent-rejects see none).
+      hoursJustification:
+        approvalStatus === 'pending' ? null : rest.hoursJustification,
       // Once a reviewer has approved, the tracker shows "verifying hours" and
       // STAYS there regardless of how the fraud gate resolves:
       //   - fraud pending → still pending, awaiting the fraud result
