@@ -6,6 +6,7 @@
     import { api, type components } from '$lib/api';
     import { ensureUser } from '$lib/auth';
     import { Button, TextField, Card } from '$lib/components';
+    import NoteCard from '../projects/[id]/NoteCard.svelte';
 
     type AdminUserResponse = components['schemas']['AdminUserResponse'];
     type AdminUserProjectResponse = components['schemas']['AdminUserProjectResponse'];
@@ -698,6 +699,15 @@
                                 {/if}
                             </div>
                         {/if}
+
+                        <NoteCard
+                            title="User Notes"
+                            targetType="user"
+                            targetId={user.userId}
+                            bind:content={user.adminComment}
+                            cardClass="border-orange-500/40 bg-orange-500/8"
+                            labelClass="text-orange-600 dark:text-orange-400"
+                        />
 
                         {#if isSuperadmin}
                             <div class="rounded-xl border border-purple-500/40 bg-purple-500/5 p-4 space-y-3">

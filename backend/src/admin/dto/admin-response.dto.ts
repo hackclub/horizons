@@ -361,6 +361,14 @@ export class AdminUserResponse extends AdminLightUserResponse {
   @ApiProperty({ type: [String] })
   roles: string[];
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Shared reviewer/admin note about this user (same note as the review dash user note).',
+  })
+  adminComment: string | null;
+
   @ApiProperty({ type: [AdminUserProjectResponse] })
   projects: AdminUserProjectResponse[];
 
