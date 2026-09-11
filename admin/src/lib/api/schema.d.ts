@@ -4109,6 +4109,7 @@ export interface components {
             projectType: string;
             repoUrl: string | null;
             playableUrl: string | null;
+            readmeUrl: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
             joeProjectId: string | null;

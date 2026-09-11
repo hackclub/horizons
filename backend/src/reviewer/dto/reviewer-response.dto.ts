@@ -52,6 +52,9 @@ class QueueProjectResponse {
   @ApiProperty({ type: String, nullable: true })
   playableUrl: string | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  readmeUrl: string | null;
+
   @ApiProperty({ type: Number, nullable: true })
   nowHackatimeHours: number | null;
 

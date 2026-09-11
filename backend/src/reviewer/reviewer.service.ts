@@ -132,6 +132,7 @@ export class ReviewerService {
             projectType: true,
             repoUrl: true,
             playableUrl: true,
+            readmeUrl: true,
             nowHackatimeHours: true,
             nowHackatimeProjects: true,
             joeProjectId: true,
