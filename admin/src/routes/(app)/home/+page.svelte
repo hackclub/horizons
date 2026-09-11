@@ -1809,7 +1809,7 @@
 					<h2 class="text-xs font-semibold uppercase tracking-wide text-ds-text-secondary">Tickets Bought by Event</h2>
 					<button
 						onclick={() => {
-							const rows = [...stats.signups.qualification]
+							const rows = [...(stats?.signups.qualification ?? [])]
 								.sort((a, b) => a.title.localeCompare(b.title))
 								.map(e => `${e.title}\t${e.boughtTicket}`)
 								.join('\n');
