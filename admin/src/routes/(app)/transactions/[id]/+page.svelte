@@ -18,35 +18,42 @@
 	let refunding = $state(false);
 	let fulfilling = $state(false);
 	let unfulfilling = $state(false);
+	// Navigating between transactions before a fetch settles must not let the
+	// older response overwrite the newer page.
+	let loadSequence = 0;
 
 	async function load() {
+		const seq = ++loadSequence;
 		loading = true;
 		error = null;
 		try {
 			const { data, error: err } = await api.GET('/api/admin/transactions/{id}', {
 				params: { path: { id: Number(transactionId) } },
 			});
+			if (seq !== loadSequence) return;
 			if (err || !data) throw new Error('Failed to load transaction');
 			txn = data;
-			void loadUserNote(data.user.userId);
+			void loadUserNote(data.user.userId, seq);
 		} catch (err) {
+			if (seq !== loadSequence) return;
 			error = err instanceof Error ? err.message : 'Failed to load';
 		} finally {
-			loading = false;
+			if (seq === loadSequence) loading = false;
 		}
 	}
 
-	async function loadUserNote(userId: number) {
+	async function loadUserNote(userId: number, seq: number) {
 		notesLoading = true;
 		try {
 			const { data } = await api.GET('/api/reviewer/users/{id}/notes', {
 				params: { path: { id: userId } },
 			});
+			if (seq !== loadSequence) return;
 			userNote = data?.content ?? '';
 		} catch {
-			userNote = '';
+			if (seq === loadSequence) userNote = '';
 		} finally {
-			notesLoading = false;
+			if (seq === loadSequence) notesLoading = false;
 		}
 	}
 
