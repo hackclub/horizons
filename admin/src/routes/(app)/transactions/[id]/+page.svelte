@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { api, type components } from '$lib/api';
 	import { Button } from '$lib/components';
+	import NoteCard from '../../projects/[id]/NoteCard.svelte';
 
 	type TransactionDetail = components['schemas']['AdminTransactionDetailResponse'];
 
@@ -10,6 +11,8 @@
 
 	let txn = $state<TransactionDetail | null>(null);
 	let loading = $state(true);
+	let userNote = $state('');
+	let notesLoading = $state(false);
 	let error = $state<string | null>(null);
 	let actionError = $state<string | null>(null);
 	let refunding = $state(false);
@@ -25,10 +28,25 @@
 			});
 			if (err || !data) throw new Error('Failed to load transaction');
 			txn = data;
+			void loadUserNote(data.user.userId);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function loadUserNote(userId: number) {
+		notesLoading = true;
+		try {
+			const { data } = await api.GET('/api/reviewer/users/{id}/notes', {
+				params: { path: { id: userId } },
+			});
+			userNote = data?.content ?? '';
+		} catch {
+			userNote = '';
+		} finally {
+			notesLoading = false;
 		}
 	}
 
@@ -307,6 +325,15 @@
 							<p class="text-sm text-ds-text-placeholder">No address on file.</p>
 						{/if}
 					</div>
+					<NoteCard
+						title="User Notes"
+						targetType="user"
+						targetId={txn.user.userId}
+						bind:content={userNote}
+						loading={notesLoading}
+						cardClass="border-orange-500/40 bg-orange-500/8"
+						labelClass="text-orange-600 dark:text-orange-400"
+					/>
 				</div>
 
 				<!-- Item details -->
