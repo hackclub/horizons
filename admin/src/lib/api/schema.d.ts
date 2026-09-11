@@ -3141,6 +3141,8 @@ export interface components {
             /** @description When true, the user skips the HCA identity-verification check on submission. */
             bypassIdv: boolean;
             roles: string[];
+            /** @description Shared reviewer/admin note about this user (same note as the review dash user note). */
+            adminComment: string | null;
             projects: components["schemas"]["AdminUserProjectResponse"][];
             /** @description Sum of live Hackatime tracked hours across non-deleted projects. */
             totalHackatimeHours: number;

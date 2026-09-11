@@ -7,7 +7,7 @@
         title: string;
         targetType: 'project' | 'user';
         targetId: number;
-        content: string;
+        content: string | null;
         loading?: boolean;
         // Tint overrides so the user (amber) and project (purple) cards can differ.
         cardClass?: string;
@@ -30,7 +30,7 @@
     let saveError = $state<string | null>(null);
 
     function startEdit() {
-        draft = content;
+        draft = content ?? '';
         editing = true;
         saveError = null;
     }
@@ -107,7 +107,7 @@
                 <span class="text-[11px] text-rv-red truncate">{saveError}</span>
             {/if}
         </div>
-    {:else if content.trim()}
+    {:else if content?.trim()}
         <p class="m-0 text-[13px] leading-relaxed whitespace-pre-wrap break-words text-rv-text">{content}</p>
     {:else}
         <p class="m-0 text-[13px] text-rv-dim italic">None</p>
