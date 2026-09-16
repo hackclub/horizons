@@ -126,7 +126,7 @@ Submission review queue and actions. Accessible to `reviewer` and `admin` roles.
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | GET | `/queue` | Reviewer | List pending submissions (PII-scoped). Each item carries `myRereview` when it's a reship after the requesting reviewer's own rejection — same condition as the Slack re-review ping |
-| GET | `/submissions/:id` | Reviewer | Full submission detail with timeline |
+| GET | `/submissions/:id` | Reviewer | Full submission detail with timeline. Includes `userBalance`, the submitter's live shop balance (approved hours minus non-refunded purchases) |
 | PUT | `/submissions/:id/review` | Reviewer | Review submission (approve/reject with hours and feedback) |
 | POST | `/submissions/:id/quick-approve` | Reviewer | Auto-approve using Hackatime hours |
 | POST | `/submissions/:id/send-to-admin` | Reviewer | Escalate to second review (the secondary admin-only queue) with a required note (`sentToAdmin*` fields on Submission). Escalated submissions leave the reviewer queue; plain reviewers can no longer submit a verdict on them |

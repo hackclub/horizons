@@ -797,6 +797,7 @@
 					playableUrl={currentSubmission?.project.playableUrl ?? currentSubmission?.playableUrl ?? null}
 					readmeUrl={currentSubmission?.project.readmeUrl ?? null}
 					hackatimeHours={currentSubmission?.hackatimeHours ?? null}
+					userBalance={currentSubmission?.userBalance ?? null}
 					joeProjectId={currentSubmission?.project.joeProjectId ?? null}
 					joeFraudPassed={currentSubmission?.project.joeFraudPassed ?? null}
 					joeTrustScore={currentSubmission?.project.joeTrustScore ?? null}

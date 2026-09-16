@@ -369,6 +369,12 @@ export class SubmissionDetailResponse {
 
   @ApiProperty({ type: SentToAdminInfoResponse, nullable: true })
   sentToAdmin: SentToAdminInfoResponse | null;
+
+  @ApiProperty({
+    description:
+      "The submitter's spendable shop balance in hours (approved hours minus non-refunded purchases), computed at request time.",
+  })
+  userBalance: number;
 }
 
 export class SendToAdminResultResponse {

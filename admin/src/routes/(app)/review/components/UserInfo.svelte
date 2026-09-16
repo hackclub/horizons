@@ -13,6 +13,8 @@
 		playableUrl: string | null;
 		readmeUrl: string | null;
 		hackatimeHours: number | null;
+		/** Submitter's spendable shop balance in hours (approved minus spent). */
+		userBalance?: number | null;
 		joeProjectId?: string | null;
 		joeFraudPassed?: boolean | null;
 		joeTrustScore?: number | null;
@@ -33,6 +35,7 @@
 		playableUrl,
 		readmeUrl,
 		hackatimeHours,
+		userBalance = null,
 		joeProjectId = null,
 		joeFraudPassed = null,
 		joeTrustScore = null,
@@ -139,6 +142,14 @@
 		<span class={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${fraudBadge.class}`}>
 			{fraudBadge.label}
 		</span>
+		{#if userBalance != null}
+			<span
+				class="inline-flex items-center rounded-full border border-rv-border text-rv-dim px-2 py-0.5 text-[11px] font-medium"
+				title="Shop balance: approved hours across all projects minus non-refunded purchases."
+			>
+				Balance: {userBalance.toFixed(1)}h
+			</span>
+		{/if}
 		{#if joeTrustScore != null}
 			<span class="inline-flex items-center rounded-full border border-rv-border text-rv-dim px-2 py-0.5 text-[11px] font-medium">
 				Trust: {joeTrustScore}
