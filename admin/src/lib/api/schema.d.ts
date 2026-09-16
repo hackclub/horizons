@@ -4227,6 +4227,8 @@ export interface components {
             submissions: components["schemas"]["ProjectSubmissionSummary"][];
             claim: components["schemas"]["ClaimInfoResponse"] | null;
             sentToAdmin: components["schemas"]["SentToAdminInfoResponse"] | null;
+            /** @description The submitter's spendable shop balance in hours (approved hours minus non-refunded purchases), computed at request time. */
+            userBalance: number;
         };
         ClaimSubmissionDto: {
             force?: boolean;

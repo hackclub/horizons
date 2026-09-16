@@ -32,6 +32,7 @@ import { AUDIT_ACTIONS } from '../submission-approval/audit-actions';
 import { SlackService } from '../slack/slack.service';
 import { HackatimeService } from '../hackatime/hackatime.service';
 import { MetricsService } from '../metrics/metrics.service';
+import { BalanceService } from '../balance/balance.service';
 import { computeUserTicketStatuses } from '../utils/ticket-status';
 
 // Scoped user fields — no PII like email, street address, birthday, or real name.
@@ -62,6 +63,7 @@ export class ReviewerService {
     private slackService: SlackService,
     private hackatimeService: HackatimeService,
     private metricsService: MetricsService,
+    private balanceService: BalanceService,
   ) {}
 
   /**
@@ -409,6 +411,11 @@ export class ReviewerService {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
+    const [sentToAdminNames, { balance: userBalance }] = await Promise.all([
+      this.fetchReviewerNamesFor([submission.sentToAdminById]),
+      this.balanceService.getUserBalance(submission.project.userId),
+    ]);
+
     return {
       submissionId: submission.submissionId,
       projectId: submission.projectId,
@@ -452,10 +459,8 @@ export class ReviewerService {
       timeline,
       submissions: submissionsList,
       claim: this.buildClaimInfo(submission, viewerId),
-      sentToAdmin: this.buildSentToAdminInfo(
-        submission,
-        await this.fetchReviewerNamesFor([submission.sentToAdminById]),
-      ),
+      sentToAdmin: this.buildSentToAdminInfo(submission, sentToAdminNames),
+      userBalance,
     };
   }
 

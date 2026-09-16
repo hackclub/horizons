@@ -9,6 +9,7 @@ import { ManifestModule } from '../manifest/manifest.module';
 import { SlackModule } from '../slack/slack.module';
 import { HackatimeModule } from '../hackatime/hackatime.module';
 import { MetricsModule } from '../metrics/metrics.module';
+import { BalanceModule } from '../balance/balance.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MetricsModule } from '../metrics/metrics.module';
     SlackModule,
     HackatimeModule,
     MetricsModule,
+    BalanceModule,
   ],
   controllers: [ReviewerController],
   providers: [
