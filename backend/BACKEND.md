@@ -333,6 +333,7 @@ Timelapse recordings from [Lapse](https://api.lapse.hackclub.com) for the review
 
 **Key implementation details:**
 - Resolves the submitter's Lapse account via `GET /user/query?hackatimeId=` using `User.hackatimeAccount`, then fetches `GET /timelapse/findByUser` and keeps timelapses whose `private.hackatimeProject` matches one of `Project.nowHackatimeProjects`. Unmatched timelapses are returned only as a count (`otherTimelapseCount`).
+- Lapse API v2 serves all routes under `https://api.lapse.hackclub.com/api` (per the `servers` entry in its `/openapi.json`) — calls against the bare host 404.
 - Authenticates with `LAPSE_API_TOKEN` (bearer). The token needs Lapse admin permissions — the `private.hackatimeProject` field used for matching is only visible to admins (or the timelapse owner).
 - Returns `{ lapseUser: null, timelapses: [] }` when the user has no Hackatime account or no Lapse account; returns an `error` string (never throws) on Lapse API failures so the review page degrades gracefully.
 
