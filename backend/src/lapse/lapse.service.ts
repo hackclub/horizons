@@ -7,7 +7,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma.service';
 
-const LAPSE_API_BASE = 'https://api.lapse.hackclub.com';
+// Lapse API v2 mounts all routes under /api (see the `servers` entry in
+// https://api.lapse.hackclub.com/openapi.json).
+const LAPSE_API_BASE = 'https://api.lapse.hackclub.com/api';
 
 /** Timelapse object as returned by the Lapse API (`/timelapse/findByUser`). */
 interface LapseApiTimelapse {
