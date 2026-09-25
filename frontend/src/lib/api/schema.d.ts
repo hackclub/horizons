@@ -1206,6 +1206,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/settings/total-submissions-frozen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminController_toggleTotalSubmissionsFrozen"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/settings/submission-whitelist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getSubmissionWhitelist"];
+        put?: never;
+        post: operations["AdminController_addToSubmissionWhitelist"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/settings/submission-whitelist/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminController_removeFromSubmissionWhitelist"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/search": {
         parameters: {
             query?: never;
@@ -1792,6 +1840,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["ShopAuthController_purchaseItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shop/auth/shipping-address": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ShopAuthController_getShippingAddress"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3087,12 +3151,17 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /** @description Recipient name on the primary HCA address. Null until synced at login. */
+            addressFirstName: string | null;
+            addressLastName: string | null;
             phoneNumber: string | null;
             /** @description HCA-reported verification state for the phone number; null when no number is set. */
             phoneNumberVerified: boolean | null;
             /** @description When true, the user skips the HCA identity-verification check on submission. */
             bypassIdv: boolean;
             roles: string[];
+            /** @description Shared reviewer/admin note about this user (same note as the review dash user note). */
+            adminComment: string | null;
             projects: components["schemas"]["AdminUserProjectResponse"][];
             /** @description Sum of live Hackatime tracked hours across non-deleted projects. */
             totalHackatimeHours: number;
@@ -3527,6 +3596,9 @@ export interface components {
             email: string;
             firstName: string;
             lastName: string;
+            /** @description Recipient name on the primary HCA address. Null until synced at login. */
+            addressFirstName: string | null;
+            addressLastName: string | null;
             slackUserId: string | null;
             slackUsername: string | null;
             /** @description Current spendable balance (approved hours minus unrefunded spend). Negative means the user spent hours that were later revoked. */
@@ -3554,6 +3626,7 @@ export interface components {
             refundedAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            orderNotes: string | null;
             user: components["schemas"]["LedgerEntryUserSummary"];
             item: components["schemas"]["LedgerEntryItemSummary"] | null;
             event: components["schemas"]["LedgerEntryEventSummary"] | null;
@@ -3574,6 +3647,9 @@ export interface components {
             firstName: string | null;
             lastName: string | null;
             email: string;
+            /** @description Recipient name on the primary HCA address. Null until synced at login; ship to firstName/lastName then. */
+            addressFirstName: string | null;
+            addressLastName: string | null;
             slackUserId: string | null;
             slackUsername: string | null;
             phoneNumber: string | null;
@@ -3630,6 +3706,7 @@ export interface components {
             refundedAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            orderNotes: string | null;
             /** @description Full buyer identity for admins, including address and phone number. */
             user: components["schemas"]["AdminTransactionDetailUserResponse"];
             item: components["schemas"]["AdminTransactionDetailItemResponse"] | null;
@@ -3750,9 +3827,32 @@ export interface components {
             /** Format: date-time */
             submissionsFrozenAt: string | null;
             submissionsFrozenBy: string | null;
+            totalSubmissionsFrozen: boolean;
+            /** Format: date-time */
+            totalSubmissionsFrozenAt: string | null;
+            totalSubmissionsFrozenBy: string | null;
+            /** @description User IDs allowed to submit while submissions are frozen. */
+            submissionWhitelist: number[];
         };
         ToggleSubmissionsFrozenDto: {
             submissionsFrozen: boolean;
+        };
+        ToggleTotalSubmissionsFrozenDto: {
+            /** @description When true, ALL submissions are blocked, ignoring the submission whitelist. */
+            totalSubmissionsFrozen: boolean;
+        };
+        WhitelistUserResponse: {
+            userId: number;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            slackUserId: string | null;
+        };
+        AddSubmissionWhitelistDto: {
+            /** @description User ID to add to the submission whitelist. */
+            userId?: number;
+            /** @description Slack user ID to resolve to a Horizons user and add to the whitelist. Used when userId is not provided. */
+            slackUserId?: string;
         };
         ElevatedUserResponse: {
             userId: number;
@@ -4038,6 +4138,7 @@ export interface components {
             projectType: string;
             repoUrl: string | null;
             playableUrl: string | null;
+            readmeUrl: string | null;
             nowHackatimeHours: number | null;
             nowHackatimeProjects: string[];
             joeProjectId: string | null;
@@ -4155,6 +4256,8 @@ export interface components {
             submissions: components["schemas"]["ProjectSubmissionSummary"][];
             claim: components["schemas"]["ClaimInfoResponse"] | null;
             sentToAdmin: components["schemas"]["SentToAdminInfoResponse"] | null;
+            /** @description The submitter's spendable shop balance in hours (approved hours minus non-refunded purchases), computed at request time. */
+            userBalance: number;
         };
         ClaimSubmissionDto: {
             force?: boolean;
@@ -4338,6 +4441,7 @@ export interface components {
             refundedAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            orderNotes: string | null;
             item: components["schemas"]["TransactionItemSummary"] | null;
             variant: components["schemas"]["TransactionVariantSummary"] | null;
             event: components["schemas"]["TransactionEventSummary"] | null;
@@ -4346,6 +4450,21 @@ export interface components {
             transaction: components["schemas"]["UserTransactionResponse"];
             newBalance: components["schemas"]["BalanceResponse"];
             specialAction: string | null;
+        };
+        ShippingAddressResponse: {
+            /** @enum {string} */
+            nameSource: "address" | "account";
+            firstName: string | null;
+            lastName: string | null;
+            line1: string;
+            line2: string | null;
+            city: string;
+            state: string;
+            postalCode: string;
+            country: string;
+        };
+        ShippingAddressResult: {
+            address: components["schemas"]["ShippingAddressResponse"] | null;
         };
         PinnedItemDetailResponse: {
             itemId: number;
@@ -4443,6 +4562,7 @@ export interface components {
             refundedAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            orderNotes: string | null;
             item: components["schemas"]["TransactionItemSummary"] | null;
             variant: components["schemas"]["TransactionVariantSummary"] | null;
             event: components["schemas"]["TransactionEventSummary"] | null;
@@ -5100,7 +5220,13 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    redirectPath?: string;
+                };
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -6629,6 +6755,98 @@ export interface operations {
             };
         };
     };
+    AdminController_toggleTotalSubmissionsFrozen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleTotalSubmissionsFrozenDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalSettingsResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getSubmissionWhitelist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhitelistUserResponse"][];
+                };
+            };
+        };
+    };
+    AdminController_addToSubmissionWhitelist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddSubmissionWhitelistDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhitelistUserResponse"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_removeFromSubmissionWhitelist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhitelistUserResponse"][];
+                };
+            };
+        };
+    };
     AdminController_searchUsers: {
         parameters: {
             query: {
@@ -7555,6 +7773,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseResponse"];
+                };
+            };
+        };
+    };
+    ShopAuthController_getShippingAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingAddressResult"];
                 };
             };
         };

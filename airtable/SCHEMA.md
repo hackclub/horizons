@@ -33,6 +33,7 @@ Env var: `YSWS_TRANSACTIONS_TABLE_ID`
 | Fulfilled At | Date | Include time | `fulfilledAt` (cleared on unfulfill) |
 | Refunded At | Date | Include time | `refundedAt` |
 | Created At | Date | Include time | `createdAt` |
+| Order Notes | Long text | | `orderNotes` (buyer-entered at checkout, up to 1000 chars) |
 
 Notes:
 - The sync always sends the full field set with explicit `null`s, so manual

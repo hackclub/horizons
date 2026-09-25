@@ -1355,6 +1355,7 @@ export class AirtableService {
     fulfilledAt: Date | null;
     refundedAt: Date | null;
     createdAt: Date;
+    orderNotes: string | null;
     user: {
       firstName: string;
       lastName: string;
@@ -1381,6 +1382,7 @@ export class AirtableService {
       'Fulfilled At': txn.fulfilledAt ? txn.fulfilledAt.toISOString() : null,
       'Refunded At': txn.refundedAt ? txn.refundedAt.toISOString() : null,
       'Created At': txn.createdAt.toISOString(),
+      'Order Notes': txn.orderNotes ?? '',
     };
   }
 

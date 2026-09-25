@@ -549,6 +549,13 @@
                                 </p>
                             </div>
                             <div>
+                                {#if user.addressFirstName !== null}
+                                    <p class="font-medium text-ds-text">
+                                        {[user.addressFirstName, user.addressLastName]
+                                            .filter(Boolean)
+                                            .join(' ')}
+                                    </p>
+                                {/if}
                                 <p>{user.addressLine1}</p>
                                 <p>{user.addressLine2}</p>
                                 <p>

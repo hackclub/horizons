@@ -35,6 +35,7 @@ import {
   PurchaseResponse,
   PinnedItemResponse,
   RemovedResponse,
+  ShippingAddressResult,
 } from './dto/shop-response.dto';
 import { Public } from '../auth/public.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -86,7 +87,16 @@ export class ShopAuthController {
       purchaseItemDto.itemId,
       purchaseItemDto.variantId,
       purchaseItemDto.quantity,
+      purchaseItemDto.orderNotes,
     );
+  }
+
+  @Get('shipping-address')
+  @ApiOkResponse({ type: ShippingAddressResult })
+  async getShippingAddress(@Req() req: Request) {
+    return {
+      address: await this.shopService.getShippingAddress(req.user.userId),
+    };
   }
 
   @Get('transactions')

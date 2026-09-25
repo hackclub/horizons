@@ -27,7 +27,7 @@ Users can only see **their own data**. All project/submission endpoints check `u
 | Data | Visible | Notes |
 |------|---------|-------|
 | Name, email, birthday | Yes | Returned from `/api/user/auth/me` |
-| Address | **No** | Only `hasAddress: boolean` is returned, never the actual fields |
+| Address | Checkout only | `/api/user/auth/me` returns only `hasAddress: boolean`. `GET /api/shop/auth/shipping-address` returns the user's own address and address recipient name for the checkout confirm modal. No other user endpoint returns address fields |
 | Slack ID, verification status | Yes | |
 | Role, onboarding status | Yes | |
 | Raffle position | Yes | |
@@ -140,7 +140,7 @@ Admins have **full access** to all data.
 |------|-------|
 | User emails | Full email addresses |
 | User birthdays | Raw dates, not just age |
-| User addresses | Complete: line 1, line 2, city, state, country, zip |
+| User addresses | Complete: line 1, line 2, city, state, country, zip, plus the address recipient name (`addressFirstName`/`addressLastName`) |
 | Fraud signals | `User.isFraud`, `User.isSus` (manual admin flags) and `Project.joeFraudPassed` / `joeTrustScore` / `joeJustification` (Joe-driven) |
 | Ban state | `User.banned`, `User.bannedReason`, `User.bannedAt` |
 | Admin comments | Read/write on users and projects |
@@ -186,7 +186,7 @@ const projectAdminInclude = {
 | Data | Public | User | Reviewer | Admin |
 |------|--------|------|----------|-------|
 | Own profile (name, email) | — | Yes | — | — |
-| Own address | — | `hasAddress` only | — | — |
+| Own address | — | `hasAddress`; full address only at checkout (`/api/shop/auth/shipping-address`) | — | — |
 | Other user's name | Slack display name only, on shipped projects | No | Yes | Yes |
 | Other user's email | No | No | No | Yes |
 | Other user's age | No | No | Yes (computed) | Yes (raw birthday) |
@@ -204,7 +204,7 @@ const projectAdminInclude = {
 
 When adding new endpoints, follow these rules:
 
-- **User endpoints**: always filter by `userId`. Use `excludeAdminFields()` on any project/submission data. Never return address fields, fraud flags, or admin comments.
+- **User endpoints**: always filter by `userId`. Use `excludeAdminFields()` on any project/submission data. Never return address fields (the checkout shipping-address endpoint is the one exception), fraud flags, or admin comments.
 - **Reviewer endpoints**: use `SCOPED_USER_SELECT` when fetching user data. Always pass through `scopeUserData()` before returning. Never expose email or raw birthday.
 - **Admin endpoints**: use `projectAdminInclude` for full data access. No scoping needed.
 - **Never return** `hackatimeAccessToken` to any role — it's an internal credential.

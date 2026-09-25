@@ -33,6 +33,10 @@ model User {
   state        String?
   country      String?
   zipCode      String? @map("zip_code")
+  // Recipient name on the primary HCA address (REST /api/v1/me), which the
+  // OIDC address claim omits. Shipping uses it over firstName/lastName.
+  addressFirstName String? @map("address_first_name")
+  addressLastName  String? @map("address_last_name")
 
   airtableRecId String? @map("airtable_rec_id")
 
@@ -423,6 +427,7 @@ model Transaction {
   refundedAt      DateTime?        @map("refunded_at")
   createdAt       DateTime         @default(now()) @map("created_at")
   airtableRecId   String?          @map("airtable_rec_id")
+  orderNotes      String?          @map("order_notes") @db.VarChar(1000)
   user            User             @relation(fields: [userId], references: [userId], onDelete: Cascade)
   item            ShopItem?        @relation(fields: [itemId], references: [itemId], onDelete: Cascade)
   variant         ShopItemVariant? @relation(fields: [variantId], references: [variantId], onDelete: SetNull)

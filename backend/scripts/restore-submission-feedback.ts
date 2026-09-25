@@ -32,6 +32,12 @@ function normalize(value: string | null | undefined): string {
   return (value ?? '').replace(/\r\n/g, '\n').trim();
 }
 
+function preview(value: string | null, max = 20): string {
+  if (value === null) return 'null';
+  const flat = value.replace(/\s+/g, ' ').trim();
+  return JSON.stringify(flat.length > max ? `${flat.slice(0, max)}…` : flat);
+}
+
 async function main() {
   const apply = process.argv.includes('--apply');
   const rawUrl = process.env.DATABASE_URL;
@@ -102,7 +108,7 @@ async function main() {
       }
 
       console.log(
-        `${apply ? 'restore' : 'would restore'} submission ${submissionId}: ${history.length} pull(s), original ${original === null ? 'null' : `${original.length} chars`}`,
+        `${apply ? 'restore' : 'would restore'} submission ${submissionId}: ${history.length} pull(s), original ${original === null ? 'null' : `${original.length} chars`}\n    from: ${preview(submission.hoursJustification)}\n    to:   ${preview(original)}`,
       );
       if (apply) {
         await prisma.submission.update({
