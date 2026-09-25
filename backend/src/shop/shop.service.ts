@@ -12,6 +12,7 @@ import { UpdateShopDto } from './dto/update-shop.dto';
 import { debugLog } from '../utils/debug-log';
 import { BalanceService } from '../balance/balance.service';
 import { AirtableService } from '../airtable/airtable.service';
+import { ShippingAddressResponse } from './dto/shop-response.dto';
 
 @Injectable()
 export class ShopService {
@@ -262,11 +263,57 @@ export class ShopService {
     return this.balanceService.getUserBalance(userId);
   }
 
+  // The primary HCA address as of the user's last login. Orders don't copy
+  // it, so fulfilment always ships to whatever this returns at the time.
+  async getShippingAddress(
+    userId: number,
+  ): Promise<ShippingAddressResponse | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: {
+        firstName: true,
+        lastName: true,
+        addressFirstName: true,
+        addressLastName: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        country: true,
+      },
+    });
+
+    if (
+      !user?.addressLine1 ||
+      !user.city ||
+      !user.state ||
+      !user.zipCode ||
+      !user.country
+    ) {
+      return null;
+    }
+
+    const fromAddress = user.addressFirstName !== null;
+    return {
+      nameSource: fromAddress ? 'address' : 'account',
+      firstName: fromAddress ? user.addressFirstName : user.firstName,
+      lastName: fromAddress ? user.addressLastName : user.lastName,
+      line1: user.addressLine1,
+      line2: user.addressLine2,
+      city: user.city,
+      state: user.state,
+      postalCode: user.zipCode,
+      country: user.country,
+    };
+  }
+
   async purchaseItem(
     userId: number,
     itemId: number,
     variantId?: number,
     quantity: number = 1,
+    orderNotes?: string,
   ) {
     console.log(
       `[Shop Purchase] Starting purchase for userId: ${userId}, itemId: ${itemId}, variantId: ${variantId || 'none'}, quantity: ${quantity}`,
@@ -341,6 +388,12 @@ export class ShopService {
       description += ` - ${item.description}`;
     }
 
+    if (!(await this.getShippingAddress(userId))) {
+      throw new BadRequestException(
+        'Add a shipping address to your Hack Club account before purchasing.',
+      );
+    }
+
     console.log(
       `[Shop Purchase] Creating transaction for userId: ${userId}, itemId: ${itemId}, unitCost: ${cost}, quantity: ${quantity}, total: ${cost * quantity}`,
     );
@@ -353,6 +406,7 @@ export class ShopService {
       itemId,
       variantId: variant?.variantId ?? null,
       enforceBalance: !item.enableDebt,
+      orderNotes: orderNotes?.trim() || null,
       preCheck: async (tx) => {
         if (maxPerUser !== null && maxPerUser > 0) {
           const count = await tx.transaction.count({

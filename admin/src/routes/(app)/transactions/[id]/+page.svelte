@@ -22,6 +22,16 @@
 	// older response overwrite the newer page.
 	let loadSequence = 0;
 
+	// Recipient name on the user's primary HCA address; the account name until
+	// the user's next login syncs it.
+	const shipName = $derived.by(() => {
+		if (!txn) return '';
+		const u = txn.user;
+		const parts =
+			u.addressFirstName !== null ? [u.addressFirstName, u.addressLastName] : [u.firstName, u.lastName];
+		return parts.filter(Boolean).join(' ');
+	});
+
 	async function load() {
 		const seq = ++loadSequence;
 		loading = true;
@@ -243,6 +253,13 @@
 					</div>
 				</div>
 
+				{#if txn.orderNotes}
+					<div class="border-t border-ds-border pt-3">
+						<h3 class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Order notes</h3>
+						<p class="whitespace-pre-wrap text-sm text-ds-text">{txn.orderNotes}</p>
+					</div>
+				{/if}
+
 				{#if !txn.refundedAt}
 					<div class="flex flex-wrap items-center gap-2 border-t border-ds-border pt-3">
 						{#if txn.kind === 'ShopItem'}
@@ -322,6 +339,10 @@
 						<h3 class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ds-text-secondary">Address</h3>
 						{#if txn.user.addressLine1 || txn.user.city}
 							<address class="not-italic text-sm leading-relaxed text-ds-text">
+								<span class="font-medium">{shipName}</span>
+								{#if txn.user.addressFirstName === null}
+									<span class="text-xs text-ds-text-placeholder">(account name; address name not synced yet)</span>
+								{/if}<br />
 								{txn.user.addressLine1}<br />
 								{#if txn.user.addressLine2}{txn.user.addressLine2}<br />{/if}
 								{[txn.user.city, txn.user.state, txn.user.zipCode].filter(Boolean).join(', ')}

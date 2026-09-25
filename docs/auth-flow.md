@@ -121,6 +121,8 @@ On every request, the global `AuthGuard` (unless `@Public()`):
 - Address replaced as a unit from the HCA claim (all six fields, including clearing a dropped line 2); skipped when the claim has no street address so a transiently empty claim never wipes a stored address
 - `hcaId`, `referralCode` set only if previously missing
 
+**Address recipient name** (`syncAddressName`, every login): the OIDC address claim has no name, so the callback also calls HCA's REST `GET /api/v1/me` with the access token (5s timeout) and stores the primary address's `first_name`/`last_name` in `addressFirstName`/`addressLastName`. Shipping uses these over the account name, so users can ship under a name other than their preferred one. Both are set to null when the `address` scope is granted but no primary address exists (HCA omits an empty `addresses` array). A failed request keeps the stored values and never blocks login. HCA tokens aren't stored, so the name only refreshes on the next login (or `POST /api/user/auth/sync`).
+
 ## Roles & Guards
 
 ### Role Enum

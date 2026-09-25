@@ -231,6 +231,9 @@ export class UserTransactionResponse {
   @ApiProperty()
   createdAt: Date;
 
+  @ApiProperty({ type: String, nullable: true })
+  orderNotes: string | null;
+
   @ApiProperty({ type: TransactionItemSummary, nullable: true })
   item: TransactionItemSummary | null;
 
@@ -311,4 +314,41 @@ export class PinnedItemResponse {
 export class RemovedResponse {
   @ApiProperty()
   removed: boolean;
+}
+
+export class ShippingAddressResponse {
+  // 'address' when the name comes from the primary HCA address, 'account'
+  // when that name hasn't been synced yet and the account name is used.
+  @ApiProperty({ enum: ['address', 'account'] })
+  nameSource: 'address' | 'account';
+
+  @ApiProperty({ type: String, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastName: string | null;
+
+  @ApiProperty()
+  line1: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  line2: string | null;
+
+  @ApiProperty()
+  city: string;
+
+  @ApiProperty()
+  state: string;
+
+  @ApiProperty()
+  postalCode: string;
+
+  @ApiProperty()
+  country: string;
+}
+
+export class ShippingAddressResult {
+  // Null when the account has no complete address.
+  @ApiProperty({ type: ShippingAddressResponse, nullable: true })
+  address: ShippingAddressResponse | null;
 }

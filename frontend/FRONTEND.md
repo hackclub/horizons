@@ -32,7 +32,7 @@ frontend/src/
 │       └── shop/
 │           ├── +page.svelte        # Shop categories
 │           └── [slug]/
-│               └── [itemId]/       # Individual shop item
+│               └── [itemId]/       # Individual shop item (Purchase opens CheckoutConfirmModal)
 │
 ├── lib/
 │   ├── api/
@@ -62,6 +62,7 @@ frontend/src/
 │   │   ├── BobaButton.svelte       # Large interactive button with press state
 │   │   ├── BobaText.svelte         # GSAP-animated text
 │   │   ├── Card.svelte             # Card container
+│   │   ├── CheckoutConfirmModal.svelte  # Shop checkout confirmation: order summary, primary HCA address + recipient name, order notes
 │   │   ├── FAQ.svelte              # FAQ accordion
 │   │   ├── MenuItem.svelte         # Navigation menu item
 │   │   ├── Stripes.svelte          # Decorative SVG stripes

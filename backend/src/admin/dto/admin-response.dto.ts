@@ -341,6 +341,17 @@ class AdminUserProjectResponse {
 }
 
 export class AdminUserResponse extends AdminLightUserResponse {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Recipient name on the primary HCA address. Null until synced at login.',
+  })
+  addressFirstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  addressLastName: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   phoneNumber: string | null;
 
@@ -579,6 +590,17 @@ export class AdminTransactionDetailUserResponse {
   @ApiProperty()
   email: string;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Recipient name on the primary HCA address. Null until synced at login; ship to firstName/lastName then.',
+  })
+  addressFirstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  addressLastName: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   slackUserId: string | null;
 
@@ -708,6 +730,9 @@ export class AdminTransactionDetailResponse {
 
   @ApiProperty({ format: 'date-time' })
   createdAt: Date;
+
+  @ApiProperty({ type: String, nullable: true })
+  orderNotes: string | null;
 
   @ApiProperty({
     description:
@@ -1988,6 +2013,17 @@ export class LedgerEntryUserSummary {
   @ApiProperty()
   lastName: string;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Recipient name on the primary HCA address. Null until synced at login.',
+  })
+  addressFirstName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  addressLastName: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   slackUserId: string | null;
 
@@ -2046,6 +2082,9 @@ export class LedgerEntryResponse {
 
   @ApiProperty()
   createdAt: Date;
+
+  @ApiProperty({ type: String, nullable: true })
+  orderNotes: string | null;
 
   @ApiProperty({ type: LedgerEntryUserSummary })
   user: LedgerEntryUserSummary;

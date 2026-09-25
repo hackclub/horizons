@@ -228,7 +228,8 @@ Shop items, variants, purchases, and transaction management.
 | GET | `/:slug/items/:id` | Public | Get specific item |
 | **User** |||
 | GET | `/auth/balance` | User | User's balance (approved hours - spent) |
-| POST | `/auth/purchase` | User | Purchase item (validates eligibility, stock, limits) |
+| POST | `/auth/purchase` | User | Purchase item (validates eligibility, stock, limits, shipping address). Optional `orderNotes` (≤1000 chars) saved on each created transaction |
+| GET | `/auth/shipping-address` | User | `{ address }`: the user's current primary HCA address and recipient name (the address name, or the account name until it syncs), or `null` when incomplete. Shown in the checkout confirm modal |
 | GET | `/auth/transactions` | User | User's transaction history |
 | GET | `/auth/pinned-item` | User | Get pinned item |
 | POST | `/auth/pinned-item` | User | Set pinned item |
@@ -253,6 +254,7 @@ Shop items, variants, purchases, and transaction management.
 - Checks user is `verified_eligible` via external Hack Club API
 - Validates item/variant exists and is active
 - Enforces `maxPerUser` limit
+- Requires a complete shipping address on the account (every item, digital included)
 - Special handling for item #1 (Midnight ticket) — registers user in attend.hackclub.com
 
 ---
@@ -500,7 +502,7 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 | **Shop** | slug, description, isActive, isPublic | Shop containers |
 | **ShopItem** | shopId, name, cost, maxPerUser, isActive, imageUrl | Purchasable items |
 | **ShopItemVariant** | itemId, name, cost, isActive | Item variants |
-| **Transaction** | userId, kind, itemId, variantId, eventId, cost, isFulfilled, refundedAt, airtableRecId | Purchase records (mirrored to Airtable) |
+| **Transaction** | userId, kind, itemId, variantId, eventId, cost, isFulfilled, refundedAt, orderNotes, airtableRecId | Purchase records (mirrored to Airtable) |
 | **PinnedItem** | userId, itemId | User's pinned shop item |
 
 ### Other Models
@@ -616,7 +618,8 @@ To run the local test suite against the Worker: `bun backend/scripts/url-check-t
 
 ### Shop Purchase
 1. User checks balance (approved hours - spent)
-2. User purchases → validates `verified_eligible` via external API, checks stock and per-user limits
-3. Transaction created, balance deducted
-4. Item #1 (Midnight ticket) → registers in attend.hackclub.com
-5. Admin fulfills → email sent to user
+2. User confirms the order in a modal showing their primary HCA address and its recipient name, plus optional order notes
+3. User purchases → validates `verified_eligible` via external API, checks stock, per-user limits and that an address exists
+4. Transaction created with `orderNotes`, balance deducted. The address is not copied onto the order: fulfilment always ships to the user's current address and address name
+5. Item #1 (Midnight ticket) → registers in attend.hackclub.com
+6. Admin fulfills → email sent to user

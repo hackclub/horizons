@@ -3752,6 +3752,8 @@ export class AdminService {
             email: true,
             firstName: true,
             lastName: true,
+            addressFirstName: true,
+            addressLastName: true,
             slackUserId: true,
             slackUsername: true,
           },
@@ -3836,6 +3838,8 @@ export class AdminService {
             firstName: true,
             lastName: true,
             email: true,
+            addressFirstName: true,
+            addressLastName: true,
             slackUserId: true,
             slackUsername: true,
             phoneNumber: true,
@@ -3944,6 +3948,8 @@ export class AdminService {
             firstName: true,
             lastName: true,
             email: true,
+            addressFirstName: true,
+            addressLastName: true,
             slackUserId: true,
             phoneNumber: true,
             phoneNumberVerified: true,
@@ -4001,6 +4007,9 @@ export class AdminService {
       'state',
       'zip_code',
       'country',
+      'ship_first_name',
+      'ship_last_name',
+      'order_notes',
     ];
 
     const lines = [header.join(',')];
@@ -4033,6 +4042,12 @@ export class AdminService {
           t.user.state ?? '',
           t.user.zipCode ?? '',
           t.user.country ?? '',
+          // The recipient name on the user's primary HCA address; falls back
+          // to the account name until the user logs in again to sync it.
+          ...(t.user.addressFirstName !== null
+            ? [t.user.addressFirstName, t.user.addressLastName]
+            : [t.user.firstName, t.user.lastName]),
+          t.orderNotes,
         ]
           .map(escape)
           .join(','),

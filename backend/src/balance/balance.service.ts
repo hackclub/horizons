@@ -53,6 +53,7 @@ export class BalanceService {
     quantity?: number;
     enforceBalance?: boolean;
     preCheck?: (tx: Prisma.TransactionClient) => Promise<void>;
+    orderNotes?: string | null;
   }) {
     const {
       userId,
@@ -65,6 +66,7 @@ export class BalanceService {
       quantity = 1,
       enforceBalance = true,
       preCheck,
+      orderNotes = null,
     } = params;
 
     if (quantity < 1) {
@@ -98,6 +100,7 @@ export class BalanceService {
           eventId,
           itemDescription,
           cost,
+          orderNotes,
         };
 
         const ids: number[] = [];

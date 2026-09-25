@@ -18,11 +18,14 @@
 		fulfilledAt: string | null;
 		refundedAt: string | null;
 		createdAt: string;
+		orderNotes: string | null;
 		user: {
 			userId: number;
 			email: string;
 			firstName: string;
 			lastName: string;
+			addressFirstName: string | null;
+			addressLastName: string | null;
 			slackUserId: string | null;
 			balance: number;
 		};
@@ -360,6 +363,14 @@
 		if (e.item) return e.item.name;
 		if (e.kind === 'AdminAdjustment') return e.cost < 0 ? 'Hours awarded' : 'Hours deducted';
 		return e.itemDescription;
+	}
+
+	// Set only when the recipient name on the user's primary HCA address
+	// differs from their account name.
+	function shipNameOverride(u: LedgerEntry['user']): string | null {
+		if (u.addressFirstName === null) return null;
+		const name = [u.addressFirstName, u.addressLastName].filter(Boolean).join(' ');
+		return name === `${u.firstName} ${u.lastName}` ? null : name;
 	}
 
 	async function handleRefund(e: LedgerEntry) {
@@ -725,10 +736,18 @@
 							{/if}
 						</div>
 						<div class="text-xs text-ds-text-secondary">{e.user.email}</div>
+						{#if e.kind === 'ShopItem' && shipNameOverride(e.user)}
+							<div class="text-xs text-ds-text-secondary">Ships to: {shipNameOverride(e.user)}</div>
+						{/if}
 					</td>
 				{/if}
 				<td class="px-3 py-2 text-ds-text">{targetLabel(e)}</td>
-				<td class="px-3 py-2 text-ds-text-secondary">{e.itemDescription}</td>
+				<td class="px-3 py-2 text-ds-text-secondary">
+					{e.itemDescription}
+					{#if e.orderNotes}
+						<div class="mt-1 whitespace-pre-wrap text-xs text-ds-text"><span class="font-semibold">Note:</span> {e.orderNotes}</div>
+					{/if}
+				</td>
 				<td class="px-3 py-2 text-right font-mono text-ds-text">{e.cost}h</td>
 				<td class="px-3 py-2">
 					{#if e.refundedAt}
@@ -843,6 +862,9 @@
 									{/each}
 								</div>
 								<div class="text-xs text-ds-text-secondary">{group.user.email}</div>
+								{#if shipNameOverride(group.user)}
+									<div class="text-xs text-ds-text-secondary">Ships to: {shipNameOverride(group.user)}</div>
+								{/if}
 							</div>
 							<div class="flex gap-5 text-right text-xs">
 								<div>

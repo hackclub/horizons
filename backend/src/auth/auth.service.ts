@@ -24,6 +24,14 @@ interface HackClubTokenResponse {
   id_token: string;
 }
 
+// Subset of one entry in REST /api/v1/me `identity.addresses`. HCA drops blank
+// fields, so everything is optional here even where HCA's model requires it.
+interface HackClubRestAddress {
+  first_name?: string;
+  last_name?: string;
+  primary?: boolean;
+}
+
 interface HackClubAddress {
   street_address?: string;
   locality?: string;
@@ -316,6 +324,8 @@ export class AuthService {
       throw new ForbiddenException('You are not eligible for YSWS.');
     }
 
+    await this.syncAddressName(user.userId, tokens.access_token);
+
     const session = await this.prisma.userSession.create({
       data: {
         userId: user.userId,
@@ -344,6 +354,51 @@ export class AuthService {
       },
       redirectPath,
     };
+  }
+
+  // The OIDC address claim has no recipient name, so read it from the primary
+  // address in HCA's REST API. The access token only exists during the
+  // callback; any failure keeps the stored name and lets the login continue.
+  private async syncAddressName(userId: number, accessToken: string) {
+    let addresses: HackClubRestAddress[];
+    try {
+      const response = await fetch(`${this.HACKCLUB_AUTH_URL}/api/v1/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) {
+        console.error(
+          `[Auth] HCA /api/v1/me returned ${response.status} for user ${userId}`,
+        );
+        return;
+      }
+      const body = await response.json();
+      // HCA's compact_blank removes an empty `addresses` array entirely, so a
+      // missing key with the address scope granted means "no addresses".
+      if (!Array.isArray(body?.scopes) || !body.scopes.includes('address')) {
+        return;
+      }
+      addresses = Array.isArray(body.identity?.addresses)
+        ? body.identity.addresses
+        : [];
+    } catch (error) {
+      console.error(`[Auth] HCA /api/v1/me failed for user ${userId}:`, error);
+      return;
+    }
+
+    const primary = addresses.find((a) => a.primary === true);
+
+    try {
+      await this.prisma.user.update({
+        where: { userId },
+        data: {
+          addressFirstName: primary?.first_name || null,
+          addressLastName: primary?.last_name || null,
+        },
+      });
+    } catch (error) {
+      console.error(`[Auth] Saving address name failed for user ${userId}:`, error);
+    }
   }
 
   private async verifyIdToken(idToken: string): Promise<HackClubIdTokenClaims> {

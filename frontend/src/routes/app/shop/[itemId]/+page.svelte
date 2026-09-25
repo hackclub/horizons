@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import CheckoutConfirmModal from '$lib/components/CheckoutConfirmModal.svelte';
 	import { EXIT_DURATION } from '$lib';
 	import { api } from '$lib/api';
 
@@ -34,6 +35,7 @@
 	let purchaseError = $state<string | null>(null);
 	let purchaseSuccess = $state(false);
 	let quantity = $state(1);
+	let confirming = $state(false);
 
 	const selectedVariant = $derived(
 		item?.variants.find((v) => v.variantId === selectedVariantId) ?? null
@@ -105,7 +107,13 @@
 		navigateTo('/app/shop?back');
 	}
 
-	async function handlePurchase() {
+	function openConfirm() {
+		if (!item || purchaseDisabled) return;
+		purchaseError = null;
+		confirming = true;
+	}
+
+	async function handlePurchase(orderNotes: string) {
 		if (!item || purchaseDisabled) return;
 		purchasing = true;
 		purchaseError = null;
@@ -114,7 +122,8 @@
 				body: {
 					itemId: item.itemId,
 					variantId: needsVariant ? (selectedVariantId ?? undefined) : undefined,
-					quantity: allowsQuantity ? quantity : undefined
+					quantity: allowsQuantity ? quantity : undefined,
+					orderNotes: orderNotes.trim() || undefined
 				}
 			});
 
@@ -123,6 +132,7 @@
 					balance = data.newBalance.balance;
 				}
 				purchaseSuccess = true;
+				confirming = false;
 				return;
 			}
 
@@ -160,7 +170,7 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
+		if (e.key === 'Escape' && !confirming) {
 			goBack();
 		}
 	}
@@ -266,19 +276,29 @@
 							? 'bg-transparent text-black/50 cursor-not-allowed'
 							: 'bg-[#ffa936] text-black cursor-pointer'}"
 						disabled={purchaseDisabled}
-						onclick={handlePurchase}
+						onclick={openConfirm}
 					>
 						{purchasing ? 'Purchasing...' : purchaseLabel}
 					</button>
-
-					{#if purchaseError}
-						<p class="font-bricolage text-sm font-semibold text-red-600 m-0">{purchaseError}</p>
-					{/if}
 				</div>
 			{/if}
 		</div>
 	</div>
 </div>
+
+{#if confirming && item}
+	<CheckoutConfirmModal
+		itemName={item.name}
+		variantName={selectedVariant?.name ?? null}
+		quantity={allowsQuantity ? quantity : 1}
+		{totalCost}
+		{balance}
+		{purchasing}
+		error={purchaseError}
+		onConfirm={handlePurchase}
+		onClose={() => (confirming = false)}
+	/>
+{/if}
 
 <!-- Fixed UI -->
 <BackButton

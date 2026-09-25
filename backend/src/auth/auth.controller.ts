@@ -4,6 +4,7 @@ import {
   ApiOperation,
   ApiOkResponse,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
@@ -191,6 +192,10 @@ export class AuthController {
     summary: 'Get re-login URL to force sync user data from HCA',
   })
   @ApiOkResponse({ type: AuthUrlResponse })
+  @ApiBody({
+    required: false,
+    schema: { type: 'object', properties: { redirectPath: { type: 'string' } } },
+  })
   async syncHcaData(
     @Req() req: Request,
     @Body() body: { redirectPath?: string },
