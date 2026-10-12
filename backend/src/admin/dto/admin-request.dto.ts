@@ -72,10 +72,20 @@ export class ToggleTotalSubmissionsFrozenDto {
   totalSubmissionsFrozen: boolean;
 }
 
-export class AddSubmissionWhitelistDto {
+export class ToggleShopDisabledDto {
+  @ApiProperty({
+    description:
+      'When true, shop purchases are blocked for everyone except users on the shop whitelist.',
+  })
+  @IsBoolean()
+  shopDisabled: boolean;
+}
+
+// Shared by the submission and shop whitelist endpoints.
+export class AddWhitelistDto {
   @ApiPropertyOptional({
     type: Number,
-    description: 'User ID to add to the submission whitelist.',
+    description: 'User ID to add to the whitelist.',
   })
   @IsOptional()
   @IsNumber()

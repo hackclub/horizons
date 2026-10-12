@@ -25,6 +25,8 @@ export type AdminUserSort =
   | 'streak-asc'
   | 'longest-desc';
 
+type WhitelistField = 'submissionWhitelist' | 'shopWhitelist';
+
 type ManifestSummary = {
   entries: {
     projectId: number;
@@ -2486,15 +2488,61 @@ export class AdminService {
     return userIds.map((id) => byId.get(id)).filter((u) => u != null);
   }
 
+  async toggleShopDisabled(isDisabled: boolean, adminUserId: number) {
+    const settings = await this.prisma.globalSettings.upsert({
+      where: { id: 'global' },
+      update: {
+        shopDisabled: isDisabled,
+        shopDisabledAt: isDisabled ? new Date() : null,
+        shopDisabledBy: isDisabled ? adminUserId.toString() : null,
+      },
+      create: {
+        id: 'global',
+        shopDisabled: isDisabled,
+        shopDisabledAt: isDisabled ? new Date() : null,
+        shopDisabledBy: isDisabled ? adminUserId.toString() : null,
+      },
+    });
+
+    return settings;
+  }
+
   async getSubmissionWhitelist() {
-    const settings = await this.getGlobalSettings();
-    return this.getWhitelistUsers(settings.submissionWhitelist ?? []);
+    return this.getWhitelist('submissionWhitelist');
   }
 
   async addToSubmissionWhitelist(input: {
     userId?: number;
     slackUserId?: string;
   }) {
+    return this.addToWhitelist('submissionWhitelist', input);
+  }
+
+  async removeFromSubmissionWhitelist(userId: number) {
+    return this.removeFromWhitelist('submissionWhitelist', userId);
+  }
+
+  async getShopWhitelist() {
+    return this.getWhitelist('shopWhitelist');
+  }
+
+  async addToShopWhitelist(input: { userId?: number; slackUserId?: string }) {
+    return this.addToWhitelist('shopWhitelist', input);
+  }
+
+  async removeFromShopWhitelist(userId: number) {
+    return this.removeFromWhitelist('shopWhitelist', userId);
+  }
+
+  private async getWhitelist(field: WhitelistField) {
+    const settings = await this.getGlobalSettings();
+    return this.getWhitelistUsers(settings[field] ?? []);
+  }
+
+  private async addToWhitelist(
+    field: WhitelistField,
+    input: { userId?: number; slackUserId?: string },
+  ) {
     let userId = input.userId;
 
     // Resolve a Slack user ID to a Horizons user when no userId was given.
@@ -2526,25 +2574,25 @@ export class AdminService {
     }
 
     const settings = await this.getGlobalSettings();
-    const current = settings.submissionWhitelist ?? [];
+    const current = settings[field] ?? [];
     if (!current.includes(userId)) {
       await this.prisma.globalSettings.update({
         where: { id: 'global' },
-        data: { submissionWhitelist: { set: [...current, userId] } },
+        data: { [field]: { set: [...current, userId] } },
       });
     }
 
-    return this.getSubmissionWhitelist();
+    return this.getWhitelist(field);
   }
 
-  async removeFromSubmissionWhitelist(userId: number) {
+  private async removeFromWhitelist(field: WhitelistField, userId: number) {
     const settings = await this.getGlobalSettings();
-    const current = settings.submissionWhitelist ?? [];
+    const current = settings[field] ?? [];
     await this.prisma.globalSettings.update({
       where: { id: 'global' },
-      data: { submissionWhitelist: { set: current.filter((id) => id !== userId) } },
+      data: { [field]: { set: current.filter((id) => id !== userId) } },
     });
-    return this.getSubmissionWhitelist();
+    return this.getWhitelist(field);
   }
 
   async getPriorityUsers() {

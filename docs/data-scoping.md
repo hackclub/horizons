@@ -178,7 +178,8 @@ const projectAdminInclude = {
 | Slack ID on users | `PUT /api/admin/users/:id/slack` |
 | Unlock projects | `PUT /api/admin/projects/:id/unlock` |
 | Delete projects | `DELETE /api/admin/projects/:id` |
-| Submissions freeze | `PUT /api/admin/settings/submissions-frozen` |
+| Submissions freeze | `PUT /api/admin/settings/submissions-frozen` (+ superadmin-managed `submission-whitelist`) |
+| Shop disable | `PUT /api/admin/settings/shop-disabled` (+ superadmin-managed `shop-whitelist`). Blocks shop purchases and event ticket purchases. Users only learn their own `{ open }` via `GET /api/shop/auth/access`; the whitelist itself is never exposed to users |
 | Recalculate hours | Single or bulk recalculation |
 
 ## Summary Table

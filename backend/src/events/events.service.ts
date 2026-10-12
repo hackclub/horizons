@@ -237,6 +237,7 @@ export class EventsService {
     }
 
     await this.balanceService.verifyEligibility(userId, 'Event Ticket');
+    await this.balanceService.assertShopOpen(userId);
 
     // Threshold gates eligibility on balance (approved hours minus spending,
     // including admin adjustments) — spending below the bar disqualifies.

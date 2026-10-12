@@ -114,6 +114,14 @@ export class DeleteVariantResponse {
   variantId: number;
 }
 
+export class ShopAccessResponse {
+  @ApiProperty({
+    description:
+      'False when the shop is disabled and the current user is not whitelisted.',
+  })
+  open: boolean;
+}
+
 export class BalanceResponse {
   @ApiProperty()
   totalApprovedHours: number;

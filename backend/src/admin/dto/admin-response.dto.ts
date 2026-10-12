@@ -956,6 +956,21 @@ export class GlobalSettingsResponse {
     description: 'User IDs allowed to submit while submissions are frozen.',
   })
   submissionWhitelist: number[];
+
+  @ApiProperty()
+  shopDisabled: boolean;
+
+  @ApiProperty({ type: Date, nullable: true })
+  shopDisabledAt: Date | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  shopDisabledBy: string | null;
+
+  @ApiProperty({
+    type: [Number],
+    description: 'User IDs allowed to purchase while the shop is disabled.',
+  })
+  shopWhitelist: number[];
 }
 
 export class WhitelistUserResponse {

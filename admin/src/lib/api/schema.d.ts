@@ -1254,6 +1254,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/settings/shop-disabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminController_toggleShopDisabled"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/settings/shop-whitelist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_getShopWhitelist"];
+        put?: never;
+        post: operations["AdminController_addToShopWhitelist"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/settings/shop-whitelist/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminController_removeFromShopWhitelist"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/search": {
         parameters: {
             query?: never;
@@ -1822,6 +1870,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["ShopAuthController_getBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shop/auth/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ShopAuthController_getShopAccess"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3833,6 +3897,12 @@ export interface components {
             totalSubmissionsFrozenBy: string | null;
             /** @description User IDs allowed to submit while submissions are frozen. */
             submissionWhitelist: number[];
+            shopDisabled: boolean;
+            /** Format: date-time */
+            shopDisabledAt: string | null;
+            shopDisabledBy: string | null;
+            /** @description User IDs allowed to purchase while the shop is disabled. */
+            shopWhitelist: number[];
         };
         ToggleSubmissionsFrozenDto: {
             submissionsFrozen: boolean;
@@ -3848,11 +3918,15 @@ export interface components {
             lastName: string | null;
             slackUserId: string | null;
         };
-        AddSubmissionWhitelistDto: {
-            /** @description User ID to add to the submission whitelist. */
+        AddWhitelistDto: {
+            /** @description User ID to add to the whitelist. */
             userId?: number;
             /** @description Slack user ID to resolve to a Horizons user and add to the whitelist. Used when userId is not provided. */
             slackUserId?: string;
+        };
+        ToggleShopDisabledDto: {
+            /** @description When true, shop purchases are blocked for everyone except users on the shop whitelist. */
+            shopDisabled: boolean;
         };
         ElevatedUserResponse: {
             userId: number;
@@ -4404,6 +4478,10 @@ export interface components {
             totalApprovedHours: number;
             totalSpent: number;
             balance: number;
+        };
+        ShopAccessResponse: {
+            /** @description False when the shop is disabled and the current user is not whitelisted. */
+            open: boolean;
         };
         PurchaseItemDto: {
             itemId: number;
@@ -6806,7 +6884,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AddSubmissionWhitelistDto"];
+                "application/json": components["schemas"]["AddWhitelistDto"];
             };
         };
         responses: {
@@ -6827,6 +6905,98 @@ export interface operations {
         };
     };
     AdminController_removeFromSubmissionWhitelist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhitelistUserResponse"][];
+                };
+            };
+        };
+    };
+    AdminController_toggleShopDisabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleShopDisabledDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalSettingsResponse"];
+                };
+            };
+        };
+    };
+    AdminController_getShopWhitelist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhitelistUserResponse"][];
+                };
+            };
+        };
+    };
+    AdminController_addToShopWhitelist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddWhitelistDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhitelistUserResponse"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_removeFromShopWhitelist: {
         parameters: {
             query?: never;
             header?: never;
@@ -7750,6 +7920,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BalanceResponse"];
+                };
+            };
+        };
+    };
+    ShopAuthController_getShopAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopAccessResponse"];
                 };
             };
         };
