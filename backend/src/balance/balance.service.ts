@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../../generated/prisma/client';
 import { TransactionKind } from '../../generated/prisma/enums';
@@ -14,6 +18,28 @@ export class BalanceService {
     private configService: ConfigService,
     private airtableService: AirtableService,
   ) {}
+
+  // Whether this user may spend hours right now (shop items and event
+  // tickets). An admin can disable the shop globally; whitelisted users keep
+  // access.
+  async getShopAccess(userId: number): Promise<{ open: boolean }> {
+    const settings = await this.prisma.globalSettings.findUnique({
+      where: { id: 'global' },
+      select: { shopDisabled: true, shopWhitelist: true },
+    });
+    const open =
+      !settings?.shopDisabled ||
+      (settings.shopWhitelist ?? []).includes(userId);
+    return { open };
+  }
+
+  async assertShopOpen(userId: number) {
+    if (!(await this.getShopAccess(userId)).open) {
+      throw new ForbiddenException(
+        'The shop is currently closed. Please check back later.',
+      );
+    }
+  }
 
   async getUserBalance(userId: number, client?: Prisma.TransactionClient) {
     const db = client ?? this.prisma;

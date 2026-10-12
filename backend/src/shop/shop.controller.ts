@@ -29,6 +29,7 @@ import {
   DeleteItemResponse,
   DeleteVariantResponse,
   BalanceResponse,
+  ShopAccessResponse,
   UserTransactionResponse,
   AdminTransactionResponse,
   RefundResponse,
@@ -74,6 +75,12 @@ export class ShopAuthController {
   @ApiOkResponse({ type: BalanceResponse })
   async getBalance(@Req() req: Request) {
     return this.shopService.getUserBalance(req.user.userId);
+  }
+
+  @Get('access')
+  @ApiOkResponse({ type: ShopAccessResponse })
+  async getShopAccess(@Req() req: Request) {
+    return this.shopService.getShopAccess(req.user.userId);
   }
 
   @Post('purchase')

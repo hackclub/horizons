@@ -263,6 +263,10 @@ export class ShopService {
     return this.balanceService.getUserBalance(userId);
   }
 
+  async getShopAccess(userId: number) {
+    return this.balanceService.getShopAccess(userId);
+  }
+
   // The primary HCA address as of the user's last login. Orders don't copy
   // it, so fulfilment always ships to whatever this returns at the time.
   async getShippingAddress(
@@ -320,6 +324,7 @@ export class ShopService {
     );
 
     await this.balanceService.verifyEligibility(userId, 'Shop Purchase', undefined, { allowAgedOut: true });
+    await this.balanceService.assertShopOpen(userId);
 
     const item = await this.prisma.shopItem.findUnique({
       where: { itemId },

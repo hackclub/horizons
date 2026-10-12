@@ -27,6 +27,9 @@
 
 	let item = $state<ShopItem | null>(null);
 	let balance = $state<number | null>(null);
+	// Defaults to open so a failed access lookup never hides the buy button
+	// client-side; the backend rejects the purchase anyway when closed.
+	let shopOpen = $state(true);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let selectedVariantId = $state<number | null>(null);
@@ -50,6 +53,7 @@
 	const purchaseDisabled = $derived(
 		!item ||
 			!item.isActive ||
+			!shopOpen ||
 			purchasing ||
 			purchaseSuccess ||
 			!canAfford ||
@@ -58,6 +62,7 @@
 	const purchaseLabel = $derived.by(() => {
 		if (purchaseSuccess) return 'Purchased!';
 		if (item && !item.isActive) return 'Unavailable';
+		if (!shopOpen) return 'Shop closed';
 		if (needsVariant && selectedVariantId == null) return 'Select a variant';
 		if (!canAfford) return 'Insufficient balance';
 		return `Purchase (${totalCost}h)`;
@@ -71,12 +76,17 @@
 
 	onMount(async () => {
 		try {
-			const [itemRes, balanceRes] = await Promise.all([
+			const [itemRes, balanceRes, accessRes] = await Promise.all([
 				api.GET('/api/shop/items/{id}', {
 					params: { path: { id: itemId } }
 				}),
-				api.GET('/api/shop/auth/balance')
+				api.GET('/api/shop/auth/balance'),
+				api.GET('/api/shop/auth/access')
 			]);
+
+			if (!accessRes.error && accessRes.data) {
+				shopOpen = accessRes.data.open;
+			}
 
 			if (itemRes.error) {
 				error = 'Failed to load item';

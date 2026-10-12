@@ -202,8 +202,12 @@ Full administrative operations. Accessible to `admin` role only.
 | GET | `/slack/lookup-by-email` | Admin | Find Slack user by email |
 | GET | `/slack/user-info` | Admin | Get Slack user info by ID |
 | **Settings** |||
-| GET | `/settings` | Admin | Global settings (submissions freeze flag) |
+| GET | `/settings` | Admin | Global settings (submission freeze and shop disable flags, whitelists) |
 | PUT | `/settings/submissions-frozen` | Admin | Toggle global submissions freeze |
+| PUT | `/settings/total-submissions-frozen` | Admin | Toggle total freeze (ignores the whitelist) |
+| GET/POST/DELETE | `/settings/submission-whitelist[/:userId]` | Superadmin | Users who can submit during a freeze |
+| PUT | `/settings/shop-disabled` | Admin | Toggle the shop off; shop purchases and event ticket purchases are blocked except for whitelisted users (`BalanceService.assertShopOpen`) |
+| GET/POST/DELETE | `/settings/shop-whitelist[/:userId]` | Superadmin | Users who can purchase while the shop is disabled |
 
 **Key operations:**
 - `recalculateProjectHours()` re-fetches hours from Hackatime API for individual or all projects
@@ -228,7 +232,8 @@ Shop items, variants, purchases, and transaction management.
 | GET | `/:slug/items/:id` | Public | Get specific item |
 | **User** |||
 | GET | `/auth/balance` | User | User's balance (approved hours - spent) |
-| POST | `/auth/purchase` | User | Purchase item (validates eligibility, stock, limits, shipping address). Optional `orderNotes` (≤1000 chars) saved on each created transaction |
+| GET | `/auth/access` | User | `{ open }` — false when the shop is disabled via global settings and the user is not on the shop whitelist |
+| POST | `/auth/purchase` | User | Purchase item (validates eligibility, shop not disabled for this user, stock, limits, shipping address). Optional `orderNotes` (≤1000 chars) saved on each created transaction |
 | GET | `/auth/shipping-address` | User | `{ address }`: the user's current primary HCA address and recipient name (the address name, or the account name until it syncs), or `null` when incomplete. Shown in the checkout confirm modal |
 | GET | `/auth/transactions` | User | User's transaction history |
 | GET | `/auth/pinned-item` | User | Get pinned item |
@@ -516,7 +521,7 @@ Managed by Prisma. Schema at `prisma/schema.prisma` with 30+ migrations.
 | **UserSession** | userId, expiresAt | Auth sessions (21-day TTL) |
 | **EmailJob** | recipientEmail, status, scheduledFor, lockedBy | Email queue |
 | **GiftCode** | code, email, filloutUrl, isClaimed | Promotional codes |
-| **GlobalSettings** | submissionsFrozen | App-wide flags |
+| **GlobalSettings** | submissionsFrozen, totalSubmissionsFrozen, submissionWhitelist, shopDisabled, shopWhitelist | App-wide flags and whitelists |
 | **HackatimeLinkOtp** | otpCode, email, userId | OTP for Hackatime linking |
 
 ### Enums

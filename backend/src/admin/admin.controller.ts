@@ -80,7 +80,8 @@ import {
   UpdateSlackIdDto,
   ToggleSubmissionsFrozenDto,
   ToggleTotalSubmissionsFrozenDto,
-  AddSubmissionWhitelistDto,
+  AddWhitelistDto,
+  ToggleShopDisabledDto,
   UpdateUserRoleDto,
   PermRejectProjectDto,
   AdjustUserHoursDto,
@@ -664,7 +665,7 @@ export class AdminController {
   @UseGuards(RolesGuard)
   @Roles(Role.Superadmin)
   @ApiOkResponse({ type: [WhitelistUserResponse] })
-  async addToSubmissionWhitelist(@Body() body: AddSubmissionWhitelistDto) {
+  async addToSubmissionWhitelist(@Body() body: AddWhitelistDto) {
     return this.adminService.addToSubmissionWhitelist(body);
   }
 
@@ -676,6 +677,46 @@ export class AdminController {
     @Param('userId', ParseIntPipe) userId: number,
   ) {
     return this.adminService.removeFromSubmissionWhitelist(userId);
+  }
+
+  @Put('settings/shop-disabled')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  @ApiOkResponse({ type: GlobalSettingsResponse })
+  async toggleShopDisabled(
+    @Body() body: ToggleShopDisabledDto,
+    @Req() req: Request,
+  ) {
+    return this.adminService.toggleShopDisabled(
+      body.shopDisabled,
+      req.user.userId,
+    );
+  }
+
+  @Get('settings/shop-whitelist')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiOkResponse({ type: [WhitelistUserResponse] })
+  async getShopWhitelist() {
+    return this.adminService.getShopWhitelist();
+  }
+
+  @Post('settings/shop-whitelist')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiOkResponse({ type: [WhitelistUserResponse] })
+  async addToShopWhitelist(@Body() body: AddWhitelistDto) {
+    return this.adminService.addToShopWhitelist(body);
+  }
+
+  @Delete('settings/shop-whitelist/:userId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Superadmin)
+  @ApiOkResponse({ type: [WhitelistUserResponse] })
+  async removeFromShopWhitelist(
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.adminService.removeFromShopWhitelist(userId);
   }
 
   @Get('users/search')

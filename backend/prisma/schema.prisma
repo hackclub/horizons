@@ -603,6 +603,13 @@ model GlobalSettings {
   totalSubmissionsFrozenBy String?   @map("total_submissions_frozen_by")
   // User IDs allowed to submit while submissionsFrozen is on (superadmin-managed).
   submissionWhitelist Int[]     @default([]) @map("submission_whitelist")
+  // "Shop disabled": blocks purchases for everyone EXCEPT users in
+  // shopWhitelist. Items stay browsable; only checkout is gated.
+  shopDisabled   Boolean   @default(false) @map("shop_disabled")
+  shopDisabledAt DateTime? @map("shop_disabled_at")
+  shopDisabledBy String?   @map("shop_disabled_by")
+  // User IDs allowed to purchase while shopDisabled is on (superadmin-managed).
+  shopWhitelist  Int[]     @default([]) @map("shop_whitelist")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
   @@map("global_settings")

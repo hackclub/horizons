@@ -28,6 +28,7 @@
 	let items = $state<ShopItem[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let shopOpen = $state(true);
 	let pinnedSlug = $state<string | null>(getCachedPinnedEvent()?.slug ?? null);
 
 	let entered = $state(false);
@@ -50,15 +51,17 @@
 		requestAnimationFrame(() => requestAnimationFrame(() => { entered = true; }));
 
 		try {
-			const [itemsRes, pinnedRes] = await Promise.all([
+			const [itemsRes, pinnedRes, accessRes] = await Promise.all([
 				api.GET('/api/shop/items'),
 				api.GET('/api/events/auth/pinned-event' as any, {}).catch(() => null),
+				api.GET('/api/shop/auth/access').catch(() => null),
 			]);
 			if (itemsRes.error) {
 				error = 'Failed to load items';
 			} else {
 				items = (itemsRes.data as unknown as ShopItem[]) ?? [];
 			}
+			if (accessRes?.data) shopOpen = accessRes.data.open;
 			const pinned = (pinnedRes?.data as any)?.event ?? null;
 			if (pinned?.slug) pinnedSlug = pinned.slug;
 		} catch {
@@ -202,6 +205,17 @@
 				</p>
 			</div>
 		</div>
+
+		{#if !shopOpen}
+			<div
+				class="border-4 border-black rounded-[20px] shadow-[4px_4px_0px_0px_black] w-full max-w-[932px] px-6 py-4"
+				style="background-color: #ffd9a8;"
+			>
+				<p class="font-bricolage font-semibold text-[24px] m-0 leading-normal text-black">
+					The shop is closed right now. You can still browse, but purchases are paused.
+				</p>
+			</div>
+		{/if}
 
 		<!-- Status card -->
 		<div
